@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/smelter/smelter.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"smelter"
+display_name = "Smelter"
+color = Color(0.9, 0.5, 0.15, 1)
+category = "converter"
+scene = ExtResource("2")
