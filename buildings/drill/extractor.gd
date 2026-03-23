@@ -1,22 +1,30 @@
 class_name ExtractorLogic
 extends Node
 
+const Inventory = preload("res://scripts/inventory.gd")
 const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 var grid_pos: Vector2i
 var direction: int = 0
-var item_id: StringName = &"iron_ore"
+var item_id: StringName = &"iron_ore":
+	set(value):
+		item_id = value
+		inventory = Inventory.new()
+		inventory.set_capacity(item_id, 5)
 var produce_interval: float = 2.0  # 1 item every 2 seconds
 var _timer: float = 0.0
+var inventory: Inventory = Inventory.new()
 
 func _physics_process(delta: float) -> void:
 	_timer += delta
-	if _timer >= produce_interval:
-		if _try_push():
-			_timer = 0.0
-		else:
-			_timer = produce_interval  # retry next frame
+	if _timer >= produce_interval and inventory.has_space(item_id):
+		inventory.add(item_id)
+		_timer = 0.0
+	elif _timer >= produce_interval:
+		_timer = produce_interval  # cap timer while full
+	if not inventory.is_empty() and _try_push():
+		inventory.remove(item_id)
 
 func _try_push() -> bool:
 	var output_pos = grid_pos + DIRECTION_VECTORS[direction]

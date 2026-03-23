@@ -3,8 +3,6 @@ extends Node2D
 
 const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
-const MIN_ITEM_GAP := 0.35 # minimum progress gap between items
-
 var grid_pos: Vector2i
 var direction: int = 0 # 0=right, 1=down, 2=left, 3=up
 
@@ -12,7 +10,8 @@ var direction: int = 0 # 0=right, 1=down, 2=left, 3=up
 # Each entry: {id: StringName, progress: float, entry_from: Vector2i, visual: Node2D}
 var items: Array = []
 
-var max_items: int = 1 # capacity, increase for faster belts later
+var max_items: int = 2 # capacity, increase for faster belts later
+var item_gap: float = 1.0 / max_items # exact spacing between items
 
 func get_direction_vector() -> Vector2i:
 	return DIRECTION_VECTORS[direction]
@@ -32,7 +31,7 @@ func can_accept() -> bool:
 	# Check if there's room at the entry (no item too close to progress 0)
 	if items.size() > 0:
 		var last_item = items[items.size() - 1]
-		if last_item.progress < MIN_ITEM_GAP:
+		if last_item.progress < item_gap:
 			return false
 	return true
 
@@ -72,7 +71,7 @@ func update_items(delta: float, speed: float) -> void:
 		# Calculate max progress (can't pass the item ahead)
 		var max_progress := 1.0
 		if i > 0:
-			max_progress = items[i - 1].progress - MIN_ITEM_GAP
+			max_progress = items[i - 1].progress - item_gap
 		item.progress = minf(item.progress + speed * delta, max_progress)
 		_position_item(item)
 

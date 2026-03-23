@@ -1,6 +1,8 @@
 class_name ConverterLogic
 extends Node
 
+const Inventory = preload("res://scripts/inventory.gd")
+const RoundRobin = preload("res://scripts/round_robin.gd")
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 ## Grid position of the building origin.
@@ -16,35 +18,51 @@ var input_points: Array = []
 var output_points: Array = []
 
 ## All recipes this converter can use (filtered by converter_type).
-var recipes: Array = []
+var recipes: Array = []:
+	set(value):
+		recipes = value
+		_build_capacities()
+
+## Inventories for input ingredients and craft outputs.
+var input_inv: Inventory = Inventory.new()
+var output_inv: Inventory = Inventory.new()
 
 ## Current crafting state.
-var _input_buffer: Dictionary = {} # item_id -> count
 var _active_recipe = null # RecipeDef or null
 var _craft_timer: float = 0.0
-var _output_queue: Array = [] # Array of StringName (item_ids to push out)
+var _input_rr: RoundRobin = RoundRobin.new()
+
+func _build_capacities() -> void:
+	input_inv = Inventory.new()
+	output_inv = Inventory.new()
+	for recipe in recipes:
+		for inp in recipe.inputs:
+			var cur = input_inv.get_capacity(inp.item.id)
+			if inp.quantity * 3 > cur:
+				input_inv.set_capacity(inp.item.id, inp.quantity * 3)
+		for out in recipe.outputs:
+			var cur = output_inv.get_capacity(out.item.id)
+			if out.quantity * 5 > cur:
+				output_inv.set_capacity(out.item.id, out.quantity * 5)
 
 func _physics_process(delta: float) -> void:
-	# Phase 1: Try to push pending outputs first
-	if _output_queue.size() > 0:
-		_try_push_outputs()
-		return # Don't pull or craft while outputs are pending
-
-	# Phase 2: If crafting, advance timer
-	if _active_recipe:
-		_craft_timer += delta
-		if _craft_timer >= _active_recipe.craft_time:
-			_craft_complete()
-		return
-
-	# Phase 3: Try to pull items and start a craft
 	_try_pull_inputs()
-	_try_start_craft()
+	_try_push_outputs()
+
+	if _active_recipe:
+		_craft_timer = minf(_craft_timer + delta, _active_recipe.craft_time)
+		if _craft_timer >= _active_recipe.craft_time:
+			_try_finish_craft()
+	else:
+		_try_start_craft()
 
 func _try_pull_inputs() -> void:
-	for inp in input_points:
+	var count: int = input_points.size()
+	var start: int = _input_rr.next(count)
+	for i in range(count):
+		var idx: int = (start + i) % count
+		var inp = input_points[idx]
 		var world_cell: Vector2i = grid_pos + inp.cell
-		# Check all 4 directions for conveyors pointing at this input cell
 		for dir_idx in range(4):
 			if not inp.mask[dir_idx]:
 				continue
@@ -52,7 +70,6 @@ func _try_pull_inputs() -> void:
 			var conv = GameManager.get_conveyor_at(neighbor_pos)
 			if not conv:
 				continue
-			# Conveyor must point toward this cell
 			if conv.get_next_pos() != world_cell:
 				continue
 			if conv.items.size() == 0:
@@ -60,21 +77,10 @@ func _try_pull_inputs() -> void:
 			var front = conv.get_front_item()
 			if front.progress < 1.0:
 				continue
-			# Check if this item is useful for any recipe
 			var item_id: StringName = front.id
-			if _is_item_useful(item_id):
+			if input_inv.has_space(item_id):
 				conv.pop_front_item()
-				_input_buffer[item_id] = _input_buffer.get(item_id, 0) + 1
-
-func _is_item_useful(item_id: StringName) -> bool:
-	for recipe in recipes:
-		for inp in recipe.inputs:
-			if inp.item.id == item_id:
-				var needed: int = inp.quantity
-				var have: int = _input_buffer.get(item_id, 0)
-				if have < needed:
-					return true
-	return false
+				input_inv.add(item_id)
 
 func _try_start_craft() -> void:
 	for recipe in recipes:
@@ -84,50 +90,47 @@ func _try_start_craft() -> void:
 
 func _can_craft(recipe) -> bool:
 	for inp in recipe.inputs:
-		var have: int = _input_buffer.get(inp.item.id, 0)
-		if have < inp.quantity:
+		if not input_inv.has(inp.item.id, inp.quantity):
+			return false
+	for out in recipe.outputs:
+		if not output_inv.has_space(out.item.id, out.quantity):
 			return false
 	return true
 
 func _start_craft(recipe) -> void:
-	# Consume inputs
 	for inp in recipe.inputs:
-		_input_buffer[inp.item.id] -= inp.quantity
-		if _input_buffer[inp.item.id] <= 0:
-			_input_buffer.erase(inp.item.id)
+		input_inv.remove(inp.item.id, inp.quantity)
 	_active_recipe = recipe
 	_craft_timer = 0.0
 
-func _craft_complete() -> void:
-	# Queue outputs
+func _try_finish_craft() -> void:
 	for out in _active_recipe.outputs:
-		for i in range(out.quantity):
-			_output_queue.append(out.item.id)
+		if not output_inv.has_space(out.item.id, out.quantity):
+			return # Hold craft until output has room
+	for out in _active_recipe.outputs:
+		output_inv.add(out.item.id, out.quantity)
 	_active_recipe = null
 	_craft_timer = 0.0
-	# Immediately try to push
-	_try_push_outputs()
 
 func _try_push_outputs() -> void:
-	if _output_queue.size() == 0:
+	if output_inv.is_empty():
 		return
 	for outp in output_points:
 		var world_cell: Vector2i = grid_pos + outp.cell
-		# Output cell is a gap in the shape — push directly onto conveyor there
 		var conv = GameManager.get_conveyor_at(world_cell)
 		if conv and conv.can_accept():
-			var item_id: StringName = _output_queue[0]
-			# Entry direction: from the building interior toward the output cell
 			var entry_from: Vector2i = -conv.get_direction_vector()
-			if conv.place_item(item_id, entry_from):
-				_output_queue.remove_at(0)
-				if _output_queue.size() == 0:
-					return
+			for item_id in output_inv.get_item_ids():
+				if conv.place_item(item_id, entry_from):
+					output_inv.remove(item_id)
+					if output_inv.is_empty():
+						return
+					break
 
 ## Returns craft progress as 0.0–1.0 for progress bar display.
 func get_progress() -> float:
 	if _active_recipe:
 		return clampf(_craft_timer / _active_recipe.craft_time, 0.0, 1.0)
-	if _output_queue.size() > 0:
+	if not output_inv.is_empty():
 		return 1.0 # Waiting to push output
 	return 0.0
