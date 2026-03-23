@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3 uid="uid://main_menu"]
+[gd_scene load_steps=2 format=3 uid="uid://btv5kmspoqjnl"]
 
-[ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1"]
+[ext_resource type="Script" uid="uid://ve24bid7mhsh" path="res://scripts/ui/main_menu.gd" id="1"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -20,45 +20,165 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.1, 0.1, 0.12, 1)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="CenterMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 360
+theme_override_constants/margin_top = 80
+theme_override_constants/margin_right = 360
+theme_override_constants/margin_bottom = 80
+
+[node name="VBox" type="VBoxContainer" parent="CenterMargin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Title" type="Label" parent="CenterMargin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 80
+text = "Factor"
+horizontal_alignment = 1
+
+[node name="TopSpacer" type="Control" parent="CenterMargin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.5
+
+[node name="ContinueButton" type="Button" parent="CenterMargin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 28
+text = "Continue"
+
+[node name="NewRunButton" type="Button" parent="CenterMargin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 28
+text = "New Run"
+
+[node name="TestButton" type="Button" parent="CenterMargin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 28
+text = "Test Scene"
+
+[node name="QuitButton" type="Button" parent="CenterMargin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 28
+text = "Quit"
+
+[node name="BottomSpacer" type="Control" parent="CenterMargin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.3
+
+[node name="AccountButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -48.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/font_size = 18
+text = "Account: Player 1"
+
+[node name="AccountPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -210.0
+offset_right = -16.0
+offset_bottom = -56.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="SlotList" type="VBoxContainer" parent="AccountPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SlotButton0" type="Button" parent="AccountPanel/SlotList"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 18
+text = "Slot 1 — Player 1"
+
+[node name="SlotButton1" type="Button" parent="AccountPanel/SlotList"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 18
+text = "Slot 2 — Player 2"
+
+[node name="SlotButton2" type="Button" parent="AccountPanel/SlotList"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 18
+text = "Slot 3 — Player 3"
+
+[node name="ConfirmOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.5)
+
+[node name="Panel" type="PanelContainer" parent="ConfirmOverlay"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -200.0
-offset_right = 180.0
-offset_bottom = 200.0
+offset_left = -200.0
+offset_top = -80.0
+offset_right = 200.0
+offset_bottom = 80.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 20
 
-[node name="Title" type="Label" parent="VBoxContainer"]
+[node name="VBox" type="VBoxContainer" parent="ConfirmOverlay/Panel"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 64
-text = "Factor"
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="ConfirmLabel" type="Label" parent="ConfirmOverlay/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "This will overwrite your current run. Continue?"
 horizontal_alignment = 1
+autowrap_mode = 2
 
-[node name="Spacer" type="Control" parent="VBoxContainer"]
+[node name="ButtonRow" type="HBoxContainer" parent="ConfirmOverlay/Panel/VBox"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 30)
+theme_override_constants/separation = 16
+alignment = 1
 
-[node name="StartButton" type="Button" parent="VBoxContainer"]
+[node name="ConfirmYes" type="Button" parent="ConfirmOverlay/Panel/VBox/ButtonRow"]
+custom_minimum_size = Vector2(120, 40)
 layout_mode = 2
-custom_minimum_size = Vector2(300, 60)
-theme_override_font_sizes/font_size = 24
-text = "Start Game"
+theme_override_font_sizes/font_size = 20
+text = "Yes"
 
-[node name="TestButton" type="Button" parent="VBoxContainer"]
+[node name="ConfirmNo" type="Button" parent="ConfirmOverlay/Panel/VBox/ButtonRow"]
+custom_minimum_size = Vector2(120, 40)
 layout_mode = 2
-custom_minimum_size = Vector2(300, 60)
-theme_override_font_sizes/font_size = 24
-text = "Test Scene"
-
-[node name="QuitButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-custom_minimum_size = Vector2(300, 60)
-theme_override_font_sizes/font_size = 24
-text = "Quit"
+theme_override_font_sizes/font_size = 20
+text = "Cancel"

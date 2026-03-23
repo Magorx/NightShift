@@ -14,6 +14,9 @@ var buildings: Dictionary = {}
 # Deposits: grid_pos -> item_id (what resource this deposit produces)
 var deposits: Dictionary = {}
 
+# Currency earned from sinks
+var total_currency: int = 0
+
 # Reference to scene layer nodes (set by game_world on ready)
 var building_layer: Node2D
 var item_layer: Node2D
@@ -393,9 +396,15 @@ func _update_single_conveyor_sprite(grid_pos: Vector2i) -> void:
 		sprite.update_variant(conv, conveyor_system)
 
 func clear_all() -> void:
+	# Clean up conveyor item visuals (they live on item_layer, not as building children)
+	for building in buildings.values():
+		if is_instance_valid(building) and building.has_meta("conveyor"):
+			var conv = building.get_meta("conveyor")
+			conv.cleanup_visuals()
 	for building in buildings.values():
 		if is_instance_valid(building):
 			building.queue_free()
 	buildings.clear()
 	if conveyor_system:
 		conveyor_system.conveyors.clear()
+		conveyor_system._pull_rr.clear()

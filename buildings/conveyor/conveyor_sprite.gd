@@ -15,6 +15,7 @@ func _ready() -> void:
 	position = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	play()
+	_sync_to_global_clock()
 
 ## Update the sprite variant based on current neighbor state.
 func update_variant(conv: Node, conveyor_system: Node) -> void:
@@ -50,8 +51,19 @@ func update_variant(conv: Node, conveyor_system: Node) -> void:
 	if animation != variant:
 		animation = variant
 		play()
+		_sync_to_global_clock()
 	rotation = conv.direction * PI / 2.0
 	flip_v = _flip
+
+## Snap the current frame to a global clock so all conveyors stay in phase.
+func _sync_to_global_clock() -> void:
+	var fps := sprite_frames.get_animation_speed(animation)
+	var count := sprite_frames.get_frame_count(animation)
+	if count <= 0 or fps <= 0.0:
+		return
+	var cycle_time := count / fps
+	var global_time := Time.get_ticks_msec() / 1000.0
+	frame = int(fmod(global_time, cycle_time) * fps) % count
 
 func _is_feeding_neighbor(grid_pos: Vector2i, dir_offset: Vector2i, conveyor_system: Node) -> bool:
 	var neighbor_pos := grid_pos + dir_offset

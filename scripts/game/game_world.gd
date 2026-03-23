@@ -6,10 +6,14 @@ const PAN_SPEED := 600.0
 const ZOOM_SPEED := 0.1
 const MIN_ZOOM := 0.25
 const MAX_ZOOM := 3.0
+const AUTOSAVE_INTERVAL := 60.0
 
 @onready var camera: Camera2D = $Camera2D
 @onready var tile_map: TileMapLayer = $TileMapLayer
 @onready var grid_overlay: Node2D = $GridOverlay
+
+var _autosave_timer: float = 0.0
+var _pause_menu_scene: PackedScene = preload("res://scenes/ui/pause_menu.tscn")
 
 func _ready() -> void:
 	GameManager.building_layer = $BuildingLayer
@@ -20,12 +24,21 @@ func _ready() -> void:
 	_fill_ground()
 	_place_deposits()
 	$UI/HUD.building_selected.connect(_on_building_selected)
+	# If continuing from a save, load the run now that the world is ready
+	if SaveManager.pending_load:
+		SaveManager.pending_load = false
+		SaveManager.load_run()
 
 func _on_building_selected(id: StringName) -> void:
 	$BuildSystem.select_building(id)
 
 func _process(delta: float) -> void:
 	_handle_pan(delta)
+	# Autosave
+	_autosave_timer += delta
+	if _autosave_timer >= AUTOSAVE_INTERVAL:
+		_autosave_timer = 0.0
+		SaveManager.save_run()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
@@ -33,7 +46,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventPanGesture:
 		_set_zoom(camera.zoom.x - event.delta.y * ZOOM_SPEED)
 	elif event.is_action_pressed("ui_cancel"):
-		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+		_open_pause_menu()
+
+func _open_pause_menu() -> void:
+	# Don't open if already paused
+	if get_tree().paused:
+		return
+	var pause_menu := _pause_menu_scene.instantiate()
+	$UI.add_child(pause_menu)
 
 func _handle_pan(delta: float) -> void:
 	var direction := Vector2.ZERO

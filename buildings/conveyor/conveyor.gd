@@ -87,7 +87,12 @@ func _position_item(item_data: Dictionary) -> void:
 	# Exit edge: where the item leaves the tile
 	var exit_point := center + exit_dir * 0.5 * TILE_SIZE
 
-	item_data.visual.position = entry_point.lerp(exit_point, item_data.progress)
+	# Quadratic bezier: entry -> center -> exit for a curved path on side entries
+	var t: float = item_data.progress
+	var p0 := entry_point
+	var p1 := center
+	var p2 := exit_point
+	item_data.visual.position = p0 * (1 - t) * (1 - t) + p1 * 2 * (1 - t) * t + p2 * t * t
 
 func _create_item_visual(item_id: StringName) -> Node2D:
 	var visual := Node2D.new()

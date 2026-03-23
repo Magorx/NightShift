@@ -207,7 +207,7 @@ The game is a Godot 4.5 project. All scripts use GDScript. Visual style is flat/
 
 ---
 
-### Step 12: Main Menu, Save/Load System `[ ]`
+### Step 12: Main Menu, Save/Load System `[x]`
 
 **Goal:** Full main menu with Continue/New Run. Game state saves and loads from JSON files.
 
