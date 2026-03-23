@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"iron_plate"
+display_name = "Iron Plate"
+color = Color(0.75, 0.75, 0.8, 1)
+category = "intermediate"
+export_value = 3
+research_value = 1

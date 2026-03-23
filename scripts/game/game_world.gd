@@ -37,13 +37,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _handle_pan(delta: float) -> void:
 	var direction := Vector2.ZERO
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+	if Input.is_action_pressed(&"pan_up"):
 		direction.y -= 1
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+	if Input.is_action_pressed(&"pan_down"):
 		direction.y += 1
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+	if Input.is_action_pressed(&"pan_left"):
 		direction.x -= 1
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+	if Input.is_action_pressed(&"pan_right"):
 		direction.x += 1
 	if direction != Vector2.ZERO:
 		camera.position += direction.normalized() * PAN_SPEED * delta / camera.zoom.x

@@ -6,8 +6,9 @@ const ARROW_COLOR := Color(1, 1, 1, 0.5)
 func _draw() -> void:
 	var rot: int = get_meta("rotation_index", 0)
 	var bsize: Vector2i = get_meta("shape_size", Vector2i(1, 1))
+	var bbox_min: Vector2i = get_meta("bbox_min", Vector2i(0, 0))
 	var size_px := Vector2(bsize) * TILE_SIZE
-	var center := size_px * 0.5
+	var center := Vector2(bbox_min) * TILE_SIZE + size_px * 0.5
 	var arrow_len: float = min(size_px.x, size_px.y) * 0.3
 	var dir: Vector2
 	match rot:

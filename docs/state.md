@@ -139,7 +139,7 @@ The game is a Godot 4.5 project. All scripts use GDScript. Visual style is flat/
 
 ---
 
-### Step 8: Converters — Smelter Processing `[ ]`
+### Step 8: Converters — Smelter Processing `[x]`
 
 **Goal:** Smelters pull items from input conveyors, process them over time, and push results onto output conveyors.
 

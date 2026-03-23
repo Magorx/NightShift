@@ -8,12 +8,13 @@ extends Resource
 @export var scene: PackedScene
 @export var unlock_tech: StringName
 
-## Populated at load time from the scene's ShapeCell children.
-## Array of Vector2i cell offsets relative to the building origin.
-var shape: Array = []
+## Anchor cell offset, read from BuildAnchor node position at load time.
+## The cursor/grid_pos aligns to this cell when placing.
+var anchor_cell: Vector2i = Vector2i(0, 0)
 
-## Bounding box of the shape (for arrow centering, etc.)
-var shape_size: Vector2i = Vector2i(1, 1)
+## Populated at load time from the scene's ShapeCell children.
+## Array of Vector2i cell offsets relative to the anchor.
+var shape: Array = []
 
 ## IO points extracted from Inputs/Outputs sub-nodes at load time.
 ## Each entry: {cell: Vector2i, mask: [right, down, left, up]}
