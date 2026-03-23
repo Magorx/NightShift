@@ -173,6 +173,35 @@ func _serialize_building_state(building: Node2D) -> Dictionary:
 		var src: ItemSource = building.get_meta("source")
 		state["timer"] = src._timer
 
+	# Splitter: serialize buffer
+	if building.has_meta("splitter"):
+		var spl = building.get_meta("splitter")
+		var buffer_data: Array = []
+		for item in spl._buffer:
+			buffer_data.append({
+				"id": str(item.id),
+				"from_dir_idx": item.from_dir_idx,
+				"output_dir_idx": item.output_dir_idx,
+				"progress": item.progress,
+			})
+		state["buffer"] = buffer_data
+
+	# Junction: serialize per-axis buffers
+	if building.has_meta("junction"):
+		var jnc = building.get_meta("junction")
+		var axes_data: Array = []
+		for axis in 2:
+			var buffer_data: Array = []
+			for item in jnc._buffers[axis]:
+				buffer_data.append({
+					"id": str(item.id),
+					"from_dir_idx": item.from_dir_idx,
+					"output_dir_idx": item.output_dir_idx,
+					"progress": item.progress,
+				})
+			axes_data.append(buffer_data)
+		state["junction_buffers"] = axes_data
+
 	return state
 
 func _serialize_inventory(inv) -> Dictionary:
@@ -272,6 +301,38 @@ func _deserialize_building_state(building: Node2D, state: Dictionary) -> void:
 	if building.has_meta("source") and state.has("timer"):
 		var src: ItemSource = building.get_meta("source")
 		src._timer = state["timer"]
+
+	# Splitter state
+	if building.has_meta("splitter") and state.has("buffer"):
+		var spl = building.get_meta("splitter")
+		for item_data in state["buffer"]:
+			var visual = spl._create_item_visual(StringName(item_data["id"]))
+			var entry := {
+				id = StringName(item_data["id"]),
+				from_dir_idx = int(item_data["from_dir_idx"]),
+				output_dir_idx = int(item_data.get("output_dir_idx", -1)),
+				progress = float(item_data.get("progress", 0.0)),
+				visual = visual,
+			}
+			spl._buffer.append(entry)
+			spl._position_item(entry)
+
+	# Junction state
+	if building.has_meta("junction") and state.has("junction_buffers"):
+		var jnc = building.get_meta("junction")
+		var axes_data: Array = state["junction_buffers"]
+		for axis in mini(axes_data.size(), 2):
+			for item_data in axes_data[axis]:
+				var visual = jnc._create_item_visual(StringName(item_data["id"]))
+				var entry := {
+					id = StringName(item_data["id"]),
+					from_dir_idx = int(item_data["from_dir_idx"]),
+					output_dir_idx = int(item_data["output_dir_idx"]),
+					progress = float(item_data.get("progress", 0.0)),
+					visual = visual,
+				}
+				jnc._buffers[axis].append(entry)
+				jnc._position_item(entry)
 
 func _deserialize_inventory(inv, data: Dictionary) -> void:
 	for item_id_str in data:

@@ -1,7 +1,7 @@
 class_name ConveyorSprite
 extends AnimatedSprite2D
 
-## Selects the correct animation variant based on neighboring conveyors
+## Selects the correct animation variant based on neighboring building outputs
 ## and orients the sprite to match conveyor direction.
 ## Animations (straight, turn, side_input, dual_side_input) are defined
 ## in the SpriteFrames resource on the AnimatedSprite2D node in the scene.
@@ -18,20 +18,22 @@ func _ready() -> void:
 	_sync_to_global_clock()
 
 ## Update the sprite variant based on current neighbor state.
-func update_variant(conv: Node, conveyor_system: Node) -> void:
+func update_variant(conv: Node, _conveyor_system: Node) -> void:
 	var dir_vec := Vector2i(conv.get_direction_vector())
 	var back := -dir_vec
 	var right_side := Vector2i(-dir_vec.y, dir_vec.x)
 	var left_side := Vector2i(dir_vec.y, -dir_vec.x)
 
-	var has_back := _is_feeding_neighbor(conv.grid_pos, back, conveyor_system)
-	var has_right := _is_feeding_neighbor(conv.grid_pos, right_side, conveyor_system)
-	var has_left := _is_feeding_neighbor(conv.grid_pos, left_side, conveyor_system)
+	var has_back := _is_feeding_neighbor(conv.grid_pos, back)
+	var has_right := _is_feeding_neighbor(conv.grid_pos, right_side)
+	var has_left := _is_feeding_neighbor(conv.grid_pos, left_side)
 
 	var variant: StringName
 	_flip = false
 
-	if has_right and has_left:
+	if has_right and has_left and has_back:
+		variant = &"crossroad"
+	elif has_right and has_left:
 		variant = &"dual_side_input"
 	elif has_back and has_right:
 		variant = &"side_input"
@@ -45,8 +47,10 @@ func update_variant(conv: Node, conveyor_system: Node) -> void:
 	elif has_left and not has_back:
 		variant = &"turn"
 		_flip = true
-	else:
+	elif has_back:
 		variant = &"straight"
+	elif not has_back:
+		variant = &"start"
 
 	if animation != variant:
 		animation = variant
@@ -65,9 +69,18 @@ func _sync_to_global_clock() -> void:
 	var global_time := Time.get_ticks_msec() / 1000.0
 	frame = int(fmod(global_time, cycle_time) * fps) % count
 
-func _is_feeding_neighbor(grid_pos: Vector2i, dir_offset: Vector2i, conveyor_system: Node) -> bool:
-	var neighbor_pos := grid_pos + dir_offset
-	if not conveyor_system.conveyors.has(neighbor_pos):
+## Check if any building has an output that feeds into grid_pos from dir_offset.
+func _is_feeding_neighbor(grid_pos: Vector2i, dir_offset: Vector2i) -> bool:
+	# Convert dir_offset to a direction index for has_output_at
+	var dir_idx: int = -1
+	if dir_offset == Vector2i.RIGHT:
+		dir_idx = 0
+	elif dir_offset == Vector2i.DOWN:
+		dir_idx = 1
+	elif dir_offset == Vector2i.LEFT:
+		dir_idx = 2
+	elif dir_offset == Vector2i.UP:
+		dir_idx = 3
+	else:
 		return false
-	var neighbor = conveyor_system.conveyors[neighbor_pos]
-	return neighbor.get_next_pos() == grid_pos
+	return GameManager.has_output_at(grid_pos, dir_idx)

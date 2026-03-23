@@ -2,7 +2,6 @@ class_name ExtractorLogic
 extends Node
 
 const Inventory = preload("res://scripts/inventory.gd")
-const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 var grid_pos: Vector2i
@@ -23,17 +22,16 @@ func _physics_process(delta: float) -> void:
 		_timer = 0.0
 	elif _timer >= produce_interval:
 		_timer = produce_interval  # cap timer while full
-	if not inventory.is_empty() and _try_push():
-		inventory.remove(item_id)
 
-func _try_push() -> bool:
-	var output_pos = grid_pos + DIRECTION_VECTORS[direction]
-	var conv = GameManager.get_conveyor_at(output_pos)
-	if conv and conv.can_accept():
-		var entry_from = grid_pos - output_pos
-		conv.place_item(item_id, entry_from)
-		return true
-	return false
+func get_output_cell() -> Vector2i:
+	return grid_pos + DIRECTION_VECTORS[direction]
+
+func can_provide_to(target_pos: Vector2i) -> bool:
+	return not inventory.is_empty() and target_pos == get_output_cell()
+
+func take_item() -> StringName:
+	inventory.remove(item_id)
+	return item_id
 
 ## Returns production progress as 0.0–1.0 for the progress bar.
 func get_progress() -> float:

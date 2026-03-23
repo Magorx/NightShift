@@ -47,7 +47,6 @@ func _build_capacities() -> void:
 
 func _physics_process(delta: float) -> void:
 	_try_pull_inputs()
-	_try_push_outputs()
 
 	if _active_recipe:
 		_craft_timer = minf(_craft_timer + delta, _active_recipe.craft_time)
@@ -66,20 +65,11 @@ func _try_pull_inputs() -> void:
 		for dir_idx in range(4):
 			if not inp.mask[dir_idx]:
 				continue
-			var neighbor_pos: Vector2i = world_cell + DIRECTION_VECTORS[dir_idx]
-			var conv = GameManager.get_conveyor_at(neighbor_pos)
-			if not conv:
+			var item_id = GameManager.peek_output_item(world_cell, dir_idx)
+			if item_id == &"":
 				continue
-			if conv.get_next_pos() != world_cell:
-				continue
-			if conv.items.size() == 0:
-				continue
-			var front = conv.get_front_item()
-			if front.progress < 1.0:
-				continue
-			var item_id: StringName = front.id
 			if input_inv.has_space(item_id):
-				conv.pop_front_item()
+				GameManager.pull_item(world_cell, dir_idx)
 				input_inv.add(item_id)
 
 func _try_start_craft() -> void:
@@ -112,20 +102,46 @@ func _try_finish_craft() -> void:
 	_active_recipe = null
 	_craft_timer = 0.0
 
-func _try_push_outputs() -> void:
-	if output_inv.is_empty():
-		return
+# ── Pull-compatible output interface ─────────────────────────────────────────
+
+func has_output_at(target_pos: Vector2i) -> bool:
 	for outp in output_points:
-		var world_cell: Vector2i = grid_pos + outp.cell
-		var conv = GameManager.get_conveyor_at(world_cell)
-		if conv and conv.can_accept():
-			var entry_from: Vector2i = -conv.get_direction_vector()
-			for item_id in output_inv.get_item_ids():
-				if conv.place_item(item_id, entry_from):
-					output_inv.remove(item_id)
-					if output_inv.is_empty():
-						return
-					break
+		if grid_pos + outp.cell == target_pos:
+			return true
+	return false
+
+func has_input_from(cell: Vector2i, from_dir_idx: int) -> bool:
+	for inp in input_points:
+		if grid_pos + inp.cell == cell and inp.mask[from_dir_idx]:
+			return true
+	return false
+
+func can_provide_to(target_pos: Vector2i) -> bool:
+	if output_inv.is_empty():
+		return false
+	for outp in output_points:
+		if grid_pos + outp.cell == target_pos:
+			return true
+	return false
+
+func peek_output_for(target_pos: Vector2i) -> StringName:
+	if output_inv.is_empty():
+		return &""
+	for outp in output_points:
+		if grid_pos + outp.cell == target_pos:
+			for iid in output_inv.get_item_ids():
+				if output_inv.has(iid):
+					return iid
+	return &""
+
+func take_item_for(target_pos: Vector2i) -> StringName:
+	for outp in output_points:
+		if grid_pos + outp.cell == target_pos:
+			for iid in output_inv.get_item_ids():
+				if output_inv.has(iid):
+					output_inv.remove(iid)
+					return iid
+	return &""
 
 ## Returns craft progress as 0.0–1.0 for progress bar display.
 func get_progress() -> float:

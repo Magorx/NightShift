@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/splitter/splitter.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"splitter"
+display_name = "Splitter"
+color = Color(0.35, 0.65, 0.65, 1)
+category = "splitter"
+description = "Splits items to multiple outputs. Round-robin distribution."
+scene = ExtResource("2")

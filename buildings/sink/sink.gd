@@ -14,22 +14,15 @@ func _physics_process(_delta: float) -> void:
 		keep_pulling = false
 		for i in range(4):
 			var dir_idx = (_pull_index + i) % 4
-			var neighbor_pos = grid_pos + DIRECTION_VECTORS[dir_idx]
-			var conv = GameManager.get_conveyor_at(neighbor_pos)
-			if conv and conv.get_next_pos() == grid_pos:
-				while conv.items.size() > 0:
-					var front = conv.get_front_item()
-					if front.progress < 1.0:
-						break
-					var consumed_item = conv.pop_front_item()
-					items_consumed += 1
-					var item_def = _get_item_def(consumed_item.id)
-					var export_val: int = item_def.export_value if item_def else 1
-					GameManager.record_delivery(consumed_item.id, export_val)
-					keep_pulling = true
-				if keep_pulling:
-					_pull_index = (dir_idx + 1) % 4
-					break
+			var result = GameManager.pull_item(grid_pos, dir_idx)
+			if not result.is_empty():
+				items_consumed += 1
+				var item_def = _get_item_def(result.id)
+				var export_val: int = item_def.export_value if item_def else 1
+				GameManager.record_delivery(result.id, export_val)
+				_pull_index = (dir_idx + 1) % 4
+				keep_pulling = true
+				break
 
 func _get_item_def(item_id: StringName):
 	var path := "res://resources/items/%s.tres" % str(item_id)

@@ -315,6 +315,7 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 			src.direction = rotation
 			src.item_id = &"iron_ore"
 			building.set_meta("source", src)
+			_update_neighbor_conveyor_sprites(grid_pos)
 
 	# Configure extractor (drill)
 	if def.category == "extractor":
@@ -324,6 +325,7 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 			ext.direction = rotation
 			ext.item_id = deposits.get(grid_pos, &"iron_ore")
 			building.set_meta("extractor", ext)
+			_update_neighbor_conveyor_sprites(grid_pos)
 
 	# Configure converter (smelter, assembler, etc.)
 	if def.category == "converter":
@@ -336,6 +338,8 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 			conv_logic.output_points = get_rotated_outputs(def, rotation)
 			conv_logic.recipes = recipes_by_type.get(str(def.id), [])
 			building.set_meta("converter", conv_logic)
+			for cell in rotated_shape:
+				_update_neighbor_conveyor_sprites(grid_pos + cell)
 
 	# Configure sink
 	if def.category == "sink":
@@ -343,6 +347,22 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		if snk:
 			snk.grid_pos = grid_pos
 			building.set_meta("sink", snk)
+
+	# Configure splitter
+	if def.category == "splitter":
+		var spl = building.find_child("SplitterLogic", true, false)
+		if spl:
+			spl.grid_pos = grid_pos
+			building.set_meta("splitter", spl)
+			_update_neighbor_conveyor_sprites(grid_pos)
+
+	# Configure junction
+	if def.category == "junction":
+		var jnc = building.find_child("JunctionLogic", true, false)
+		if jnc:
+			jnc.grid_pos = grid_pos
+			building.set_meta("junction", jnc)
+			_update_neighbor_conveyor_sprites(grid_pos)
 
 	return building
 
@@ -360,9 +380,20 @@ func remove_building(grid_pos: Vector2i) -> void:
 			conv.cleanup_visuals()
 			conveyor_system.unregister_conveyor(removed_pos)
 
-	# Remove all occupied cells (rotated)
+	# Clean up splitter item visuals
+	if building.has_meta("splitter"):
+		var spl = building.get_meta("splitter")
+		spl.cleanup_visuals()
+
+	# Clean up junction item visuals
+	if building.has_meta("junction"):
+		var jnc = building.get_meta("junction")
+		jnc.cleanup_visuals()
+
+	# Remove all occupied cells (rotated) and collect them for sprite updates
+	var rotated_shape: Array = []
 	if def:
-		var rotated_shape := get_rotated_shape(def, building.rotation_index)
+		rotated_shape = get_rotated_shape(def, building.rotation_index)
 		for cell in rotated_shape:
 			buildings.erase(building.grid_pos + cell)
 	else:
@@ -370,9 +401,9 @@ func remove_building(grid_pos: Vector2i) -> void:
 
 	building.queue_free()
 
-	# Update neighboring conveyor sprites after removal
-	if def and def.category == "conveyor":
-		_update_neighbor_conveyor_sprites(removed_pos)
+	# Update neighboring conveyor sprites after any building removal
+	for cell in rotated_shape:
+		_update_neighbor_conveyor_sprites(removed_pos + cell)
 
 func get_building_at(grid_pos: Vector2i):
 	return buildings.get(grid_pos)
@@ -386,7 +417,7 @@ func get_conveyor_at(grid_pos: Vector2i):
 func get_deposit_at(grid_pos: Vector2i):
 	return deposits.get(grid_pos)
 
-const _NEIGHBOR_DIRS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
+const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 ## Update the conveyor sprite at grid_pos and all its neighbors.
 func _update_conveyor_sprites(grid_pos: Vector2i) -> void:
@@ -395,7 +426,7 @@ func _update_conveyor_sprites(grid_pos: Vector2i) -> void:
 
 ## Update only the neighboring conveyor sprites around grid_pos.
 func _update_neighbor_conveyor_sprites(grid_pos: Vector2i) -> void:
-	for dir in _NEIGHBOR_DIRS:
+	for dir in DIRECTION_VECTORS:
 		_update_single_conveyor_sprite(grid_pos + dir)
 
 ## Update a single conveyor's sprite variant if it exists.
@@ -411,11 +442,17 @@ func _update_single_conveyor_sprite(grid_pos: Vector2i) -> void:
 		sprite.update_variant(conv, conveyor_system)
 
 func clear_all() -> void:
-	# Clean up conveyor item visuals (they live on item_layer, not as building children)
+	# Clean up item visuals (they live on item_layer, not as building children)
 	for building in buildings.values():
 		if is_instance_valid(building) and building.has_meta("conveyor"):
 			var conv = building.get_meta("conveyor")
 			conv.cleanup_visuals()
+		if is_instance_valid(building) and building.has_meta("splitter"):
+			var spl = building.get_meta("splitter")
+			spl.cleanup_visuals()
+		if is_instance_valid(building) and building.has_meta("junction"):
+			var jnc = building.get_meta("junction")
+			jnc.cleanup_visuals()
 	for building in buildings.values():
 		if is_instance_valid(building):
 			building.queue_free()
@@ -425,3 +462,115 @@ func clear_all() -> void:
 	if conveyor_system:
 		conveyor_system.conveyors.clear()
 		conveyor_system._pull_rr.clear()
+
+# ── Unified pull system ──────────────────────────────────────────────────────
+
+## Check if a building has an output feeding into target_pos from direction from_dir_idx.
+## from_dir_idx indexes into DIRECTION_VECTORS: the offset from target_pos toward the supplier.
+func has_output_at(target_pos: Vector2i, from_dir_idx: int) -> bool:
+	var neighbor_pos: Vector2i = target_pos + DIRECTION_VECTORS[from_dir_idx]
+	var building = buildings.get(neighbor_pos)
+	if not building:
+		return false
+	if building.has_meta("conveyor"):
+		return building.get_meta("conveyor").get_next_pos() == target_pos
+	if building.has_meta("source"):
+		return building.get_meta("source").get_output_cell() == target_pos
+	if building.has_meta("extractor"):
+		return building.get_meta("extractor").get_output_cell() == target_pos
+	if building.has_meta("splitter"):
+		return building.get_meta("splitter").has_output_toward(target_pos)
+	if building.has_meta("junction"):
+		return building.get_meta("junction").has_output_toward(target_pos)
+	if building.has_meta("converter"):
+		return building.get_meta("converter").has_output_at(target_pos)
+	return false
+
+## Check if the building at cell accepts input from direction from_dir_idx.
+func has_input_at(cell: Vector2i, from_dir_idx: int) -> bool:
+	var building = buildings.get(cell)
+	if not building:
+		return false
+	if building.has_meta("conveyor"):
+		return from_dir_idx != building.get_meta("conveyor").direction
+	if building.has_meta("splitter") or building.has_meta("junction") or building.has_meta("sink"):
+		return true
+	if building.has_meta("converter"):
+		return building.get_meta("converter").has_input_from(cell, from_dir_idx)
+	return false
+
+## Peek at the item available from direction from_dir_idx without removing it.
+## Returns item_id (StringName) or &"" if nothing available.
+func peek_output_item(target_pos: Vector2i, from_dir_idx: int) -> StringName:
+	var neighbor_pos: Vector2i = target_pos + DIRECTION_VECTORS[from_dir_idx]
+	var building = buildings.get(neighbor_pos)
+	if not building:
+		return &""
+	if building.has_meta("conveyor"):
+		var conv = building.get_meta("conveyor")
+		if conv.get_next_pos() == target_pos and conv.items.size() > 0:
+			var front = conv.get_front_item()
+			if front.progress >= 1.0:
+				return front.id
+		return &""
+	if building.has_meta("source"):
+		var src = building.get_meta("source")
+		if src.can_provide_to(target_pos):
+			return src.item_id
+		return &""
+	if building.has_meta("extractor"):
+		var ext = building.get_meta("extractor")
+		if ext.can_provide_to(target_pos):
+			return ext.item_id
+		return &""
+	if building.has_meta("converter"):
+		return building.get_meta("converter").peek_output_for(target_pos)
+	if building.has_meta("splitter"):
+		return building.get_meta("splitter").peek_output_for(target_pos)
+	if building.has_meta("junction"):
+		return building.get_meta("junction").peek_output_for(target_pos)
+	return &""
+
+## Pull (remove) one item from a building's output in direction from_dir_idx.
+## Returns {id: StringName, entry_from: Vector2i} or empty dict.
+func pull_item(target_pos: Vector2i, from_dir_idx: int) -> Dictionary:
+	var neighbor_pos: Vector2i = target_pos + DIRECTION_VECTORS[from_dir_idx]
+	var building = buildings.get(neighbor_pos)
+	if not building:
+		return {}
+	var entry_from: Vector2i = DIRECTION_VECTORS[from_dir_idx]
+
+	if building.has_meta("conveyor"):
+		var conv = building.get_meta("conveyor")
+		if conv.get_next_pos() == target_pos and conv.items.size() > 0:
+			var front = conv.get_front_item()
+			if front.progress >= 1.0:
+				var item = conv.pop_front_item()
+				return {id = item.id, entry_from = entry_from}
+		return {}
+	if building.has_meta("source"):
+		var src = building.get_meta("source")
+		if src.can_provide_to(target_pos):
+			return {id = src.take_item(), entry_from = entry_from}
+		return {}
+	if building.has_meta("extractor"):
+		var ext = building.get_meta("extractor")
+		if ext.can_provide_to(target_pos):
+			return {id = ext.take_item(), entry_from = entry_from}
+		return {}
+	if building.has_meta("converter"):
+		var conv_logic = building.get_meta("converter")
+		if conv_logic.can_provide_to(target_pos):
+			return {id = conv_logic.take_item_for(target_pos), entry_from = entry_from}
+		return {}
+	if building.has_meta("splitter"):
+		var spl = building.get_meta("splitter")
+		if spl.can_provide_to(target_pos):
+			return {id = spl.take_item_for(target_pos), entry_from = entry_from}
+		return {}
+	if building.has_meta("junction"):
+		var jnc = building.get_meta("junction")
+		if jnc.can_provide_to(target_pos):
+			return {id = jnc.take_item_for(target_pos), entry_from = entry_from}
+		return {}
+	return {}

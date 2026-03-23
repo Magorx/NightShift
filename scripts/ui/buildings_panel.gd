@@ -2,15 +2,18 @@ extends PanelContainer
 
 signal building_selected(id: StringName)
 
-const CATEGORY_MAP := {
+const CATEGORY_DISPLAY_NAMES := {
 	"conveyor": "Transportation",
+	"splitter": "Transportation",
+	"junction": "Transportation",
 	"extractor": "Extractors",
 	"converter": "Converters",
 	"sink": "Outputs",
 	"source": "Sources",
 }
 
-const CATEGORY_ORDER := ["Transportation", "Extractors", "Converters", "Outputs", "Sources"]
+# Preferred display order; categories not listed here are appended alphabetically.
+const _PREFERRED_ORDER := ["Transportation", "Extractors", "Converters", "Outputs", "Sources"]
 
 @onready var categories_box: HBoxContainer = %CategoriesBox
 @onready var close_button: Button = %CloseButton
@@ -47,27 +50,38 @@ func _ready() -> void:
 	_group_buildings()
 	_create_category_tabs()
 	# Select first category that has buildings
-	for cat_name in CATEGORY_ORDER:
-		if _by_category.has(cat_name):
-			_select_category(cat_name)
-			break
+	var order := _get_category_order()
+	if order.size() > 0:
+		_select_category(order[0])
 	_clear_info()
 
 func _group_buildings() -> void:
 	_by_category.clear()
 	for id in GameManager.building_defs:
 		var def = GameManager.building_defs[id]
-		var cat_name: String = CATEGORY_MAP.get(def.category, def.category.capitalize())
+		var cat_name: String = CATEGORY_DISPLAY_NAMES.get(def.category, def.category.capitalize())
 		if not _by_category.has(cat_name):
 			_by_category[cat_name] = []
 		_by_category[cat_name].append(def)
 
+func _get_category_order() -> Array:
+	var order: Array = []
+	for cat_name in _PREFERRED_ORDER:
+		if _by_category.has(cat_name) and cat_name not in order:
+			order.append(cat_name)
+	# Append any remaining categories alphabetically
+	var remaining: Array = []
+	for cat_name in _by_category:
+		if cat_name not in order:
+			remaining.append(cat_name)
+	remaining.sort()
+	order.append_array(remaining)
+	return order
+
 func _create_category_tabs() -> void:
 	for child in categories_box.get_children():
 		child.queue_free()
-	for cat_name in CATEGORY_ORDER:
-		if not _by_category.has(cat_name):
-			continue
+	for cat_name in _get_category_order():
 		var btn := Button.new()
 		btn.text = cat_name
 		btn.toggle_mode = true

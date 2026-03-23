@@ -199,8 +199,7 @@ The game is a Godot 4.5 project. All scripts use GDScript. Visual style is flat/
 
 **What to build:**
 - Splitter: 1 input, 2-3 outputs, round-robin distribution
-- Merger: 2-3 inputs, 1 output, round-robin intake
-- Bridge: tunnels items over 1-4 tiles, skipping obstacles
+- Bridge: tunnels items over 1-4 tiles, skipping obstacles. Special build pattern: first click places an input-gate, the building remains in the blueprint variany; second click places output 
 - Each has distinct visual shape/color on the grid
 
 **What you see when launched:** Can build complex conveyor networks with splits, merges, and crossings.

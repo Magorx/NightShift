@@ -5,6 +5,7 @@ const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 var grid_pos: Vector2i
 var direction: int = 0 # 0=right, 1=down, 2=left, 3=up
+var traverse_time: float = 1.0 # seconds for an item to cross this conveyor
 
 # Array of items on this conveyor, sorted by progress (highest first)
 # Each entry: {id: StringName, progress: float, entry_from: Vector2i, visual: Node2D}

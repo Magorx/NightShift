@@ -12,10 +12,9 @@ const ARROW_COLOR := Color(1, 1, 1, 0.6)
 const DESTROY_AREA_COLOR := Color(1.0, 0.2, 0.2, 0.15)
 const DESTROY_CURSOR_COLOR := Color(1.0, 0.2, 0.2, 0.25)
 const DESTROY_OUTLINE_COLOR := Color(1.0, 0.2, 0.15, 0.85)
-const DESTROY_STRIPE_COLOR := Color(1.0, 0.1, 0.08, 0.2)
 const OUTLINE_WIDTH := 2.0
-const STRIPE_SPACING := 12.0
-const STRIPE_WIDTH := 5.0
+
+var _destroy_shader: Shader = preload("res://buildings/shared/destroy_highlight.gdshader")
 
 var cursor_grid_pos := Vector2i.ZERO
 var selected_building: StringName = &"conveyor"
@@ -29,6 +28,8 @@ var building_mode: bool = false
 var destroy_mode: bool = false
 var _destroy_dragging: bool = false
 var _destroy_drag_start := Vector2i.ZERO
+# Shader highlight tracking: instance_id -> Array of {node, original}
+var _highlighted_buildings: Dictionary = {}
 
 # Drag state (build mode)
 var _dragging: bool = false
@@ -42,6 +43,10 @@ func _process(_delta: float) -> void:
 	cursor_grid_pos = _get_grid_pos_under_mouse()
 	if _dragging:
 		_update_blueprints()
+	if destroy_mode:
+		_update_destroy_highlights()
+	elif not _highlighted_buildings.is_empty():
+		_clear_all_highlights()
 	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -118,6 +123,7 @@ func enter_destroy_mode() -> void:
 func exit_destroy_mode() -> void:
 	destroy_mode = false
 	_destroy_dragging = false
+	_clear_all_highlights()
 
 func select_building(id: StringName) -> void:
 	enter_building_mode(id)
@@ -267,10 +273,108 @@ func _commit_destroy() -> void:
 					seen[nid] = true
 					to_remove.append(building.grid_pos)
 
+	_clear_all_highlights()
+
 	for pos in to_remove:
 		GameManager.remove_building(pos)
 
 	_destroy_dragging = false
+
+# ── Destroy shader highlights ────────────────────────────────────────────────
+
+func _update_destroy_highlights() -> void:
+	# Compute which buildings should be highlighted
+	var new_set: Dictionary = {} # instance_id -> Node2D
+	if _destroy_dragging:
+		var min_pos := Vector2i(
+			mini(_destroy_drag_start.x, cursor_grid_pos.x),
+			mini(_destroy_drag_start.y, cursor_grid_pos.y))
+		var max_pos := Vector2i(
+			maxi(_destroy_drag_start.x, cursor_grid_pos.x),
+			maxi(_destroy_drag_start.y, cursor_grid_pos.y))
+		for x in range(min_pos.x, max_pos.x + 1):
+			for y in range(min_pos.y, max_pos.y + 1):
+				var building = GameManager.get_building_at(Vector2i(x, y))
+				if building and is_instance_valid(building):
+					new_set[building.get_instance_id()] = building
+	else:
+		var building = GameManager.get_building_at(cursor_grid_pos)
+		if building and is_instance_valid(building):
+			new_set[building.get_instance_id()] = building
+
+	# Remove highlights no longer needed
+	for nid in _highlighted_buildings.keys():
+		if not new_set.has(nid):
+			_remove_highlight(nid)
+
+	# Add new highlights
+	for nid in new_set:
+		if not _highlighted_buildings.has(nid):
+			_apply_highlight(new_set[nid])
+
+	# Update frame UV bounds for animated sprites (frame changes each tick)
+	for nid in _highlighted_buildings:
+		var entries: Array = _highlighted_buildings[nid]
+		for entry in entries:
+			if is_instance_valid(entry.node) and entry.node is AnimatedSprite2D:
+				var bounds := _get_frame_uv_bounds(entry.node)
+				entry.node.material.set_shader_parameter("frame_uv_min", bounds.position)
+				entry.node.material.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
+
+func _apply_highlight(building: Node2D) -> void:
+	var entries: Array = []
+	for node in _get_visual_nodes(building):
+		var orig = node.material
+		var mat := ShaderMaterial.new()
+		mat.shader = _destroy_shader
+		mat.set_shader_parameter("enabled", true)
+		var bounds := _get_frame_uv_bounds(node)
+		mat.set_shader_parameter("frame_uv_min", bounds.position)
+		mat.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
+		node.material = mat
+		entries.append({node = node, original = orig})
+	_highlighted_buildings[building.get_instance_id()] = entries
+
+## Get the UV bounds of the current frame within the atlas texture.
+func _get_frame_uv_bounds(node: CanvasItem) -> Rect2:
+	if node is AnimatedSprite2D:
+		var frame_tex = node.sprite_frames.get_frame_texture(node.animation, node.frame)
+		if frame_tex is AtlasTexture:
+			var atlas_size: Vector2 = frame_tex.atlas.get_size()
+			var region: Rect2 = frame_tex.region
+			return Rect2(region.position / atlas_size, region.size / atlas_size)
+	elif node is Sprite2D and node.region_enabled:
+		var tex_size: Vector2 = node.texture.get_size()
+		return Rect2(node.region_rect.position / tex_size, node.region_rect.size / tex_size)
+	return Rect2(0, 0, 1, 1)
+
+func _remove_highlight(nid: int) -> void:
+	if not _highlighted_buildings.has(nid):
+		return
+	var entries: Array = _highlighted_buildings[nid]
+	for entry in entries:
+		if is_instance_valid(entry.node):
+			entry.node.material = entry.original
+	_highlighted_buildings.erase(nid)
+
+func _clear_all_highlights() -> void:
+	for nid in _highlighted_buildings.keys():
+		_remove_highlight(nid)
+
+## Find visual children of a building to apply the destroy shader to.
+func _get_visual_nodes(building: Node2D) -> Array:
+	var result: Array = []
+	# Shape ColorRects
+	var shape_node = building.find_child("Shape", false, false)
+	if shape_node:
+		for child in shape_node.get_children():
+			if child is ColorRect:
+				result.append(child)
+	# Sprite2D and AnimatedSprite2D (direct children)
+	for child in building.get_children():
+		if child is Sprite2D or child is AnimatedSprite2D:
+			result.append(child)
+	return result
 
 # ── Drawing ──────────────────────────────────────────────────────────────────
 
@@ -326,92 +430,12 @@ func _draw_destroy(cell_size: Vector2) -> void:
 		var rect_pos := Vector2(min_pos) * TILE_SIZE
 		var rect_size := Vector2(max_pos - min_pos + Vector2i.ONE) * TILE_SIZE
 		draw_rect(Rect2(rect_pos, rect_size), DESTROY_AREA_COLOR)
-		# Highlight buildings inside the area with stripes + outline
-		var seen: Dictionary = {}
-		for x in range(min_pos.x, max_pos.x + 1):
-			for y in range(min_pos.y, max_pos.y + 1):
-				var building = GameManager.get_building_at(Vector2i(x, y))
-				if building and is_instance_valid(building):
-					var nid: int = building.get_instance_id()
-					if not seen.has(nid):
-						seen[nid] = true
-						_draw_building_destroy_highlight(building)
 	else:
-		# Hover: highlight building under cursor or just the cursor tile
+		# No building under cursor — show cursor indicator
 		var building = GameManager.get_building_at(cursor_grid_pos)
-		if building and is_instance_valid(building):
-			_draw_building_destroy_highlight(building)
-		else:
+		if not building or not is_instance_valid(building):
 			draw_rect(Rect2(Vector2(cursor_grid_pos) * TILE_SIZE, cell_size), DESTROY_CURSOR_COLOR)
 
-func _draw_building_destroy_highlight(building: Node2D) -> void:
-	var cells := _get_building_visual_cells(building)
-	var s := float(TILE_SIZE)
-	# Diagonal stripes per cell
-	for cell in cells:
-		_draw_cell_stripes(Vector2(cell) * s, s)
-	# Outline around the combined shape
-	_draw_shape_outline(cells)
-
-## Read actual Shape ColorRect positions from the placed building node.
-func _get_building_visual_cells(building: Node2D) -> Array:
-	var cells: Array = []
-	var bx := floori(building.position.x / TILE_SIZE)
-	var by := floori(building.position.y / TILE_SIZE)
-	var shape_node = building.find_child("Shape", false, false)
-	if shape_node:
-		for child in shape_node.get_children():
-			if child is ColorRect:
-				var gx := floori(child.offset_left / TILE_SIZE)
-				var gy := floori(child.offset_top / TILE_SIZE)
-				cells.append(Vector2i(bx + gx, by + gy))
-	if cells.is_empty():
-		# Fallback: use def shape
-		var def = GameManager.get_building_def(building.building_id)
-		if def:
-			for cell in GameManager.get_rotated_shape(def, building.rotation_index):
-				cells.append(building.grid_pos + cell)
-		else:
-			cells.append(building.grid_pos)
-	return cells
-
-## Draw world-aligned diagonal stripes within a single cell.
-func _draw_cell_stripes(cell_pos: Vector2, s: float) -> void:
-	var ox := cell_pos.x
-	var oy := cell_pos.y
-	# Stripes along x + y = k (top-left to bottom-right direction)
-	var k_min := ox + oy
-	var k_max := k_min + 2.0 * s
-	# Align to world grid so stripes connect across cells
-	var k := ceilf(k_min / STRIPE_SPACING) * STRIPE_SPACING
-	while k <= k_max:
-		# Clip line x + y = k to rect [ox, ox+s] x [oy, oy+s]
-		var x1 := maxf(ox, k - oy - s)
-		var x2 := minf(ox + s, k - oy)
-		if x1 < x2:
-			draw_line(Vector2(x1, k - x1), Vector2(x2, k - x2), DESTROY_STRIPE_COLOR, STRIPE_WIDTH)
-		k += STRIPE_SPACING
-
-## Draw outline around outer edges of a cell set.
-func _draw_shape_outline(cells: Array) -> void:
-	var cell_set: Dictionary = {}
-	for cell in cells:
-		cell_set[cell] = true
-	var s := float(TILE_SIZE)
-	for cell in cells:
-		var wp := Vector2(cell) * s
-		# Right edge
-		if not cell_set.has(cell + Vector2i(1, 0)):
-			draw_line(Vector2(wp.x + s, wp.y), Vector2(wp.x + s, wp.y + s), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
-		# Bottom edge
-		if not cell_set.has(cell + Vector2i(0, 1)):
-			draw_line(Vector2(wp.x, wp.y + s), Vector2(wp.x + s, wp.y + s), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
-		# Left edge
-		if not cell_set.has(cell + Vector2i(-1, 0)):
-			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x, wp.y + s), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
-		# Top edge
-		if not cell_set.has(cell + Vector2i(0, -1)):
-			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x + s, wp.y), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 func _draw_direction_arrow(origin: Vector2, size_px: Vector2, rot: int) -> void:
 	var center := origin + size_px * 0.5
@@ -428,6 +452,44 @@ func _draw_direction_arrow(origin: Vector2, size_px: Vector2, rot: int) -> void:
 	var perp := Vector2(-dir.y, dir.x)
 	draw_line(tip, tip - dir * 6 + perp * 4, ARROW_COLOR, 2.0)
 	draw_line(tip, tip - dir * 6 - perp * 4, ARROW_COLOR, 2.0)
+
+## Read actual Shape ColorRect positions from the placed building node.
+func _get_building_visual_cells(building: Node2D) -> Array:
+	var cells: Array = []
+	var bx := floori(building.position.x / TILE_SIZE)
+	var by := floori(building.position.y / TILE_SIZE)
+	var shape_node = building.find_child("Shape", false, false)
+	if shape_node:
+		for child in shape_node.get_children():
+			if child is ColorRect:
+				var gx := floori(child.offset_left / TILE_SIZE)
+				var gy := floori(child.offset_top / TILE_SIZE)
+				cells.append(Vector2i(bx + gx, by + gy))
+	if cells.is_empty():
+		var def = GameManager.get_building_def(building.building_id)
+		if def:
+			for cell in GameManager.get_rotated_shape(def, building.rotation_index):
+				cells.append(building.grid_pos + cell)
+		else:
+			cells.append(building.grid_pos)
+	return cells
+
+## Draw outline around outer edges of a cell set.
+func _draw_shape_outline(cells: Array) -> void:
+	var cell_set: Dictionary = {}
+	for cell in cells:
+		cell_set[cell] = true
+	var s := float(TILE_SIZE)
+	for cell in cells:
+		var wp := Vector2(cell) * s
+		if not cell_set.has(cell + Vector2i(1, 0)):
+			draw_line(Vector2(wp.x + s, wp.y), Vector2(wp.x + s, wp.y + s), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
+		if not cell_set.has(cell + Vector2i(0, 1)):
+			draw_line(Vector2(wp.x, wp.y + s), Vector2(wp.x + s, wp.y + s), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
+		if not cell_set.has(cell + Vector2i(-1, 0)):
+			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x, wp.y + s), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
+		if not cell_set.has(cell + Vector2i(0, -1)):
+			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x + s, wp.y), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
