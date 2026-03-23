@@ -1,5 +1,7 @@
 extends Node2D
 
+signal building_clicked(building: Node2D)
+
 const TILE_SIZE := 32
 const MAP_SIZE := 64
 const GHOST_COLOR := Color(0.4, 0.6, 1.0, 0.4)
@@ -7,13 +9,23 @@ const GHOST_INVALID_COLOR := Color(1.0, 0.3, 0.3, 0.4)
 const BLUEPRINT_COLOR := Color(0.3, 0.7, 1.0, 0.35)
 const BLUEPRINT_INVALID_COLOR := Color(1.0, 0.3, 0.3, 0.25)
 const ARROW_COLOR := Color(1, 1, 1, 0.6)
+const DESTROY_COLOR := Color(1.0, 0.2, 0.2, 0.3)
+const DESTROY_HOVER_COLOR := Color(1.0, 0.15, 0.15, 0.5)
 
 var cursor_grid_pos := Vector2i.ZERO
-var selected_building: StringName = &"drill"
+var selected_building: StringName = &"conveyor"
 var current_rotation: int = 0 # 0=right, 1=down, 2=left, 3=up
 var rotation_locked: bool = false # when true, drag doesn't auto-set rotation
 
-# Drag state
+# Building mode: when false, player is in inspect mode
+var building_mode: bool = false
+
+# Destroy mode
+var destroy_mode: bool = false
+var _destroy_dragging: bool = false
+var _destroy_drag_start := Vector2i.ZERO
+
+# Drag state (build mode)
 var _dragging: bool = false
 var _drag_start_pos := Vector2i.ZERO
 var _drag_axis: int = -1 # -1=undecided, 0=horizontal, 1=vertical
@@ -30,23 +42,92 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed:
-				_start_drag(cursor_grid_pos)
+			if building_mode:
+				if event.pressed:
+					_start_drag(cursor_grid_pos)
+				else:
+					_commit_drag()
+			elif destroy_mode:
+				if event.pressed:
+					_destroy_dragging = true
+					_destroy_drag_start = cursor_grid_pos
+				else:
+					_commit_destroy()
 			else:
-				_commit_drag()
+				# Inspect mode
+				if event.pressed:
+					_try_inspect(cursor_grid_pos)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			if _dragging:
-				_cancel_drag()
-			else:
-				_try_remove(cursor_grid_pos)
+			if building_mode:
+				if _dragging:
+					_cancel_drag()
+				else:
+					exit_building_mode()
+			elif destroy_mode:
+				if _destroy_dragging:
+					_destroy_dragging = false
+				else:
+					exit_destroy_mode()
 	elif event.is_action_pressed(&"rotate_building"):
-		current_rotation = (current_rotation + 1) % 4
-		if _dragging:
-			_drag_rotation = current_rotation
+		if building_mode:
+			current_rotation = (current_rotation + 1) % 4
+			if _dragging:
+				_drag_rotation = current_rotation
+		else:
+			# R toggles destroy mode when not in build mode
+			if destroy_mode:
+				exit_destroy_mode()
+			else:
+				enter_destroy_mode()
 	elif event.is_action_pressed(&"lock_rotation"):
 		rotation_locked = not rotation_locked
 	elif event.is_action_pressed(&"debug_spawn_item"):
 		_debug_spawn_item(cursor_grid_pos)
+	elif event.is_action_pressed(&"build_mode_toggle"):
+		if building_mode:
+			exit_building_mode()
+		else:
+			if destroy_mode:
+				exit_destroy_mode()
+			enter_building_mode(GameManager.last_selected_building)
+
+# ── Mode management ──────────────────────────────────────────────────────────
+
+func enter_building_mode(building_id: StringName) -> void:
+	if destroy_mode:
+		exit_destroy_mode()
+	selected_building = building_id
+	building_mode = true
+	GameManager.last_selected_building = building_id
+
+func exit_building_mode() -> void:
+	building_mode = false
+	if _dragging:
+		_cancel_drag()
+
+func enter_destroy_mode() -> void:
+	if building_mode:
+		exit_building_mode()
+	destroy_mode = true
+
+func exit_destroy_mode() -> void:
+	destroy_mode = false
+	_destroy_dragging = false
+
+func select_building(id: StringName) -> void:
+	enter_building_mode(id)
+
+# ── Inspect ──────────────────────────────────────────────────────────────────
+
+func _try_inspect(pos: Vector2i) -> void:
+	var building = GameManager.get_building_at(pos)
+	if building and is_instance_valid(building):
+		building_clicked.emit(building)
+	else:
+		# Clicked empty space — dismiss info panel
+		building_clicked.emit(null)
+
+# ── Build drag ───────────────────────────────────────────────────────────────
 
 func _start_drag(pos: Vector2i) -> void:
 	_dragging = true
@@ -156,11 +237,51 @@ func _filter_placeable_blueprints() -> void:
 			for c in cells:
 				claimed_cells[c] = true
 
+# ── Destroy ──────────────────────────────────────────────────────────────────
+
+func _commit_destroy() -> void:
+	if not _destroy_dragging:
+		return
+
+	var min_pos := Vector2i(
+		mini(_destroy_drag_start.x, cursor_grid_pos.x),
+		mini(_destroy_drag_start.y, cursor_grid_pos.y))
+	var max_pos := Vector2i(
+		maxi(_destroy_drag_start.x, cursor_grid_pos.x),
+		maxi(_destroy_drag_start.y, cursor_grid_pos.y))
+
+	# Collect unique buildings in the area
+	var to_remove: Array = []
+	var seen: Dictionary = {}
+	for x in range(min_pos.x, max_pos.x + 1):
+		for y in range(min_pos.y, max_pos.y + 1):
+			var building = GameManager.get_building_at(Vector2i(x, y))
+			if building and is_instance_valid(building):
+				var nid: int = building.get_instance_id()
+				if not seen.has(nid):
+					seen[nid] = true
+					to_remove.append(building.grid_pos)
+
+	for pos in to_remove:
+		GameManager.remove_building(pos)
+
+	_destroy_dragging = false
+
+# ── Drawing ──────────────────────────────────────────────────────────────────
+
 func _draw() -> void:
+	var cell_size := Vector2(TILE_SIZE, TILE_SIZE)
+
+	if destroy_mode:
+		_draw_destroy(cell_size)
+		return
+
+	if not building_mode:
+		return
+
 	var def = GameManager.get_building_def(selected_building)
 	if not def:
 		return
-	var cell_size := Vector2(TILE_SIZE, TILE_SIZE)
 
 	if _dragging:
 		# Draw only placeable blueprints (non-overlapping)
@@ -188,6 +309,46 @@ func _draw() -> void:
 			draw_rect(Rect2(anchor_px + Vector2(cell) * TILE_SIZE, cell_size), color)
 		_draw_direction_arrow(anchor_px + bbox_offset, bbox_px, current_rotation)
 
+func _draw_destroy(cell_size: Vector2) -> void:
+	if _destroy_dragging:
+		# Draw red rectangle over the drag area
+		var min_pos := Vector2i(
+			mini(_destroy_drag_start.x, cursor_grid_pos.x),
+			mini(_destroy_drag_start.y, cursor_grid_pos.y))
+		var max_pos := Vector2i(
+			maxi(_destroy_drag_start.x, cursor_grid_pos.x),
+			maxi(_destroy_drag_start.y, cursor_grid_pos.y))
+		var rect_pos := Vector2(min_pos) * TILE_SIZE
+		var rect_size := Vector2(max_pos - min_pos + Vector2i.ONE) * TILE_SIZE
+		draw_rect(Rect2(rect_pos, rect_size), DESTROY_COLOR)
+		# Highlight buildings inside the area
+		var seen: Dictionary = {}
+		for x in range(min_pos.x, max_pos.x + 1):
+			for y in range(min_pos.y, max_pos.y + 1):
+				var building = GameManager.get_building_at(Vector2i(x, y))
+				if building and is_instance_valid(building):
+					var nid: int = building.get_instance_id()
+					if not seen.has(nid):
+						seen[nid] = true
+						_draw_building_destroy_highlight(building, cell_size)
+	else:
+		# Hover: highlight building under cursor or just the cursor tile
+		var building = GameManager.get_building_at(cursor_grid_pos)
+		if building and is_instance_valid(building):
+			_draw_building_destroy_highlight(building, cell_size)
+		else:
+			draw_rect(Rect2(Vector2(cursor_grid_pos) * TILE_SIZE, cell_size), DESTROY_COLOR)
+
+func _draw_building_destroy_highlight(building: Node2D, cell_size: Vector2) -> void:
+	var def = GameManager.get_building_def(building.building_id)
+	if def:
+		var rotated_shape = GameManager.get_rotated_shape(def, building.rotation_index)
+		for cell in rotated_shape:
+			var pos := Vector2(building.grid_pos + cell) * TILE_SIZE
+			draw_rect(Rect2(pos, cell_size), DESTROY_HOVER_COLOR)
+	else:
+		draw_rect(Rect2(Vector2(building.grid_pos) * TILE_SIZE, cell_size), DESTROY_HOVER_COLOR)
+
 func _draw_direction_arrow(origin: Vector2, size_px: Vector2, rot: int) -> void:
 	var center := origin + size_px * 0.5
 	var arrow_len: float = min(size_px.x, size_px.y) * 0.3
@@ -204,15 +365,13 @@ func _draw_direction_arrow(origin: Vector2, size_px: Vector2, rot: int) -> void:
 	draw_line(tip, tip - dir * 6 + perp * 4, ARROW_COLOR, 2.0)
 	draw_line(tip, tip - dir * 6 - perp * 4, ARROW_COLOR, 2.0)
 
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
 func _get_grid_pos_under_mouse() -> Vector2i:
 	var mouse_world := get_global_mouse_position()
 	var gx := floori(mouse_world.x / TILE_SIZE)
 	var gy := floori(mouse_world.y / TILE_SIZE)
 	return Vector2i(gx, gy)
-
-func select_building(id: StringName) -> void:
-	selected_building = id
-	current_rotation = 0
 
 func _try_remove(pos: Vector2i) -> void:
 	GameManager.remove_building(pos)

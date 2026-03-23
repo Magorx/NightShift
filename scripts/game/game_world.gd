@@ -11,9 +11,13 @@ const AUTOSAVE_INTERVAL := 60.0
 @onready var camera: Camera2D = $Camera2D
 @onready var tile_map: TileMapLayer = $TileMapLayer
 @onready var grid_overlay: Node2D = $GridOverlay
+@onready var build_system: Node2D = $BuildSystem
+@onready var hud: Control = $UI/HUD
 
 var _autosave_timer: float = 0.0
 var _pause_menu_scene: PackedScene = preload("res://scenes/ui/pause_menu.tscn")
+var _info_panel_scene: PackedScene = preload("res://scenes/ui/building_info_panel.tscn")
+var _info_panel: PanelContainer
 
 func _ready() -> void:
 	GameManager.building_layer = $BuildingLayer
@@ -23,14 +27,35 @@ func _ready() -> void:
 	_setup_tileset()
 	_fill_ground()
 	_place_deposits()
-	$UI/HUD.building_selected.connect(_on_building_selected)
+
+	# Wire HUD signals
+	hud.building_selected.connect(_on_building_selected)
+	hud.set_camera(camera)
+
+	# Wire build system signals
+	build_system.building_clicked.connect(_on_building_clicked)
+
+	# Add building info panel to UI layer
+	_info_panel = _info_panel_scene.instantiate()
+	$UI.add_child(_info_panel)
+
 	# If continuing from a save, load the run now that the world is ready
 	if SaveManager.pending_load:
 		SaveManager.pending_load = false
 		SaveManager.load_run()
 
 func _on_building_selected(id: StringName) -> void:
-	$BuildSystem.select_building(id)
+	build_system.select_building(id)
+	# Dismiss info panel when entering build mode
+	if _info_panel:
+		_info_panel.hide_panel()
+
+func _on_building_clicked(building: Node2D) -> void:
+	if _info_panel:
+		if building:
+			_info_panel.show_building(building)
+		else:
+			_info_panel.hide_panel()
 
 func _process(delta: float) -> void:
 	_handle_pan(delta)
@@ -46,7 +71,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventPanGesture:
 		_set_zoom(camera.zoom.x - event.delta.y * ZOOM_SPEED)
 	elif event.is_action_pressed("ui_cancel"):
-		_open_pause_menu()
+		# ESC cascade: buildings panel → info panel → building mode → destroy mode → pause menu
+		if hud.is_buildings_panel_open():
+			hud.close_buildings_panel()
+		elif _info_panel and _info_panel.visible:
+			_info_panel.hide_panel()
+		elif build_system.building_mode:
+			build_system.exit_building_mode()
+		elif build_system.destroy_mode:
+			build_system.exit_destroy_mode()
+		else:
+			_open_pause_menu()
 
 func _open_pause_menu() -> void:
 	# Don't open if already paused

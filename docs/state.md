@@ -223,7 +223,7 @@ The game is a Godot 4.5 project. All scripts use GDScript. Visual style is flat/
 
 ---
 
-### Step 13: HUD Polish & Info Panels `[ ]`
+### Step 13: HUD Polish & Info Panels `[x]`
 
 **Goal:** Rich HUD with resource counts, building info on hover/click, recipe viewer, and minimap.
 

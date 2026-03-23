@@ -5,6 +5,7 @@ extends Resource
 @export var display_name: String
 @export var color: Color = Color.GRAY
 @export var category: String # "extractor", "conveyor", "converter", "sink"
+@export var description: String = ""
 @export var scene: PackedScene
 @export var unlock_tech: StringName
 

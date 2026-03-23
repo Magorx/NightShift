@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://hud"]
+[gd_scene load_steps=4 format=3 uid="uid://hud"]
 
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/minimap.gd" id="2"]
+[ext_resource type="PackedScene" uid="uid://buildings_panel" path="res://scenes/ui/buildings_panel.tscn" id="3"]
 
 [node name="HUD" type="Control"]
 layout_mode = 3
@@ -12,16 +14,108 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1")
 
-[node name="ToolbarPanel" type="PanelContainer" parent="."]
+[node name="DeliveryPanel" type="PanelContainer" parent="."]
 layout_mode = 1
-anchors_preset = 12
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -180.0
+offset_top = 8.0
+offset_right = -8.0
+grow_horizontal = 0
+
+[node name="MarginContainer" type="MarginContainer" parent="DeliveryPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="VBox" type="VBoxContainer" parent="DeliveryPanel/MarginContainer"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="DeliveryPanel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Deliveries"
+
+[node name="HSeparator" type="HSeparator" parent="DeliveryPanel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="CurrencyRow" type="HBoxContainer" parent="DeliveryPanel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="PointsLabel" type="Label" parent="DeliveryPanel/MarginContainer/VBox/CurrencyRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Points:"
+
+[node name="CurrencyValue" type="Label" parent="DeliveryPanel/MarginContainer/VBox/CurrencyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 10
+theme_override_font_sizes/font_size = 13
+text = "0"
+
+[node name="HSeparator2" type="HSeparator" parent="DeliveryPanel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="ItemList" type="VBoxContainer" parent="DeliveryPanel/MarginContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BottomRight" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -70.0
-grow_horizontal = 2
+offset_left = -176.0
+offset_top = -248.0
+offset_right = -8.0
+grow_horizontal = 0
 grow_vertical = 0
+alignment = 2
 
-[node name="Toolbar" type="HBoxContainer" parent="ToolbarPanel"]
+[node name="TimeSpeedPanel" type="HBoxContainer" parent="BottomRight"]
 layout_mode = 2
 alignment = 1
+
+[node name="SlowButton" type="Button" parent="BottomRight/TimeSpeedPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 28)
+layout_mode = 2
+text = "−"
+
+[node name="SpeedLabel" type="Label" parent="BottomRight/TimeSpeedPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "x1"
+horizontal_alignment = 1
+
+[node name="FastButton" type="Button" parent="BottomRight/TimeSpeedPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 28)
+layout_mode = 2
+text = "+"
+
+[node name="MinimapPanel" type="PanelContainer" parent="BottomRight"]
+custom_minimum_size = Vector2(160, 160)
+layout_mode = 2
+
+[node name="MinimapDisplay" type="Control" parent="BottomRight/MinimapPanel"]
+layout_mode = 2
+script = ExtResource("2")
+
+[node name="BuildingsButton" type="Button" parent="BottomRight"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Buildings"
+
+[node name="BuildingsPanel" parent="." instance=ExtResource("3")]
+visible = false

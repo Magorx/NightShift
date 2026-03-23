@@ -17,6 +17,15 @@ var deposits: Dictionary = {}
 # Currency earned from sinks
 var total_currency: int = 0
 
+# Items delivered to sinks: item_id (StringName) -> count (int)
+var items_delivered: Dictionary = {}
+
+# Building hotkeys: key_scancode (int) -> building_id (StringName)
+var building_hotkeys: Dictionary = {}
+
+# Last building selected for building mode (defaults to conveyor)
+var last_selected_building: StringName = &"conveyor"
+
 # Reference to scene layer nodes (set by game_world on ready)
 var building_layer: Node2D
 var item_layer: Node2D
@@ -201,6 +210,12 @@ func get_rotated_inputs(def, rotation: int) -> Array:
 			mask = rotate_mask(inp.mask, rotation)
 		})
 	return result
+
+func record_delivery(item_id: StringName, value: int = 0) -> void:
+	if not items_delivered.has(item_id):
+		items_delivered[item_id] = 0
+	items_delivered[item_id] += 1
+	total_currency += value
 
 func get_building_def(id: StringName):
 	return building_defs.get(id)
@@ -405,6 +420,8 @@ func clear_all() -> void:
 		if is_instance_valid(building):
 			building.queue_free()
 	buildings.clear()
+	total_currency = 0
+	items_delivered.clear()
 	if conveyor_system:
 		conveyor_system.conveyors.clear()
 		conveyor_system._pull_rr.clear()

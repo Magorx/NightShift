@@ -8,5 +8,6 @@ script = ExtResource("1")
 id = &"drill"
 display_name = "Drill"
 color = Color(0.55, 0.55, 0.6, 1)
+description = "Place on resource deposits to extract items."
 category = "extractor"
 scene = ExtResource("2")

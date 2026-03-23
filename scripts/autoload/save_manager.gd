@@ -79,8 +79,29 @@ func _serialize_run() -> Dictionary:
 		"camera": _serialize_camera(),
 		"currency": GameManager.total_currency,
 		"buildings": _serialize_buildings(),
+		"items_delivered": _serialize_items_delivered(),
+		"building_hotkeys": _serialize_building_hotkeys(),
+		"time_speed": _serialize_time_speed(),
 	}
 	return data
+
+func _serialize_items_delivered() -> Dictionary:
+	var result := {}
+	for item_id in GameManager.items_delivered:
+		result[str(item_id)] = GameManager.items_delivered[item_id]
+	return result
+
+func _serialize_building_hotkeys() -> Dictionary:
+	var result := {}
+	for keycode in GameManager.building_hotkeys:
+		result[str(keycode)] = str(GameManager.building_hotkeys[keycode])
+	return result
+
+func _serialize_time_speed() -> Dictionary:
+	var hud = _get_hud()
+	if hud:
+		return {"speed_index": hud.speed_index, "paused": hud.paused}
+	return {"speed_index": 2, "paused": false}
 
 func _serialize_camera() -> Dictionary:
 	var gw := _get_game_world()
@@ -184,6 +205,23 @@ func _deserialize_run(data: Dictionary) -> void:
 		var state: Dictionary = entry.get("state", {})
 		_deserialize_building_state(building, state)
 
+	# Restore items delivered
+	var delivered: Dictionary = data.get("items_delivered", {})
+	GameManager.items_delivered.clear()
+	for item_id_str in delivered:
+		GameManager.items_delivered[StringName(item_id_str)] = int(delivered[item_id_str])
+
+	# Restore building hotkeys
+	var hotkeys: Dictionary = data.get("building_hotkeys", {})
+	GameManager.building_hotkeys.clear()
+	for keycode_str in hotkeys:
+		GameManager.building_hotkeys[int(keycode_str)] = StringName(hotkeys[keycode_str])
+
+	# Restore time speed (deferred so HUD is ready)
+	var time_data: Dictionary = data.get("time_speed", {})
+	if not time_data.is_empty():
+		call_deferred("_restore_time_speed", time_data)
+
 	# Restore camera (deferred so game world is ready)
 	var cam_data: Dictionary = data.get("camera", {})
 	if not cam_data.is_empty():
@@ -270,9 +308,31 @@ func _read_json(path: String) -> Dictionary:
 		return json.data
 	return {}
 
+func _restore_time_speed(data: Dictionary) -> void:
+	var hud = _get_hud()
+	if hud:
+		hud.speed_index = int(data.get("speed_index", 2))
+		var was_paused: bool = data.get("paused", false)
+		if was_paused:
+			hud.paused = false # Ensure toggle works
+			hud._toggle_pause()
+		else:
+			Engine.time_scale = hud.SPEED_STEPS[hud.speed_index]
+			hud.speed_label.text = hud.SPEED_LABELS[hud.speed_index]
+			hud._update_speed_buttons()
+
 func _get_game_world() -> Node:
 	var root := get_tree().root
 	for child in root.get_children():
 		if child.name == "GameWorld":
 			return child
 	return null
+
+func _get_hud() -> Control:
+	var gw := _get_game_world()
+	if not gw:
+		return null
+	var ui = gw.find_child("UI", false, false)
+	if not ui:
+		return null
+	return ui.find_child("HUD", false, false)

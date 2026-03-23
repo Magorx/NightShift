@@ -8,5 +8,6 @@ script = ExtResource("1")
 id = &"sink"
 display_name = "Sink"
 color = Color(0.7, 0.2, 0.2, 1)
+description = "Consumes items and awards points."
 category = "sink"
 scene = ExtResource("2")

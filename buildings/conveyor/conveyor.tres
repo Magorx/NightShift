@@ -8,5 +8,6 @@ script = ExtResource("1")
 id = &"conveyor"
 display_name = "Conveyor"
 color = Color(0.85, 0.75, 0.2, 1)
+description = "Transports items in one direction. Chain them together."
 category = "conveyor"
 scene = ExtResource("2")

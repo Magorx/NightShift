@@ -21,9 +21,18 @@ func _physics_process(_delta: float) -> void:
 					var front = conv.get_front_item()
 					if front.progress < 1.0:
 						break
-					conv.pop_front_item()
+					var consumed_item = conv.pop_front_item()
 					items_consumed += 1
+					var item_def = _get_item_def(consumed_item.id)
+					var export_val: int = item_def.export_value if item_def else 1
+					GameManager.record_delivery(consumed_item.id, export_val)
 					keep_pulling = true
 				if keep_pulling:
 					_pull_index = (dir_idx + 1) % 4
 					break
+
+func _get_item_def(item_id: StringName):
+	var path := "res://resources/items/%s.tres" % str(item_id)
+	if ResourceLoader.exists(path):
+		return load(path)
+	return null
