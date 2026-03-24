@@ -52,6 +52,7 @@ func _update_stats() -> void:
 	# Clear old stats
 	for child in stats_container.get_children():
 		child.queue_free()
+	recipe_section.visible = false
 
 	var def = GameManager.get_building_def(_building.building_id)
 	if not def:

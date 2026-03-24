@@ -534,6 +534,18 @@ func get_linked_buildings(building: BuildingBase) -> Array:
 		return building.logic.get_linked_positions()
 	return []
 
+## Return all building nodes that form a logical group with this one
+## (the building itself + any linked partners like tunnel pairs).
+func get_building_group(building: BuildingBase) -> Array:
+	if not building or not is_instance_valid(building):
+		return []
+	var group: Array = [building]
+	for linked_pos in get_linked_buildings(building):
+		var linked = buildings.get(linked_pos)
+		if linked and is_instance_valid(linked):
+			group.append(linked)
+	return group
+
 func get_deposit_at(grid_pos: Vector2i):
 	return deposits.get(grid_pos)
 

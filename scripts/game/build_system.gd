@@ -533,16 +533,14 @@ func _update_destroy_highlights() -> void:
 		if building and is_instance_valid(building):
 			new_set[building.get_instance_id()] = building
 
-	# Include linked buildings (e.g. tunnel partner) in the highlight set
-	var linked_set: Dictionary = {}
+	# Expand to include linked buildings (e.g. tunnel partners)
+	var expanded: Dictionary = {}
 	for nid in new_set:
-		for linked_pos in GameManager.get_linked_buildings(new_set[nid]):
-			var linked = GameManager.buildings.get(linked_pos)
-			if linked and is_instance_valid(linked):
-				linked_set[linked.get_instance_id()] = linked
-	for nid in linked_set:
+		for bld in GameManager.get_building_group(new_set[nid]):
+			expanded[bld.get_instance_id()] = bld
+	for nid in expanded:
 		if not new_set.has(nid):
-			new_set[nid] = linked_set[nid]
+			new_set[nid] = expanded[nid]
 
 	# Remove highlights no longer needed
 	for nid in _highlighted_buildings.keys():
@@ -611,20 +609,21 @@ func _set_select_highlight(building: Node2D) -> void:
 		return
 	clear_select_highlight()
 	_selected_building = building
-	var entries: Array = []
-	for node in _get_visual_nodes(building):
-		var orig = node.material
-		var mat := ShaderMaterial.new()
-		mat.shader = _destroy_shader
-		mat.set_shader_parameter("enabled", true)
-		mat.set_shader_parameter("outline_color", SELECT_OUTLINE_COLOR)
-		mat.set_shader_parameter("stripe_color", Color(0, 0, 0, 0))
-		var bounds := _get_frame_uv_bounds(node)
-		mat.set_shader_parameter("frame_uv_min", bounds.position)
-		mat.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
-		node.material = mat
-		entries.append({node = node, original = orig})
-	_select_highlighted[building.get_instance_id()] = entries
+	for bld in GameManager.get_building_group(building):
+		var entries: Array = []
+		for node in _get_visual_nodes(bld):
+			var orig = node.material
+			var mat := ShaderMaterial.new()
+			mat.shader = _destroy_shader
+			mat.set_shader_parameter("enabled", true)
+			mat.set_shader_parameter("outline_color", SELECT_OUTLINE_COLOR)
+			mat.set_shader_parameter("stripe_color", Color(0, 0, 0, 0))
+			var bounds := _get_frame_uv_bounds(node)
+			mat.set_shader_parameter("frame_uv_min", bounds.position)
+			mat.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
+			node.material = mat
+			entries.append({node = node, original = orig})
+		_select_highlighted[bld.get_instance_id()] = entries
 
 func _update_select_highlight_uvs() -> void:
 	for nid in _select_highlighted:
@@ -773,15 +772,12 @@ func _try_remove(pos: Vector2i) -> void:
 
 ## Collect a building and all its linked buildings into to_remove, deduplicating by instance id.
 func _collect_building_and_linked(building: Node2D, seen: Dictionary, to_remove: Array) -> void:
-	var nid: int = building.get_instance_id()
-	if seen.has(nid):
-		return
-	seen[nid] = true
-	to_remove.append(building.grid_pos)
-	for linked_pos in GameManager.get_linked_buildings(building):
-		var linked = GameManager.get_building_at(linked_pos)
-		if linked and is_instance_valid(linked):
-			_collect_building_and_linked(linked, seen, to_remove)
+	for bld in GameManager.get_building_group(building):
+		var nid: int = bld.get_instance_id()
+		if seen.has(nid):
+			continue
+		seen[nid] = true
+		to_remove.append(bld.grid_pos)
 
 func _debug_spawn_item(pos: Vector2i) -> void:
 	var conv = GameManager.get_conveyor_at(pos)
