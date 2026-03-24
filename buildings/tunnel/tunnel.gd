@@ -15,7 +15,8 @@ var is_input: bool = true # true = input end, false = output end
 ## Reference to the paired tunnel end (set after both are placed).
 var partner: TunnelLogic = null
 
-## Tunnel length in cells (distance between input and output, inclusive of both ends).
+## Tunnel length — Manhattan distance between input and output cells.
+## Total travel distance in cells = tunnel_length + 1 (includes both endpoint cells).
 var tunnel_length: int = 1
 
 ## Item buffer — items traveling through the tunnel (only stored on the INPUT end).
@@ -51,11 +52,12 @@ func update_sprites() -> void:
 func setup_pair(p_partner: TunnelLogic, p_length: int) -> void:
 	partner = p_partner
 	tunnel_length = p_length
-	var capacity := tunnel_length * items_per_cell
+	var total_cells: int = tunnel_length + 1
+	var capacity := total_cells * items_per_cell
 	if capacity < 1:
 		capacity = 1
 	item_gap = 1.0 / capacity
-	var cell_progress: float = 1.0 / tunnel_length
+	var cell_progress: float = 1.0 / total_cells
 	_surface_speed = cell_progress / surface_time_per_cell
 	_underground_speed = cell_progress / underground_time_per_cell
 
@@ -66,7 +68,8 @@ func _physics_process(delta: float) -> void:
 	_try_pull_input()
 
 func _advance_items(delta: float) -> void:
-	var entry_end: float = SURFACE_VISIBLE_FRACTION / tunnel_length
+	var total_cells: int = tunnel_length + 1
+	var entry_end: float = SURFACE_VISIBLE_FRACTION / total_cells
 	var exit_start: float = 1.0 - entry_end
 	for i in range(_buffer.size()):
 		var item = _buffer[i]
@@ -95,7 +98,7 @@ func _try_pull_input() -> void:
 func can_accept() -> bool:
 	if partner == null:
 		return false
-	var capacity := tunnel_length * items_per_cell
+	var capacity := (tunnel_length + 1) * items_per_cell
 	if _buffer.size() >= capacity:
 		return false
 	if _buffer.size() > 0:
@@ -110,7 +113,8 @@ func _update_item_visual(item: Dictionary) -> void:
 	if not item.has("visual") or item.visual == null:
 		return
 	var p: float = item.progress
-	var entry_end: float = SURFACE_VISIBLE_FRACTION / tunnel_length
+	var total_cells: int = tunnel_length + 1
+	var entry_end: float = SURFACE_VISIBLE_FRACTION / total_cells
 	var exit_start: float = 1.0 - entry_end
 
 	if p <= entry_end:
