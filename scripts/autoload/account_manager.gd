@@ -8,6 +8,7 @@ var slot_count: int = 3
 func _ready() -> void:
 	_ensure_save_dirs()
 	_load_active_slot()
+	load_hotkeys()
 
 func _ensure_save_dirs() -> void:
 	var dir := DirAccess.open("user://")
@@ -37,6 +38,7 @@ func get_slot_dir(slot_id: int) -> String:
 func set_active_slot(slot_id: int) -> void:
 	active_slot = clampi(slot_id, 0, slot_count - 1)
 	_save_active_slot()
+	load_hotkeys()
 	active_slot_changed.emit(active_slot)
 
 func get_all_slots() -> Array:
@@ -103,3 +105,26 @@ func has_run_save(slot_id: int = -1) -> bool:
 		slot_id = active_slot
 	var path := get_slot_dir(slot_id) + "run_autosave.json"
 	return FileAccess.file_exists(path)
+
+## Save building hotkeys to the account meta for the given slot.
+func save_hotkeys(slot_id: int = -1) -> void:
+	if slot_id < 0:
+		slot_id = active_slot
+	var meta := load_meta(slot_id)
+	var hotkeys := {}
+	for keycode in GameManager.building_hotkeys:
+		hotkeys[str(keycode)] = str(GameManager.building_hotkeys[keycode])
+	meta["building_hotkeys"] = hotkeys
+	save_meta(slot_id, meta)
+
+## Load building hotkeys from the account meta for the given slot.
+func load_hotkeys(slot_id: int = -1) -> void:
+	if slot_id < 0:
+		slot_id = active_slot
+	var meta := load_meta(slot_id)
+	GameManager.building_hotkeys.clear()
+	if meta.has("building_hotkeys"):
+		for keycode_str in meta["building_hotkeys"]:
+			GameManager.building_hotkeys[int(keycode_str)] = StringName(meta["building_hotkeys"][keycode_str])
+	else:
+		GameManager.building_hotkeys = GameManager.DEFAULT_HOTKEYS.duplicate()

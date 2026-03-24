@@ -21,7 +21,16 @@ var total_currency: int = 0
 var items_delivered: Dictionary = {}
 
 # Building hotkeys: key_scancode (int) -> building_id (StringName)
-var building_hotkeys: Dictionary = {}
+const DEFAULT_HOTKEYS: Dictionary = {
+	KEY_1: &"conveyor",
+	KEY_2: &"junction",
+	KEY_3: &"splitter",
+	KEY_4: &"source",
+	KEY_5: &"sink",
+	KEY_6: &"smelter",
+	KEY_7: &"drill",
+}
+var building_hotkeys: Dictionary = DEFAULT_HOTKEYS.duplicate()
 
 # Last building selected for building mode (defaults to conveyor)
 var last_selected_building: StringName = &"conveyor"

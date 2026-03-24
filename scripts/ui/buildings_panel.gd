@@ -383,6 +383,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_awaiting_hotkey_for = &""
 			hotkey_popup.visible = false
 			_refresh_hotkey_labels()
+			AccountManager.save_hotkeys()
 		get_viewport().set_input_as_handled()
 
 func _refresh_hotkey_labels() -> void:

@@ -83,12 +83,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			current_rotation = (current_rotation + 1) % 4
 			if _dragging:
 				_drag_rotation = current_rotation
+	elif event.is_action_pressed(&"destroy_mode_toggle"):
+		if destroy_mode:
+			exit_destroy_mode()
 		else:
-			# R toggles destroy mode when not in build mode
-			if destroy_mode:
-				exit_destroy_mode()
-			else:
-				enter_destroy_mode()
+			enter_destroy_mode()
 	elif event.is_action_pressed(&"lock_rotation"):
 		rotation_locked = not rotation_locked
 	elif event.is_action_pressed(&"debug_spawn_item"):

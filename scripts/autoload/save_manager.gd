@@ -8,8 +8,13 @@ const SAVE_VERSION := 1
 ## Set to true when "Continue" is clicked; game_world reads and clears this in _ready.
 var pending_load: bool = false
 
+## When false, save_run() is a no-op. Disabled during simulations/tests.
+var autosave_enabled: bool = true
+
 ## Save the current run state to the active account slot.
 func save_run() -> void:
+	if not autosave_enabled:
+		return
 	var slot_dir := AccountManager.get_slot_dir(AccountManager.active_slot)
 	var data := _serialize_run()
 
@@ -30,9 +35,13 @@ func save_run() -> void:
 	if f:
 		f.store_string(JSON.stringify(data, "\t"))
 
-	# Update meta last_played
+	# Update meta last_played and hotkeys
 	var meta := AccountManager.load_meta(AccountManager.active_slot)
 	meta["last_played"] = Time.get_datetime_string_from_system(true)
+	var hotkeys := {}
+	for keycode in GameManager.building_hotkeys:
+		hotkeys[str(keycode)] = str(GameManager.building_hotkeys[keycode])
+	meta["building_hotkeys"] = hotkeys
 	AccountManager.save_meta(AccountManager.active_slot, meta)
 
 	save_completed.emit()
@@ -80,7 +89,6 @@ func _serialize_run() -> Dictionary:
 		"currency": GameManager.total_currency,
 		"buildings": _serialize_buildings(),
 		"items_delivered": _serialize_items_delivered(),
-		"building_hotkeys": _serialize_building_hotkeys(),
 		"time_speed": _serialize_time_speed(),
 	}
 	return data
@@ -89,12 +97,6 @@ func _serialize_items_delivered() -> Dictionary:
 	var result := {}
 	for item_id in GameManager.items_delivered:
 		result[str(item_id)] = GameManager.items_delivered[item_id]
-	return result
-
-func _serialize_building_hotkeys() -> Dictionary:
-	var result := {}
-	for keycode in GameManager.building_hotkeys:
-		result[str(keycode)] = str(GameManager.building_hotkeys[keycode])
 	return result
 
 func _serialize_time_speed() -> Dictionary:
@@ -240,11 +242,15 @@ func _deserialize_run(data: Dictionary) -> void:
 	for item_id_str in delivered:
 		GameManager.items_delivered[StringName(item_id_str)] = int(delivered[item_id_str])
 
-	# Restore building hotkeys
-	var hotkeys: Dictionary = data.get("building_hotkeys", {})
-	GameManager.building_hotkeys.clear()
-	for keycode_str in hotkeys:
-		GameManager.building_hotkeys[int(keycode_str)] = StringName(hotkeys[keycode_str])
+	# Migrate old run-level hotkeys to account meta if present
+	if data.has("building_hotkeys") and not data["building_hotkeys"].is_empty():
+		var meta := AccountManager.load_meta(AccountManager.active_slot)
+		if not meta.has("building_hotkeys"):
+			meta["building_hotkeys"] = data["building_hotkeys"]
+			AccountManager.save_meta(AccountManager.active_slot, meta)
+
+	# Load hotkeys from account meta (not from run save)
+	AccountManager.load_hotkeys()
 
 	# Restore time speed (deferred so HUD is ready)
 	var time_data: Dictionary = data.get("time_speed", {})

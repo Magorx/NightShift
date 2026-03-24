@@ -5,6 +5,9 @@ var tick_count: int = 0
 var _failed: bool = false
 
 func _ready():
+	# Prevent simulations from overwriting real save files
+	SaveManager.autosave_enabled = false
+
 	# Load the real game world scene
 	var scene = load("res://scenes/game/game_world.tscn")
 	game_world = scene.instantiate()
