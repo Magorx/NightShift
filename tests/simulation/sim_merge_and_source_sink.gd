@@ -23,7 +23,7 @@ func run_simulation() -> void:
 	await sim_advance_seconds(5.0)
 
 	var sink_building = sim_get_building_at(Vector2i(9, 5))
-	var snk = sink_building.get_meta("sink")
+	var snk = sink_building.logic
 	sim_assert(snk.items_consumed > 0, "Sink consumed items (got %d)" % snk.items_consumed)
 
 	# === Test 3: Two sources merge with round-robin ===
@@ -44,7 +44,7 @@ func run_simulation() -> void:
 	await sim_advance_seconds(10.0)
 
 	var merge_sink_building = sim_get_building_at(Vector2i(20, 10))
-	var merge_snk = merge_sink_building.get_meta("sink")
+	var merge_snk = merge_sink_building.logic
 	sim_assert(merge_snk.items_consumed >= 4, "Merge sink consumed items from both sources (got %d)" % merge_snk.items_consumed)
 
 	sim_finish()

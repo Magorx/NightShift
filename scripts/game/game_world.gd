@@ -1,3 +1,4 @@
+class_name GameWorld
 extends Node2D
 
 const TILE_SIZE := 32
@@ -50,6 +51,7 @@ func _on_building_selected(id: StringName) -> void:
 	# Dismiss info panel when entering build mode
 	if _info_panel:
 		_info_panel.hide_panel()
+		build_system.clear_select_highlight()
 
 func _on_building_clicked(building: Node2D) -> void:
 	if _info_panel:
@@ -77,6 +79,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			hud.close_buildings_panel()
 		elif _info_panel and _info_panel.visible:
 			_info_panel.hide_panel()
+			build_system.clear_select_highlight()
 		elif build_system.building_mode:
 			build_system.exit_building_mode()
 		elif build_system.destroy_mode:

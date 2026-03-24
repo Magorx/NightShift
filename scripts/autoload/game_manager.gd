@@ -8,11 +8,20 @@ var building_defs: Dictionary = {}
 # Recipe registry: converter_type -> Array[RecipeDef]
 var recipes_by_type: Dictionary = {}
 
-# Placed buildings: Vector2i -> BuildingBase (grid_pos -> node)
+# Placed buildings: Vector2i -> BuildingBase (grid_pos -> node, multi-cell buildings have multiple entries)
 var buildings: Dictionary = {}
+# Unique building list (one entry per building, no multi-cell duplicates). Used for save serialization.
+var unique_buildings: Array = []
 
 # Deposits: grid_pos -> item_id (what resource this deposit produces)
 var deposits: Dictionary = {}
+
+# Cached item definitions: item_id -> ItemDef
+var _item_def_cache: Dictionary = {}
+
+# Item visual node pool: reuse Node2D instances instead of alloc/free each time
+var _visual_pool: Array[Node2D] = []
+const _VISUAL_POOL_MAX := 256
 
 # Currency earned from sinks
 var total_currency: int = 0
@@ -71,15 +80,13 @@ func _link_tunnels(phase_placements: Array) -> void:
 		var out_building = buildings.get(outputs[i].pos)
 		if not in_building or not out_building:
 			continue
-		if not in_building.has_meta("tunnel") or not out_building.has_meta("tunnel"):
+		if not in_building.logic is TunnelLogic or not out_building.logic is TunnelLogic:
 			continue
-		var in_logic = in_building.get_meta("tunnel")
-		var out_logic = out_building.get_meta("tunnel")
 		var in_pos: Vector2i = inputs[i].pos
 		var out_pos: Vector2i = outputs[i].pos
 		var dist := absi(out_pos.x - in_pos.x) + absi(out_pos.y - in_pos.y)
-		in_logic.setup_pair(out_logic, dist)
-		out_logic.setup_pair(in_logic, dist)
+		in_building.logic.setup_pair(out_building.logic, dist)
+		out_building.logic.setup_pair(in_building.logic, dist)
 
 func _load_building_defs() -> void:
 	var root_dir := DirAccess.open("res://buildings/")
@@ -124,7 +131,7 @@ func _load_recipes() -> void:
 ## Extract anchor cell and shape cells from the scene.
 ## BuildAnchor Node2D position determines the anchor cell (defaults to 0,0).
 ## Shape cells are stored relative to the anchor.
-func _extract_shape(def) -> void:
+func _extract_shape(def: BuildingDef) -> void:
 	if not def.scene:
 		def.shape = [Vector2i(0, 0)]
 		def.anchor_cell = Vector2i(0, 0)
@@ -162,7 +169,7 @@ func _extract_shape(def) -> void:
 
 ## Extract input/output cells from the scene's Inputs/Outputs sub-nodes.
 ## Cells are stored relative to the anchor.
-func _extract_io(def) -> void:
+func _extract_io(def: BuildingDef) -> void:
 	if not def.scene:
 		def.inputs = []
 		def.outputs = []
@@ -216,7 +223,7 @@ func rotate_mask(mask: Array, rotation: int) -> Array:
 
 ## Get a building def's shape cells rotated for the given placement rotation.
 ## Cells are anchor-relative, so rotation is simply applied without normalization.
-func get_rotated_shape(def, rotation: int) -> Array:
+func get_rotated_shape(def: BuildingDef, rotation: int) -> Array:
 	if rotation == 0:
 		return def.shape.duplicate()
 	var result: Array = []
@@ -226,7 +233,7 @@ func get_rotated_shape(def, rotation: int) -> Array:
 
 ## Compute the bounding box of a rotated shape (min corner and size in cells).
 ## Returns {min_cell: Vector2i, size: Vector2i}.
-func get_rotated_shape_bbox(def, rotation: int) -> Dictionary:
+func get_rotated_shape_bbox(def: BuildingDef, rotation: int) -> Dictionary:
 	var rotated := get_rotated_shape(def, rotation)
 	var min_c := Vector2i(999, 999)
 	var max_c := Vector2i(-999, -999)
@@ -238,7 +245,7 @@ func get_rotated_shape_bbox(def, rotation: int) -> Dictionary:
 	return {min_cell = min_c, size = max_c - min_c}
 
 ## Get a building def's outputs rotated for the given placement rotation.
-func get_rotated_outputs(def, rotation: int) -> Array:
+func get_rotated_outputs(def: BuildingDef, rotation: int) -> Array:
 	var result: Array = []
 	for out in def.outputs:
 		result.append({
@@ -248,7 +255,7 @@ func get_rotated_outputs(def, rotation: int) -> Array:
 	return result
 
 ## Get a building def's inputs rotated for the given placement rotation.
-func get_rotated_inputs(def, rotation: int) -> Array:
+func get_rotated_inputs(def: BuildingDef, rotation: int) -> Array:
 	var result: Array = []
 	for inp in def.inputs:
 		result.append({
@@ -256,6 +263,43 @@ func get_rotated_inputs(def, rotation: int) -> Array:
 			mask = rotate_mask(inp.mask, rotation)
 		})
 	return result
+
+## Acquire an item visual from the pool, or create a new one.
+func acquire_visual(color: Color) -> Node2D:
+	var visual: Node2D
+	if not _visual_pool.is_empty():
+		visual = _visual_pool.pop_back()
+		visual.set_meta("color", color)
+		visual.visible = true
+		visual.queue_redraw()
+	else:
+		visual = Node2D.new()
+		visual.set_meta("color", color)
+		visual.set_script(load("res://buildings/shared/item_visual.gd"))
+	item_layer.add_child(visual)
+	return visual
+
+## Return an item visual to the pool instead of freeing it.
+func release_visual(visual: Node2D) -> void:
+	if not is_instance_valid(visual):
+		return
+	visual.visible = false
+	item_layer.remove_child(visual)
+	if _visual_pool.size() < _VISUAL_POOL_MAX:
+		_visual_pool.append(visual)
+	else:
+		visual.queue_free()
+
+## Get a cached ItemDef resource by id. Loads from disk on first access.
+func get_item_def(item_id: StringName):
+	if _item_def_cache.has(item_id):
+		return _item_def_cache[item_id]
+	var path := "res://resources/items/%s.tres" % str(item_id)
+	if ResourceLoader.exists(path):
+		var def = load(path)
+		_item_def_cache[item_id] = def
+		return def
+	return null
 
 func record_delivery(item_id: StringName, value: int = 0) -> void:
 	if not items_delivered.has(item_id):
@@ -366,120 +410,97 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	var rotated_shape := get_rotated_shape(def, rotation)
 	for cell in rotated_shape:
 		buildings[grid_pos + cell] = building
+	unique_buildings.append(building)
 
-	# Register conveyor with the conveyor system
-	if def.category == "conveyor" and conveyor_system:
-		var conv = building.find_child("ConveyorLogic", true, false)
-		if conv:
-			conv.grid_pos = grid_pos
-			conv.direction = rotation
-			building.set_meta("conveyor", conv)
-			conveyor_system.register_conveyor(conv)
-			_update_conveyor_sprites(grid_pos)
-
-	# Configure source
-	if def.category == "source":
-		var src = building.find_child("SourceLogic", true, false)
-		if src:
-			src.grid_pos = grid_pos
-			src.direction = rotation
-			src.item_id = &"iron_ore"
-			building.set_meta("source", src)
-			_update_neighbor_conveyor_sprites(grid_pos)
-
-	# Configure extractor (drill)
-	if def.category == "extractor":
-		var ext = building.find_child("ExtractorLogic", true, false)
-		if ext:
-			ext.grid_pos = grid_pos
-			ext.direction = rotation
-			ext.item_id = deposits.get(grid_pos, &"iron_ore")
-			building.set_meta("extractor", ext)
-			_update_neighbor_conveyor_sprites(grid_pos)
-
-	# Configure converter (smelter, assembler, etc.)
-	if def.category == "converter":
-		var conv_logic = building.find_child("ConverterLogic", true, false)
-		if conv_logic:
-			conv_logic.grid_pos = grid_pos
-			conv_logic.rotation = rotation
-			conv_logic.converter_type = def.id
-			conv_logic.input_points = get_rotated_inputs(def, rotation)
-			conv_logic.output_points = get_rotated_outputs(def, rotation)
-			conv_logic.recipes = recipes_by_type.get(str(def.id), [])
-			building.set_meta("converter", conv_logic)
-			for cell in rotated_shape:
-				_update_neighbor_conveyor_sprites(grid_pos + cell)
-
-	# Configure sink
-	if def.category == "sink":
-		var snk = building.find_child("SinkLogic", true, false)
-		if snk:
-			snk.grid_pos = grid_pos
-			building.set_meta("sink", snk)
-
-	# Configure splitter
-	if def.category == "splitter":
-		var spl = building.find_child("SplitterLogic", true, false)
-		if spl:
-			spl.grid_pos = grid_pos
-			building.set_meta("splitter", spl)
-			_update_neighbor_conveyor_sprites(grid_pos)
-
-	# Configure junction
-	if def.category == "junction":
-		var jnc = building.find_child("JunctionLogic", true, false)
-		if jnc:
-			jnc.grid_pos = grid_pos
-			building.set_meta("junction", jnc)
-			_update_neighbor_conveyor_sprites(grid_pos)
-
-	# Configure tunnel (input or output)
-	if def.category == "tunnel" or def.category == "tunnel_output":
-		var tnl = building.find_child("TunnelLogic", true, false)
-		if tnl:
-			tnl.grid_pos = grid_pos
-			tnl.direction = rotation
-			tnl.is_input = (def.category == "tunnel")
-			tnl.set_physics_process(tnl.is_input)
-			building.set_meta("tunnel", tnl)
-			tnl.update_sprites()
-			_update_neighbor_conveyor_sprites(grid_pos)
+	# Configure and store logic node based on building category
+	_configure_logic(building, def, grid_pos, rotation, rotated_shape)
 
 	return building
 
+## Find, configure, and store the logic node for a newly placed building.
+func _configure_logic(building: Node2D, def: BuildingDef, grid_pos: Vector2i, rotation: int, rotated_shape: Array) -> void:
+	var logic: Node = null
+
+	match def.category:
+		"conveyor":
+			logic = building.find_child("ConveyorLogic", true, false)
+			if logic and conveyor_system:
+				logic.grid_pos = grid_pos
+				logic.direction = rotation
+				conveyor_system.register_conveyor(logic)
+		"source":
+			logic = building.find_child("SourceLogic", true, false)
+			if logic:
+				logic.grid_pos = grid_pos
+				logic.direction = rotation
+				logic.item_id = &"iron_ore"
+		"extractor":
+			logic = building.find_child("ExtractorLogic", true, false)
+			if logic:
+				logic.grid_pos = grid_pos
+				logic.direction = rotation
+				logic.item_id = deposits.get(grid_pos, &"iron_ore")
+		"converter":
+			logic = building.find_child("ConverterLogic", true, false)
+			if logic:
+				logic.grid_pos = grid_pos
+				logic.rotation = rotation
+				logic.converter_type = def.id
+				logic.input_points = get_rotated_inputs(def, rotation)
+				logic.output_points = get_rotated_outputs(def, rotation)
+				logic.recipes = recipes_by_type.get(str(def.id), [])
+		"sink":
+			logic = building.find_child("SinkLogic", true, false)
+			if logic:
+				logic.grid_pos = grid_pos
+		"splitter":
+			logic = building.find_child("SplitterLogic", true, false)
+			if logic:
+				logic.grid_pos = grid_pos
+		"junction":
+			logic = building.find_child("JunctionLogic", true, false)
+			if logic:
+				logic.grid_pos = grid_pos
+		"tunnel", "tunnel_output":
+			logic = building.find_child("TunnelLogic", true, false)
+			if logic:
+				logic.grid_pos = grid_pos
+				logic.direction = rotation
+				logic.is_input = (def.category == "tunnel")
+				logic.set_physics_process(logic.is_input)
+				logic.update_sprites()
+
+	# Set logic ref BEFORE sprite updates so the building can see itself
+	building.logic = logic
+
+	# Update conveyor sprites for the placed building and its neighbors
+	match def.category:
+		"conveyor":
+			_update_conveyor_sprites(grid_pos)
+		"converter":
+			for cell in rotated_shape:
+				_update_neighbor_conveyor_sprites(grid_pos + cell)
+		"sink", "source", "extractor", "splitter", "junction", "tunnel", "tunnel_output":
+			_update_neighbor_conveyor_sprites(grid_pos)
+
 func remove_building(grid_pos: Vector2i) -> void:
-	if not buildings.has(grid_pos):
+	var building = buildings.get(grid_pos)
+	if not building:
 		return
-	var building = buildings[grid_pos]
 	var def = get_building_def(building.building_id)
-
-	# Unregister conveyor and update neighbor sprites
 	var removed_pos: Vector2i = building.grid_pos
+
+	# Unregister conveyor
 	if def and def.category == "conveyor" and conveyor_system:
-		if building.has_meta("conveyor"):
-			var conv = building.get_meta("conveyor")
-			conv.cleanup_visuals()
-			conveyor_system.unregister_conveyor(removed_pos)
+		conveyor_system.unregister_conveyor(removed_pos)
 
-	# Clean up splitter item visuals
-	if building.has_meta("splitter"):
-		var spl = building.get_meta("splitter")
-		spl.cleanup_visuals()
+	# Clean up logic node (visuals, partner links)
+	if building.logic:
+		building.logic.cleanup_visuals()
+		if building.logic is TunnelLogic and building.logic.partner:
+			building.logic.partner.partner = null
 
-	# Clean up junction item visuals
-	if building.has_meta("junction"):
-		var jnc = building.get_meta("junction")
-		jnc.cleanup_visuals()
-
-	# Clean up tunnel: unlink partner
-	if building.has_meta("tunnel"):
-		var tnl = building.get_meta("tunnel")
-		tnl.cleanup_visuals()
-		if tnl.partner:
-			tnl.partner.partner = null
-
-	# Remove all occupied cells (rotated) and collect them for sprite updates
+	# Remove all occupied cells
 	var rotated_shape: Array = []
 	if def:
 		rotated_shape = get_rotated_shape(def, building.rotation_index)
@@ -487,10 +508,11 @@ func remove_building(grid_pos: Vector2i) -> void:
 			buildings.erase(building.grid_pos + cell)
 	else:
 		buildings.erase(grid_pos)
+	unique_buildings.erase(building)
 
 	building.queue_free()
 
-	# Update neighboring conveyor sprites after any building removal
+	# Queue neighbor sprite updates
 	for cell in rotated_shape:
 		_update_neighbor_conveyor_sprites(removed_pos + cell)
 
@@ -499,19 +521,17 @@ func get_building_at(grid_pos: Vector2i):
 
 func get_conveyor_at(grid_pos: Vector2i):
 	var building = buildings.get(grid_pos)
-	if building and building.has_meta("conveyor"):
-		return building.get_meta("conveyor")
+	if building and building.logic is ConveyorBelt:
+		return building.logic
 	return null
 
 ## Return an array of grid positions of buildings linked to this one.
 ## Linked buildings are co-highlighted and co-removed in destroy mode.
-func get_linked_buildings(building: Node2D) -> Array:
+func get_linked_buildings(building: BuildingBase) -> Array:
 	if not building or not is_instance_valid(building):
 		return []
-	if building.has_meta("tunnel"):
-		var tnl = building.get_meta("tunnel")
-		if tnl.partner:
-			return [tnl.partner.grid_pos]
+	if building.logic and building.logic.has_method("get_linked_positions"):
+		return building.logic.get_linked_positions()
 	return []
 
 func get_deposit_at(grid_pos: Vector2i):
@@ -519,12 +539,12 @@ func get_deposit_at(grid_pos: Vector2i):
 
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
-## Update the conveyor sprite at grid_pos and all its neighbors.
+# ── Conveyor sprite updates ───────────────────────────────────────────────────
+
 func _update_conveyor_sprites(grid_pos: Vector2i) -> void:
 	_update_single_conveyor_sprite(grid_pos)
 	_update_neighbor_conveyor_sprites(grid_pos)
 
-## Update only the neighboring conveyor sprites around grid_pos.
 func _update_neighbor_conveyor_sprites(grid_pos: Vector2i) -> void:
 	for dir in DIRECTION_VECTORS:
 		_update_single_conveyor_sprite(grid_pos + dir)
@@ -534,32 +554,34 @@ func _update_single_conveyor_sprite(grid_pos: Vector2i) -> void:
 	var building = buildings.get(grid_pos)
 	if not building or not is_instance_valid(building):
 		return
-	if not building.has_meta("conveyor"):
+	if not building.logic is ConveyorBelt:
 		return
 	var sprite = building.find_child("ConveyorSprite", true, false)
 	if sprite and conveyor_system:
-		var conv = building.get_meta("conveyor")
-		sprite.update_variant(conv, conveyor_system)
+		sprite.update_variant(building.logic, conveyor_system)
 
 func clear_all() -> void:
-	# Clean up item visuals (they live on item_layer, not as building children)
+	# Clean up item visuals via logic nodes
+	var seen: Dictionary = {}
 	for building in buildings.values():
-		if is_instance_valid(building) and building.has_meta("conveyor"):
-			var conv = building.get_meta("conveyor")
-			conv.cleanup_visuals()
-		if is_instance_valid(building) and building.has_meta("splitter"):
-			var spl = building.get_meta("splitter")
-			spl.cleanup_visuals()
-		if is_instance_valid(building) and building.has_meta("junction"):
-			var jnc = building.get_meta("junction")
-			jnc.cleanup_visuals()
-		if is_instance_valid(building) and building.has_meta("tunnel"):
-			var tnl = building.get_meta("tunnel")
-			tnl.cleanup_visuals()
+		if not is_instance_valid(building):
+			continue
+		var nid: int = building.get_instance_id()
+		if seen.has(nid):
+			continue
+		seen[nid] = true
+		if building.logic:
+			building.logic.cleanup_visuals()
 	for building in buildings.values():
 		if is_instance_valid(building):
 			building.queue_free()
 	buildings.clear()
+	unique_buildings.clear()
+	# Free pooled visuals
+	for v in _visual_pool:
+		if is_instance_valid(v):
+			v.queue_free()
+	_visual_pool.clear()
 	total_currency = 0
 	items_delivered.clear()
 	if conveyor_system:
@@ -569,127 +591,38 @@ func clear_all() -> void:
 # ── Unified pull system ──────────────────────────────────────────────────────
 
 ## Check if a building has an output feeding into target_pos from direction from_dir_idx.
-## from_dir_idx indexes into DIRECTION_VECTORS: the offset from target_pos toward the supplier.
 func has_output_at(target_pos: Vector2i, from_dir_idx: int) -> bool:
 	var neighbor_pos: Vector2i = target_pos + DIRECTION_VECTORS[from_dir_idx]
 	var building = buildings.get(neighbor_pos)
-	if not building:
+	if not building or not building.logic:
 		return false
-	if building.has_meta("conveyor"):
-		return building.get_meta("conveyor").get_next_pos() == target_pos
-	if building.has_meta("source"):
-		return building.get_meta("source").get_output_cell() == target_pos
-	if building.has_meta("extractor"):
-		return building.get_meta("extractor").get_output_cell() == target_pos
-	if building.has_meta("splitter"):
-		return building.get_meta("splitter").has_output_toward(target_pos)
-	if building.has_meta("junction"):
-		return building.get_meta("junction").has_output_toward(target_pos)
-	if building.has_meta("converter"):
-		return building.get_meta("converter").has_output_at(target_pos)
-	if building.has_meta("tunnel"):
-		return building.get_meta("tunnel").has_output_toward(target_pos)
-	return false
+	return building.logic.has_output_toward(target_pos)
 
 ## Check if the building at cell accepts input from direction from_dir_idx.
 func has_input_at(cell: Vector2i, from_dir_idx: int) -> bool:
 	var building = buildings.get(cell)
-	if not building:
+	if not building or not building.logic:
 		return false
-	if building.has_meta("conveyor"):
-		return from_dir_idx != building.get_meta("conveyor").direction
-	if building.has_meta("splitter") or building.has_meta("junction") or building.has_meta("sink"):
-		return true
-	if building.has_meta("converter"):
-		return building.get_meta("converter").has_input_from(cell, from_dir_idx)
-	if building.has_meta("tunnel"):
-		var tnl = building.get_meta("tunnel")
-		# Only input end accepts items, and only from the back side
-		if tnl.is_input and tnl.partner != null:
-			var back_dir: int = (tnl.direction + 2) % 4
-			return from_dir_idx == back_dir
-		return false
-	return false
+	return building.logic.has_input_from(cell, from_dir_idx)
 
 ## Peek at the item available from direction from_dir_idx without removing it.
-## Returns item_id (StringName) or &"" if nothing available.
 func peek_output_item(target_pos: Vector2i, from_dir_idx: int) -> StringName:
 	var neighbor_pos: Vector2i = target_pos + DIRECTION_VECTORS[from_dir_idx]
 	var building = buildings.get(neighbor_pos)
-	if not building:
+	if not building or not building.logic:
 		return &""
-	if building.has_meta("conveyor"):
-		var conv = building.get_meta("conveyor")
-		if conv.get_next_pos() == target_pos and conv.has_item():
-			var front = conv.get_front_item()
-			if front.progress >= 1.0:
-				return front.id
-		return &""
-	if building.has_meta("source"):
-		var src = building.get_meta("source")
-		if src.can_provide_to(target_pos):
-			return src.item_id
-		return &""
-	if building.has_meta("extractor"):
-		var ext = building.get_meta("extractor")
-		if ext.can_provide_to(target_pos):
-			return ext.item_id
-		return &""
-	if building.has_meta("converter"):
-		return building.get_meta("converter").peek_output_for(target_pos)
-	if building.has_meta("splitter"):
-		return building.get_meta("splitter").peek_output_for(target_pos)
-	if building.has_meta("junction"):
-		return building.get_meta("junction").peek_output_for(target_pos)
-	if building.has_meta("tunnel"):
-		return building.get_meta("tunnel").peek_output_for(target_pos)
-	return &""
+	return building.logic.peek_output_for(target_pos)
 
 ## Pull (remove) one item from a building's output in direction from_dir_idx.
 ## Returns {id: StringName, entry_from: Vector2i} or empty dict.
 func pull_item(target_pos: Vector2i, from_dir_idx: int) -> Dictionary:
 	var neighbor_pos: Vector2i = target_pos + DIRECTION_VECTORS[from_dir_idx]
 	var building = buildings.get(neighbor_pos)
-	if not building:
+	if not building or not building.logic:
 		return {}
-	var entry_from: Vector2i = DIRECTION_VECTORS[from_dir_idx]
-
-	if building.has_meta("conveyor"):
-		var conv = building.get_meta("conveyor")
-		if conv.get_next_pos() == target_pos and conv.has_item():
-			var front = conv.get_front_item()
-			if front.progress >= 1.0:
-				var item = conv.pop_front_item()
-				return {id = item.id, entry_from = entry_from}
+	if not building.logic.can_provide_to(target_pos):
 		return {}
-	if building.has_meta("source"):
-		var src = building.get_meta("source")
-		if src.can_provide_to(target_pos):
-			return {id = src.take_item(), entry_from = entry_from}
+	var item_id: StringName = building.logic.take_item_for(target_pos)
+	if item_id == &"":
 		return {}
-	if building.has_meta("extractor"):
-		var ext = building.get_meta("extractor")
-		if ext.can_provide_to(target_pos):
-			return {id = ext.take_item(), entry_from = entry_from}
-		return {}
-	if building.has_meta("converter"):
-		var conv_logic = building.get_meta("converter")
-		if conv_logic.can_provide_to(target_pos):
-			return {id = conv_logic.take_item_for(target_pos), entry_from = entry_from}
-		return {}
-	if building.has_meta("splitter"):
-		var spl = building.get_meta("splitter")
-		if spl.can_provide_to(target_pos):
-			return {id = spl.take_item_for(target_pos), entry_from = entry_from}
-		return {}
-	if building.has_meta("junction"):
-		var jnc = building.get_meta("junction")
-		if jnc.can_provide_to(target_pos):
-			return {id = jnc.take_item_for(target_pos), entry_from = entry_from}
-		return {}
-	if building.has_meta("tunnel"):
-		var tnl = building.get_meta("tunnel")
-		if tnl.can_provide_to(target_pos):
-			return {id = tnl.take_item_for(target_pos), entry_from = entry_from}
-		return {}
-	return {}
+	return {id = item_id, entry_from = DIRECTION_VECTORS[from_dir_idx]}

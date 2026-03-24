@@ -1,3 +1,4 @@
+class_name BuildSystem
 extends Node2D
 
 signal building_clicked(building: Node2D)
@@ -9,7 +10,12 @@ const GHOST_INVALID_MODULATE := Color(1.0, 0.5, 0.5, 0.45)
 const DESTROY_AREA_COLOR := Color(1.0, 0.2, 0.2, 0.15)
 const DESTROY_CURSOR_COLOR := Color(1.0, 0.2, 0.2, 0.25)
 const DESTROY_OUTLINE_COLOR := Color(1.0, 0.2, 0.15, 0.85)
+const PHASE_AREA_COLOR := Color(0.3, 0.7, 1.0, 0.12)
+const PHASE_AREA_OUTLINE_COLOR := Color(0.3, 0.7, 1.0, 0.35)
+const SELECT_OUTLINE_COLOR := Color(1.0, 1.0, 1.0, 0.85)
 const OUTLINE_WIDTH := 2.0
+const GHOST_POOL_MAX := 64
+const GHOST_POOL_BASELINE := 4
 
 var _destroy_shader: Shader = preload("res://buildings/shared/destroy_highlight.gdshader")
 
@@ -27,6 +33,10 @@ var _destroy_dragging: bool = false
 var _destroy_drag_start := Vector2i.ZERO
 # Shader highlight tracking: instance_id -> Array of {node, original}
 var _highlighted_buildings: Dictionary = {}
+
+# Selection highlight (info panel)
+var _selected_building: Node2D = null
+var _select_highlighted: Dictionary = {} # instance_id -> Array of {node, original}
 
 # Drag state (build mode)
 var _dragging: bool = false
@@ -50,6 +60,9 @@ func _process(_delta: float) -> void:
 	cursor_grid_pos = _get_grid_pos_under_mouse()
 	if _dragging:
 		_update_blueprints()
+	if _selected_building and not is_instance_valid(_selected_building):
+		clear_select_highlight()
+	_update_select_highlight_uvs()
 	if destroy_mode:
 		_update_destroy_highlights()
 	elif not _highlighted_buildings.is_empty():
@@ -119,6 +132,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func enter_building_mode(building_id: StringName) -> void:
 	if destroy_mode:
 		exit_destroy_mode()
+	clear_select_highlight()
 	_cancel_multiphase()
 	selected_building = building_id
 	building_mode = true
@@ -143,6 +157,7 @@ func exit_building_mode() -> void:
 func enter_destroy_mode() -> void:
 	if building_mode:
 		exit_building_mode()
+	clear_select_highlight()
 	destroy_mode = true
 
 func exit_destroy_mode() -> void:
@@ -158,9 +173,11 @@ func select_building(id: StringName) -> void:
 func _try_inspect(pos: Vector2i) -> void:
 	var building = GameManager.get_building_at(pos)
 	if building and is_instance_valid(building):
+		_set_select_highlight(building)
 		building_clicked.emit(building)
 	else:
 		# Clicked empty space — dismiss info panel
+		clear_select_highlight()
 		building_clicked.emit(null)
 
 # ── Build drag ───────────────────────────────────────────────────────────────
@@ -177,6 +194,7 @@ func _cancel_drag() -> void:
 	_drag_axis = -1
 	_blueprints.clear()
 	_placeable_blueprints.clear()
+	_trim_ghosts()
 
 func _commit_drag() -> void:
 	if not _dragging:
@@ -192,6 +210,7 @@ func _commit_drag() -> void:
 	_drag_axis = -1
 	_blueprints.clear()
 	_placeable_blueprints.clear()
+	_trim_ghosts()
 	# Keep the drag rotation as the current rotation for convenience
 	current_rotation = _drag_rotation
 
@@ -211,6 +230,7 @@ func _commit_phase_drag() -> void:
 	_drag_axis = -1
 	_blueprints.clear()
 	_placeable_blueprints.clear()
+	_trim_ghosts()
 	current_rotation = _drag_rotation
 
 	if placed.is_empty():
@@ -408,8 +428,8 @@ func _update_ghosts() -> void:
 
 	if _dragging:
 		var count := _placeable_blueprints.size()
-		# Grow pool as needed
-		while _ghost_nodes.size() < count:
+		# Grow pool as needed (capped)
+		while _ghost_nodes.size() < count and _ghost_nodes.size() < GHOST_POOL_MAX:
 			var ghost = _create_ghost_node(selected_building, rotation)
 			if ghost:
 				_ghost_nodes.append(ghost)
@@ -446,6 +466,13 @@ func _update_ghosts() -> void:
 			_ghost_nodes[0].visible = true
 			for i in range(1, _ghost_nodes.size()):
 				_ghost_nodes[i].visible = false
+
+## Trim ghost pool back to baseline, freeing excess nodes.
+func _trim_ghosts() -> void:
+	while _ghost_nodes.size() > GHOST_POOL_BASELINE:
+		var ghost = _ghost_nodes.pop_back()
+		if is_instance_valid(ghost):
+			ghost.queue_free()
 
 func _clear_ghosts() -> void:
 	for ghost in _ghost_nodes:
@@ -543,6 +570,7 @@ func _apply_highlight(building: Node2D) -> void:
 		var mat := ShaderMaterial.new()
 		mat.shader = _destroy_shader
 		mat.set_shader_parameter("enabled", true)
+		mat.set_shader_parameter("darken", 0.3)
 		var bounds := _get_frame_uv_bounds(node)
 		mat.set_shader_parameter("frame_uv_min", bounds.position)
 		mat.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
@@ -576,6 +604,46 @@ func _clear_all_highlights() -> void:
 	for nid in _highlighted_buildings.keys():
 		_remove_highlight(nid)
 
+# ── Selection highlight (info panel) ─────────────────────────────────────────
+
+func _set_select_highlight(building: Node2D) -> void:
+	if _selected_building == building:
+		return
+	clear_select_highlight()
+	_selected_building = building
+	var entries: Array = []
+	for node in _get_visual_nodes(building):
+		var orig = node.material
+		var mat := ShaderMaterial.new()
+		mat.shader = _destroy_shader
+		mat.set_shader_parameter("enabled", true)
+		mat.set_shader_parameter("outline_color", SELECT_OUTLINE_COLOR)
+		mat.set_shader_parameter("stripe_color", Color(0, 0, 0, 0))
+		var bounds := _get_frame_uv_bounds(node)
+		mat.set_shader_parameter("frame_uv_min", bounds.position)
+		mat.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
+		node.material = mat
+		entries.append({node = node, original = orig})
+	_select_highlighted[building.get_instance_id()] = entries
+
+func _update_select_highlight_uvs() -> void:
+	for nid in _select_highlighted:
+		var entries: Array = _select_highlighted[nid]
+		for entry in entries:
+			if is_instance_valid(entry.node) and entry.node is AnimatedSprite2D:
+				var bounds := _get_frame_uv_bounds(entry.node)
+				entry.node.material.set_shader_parameter("frame_uv_min", bounds.position)
+				entry.node.material.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
+
+func clear_select_highlight() -> void:
+	for nid in _select_highlighted.keys():
+		var entries: Array = _select_highlighted[nid]
+		for entry in entries:
+			if is_instance_valid(entry.node):
+				entry.node.material = entry.original
+	_select_highlighted.clear()
+	_selected_building = null
+
 ## Find visual children of a building to apply the destroy shader to.
 func _get_visual_nodes(building: Node2D) -> Array:
 	var result: Array = []
@@ -594,6 +662,8 @@ func _get_visual_nodes(building: Node2D) -> Array:
 # ── Drawing ──────────────────────────────────────────────────────────────────
 
 func _draw() -> void:
+	if _phase_index > 0 and not _phase_placements.is_empty():
+		_draw_phase_area()
 	if destroy_mode:
 		var cell_size := Vector2(TILE_SIZE, TILE_SIZE)
 		_draw_destroy(cell_size)
@@ -617,6 +687,40 @@ func _draw_destroy(cell_size: Vector2) -> void:
 			draw_rect(Rect2(Vector2(cursor_grid_pos) * TILE_SIZE, cell_size), DESTROY_CURSOR_COLOR)
 
 
+
+func _draw_phase_area() -> void:
+	var phase_def: Dictionary = _phase_config.phases[_phase_index]
+	var max_dist: int = phase_def.get("max_distance", 0)
+	if max_dist <= 0:
+		return
+	var prev_placements: Array = _phase_placements[_phase_placements.size() - 1]
+	if prev_placements.is_empty():
+		return
+	# Collect all valid cells across all prior placements into a set
+	var cell_set: Dictionary = {}
+	for entry in prev_placements:
+		var origin: Vector2i = entry.pos
+		for dx in range(-max_dist, max_dist + 1):
+			var remaining := max_dist - absi(dx)
+			for dy in range(-remaining, remaining + 1):
+				var cell := Vector2i(origin.x + dx, origin.y + dy)
+				if cell.x >= 0 and cell.x < MAP_SIZE and cell.y >= 0 and cell.y < MAP_SIZE:
+					cell_set[cell] = true
+	# Draw filled cells
+	var s := float(TILE_SIZE)
+	for cell in cell_set:
+		draw_rect(Rect2(Vector2(cell) * s, Vector2(s, s)), PHASE_AREA_COLOR)
+	# Draw outline on outer edges
+	for cell in cell_set:
+		var wp := Vector2(cell) * s
+		if not cell_set.has(cell + Vector2i(1, 0)):
+			draw_line(Vector2(wp.x + s, wp.y), Vector2(wp.x + s, wp.y + s), PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
+		if not cell_set.has(cell + Vector2i(0, 1)):
+			draw_line(Vector2(wp.x, wp.y + s), Vector2(wp.x + s, wp.y + s), PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
+		if not cell_set.has(cell + Vector2i(-1, 0)):
+			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x, wp.y + s), PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
+		if not cell_set.has(cell + Vector2i(0, -1)):
+			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x + s, wp.y), PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 ## Read actual Shape ColorRect positions from the placed building node.
 func _get_building_visual_cells(building: Node2D) -> Array:

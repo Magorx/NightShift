@@ -116,33 +116,27 @@ func _serialize_camera() -> Dictionary:
 
 func _serialize_buildings() -> Array:
 	var result: Array = []
-	var serialized_nodes: Dictionary = {} # node instance_id -> true (avoid duplicates for multi-cell buildings)
-	for pos in GameManager.buildings:
-		var building = GameManager.buildings[pos]
+	for building in GameManager.unique_buildings:
 		if not is_instance_valid(building):
 			continue
-		var nid: int = building.get_instance_id()
-		if serialized_nodes.has(nid):
-			continue
-		serialized_nodes[nid] = true
-
-		var entry := {
+		result.append({
 			"type": str(building.building_id),
 			"grid_x": building.grid_pos.x,
 			"grid_y": building.grid_pos.y,
 			"rotation": building.rotation_index,
 			"state": _serialize_building_state(building),
-		}
-		result.append(entry)
+		})
 	return result
 
 func _serialize_building_state(building: Node2D) -> Dictionary:
 	var state := {}
-	# Conveyor: serialize items on belt
-	if building.has_meta("conveyor"):
-		var conv: ConveyorBelt = building.get_meta("conveyor")
+	var logic: Node = building.logic
+	if not logic:
+		return state
+
+	if logic is ConveyorBelt:
 		var items_data: Array = []
-		for item in conv.buffer.items:
+		for item in logic.buffer.items:
 			items_data.append({
 				"id": str(item.id),
 				"progress": item.progress,
@@ -151,35 +145,25 @@ func _serialize_building_state(building: Node2D) -> Dictionary:
 			})
 		state["items"] = items_data
 
-	# Extractor: serialize timer and inventory
-	if building.has_meta("extractor"):
-		var ext: ExtractorLogic = building.get_meta("extractor")
-		state["timer"] = ext._timer
-		state["inventory"] = _serialize_inventory(ext.inventory)
+	elif logic is ExtractorLogic:
+		state["timer"] = logic._timer
+		state["inventory"] = _serialize_inventory(logic.inventory)
 
-	# Converter: serialize craft state and inventories
-	if building.has_meta("converter"):
-		var conv_logic: ConverterLogic = building.get_meta("converter")
-		state["craft_timer"] = conv_logic._craft_timer
-		state["active_recipe_id"] = str(conv_logic._active_recipe.id) if conv_logic._active_recipe else ""
-		state["input_inv"] = _serialize_inventory(conv_logic.input_inv)
-		state["output_inv"] = _serialize_inventory(conv_logic.output_inv)
+	elif logic is ConverterLogic:
+		state["craft_timer"] = logic._craft_timer
+		state["active_recipe_id"] = str(logic._active_recipe.id) if logic._active_recipe else ""
+		state["input_inv"] = _serialize_inventory(logic.input_inv)
+		state["output_inv"] = _serialize_inventory(logic.output_inv)
 
-	# Sink: serialize items consumed
-	if building.has_meta("sink"):
-		var snk: ItemSink = building.get_meta("sink")
-		state["items_consumed"] = snk.items_consumed
+	elif logic is ItemSink:
+		state["items_consumed"] = logic.items_consumed
 
-	# Source: serialize timer
-	if building.has_meta("source"):
-		var src: ItemSource = building.get_meta("source")
-		state["timer"] = src._timer
+	elif logic is ItemSource:
+		state["timer"] = logic._timer
 
-	# Splitter: serialize buffer
-	if building.has_meta("splitter"):
-		var spl = building.get_meta("splitter")
+	elif logic is SplitterLogic:
 		var buffer_data: Array = []
-		for item in spl.buffer.items:
+		for item in logic.buffer.items:
 			buffer_data.append({
 				"id": str(item.id),
 				"from_dir_idx": item.from_dir_idx,
@@ -188,13 +172,11 @@ func _serialize_building_state(building: Node2D) -> Dictionary:
 			})
 		state["buffer"] = buffer_data
 
-	# Junction: serialize per-axis buffers
-	if building.has_meta("junction"):
-		var jnc = building.get_meta("junction")
+	elif logic is JunctionLogic:
 		var axes_data: Array = []
 		for axis in 2:
 			var buffer_data: Array = []
-			for item in jnc.buffers[axis].items:
+			for item in logic.buffers[axis].items:
 				buffer_data.append({
 					"id": str(item.id),
 					"from_dir_idx": item.from_dir_idx,
@@ -204,18 +186,16 @@ func _serialize_building_state(building: Node2D) -> Dictionary:
 			axes_data.append(buffer_data)
 		state["junction_buffers"] = axes_data
 
-	# Tunnel: serialize partner position, length, and buffer (input only)
-	if building.has_meta("tunnel"):
-		var tnl = building.get_meta("tunnel")
-		state["tunnel_is_input"] = tnl.is_input
-		state["tunnel_direction"] = tnl.direction
-		state["tunnel_length"] = tnl.tunnel_length
-		if tnl.partner:
-			state["tunnel_partner_x"] = tnl.partner.grid_pos.x
-			state["tunnel_partner_y"] = tnl.partner.grid_pos.y
-		if tnl.is_input:
+	elif logic is TunnelLogic:
+		state["tunnel_is_input"] = logic.is_input
+		state["tunnel_direction"] = logic.direction
+		state["tunnel_length"] = logic.tunnel_length
+		if logic.partner:
+			state["tunnel_partner_x"] = logic.partner.grid_pos.x
+			state["tunnel_partner_y"] = logic.partner.grid_pos.y
+		if logic.is_input:
 			var buffer_data: Array = []
-			for item in tnl.buffer.items:
+			for item in logic.buffer.items:
 				buffer_data.append({
 					"id": str(item.id),
 					"progress": item.progress,
@@ -284,84 +264,72 @@ func _deserialize_run(data: Dictionary) -> void:
 		call_deferred("_restore_camera", cam_data)
 
 func _deserialize_building_state(building: Node2D, state: Dictionary) -> void:
-	# Conveyor items
-	if building.has_meta("conveyor") and state.has("items"):
-		var conv: ConveyorBelt = building.get_meta("conveyor")
+	var logic: Node = building.logic
+	if not logic:
+		return
+
+	if logic is ConveyorBelt and state.has("items"):
 		for item_data in state["items"]:
 			var item_id := StringName(item_data["id"])
 			var entry_from := Vector2i(int(item_data["entry_from_x"]), int(item_data["entry_from_y"]))
-			if conv.place_item(item_id, entry_from):
-				# Restore exact progress
-				var placed_item = conv.buffer.items[conv.buffer.size() - 1]
+			if logic.place_item(item_id, entry_from):
+				var placed_item = logic.buffer.items[logic.buffer.size() - 1]
 				placed_item.progress = item_data["progress"]
-				conv._position_item(placed_item)
+				logic._position_item(placed_item)
 
-	# Extractor state
-	if building.has_meta("extractor") and state.has("timer"):
-		var ext: ExtractorLogic = building.get_meta("extractor")
-		ext._timer = state["timer"]
+	elif logic is ExtractorLogic:
+		if state.has("timer"):
+			logic._timer = state["timer"]
 		if state.has("inventory"):
-			_deserialize_inventory(ext.inventory, state["inventory"])
+			_deserialize_inventory(logic.inventory, state["inventory"])
 
-	# Converter state
-	if building.has_meta("converter"):
-		var conv_logic: ConverterLogic = building.get_meta("converter")
+	elif logic is ConverterLogic:
 		if state.has("craft_timer"):
-			conv_logic._craft_timer = state["craft_timer"]
+			logic._craft_timer = state["craft_timer"]
 		if state.has("input_inv"):
-			_deserialize_inventory(conv_logic.input_inv, state["input_inv"])
+			_deserialize_inventory(logic.input_inv, state["input_inv"])
 		if state.has("output_inv"):
-			_deserialize_inventory(conv_logic.output_inv, state["output_inv"])
+			_deserialize_inventory(logic.output_inv, state["output_inv"])
 		if state.has("active_recipe_id") and state["active_recipe_id"] != "":
 			var recipe_id := StringName(state["active_recipe_id"])
-			for recipe in conv_logic.recipes:
+			for recipe in logic.recipes:
 				if recipe.id == recipe_id:
-					conv_logic._active_recipe = recipe
+					logic._active_recipe = recipe
 					break
 
-	# Sink state
-	if building.has_meta("sink") and state.has("items_consumed"):
-		var snk: ItemSink = building.get_meta("sink")
-		snk.items_consumed = int(state["items_consumed"])
+	elif logic is ItemSink and state.has("items_consumed"):
+		logic.items_consumed = int(state["items_consumed"])
 
-	# Source state
-	if building.has_meta("source") and state.has("timer"):
-		var src: ItemSource = building.get_meta("source")
-		src._timer = state["timer"]
+	elif logic is ItemSource and state.has("timer"):
+		logic._timer = state["timer"]
 
-	# Splitter state
-	if building.has_meta("splitter") and state.has("buffer"):
-		var spl = building.get_meta("splitter")
+	elif logic is SplitterLogic and state.has("buffer"):
 		for item_data in state["buffer"]:
-			var item: Dictionary = spl.buffer.add_item(StringName(item_data["id"]), {
+			var item: Dictionary = logic.buffer.add_item(StringName(item_data["id"]), {
 				from_dir_idx = int(item_data["from_dir_idx"]),
 				output_dir_idx = int(item_data.get("output_dir_idx", -1)),
 			})
 			item.progress = float(item_data.get("progress", 0.0))
-			spl._position_item(item)
+			logic._position_item(item)
 
-	# Junction state
-	if building.has_meta("junction") and state.has("junction_buffers"):
-		var jnc = building.get_meta("junction")
+	elif logic is JunctionLogic and state.has("junction_buffers"):
 		var axes_data: Array = state["junction_buffers"]
 		for axis in mini(axes_data.size(), 2):
 			for item_data in axes_data[axis]:
-				var item: Dictionary = jnc.buffers[axis].add_item(StringName(item_data["id"]), {
+				var item: Dictionary = logic.buffers[axis].add_item(StringName(item_data["id"]), {
 					from_dir_idx = int(item_data["from_dir_idx"]),
 					output_dir_idx = int(item_data["output_dir_idx"]),
 				})
 				item.progress = float(item_data.get("progress", 0.0))
-				jnc._position_item(item)
+				logic._position_item(item)
 
-	# Tunnel buffer (input end only) — partner linking is done in _link_tunnels_deferred
-	if building.has_meta("tunnel") and state.has("tunnel_buffer"):
-		var tnl = building.get_meta("tunnel")
+	elif logic is TunnelLogic and state.has("tunnel_buffer"):
 		for item_data in state["tunnel_buffer"]:
 			var item: Dictionary = {
 				id = StringName(item_data["id"]),
 				progress = float(item_data.get("progress", 0.0)),
 			}
-			tnl.buffer.items.append(item)
+			logic.buffer.items.append(item)
 
 ## Re-link tunnel input/output pairs after all buildings are deserialized.
 func _link_tunnels_deferred(building_list: Array) -> void:
@@ -377,14 +345,12 @@ func _link_tunnels_deferred(building_list: Array) -> void:
 		var out_building = GameManager.buildings.get(partner_pos)
 		if not in_building or not out_building:
 			continue
-		if not in_building.has_meta("tunnel") or not out_building.has_meta("tunnel"):
+		if not in_building.logic is TunnelLogic or not out_building.logic is TunnelLogic:
 			continue
-		var in_logic = in_building.get_meta("tunnel")
-		var out_logic = out_building.get_meta("tunnel")
 		var length: int = int(state.get("tunnel_length", 1))
-		in_logic.setup_pair(out_logic, length)
-		out_logic.setup_pair(in_logic, length)
-		in_logic.restore_visuals()
+		in_building.logic.setup_pair(out_building.logic, length)
+		out_building.logic.setup_pair(in_building.logic, length)
+		in_building.logic.restore_visuals()
 
 func _deserialize_inventory(inv, data: Dictionary) -> void:
 	for item_id_str in data:

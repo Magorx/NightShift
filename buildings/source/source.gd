@@ -26,3 +26,24 @@ func can_provide_to(target_pos: Vector2i) -> bool:
 func take_item() -> StringName:
 	_has_ready_item = false
 	return item_id
+
+# ── Pull interface ─────────────────────────────────────────────────────────────
+
+func has_output_toward(target_pos: Vector2i) -> bool:
+	return target_pos == get_output_cell()
+
+func peek_output_for(target_pos: Vector2i) -> StringName:
+	if can_provide_to(target_pos):
+		return item_id
+	return &""
+
+func take_item_for(target_pos: Vector2i) -> StringName:
+	if can_provide_to(target_pos):
+		return take_item()
+	return &""
+
+func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
+	return false
+
+func cleanup_visuals() -> void:
+	pass

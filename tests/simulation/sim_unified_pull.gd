@@ -65,7 +65,7 @@ func run_simulation() -> void:
 	await sim_advance_seconds(8.0)
 
 	var sink_building = sim_get_building_at(Vector2i(8, 10))
-	var snk = sink_building.get_meta("sink") if sink_building else null
+	var snk = sink_building.logic if sink_building else null
 	sim_assert(snk != null and snk.items_consumed >= 3, "Test 3: Sink consumed items from source (got %d)" % (snk.items_consumed if snk else 0))
 
 	# === Test 4: Splitter pulls from non-conveyor (source directly into splitter) ===
@@ -132,7 +132,7 @@ func run_simulation() -> void:
 	await sim_advance_seconds(5.0)
 
 	var sink_b = sim_get_building_at(Vector2i(6, 10))
-	var sink_logic = sink_b.get_meta("sink") if sink_b else null
+	var sink_logic = sink_b.logic if sink_b else null
 	sim_assert(sink_logic != null and sink_logic.items_consumed >= 1, "Test 7: Sink pulled item from splitter (consumed %d)" % (sink_logic.items_consumed if sink_logic else 0))
 
 	# === Test 8: Entry_from direction is correct (item visual enters from right side) ===

@@ -57,30 +57,29 @@ func _update_stats() -> void:
 	if not def:
 		return
 
-	if _building.has_meta("conveyor"):
-		var conv: ConveyorBelt = _building.get_meta("conveyor")
-		_add_stat("Items on belt: %d/%d" % [conv.buffer.size(), conv.buffer.capacity])
+	var logic: Node = _building.logic
+	if not logic:
+		return
+
+	if logic is ConveyorBelt:
+		_add_stat("Items on belt: %d/%d" % [logic.buffer.size(), logic.buffer.capacity])
 		var dirs := ["Right", "Down", "Left", "Up"]
-		_add_stat("Direction: %s" % dirs[conv.direction])
+		_add_stat("Direction: %s" % dirs[logic.direction])
 
-	elif _building.has_meta("extractor"):
-		var ext: ExtractorLogic = _building.get_meta("extractor")
-		_add_stat("Extracting: %s" % str(ext.item_id).capitalize().replace("_", " "))
-		_add_progress_bar(ext.get_progress())
-		_add_stat("Inventory: %d/5" % ext.inventory.get_count(ext.item_id))
+	elif logic is ExtractorLogic:
+		_add_stat("Extracting: %s" % str(logic.item_id).capitalize().replace("_", " "))
+		_add_progress_bar(logic.get_progress())
+		_add_stat("Inventory: %d/5" % logic.inventory.get_count(logic.item_id))
 
-	elif _building.has_meta("converter"):
-		var conv_logic: ConverterLogic = _building.get_meta("converter")
-		_update_converter_stats(conv_logic)
+	elif logic is ConverterLogic:
+		_update_converter_stats(logic)
 
-	elif _building.has_meta("sink"):
-		var snk: ItemSink = _building.get_meta("sink")
-		_add_stat("Items consumed: %d" % snk.items_consumed)
+	elif logic is ItemSink:
+		_add_stat("Items consumed: %d" % logic.items_consumed)
 
-	elif _building.has_meta("source"):
-		var src: ItemSource = _building.get_meta("source")
-		_add_stat("Producing: %s" % str(src.item_id).capitalize().replace("_", " "))
-		_add_stat("Rate: 1/%.1fs" % src.produce_interval)
+	elif logic is ItemSource:
+		_add_stat("Producing: %s" % str(logic.item_id).capitalize().replace("_", " "))
+		_add_stat("Rate: 1/%.1fs" % logic.produce_interval)
 
 func _update_converter_stats(conv_logic: ConverterLogic) -> void:
 	if conv_logic._active_recipe:

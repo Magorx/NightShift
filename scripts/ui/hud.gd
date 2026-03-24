@@ -141,7 +141,4 @@ func _update_speed_buttons() -> void:
 # ── Helpers ───────────────────────────────────────────────────────────────
 
 func _get_item_def(item_id: StringName):
-	var path := "res://resources/items/%s.tres" % str(item_id)
-	if ResourceLoader.exists(path):
-		return load(path)
-	return null
+	return GameManager.get_item_def(item_id)

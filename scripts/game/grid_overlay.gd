@@ -1,3 +1,4 @@
+class_name GridOverlay
 extends Node2D
 
 const TILE_SIZE := 32

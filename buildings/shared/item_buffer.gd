@@ -82,25 +82,15 @@ func cleanup() -> void:
 		free_visual(item)
 	items.clear()
 
-## Create a colored item-dot visual and add it to the item layer.
+## Create a colored item-dot visual from the pool.
 func create_visual(item_id: StringName) -> Node2D:
-	var visual := Node2D.new()
-	var item_def = _get_item_def(item_id)
+	var item_def = GameManager.get_item_def(item_id)
 	var color := Color.WHITE
 	if item_def:
 		color = item_def.color
-	visual.set_meta("color", color)
-	visual.set_script(load("res://buildings/shared/item_visual.gd"))
-	GameManager.item_layer.add_child(visual)
-	return visual
+	return GameManager.acquire_visual(color)
 
-## Free a single item's visual node.
+## Return a single item's visual node to the pool.
 func free_visual(item: Dictionary) -> void:
 	if item.has("visual") and item.visual:
-		item.visual.queue_free()
-
-func _get_item_def(item_id: StringName):
-	var path := "res://resources/items/%s.tres" % str(item_id)
-	if ResourceLoader.exists(path):
-		return load(path)
-	return null
+		GameManager.release_visual(item.visual)

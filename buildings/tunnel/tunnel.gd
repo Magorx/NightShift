@@ -133,7 +133,18 @@ func restore_visuals() -> void:
 			item.visual = buffer.create_visual(item.id)
 			_update_item_visual(item)
 
-# ── Pull-compatible output interface (called on the OUTPUT end) ──────────
+# ── Pull interface ─────────────────────────────────────────────────────────────
+
+func has_input_from(_cell: Vector2i, from_dir_idx: int) -> bool:
+	if not is_input or partner == null:
+		return false
+	var back_dir: int = (direction + 2) % 4
+	return from_dir_idx == back_dir
+
+func get_linked_positions() -> Array:
+	if partner:
+		return [partner.grid_pos]
+	return []
 
 func has_output_toward(target_pos: Vector2i) -> bool:
 	if is_input:

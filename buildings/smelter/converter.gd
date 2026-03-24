@@ -102,9 +102,9 @@ func _try_finish_craft() -> void:
 	_active_recipe = null
 	_craft_timer = 0.0
 
-# ── Pull-compatible output interface ─────────────────────────────────────────
+# ── Pull interface ─────────────────────────────────────────────────────────────
 
-func has_output_at(target_pos: Vector2i) -> bool:
+func has_output_toward(target_pos: Vector2i) -> bool:
 	for outp in output_points:
 		if grid_pos + outp.cell == target_pos:
 			return true
@@ -142,6 +142,9 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 					output_inv.remove(iid)
 					return iid
 	return &""
+
+func cleanup_visuals() -> void:
+	pass
 
 ## Returns craft progress as 0.0–1.0 for progress bar display.
 func get_progress() -> float:

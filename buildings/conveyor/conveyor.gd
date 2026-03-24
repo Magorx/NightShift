@@ -69,5 +69,35 @@ func _position_item(item_data: Dictionary) -> void:
 	var p2 := exit_point
 	item_data.visual.position = p0 * (1 - t) * (1 - t) + p1 * 2 * (1 - t) * t + p2 * t * t
 
+# ── Pull interface ─────────────────────────────────────────────────────────────
+
+func has_output_toward(target_pos: Vector2i) -> bool:
+	return get_next_pos() == target_pos
+
+func can_provide_to(target_pos: Vector2i) -> bool:
+	if get_next_pos() != target_pos or buffer.is_empty():
+		return false
+	return buffer.peek_front().progress >= 1.0
+
+func peek_output_for(target_pos: Vector2i) -> StringName:
+	if get_next_pos() != target_pos or buffer.is_empty():
+		return &""
+	var front := buffer.peek_front()
+	if front.progress >= 1.0:
+		return front.id
+	return &""
+
+func take_item_for(target_pos: Vector2i) -> StringName:
+	if get_next_pos() != target_pos or buffer.is_empty():
+		return &""
+	var front := buffer.peek_front()
+	if front.progress >= 1.0:
+		var item := pop_front_item()
+		return item.id
+	return &""
+
+func has_input_from(_cell: Vector2i, from_dir_idx: int) -> bool:
+	return from_dir_idx != direction
+
 func cleanup_visuals() -> void:
 	buffer.cleanup()

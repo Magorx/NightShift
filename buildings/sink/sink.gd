@@ -25,7 +25,24 @@ func _physics_process(_delta: float) -> void:
 				break
 
 func _get_item_def(item_id: StringName):
-	var path := "res://resources/items/%s.tres" % str(item_id)
-	if ResourceLoader.exists(path):
-		return load(path)
-	return null
+	return GameManager.get_item_def(item_id)
+
+# ── Pull interface ─────────────────────────────────────────────────────────────
+
+func has_output_toward(_target_pos: Vector2i) -> bool:
+	return false
+
+func can_provide_to(_target_pos: Vector2i) -> bool:
+	return false
+
+func peek_output_for(_target_pos: Vector2i) -> StringName:
+	return &""
+
+func take_item_for(_target_pos: Vector2i) -> StringName:
+	return &""
+
+func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
+	return true
+
+func cleanup_visuals() -> void:
+	pass

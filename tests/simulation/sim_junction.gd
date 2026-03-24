@@ -13,7 +13,7 @@ func run_simulation() -> void:
 
 	var jnc_building = sim_get_building_at(Vector2i(10, 10))
 	sim_assert(jnc_building != null, "Junction placed at (10,10)")
-	sim_assert(jnc_building.has_meta("junction"), "Building has junction meta")
+	sim_assert(jnc_building.logic is JunctionLogic, "Building has JunctionLogic")
 
 	sim_spawn_item_on_conveyor(Vector2i(8, 10), &"iron_ore")
 	await sim_advance_seconds(6.0)
@@ -101,7 +101,7 @@ func run_simulation() -> void:
 	await sim_advance_seconds(3.0)
 
 	# Item should be stuck in the junction buffer
-	var jnc = sim_get_building_at(Vector2i(6, 10)).get_meta("junction")
+	var jnc = sim_get_building_at(Vector2i(6, 10)).logic
 	var h_buf: int = jnc.buffers[0].size()
 	var v_buf: int = jnc.buffers[1].size()
 	sim_assert(h_buf + v_buf > 0, "Item waiting in junction after output removed")
@@ -134,7 +134,7 @@ func run_simulation() -> void:
 	GameManager.remove_building(Vector2i(5, 10))
 	await sim_advance_ticks(2)
 
-	jnc = sim_get_building_at(Vector2i(6, 10)).get_meta("junction")
+	jnc = sim_get_building_at(Vector2i(6, 10)).logic
 	sim_assert(jnc.buffers[0].size() == 1, "Item stranded in horizontal buffer")
 
 	# Reverse the axis: new input from right, output to left

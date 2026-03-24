@@ -64,15 +64,15 @@ Each building type lives in its own folder under `buildings/`:
 ```
 buildings/
   shared/              # base scripts shared by all buildings
-    building_base.gd   # BuildingBase class (root node script)
-    building_def.gd    # BuildingDef resource class — auto-extracts shape/IO from scene
-    item_buffer.gd     # core item queue with progress tracking (0.0–1.0)
-    item_visual.gd     # item dot rendering on ItemLayer
-    input_cell.gd      # ColorRect input marker with directional masks
-    output_cell.gd     # ColorRect output marker with directional masks
-    shape_cell.gd      # ColorRect shape marker
-    building_arrow.gd  # direction arrow overlay
-    destroy_highlight.gdshader
+	building_base.gd   # BuildingBase class (root node script)
+	building_def.gd    # BuildingDef resource class — auto-extracts shape/IO from scene
+	item_buffer.gd     # core item queue with progress tracking (0.0–1.0)
+	item_visual.gd     # item dot rendering on ItemLayer
+	input_cell.gd      # ColorRect input marker with directional masks
+	output_cell.gd     # ColorRect output marker with directional masks
+	shape_cell.gd      # ColorRect shape marker
+	building_arrow.gd  # direction arrow overlay
+	destroy_highlight.gdshader
   conveyor/            # belt transport
   drill/               # resource extractor (timer-based production)
   smelter/             # converter (recipe crafting with multiple IO)
@@ -110,9 +110,9 @@ GameWorld (Node2D)                    # scripts/game/game_world.gd
   BuildingLayer                       # placed buildings
   ItemLayer                           # conveyor item visuals
   UI (CanvasLayer)
-    HUD                               # scripts/ui/hud.gd — speed controls, currency, buildings panel, minimap
-    BuildingInfoPanel                  # scripts/ui/building_info_panel.gd — click-on-building info
-    PauseMenu                         # scripts/ui/pause_menu.gd
+	HUD                               # scripts/ui/hud.gd — speed controls, currency, buildings panel, minimap
+	BuildingInfoPanel                  # scripts/ui/building_info_panel.gd — click-on-building info
+	PauseMenu                         # scripts/ui/pause_menu.gd
 ```
 
 Key scenes: `scenes/game/game_world.tscn` (gameplay), `scenes/game/test_world.tscn` (dev testing), `scenes/ui/main_menu.tscn` (entry point).

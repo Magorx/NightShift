@@ -14,6 +14,10 @@ var buffer = ItemBuffer.new(2)
 var _input_rr: RoundRobin = RoundRobin.new()
 var _output_rr: RoundRobin = RoundRobin.new()
 
+# Per-direction item count: how many buffer items target each output direction.
+# Avoids O(n) scans in _find_free_output and _is_output_backed_up.
+var _dir_count: Array[int] = [0, 0, 0, 0]
+
 func _physics_process(delta: float) -> void:
 	_validate_outputs()
 	_advance_items(delta)
@@ -29,10 +33,15 @@ func _advance_items(delta: float) -> void:
 # now points at us, pick another valid output from the current position.
 # Also reroute completed items stuck at congested outputs to free ones.
 func _validate_outputs() -> void:
+	# Rebuild direction counts from scratch (buffer is tiny, this is O(capacity))
+	_dir_count = [0, 0, 0, 0]
 	for item in buffer.items:
 		if item.output_dir_idx >= 0 and _is_valid_output(item.output_dir_idx):
+			_dir_count[item.output_dir_idx] += 1
 			continue
 		item.output_dir_idx = _find_any_valid_output(item.from_dir_idx)
+		if item.output_dir_idx >= 0:
+			_dir_count[item.output_dir_idx] += 1
 	# Reroute: if a completed item is stuck and a valid output has no items
 	# heading to it, redirect the stuck item there.
 	for item in buffer.items:
@@ -40,7 +49,9 @@ func _validate_outputs() -> void:
 			continue
 		var free_dir := _find_free_output(item)
 		if free_dir >= 0:
+			_dir_count[item.output_dir_idx] -= 1
 			item.output_dir_idx = free_dir
+			_dir_count[free_dir] += 1
 
 func _try_pull_inputs() -> void:
 	if buffer.is_full():
@@ -66,6 +77,8 @@ func _try_pull_inputs() -> void:
 			from_dir_idx = dir_idx,
 			output_dir_idx = output_dir,
 		})
+		if output_dir >= 0:
+			_dir_count[output_dir] += 1
 		_position_item(item)
 		_input_rr.advance_past(dir_idx)
 
@@ -122,12 +135,7 @@ func _find_free_output(stuck_item: Dictionary) -> int:
 			continue
 		if not _is_valid_output(dir_idx):
 			continue
-		var taken := false
-		for other in buffer.items:
-			if other.output_dir_idx == dir_idx:
-				taken = true
-				break
-		if taken:
+		if _dir_count[dir_idx] > 0:
 			continue
 		if not _can_downstream_accept(dir_idx):
 			continue
@@ -138,16 +146,15 @@ func _find_free_output(stuck_item: Dictionary) -> int:
 func _can_downstream_accept(dir_idx: int) -> bool:
 	var neighbor_pos: Vector2i = grid_pos + DIRECTION_VECTORS[dir_idx]
 	var building = GameManager.buildings.get(neighbor_pos)
-	if not building:
+	if not building or not building.logic:
 		return false
-	if building.has_meta("conveyor"):
-		return building.get_meta("conveyor").can_accept()
-	if building.has_meta("splitter"):
-		return not building.get_meta("splitter").buffer.is_full()
-	if building.has_meta("junction"):
-		var jnc = building.get_meta("junction")
-		return not jnc.buffers[dir_idx % 2].is_full()
-	if building.has_meta("sink"):
+	if building.logic is ConveyorBelt:
+		return building.logic.can_accept()
+	if building.logic is SplitterLogic:
+		return not building.logic.buffer.is_full()
+	if building.logic is JunctionLogic:
+		return not building.logic.buffers[dir_idx % 2].is_full()
+	if building.logic is ItemSink:
 		return true
 	return false
 
@@ -156,7 +163,10 @@ func _is_valid_output(dir_idx: int) -> bool:
 	var from_dir: int = (dir_idx + 2) % 4
 	return GameManager.has_input_at(neighbor_pos, from_dir)
 
-# ── Pull-compatible output interface ─────────────────────────────────────────
+# ── Pull interface ─────────────────────────────────────────────────────────────
+
+func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
+	return true
 
 func has_output_toward(target_pos: Vector2i) -> bool:
 	var diff: Vector2i = target_pos - grid_pos
@@ -183,6 +193,7 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 		var item = buffer.items[i]
 		if item.progress >= 1.0 and item.output_dir_idx >= 0:
 			if grid_pos + DIRECTION_VECTORS[item.output_dir_idx] == target_pos:
+				_dir_count[item.output_dir_idx] -= 1
 				buffer.free_visual(item)
 				var item_id: StringName = item.id
 				buffer.items.remove_at(i)
@@ -210,3 +221,4 @@ func _position_item(item: Dictionary) -> void:
 
 func cleanup_visuals() -> void:
 	buffer.cleanup()
+	_dir_count = [0, 0, 0, 0]

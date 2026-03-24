@@ -27,7 +27,7 @@ func run_simulation() -> void:
 	# Verify splitter was placed
 	var spl_building = sim_get_building_at(Vector2i(10, 10))
 	sim_assert(spl_building != null, "Splitter placed at (10,10)")
-	sim_assert(spl_building.has_meta("splitter"), "Building has splitter meta")
+	sim_assert(spl_building.logic is SplitterLogic, "Building has SplitterLogic")
 
 	# Spawn 2 items on the input chain
 	sim_spawn_item_on_conveyor(Vector2i(8, 10), &"iron_ore")

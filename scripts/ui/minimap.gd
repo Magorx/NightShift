@@ -93,7 +93,4 @@ func _pan_camera_to(local_pos: Vector2) -> void:
 	_camera.position = Vector2(world_x, world_y)
 
 func _get_item_def(item_id: StringName):
-	var path := "res://resources/items/%s.tres" % str(item_id)
-	if ResourceLoader.exists(path):
-		return load(path)
-	return null
+	return GameManager.get_item_def(item_id)

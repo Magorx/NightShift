@@ -1,3 +1,4 @@
+class_name ConveyorSystem
 extends Node
 
 const RoundRobin = preload("res://scripts/round_robin.gd")

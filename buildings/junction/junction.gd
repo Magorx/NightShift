@@ -73,7 +73,10 @@ func _is_valid_output(dir_idx: int) -> bool:
 	var from_dir: int = (dir_idx + 2) % 4
 	return GameManager.has_input_at(neighbor_pos, from_dir)
 
-# ── Pull-compatible output interface ─────────────────────────────────────────
+# ── Pull interface ─────────────────────────────────────────────────────────────
+
+func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
+	return true
 
 func has_output_toward(target_pos: Vector2i) -> bool:
 	var diff: Vector2i = target_pos - grid_pos
