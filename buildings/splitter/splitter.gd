@@ -174,34 +174,32 @@ func has_output_toward(target_pos: Vector2i) -> bool:
 	var diff: Vector2i = target_pos - grid_pos
 	return diff in DIRECTION_VECTORS
 
-# Any completed item can leave through any output — whichever downstream pulls first wins.
+# Items report availability based on their assigned output direction.
+# The reroute logic in _validate_outputs handles redirecting stuck items to free outputs.
 func can_provide_to(target_pos: Vector2i) -> bool:
-	if not has_output_toward(target_pos):
-		return false
 	for item in _buffer:
-		if item.progress >= 1.0:
-			return true
+		if item.progress >= 1.0 and item.output_dir_idx >= 0:
+			if grid_pos + DIRECTION_VECTORS[item.output_dir_idx] == target_pos:
+				return true
 	return false
 
 func peek_output_for(target_pos: Vector2i) -> StringName:
-	if not has_output_toward(target_pos):
-		return &""
 	for item in _buffer:
-		if item.progress >= 1.0:
-			return item.id
+		if item.progress >= 1.0 and item.output_dir_idx >= 0:
+			if grid_pos + DIRECTION_VECTORS[item.output_dir_idx] == target_pos:
+				return item.id
 	return &""
 
 func take_item_for(target_pos: Vector2i) -> StringName:
-	if not has_output_toward(target_pos):
-		return &""
 	for i in range(_buffer.size()):
 		var item = _buffer[i]
-		if item.progress >= 1.0:
-			if item.visual:
-				item.visual.queue_free()
-			var item_id: StringName = item.id
-			_buffer.remove_at(i)
-			return item_id
+		if item.progress >= 1.0 and item.output_dir_idx >= 0:
+			if grid_pos + DIRECTION_VECTORS[item.output_dir_idx] == target_pos:
+				if item.visual:
+					item.visual.queue_free()
+				var item_id: StringName = item.id
+				_buffer.remove_at(i)
+				return item_id
 	return &""
 
 # ── Visuals ──────────────────────────────────────────────────────────────────
