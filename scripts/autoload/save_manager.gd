@@ -391,6 +391,7 @@ func _link_tunnels_deferred(building_list: Array) -> void:
 		var length: int = int(state.get("tunnel_length", 1))
 		in_logic.setup_pair(out_logic, length)
 		out_logic.setup_pair(in_logic, length)
+		in_logic.restore_visuals()
 
 func _deserialize_inventory(inv, data: Dictionary) -> void:
 	for item_id_str in data:

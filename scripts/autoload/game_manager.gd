@@ -419,6 +419,7 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 			tnl.is_input = (def.category == "tunnel")
 			tnl.set_physics_process(tnl.is_input)
 			building.set_meta("tunnel", tnl)
+			tnl.update_sprites()
 			_update_neighbor_conveyor_sprites(grid_pos)
 
 	return building
