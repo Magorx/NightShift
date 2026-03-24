@@ -1,7 +1,6 @@
-[gd_scene load_steps=17 format=3 uid="uid://b1u6s2wogx3y5"]
+[gd_scene load_steps=16 format=3 uid="uid://b1u6s2wogx3y5"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
-[ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="2"]
 [ext_resource type="Script" uid="uid://t32yw383pufq" path="res://buildings/tunnel/tunnel.gd" id="3"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="4"]
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="5"]
@@ -117,9 +116,6 @@ texture_filter = 1
 position = Vector2(16, 16)
 sprite_frames = SubResource("SpriteFrames_top")
 autoplay = "default"
-
-[node name="Arrow" type="Node2D" parent="."]
-script = ExtResource("2")
 
 [node name="TunnelLogic" type="Node" parent="."]
 script = ExtResource("3")

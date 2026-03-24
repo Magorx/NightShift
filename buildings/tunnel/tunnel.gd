@@ -37,14 +37,11 @@ func _ready() -> void:
 
 func update_sprites() -> void:
 	var parent = get_parent()
-	var rot = direction * PI / 2.0
 	var bottom: AnimatedSprite2D = parent.get_node_or_null("SpriteBottom")
 	var top: AnimatedSprite2D = parent.get_node_or_null("SpriteTop")
 	if bottom:
-		bottom.rotation = rot
 		bottom.play(&"default")
 	if top:
-		top.rotation = rot
 		top.play(&"default")
 
 func setup_pair(p_partner: TunnelLogic, p_length: int) -> void:

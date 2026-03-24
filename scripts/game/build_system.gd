@@ -365,8 +365,6 @@ func _create_ghost_node(building_id: StringName, rotation: int) -> Node2D:
 	if not def or not def.scene:
 		return null
 	var ghost: Node2D = def.scene.instantiate()
-	# Disable all script processing (keeps engine animations running)
-	_disable_processing_recursive(ghost)
 	# Hide direction arrow
 	var arrow = ghost.find_child("Arrow", true, false)
 	if arrow:
@@ -377,11 +375,11 @@ func _create_ghost_node(building_id: StringName, rotation: int) -> Node2D:
 		GameManager._rotate_node_children(ghost, "Shape", anchor_cell, rotation)
 		GameManager._rotate_node_children(ghost, "Inputs", anchor_cell, rotation)
 		GameManager._rotate_node_children(ghost, "Outputs", anchor_cell, rotation)
-	# Rotate conveyor sprite
-	var conv_sprite = ghost.find_child("ConveyorSprite", true, false)
-	if conv_sprite and conv_sprite is AnimatedSprite2D:
-		conv_sprite.rotation = rotation * PI / 2.0
 	add_child(ghost)
+	# Disable processing after add_child to override any _ready re-enables
+	_disable_processing_recursive(ghost)
+	# Rotate all sprites after add_child to override _ready defaults
+	GameManager._rotate_building_sprites(ghost, rotation)
 	return ghost
 
 func _disable_processing_recursive(node: Node) -> void:

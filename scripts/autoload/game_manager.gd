@@ -306,6 +306,13 @@ func _rotate_node_children(building: Node2D, group_name: String, anchor_cell: Ve
 			child.offset_right = child.offset_left + TILE_SIZE
 			child.offset_bottom = child.offset_top + TILE_SIZE
 
+## Rotate all direct-child AnimatedSprite2D nodes to match building rotation.
+func _rotate_building_sprites(building: Node2D, rotation: int) -> void:
+	var rot_rad := rotation * PI / 2.0
+	for child in building.get_children():
+		if child is AnimatedSprite2D:
+			child.rotation = rot_rad
+
 func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> Node2D:
 	var def = get_building_def(id)
 	if not def or not building_layer:
@@ -351,6 +358,9 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		arrow.set_meta("bbox_min", bbox.min_cell)
 
 	building_layer.add_child(building)
+
+	# Rotate sprite children (after add_child to override _ready defaults)
+	_rotate_building_sprites(building, rotation)
 
 	# Register all occupied cells (rotated)
 	var rotated_shape := get_rotated_shape(def, rotation)

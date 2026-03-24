@@ -1,7 +1,6 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
-[ext_resource type="Script" path="res://buildings/shared/building_arrow.gd" id="2"]
 [ext_resource type="Script" path="res://buildings/tunnel/tunnel.gd" id="3"]
 [ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="4"]
 [ext_resource type="Script" path="res://buildings/shared/output_cell.gd" id="5"]
@@ -118,9 +117,6 @@ position = Vector2(16, 16)
 sprite_frames = SubResource("SpriteFrames_top")
 animation = &"default"
 autoplay = "default"
-
-[node name="Arrow" type="Node2D" parent="."]
-script = ExtResource("2")
 
 [node name="TunnelLogic" type="Node" parent="."]
 script = ExtResource("3")
