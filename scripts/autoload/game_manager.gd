@@ -276,7 +276,10 @@ func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotat
 		if check_pos.x < 0 or check_pos.y < 0 or check_pos.x >= map_size or check_pos.y >= map_size:
 			return false
 		if buildings.has(check_pos):
-			return false
+			var existing = buildings[check_pos]
+			var existing_def = get_building_def(existing.building_id)
+			if not existing_def or not existing_def.replaceable_by.has(id):
+				return false
 	# Extractors (drills) can only be placed on deposit tiles
 	if def.category == "extractor":
 		if not deposits.has(grid_pos):
@@ -310,6 +313,17 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	# Extractors require a deposit
 	if def.category == "extractor" and not deposits.has(grid_pos):
 		return null
+
+	# Remove any existing replaceable buildings in the footprint
+	var rotated_shape_pre := get_rotated_shape(def, rotation)
+	var to_replace: Dictionary = {} # grid_pos -> true (deduplicate multi-cell buildings)
+	for cell in rotated_shape_pre:
+		var check_pos: Vector2i = grid_pos + Vector2i(cell)
+		if buildings.has(check_pos):
+			var existing = buildings[check_pos]
+			to_replace[existing.grid_pos] = true
+	for replace_pos in to_replace:
+		remove_building(replace_pos)
 
 	var building: Node2D
 	if def.scene:

@@ -21,7 +21,7 @@ func _physics_process(delta: float) -> void:
 
 func _advance_items(delta: float) -> void:
 	var speed := 1.0 / traverse_time
-	buffer.advance_unclamped(delta, speed)
+	buffer.advance_clamped(delta, speed)
 	for item in buffer.items:
 		_position_item(item)
 

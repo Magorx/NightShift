@@ -4,11 +4,8 @@ signal building_clicked(building: Node2D)
 
 const TILE_SIZE := 32
 const MAP_SIZE := 64
-const GHOST_COLOR := Color(0.4, 0.6, 1.0, 0.4)
-const GHOST_INVALID_COLOR := Color(1.0, 0.3, 0.3, 0.4)
-const BLUEPRINT_COLOR := Color(0.3, 0.7, 1.0, 0.35)
-const BLUEPRINT_INVALID_COLOR := Color(1.0, 0.3, 0.3, 0.25)
-const ARROW_COLOR := Color(1, 1, 1, 0.6)
+const GHOST_MODULATE := Color(0.8, 0.9, 1.0, 0.55)
+const GHOST_INVALID_MODULATE := Color(1.0, 0.5, 0.5, 0.45)
 const DESTROY_AREA_COLOR := Color(1.0, 0.2, 0.2, 0.15)
 const DESTROY_CURSOR_COLOR := Color(1.0, 0.2, 0.2, 0.25)
 const DESTROY_OUTLINE_COLOR := Color(1.0, 0.2, 0.15, 0.85)
@@ -44,6 +41,11 @@ var _phase_index: int = -1 # -1 = normal single-phase, 0+ = current phase
 var _phase_config: Dictionary = {} # placement_phases entry for current building
 var _phase_placements: Array = [] # Array of Arrays of {pos: Vector2i, rotation: int}
 
+# Ghost preview (instantiated building scenes shown under cursor)
+var _ghost_nodes: Array = []
+var _ghost_building_id: StringName = &""
+var _ghost_rotation: int = -1
+
 func _process(_delta: float) -> void:
 	cursor_grid_pos = _get_grid_pos_under_mouse()
 	if _dragging:
@@ -52,6 +54,7 @@ func _process(_delta: float) -> void:
 		_update_destroy_highlights()
 	elif not _highlighted_buildings.is_empty():
 		_clear_all_highlights()
+	_update_ghosts()
 	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -135,6 +138,7 @@ func exit_building_mode() -> void:
 	if _dragging:
 		_cancel_drag()
 	_cancel_multiphase()
+	_clear_ghosts()
 
 func enter_destroy_mode() -> void:
 	if building_mode:
@@ -354,6 +358,105 @@ func _filter_placeable_blueprints() -> void:
 			for c in cells:
 				claimed_cells[c] = true
 
+# ── Ghost preview ─────────────────────────────────────────────────────────────
+
+func _create_ghost_node(building_id: StringName, rotation: int) -> Node2D:
+	var def = GameManager.get_building_def(building_id)
+	if not def or not def.scene:
+		return null
+	var ghost: Node2D = def.scene.instantiate()
+	# Disable all script processing (keeps engine animations running)
+	_disable_processing_recursive(ghost)
+	# Hide direction arrow
+	var arrow = ghost.find_child("Arrow", true, false)
+	if arrow:
+		arrow.visible = false
+	# Rotate visual elements to match placement rotation
+	if rotation != 0:
+		var anchor_cell: Vector2i = def.anchor_cell
+		GameManager._rotate_node_children(ghost, "Shape", anchor_cell, rotation)
+		GameManager._rotate_node_children(ghost, "Inputs", anchor_cell, rotation)
+		GameManager._rotate_node_children(ghost, "Outputs", anchor_cell, rotation)
+	# Rotate conveyor sprite
+	var conv_sprite = ghost.find_child("ConveyorSprite", true, false)
+	if conv_sprite and conv_sprite is AnimatedSprite2D:
+		conv_sprite.rotation = rotation * PI / 2.0
+	add_child(ghost)
+	return ghost
+
+func _disable_processing_recursive(node: Node) -> void:
+	node.set_process(false)
+	node.set_physics_process(false)
+	for child in node.get_children():
+		_disable_processing_recursive(child)
+
+func _update_ghosts() -> void:
+	if not building_mode:
+		if not _ghost_nodes.is_empty():
+			_clear_ghosts()
+		return
+
+	var rotation := _drag_rotation if _dragging else current_rotation
+	var def = GameManager.get_building_def(selected_building)
+	if not def:
+		_clear_ghosts()
+		return
+
+	# Rebuild ghosts if building or rotation changed
+	if selected_building != _ghost_building_id or rotation != _ghost_rotation:
+		_clear_ghosts()
+		_ghost_building_id = selected_building
+		_ghost_rotation = rotation
+
+	if _dragging:
+		var count := _placeable_blueprints.size()
+		# Grow pool as needed
+		while _ghost_nodes.size() < count:
+			var ghost = _create_ghost_node(selected_building, rotation)
+			if ghost:
+				_ghost_nodes.append(ghost)
+			else:
+				break
+		# Position and tint active ghosts
+		for i in range(mini(count, _ghost_nodes.size())):
+			var pos: Vector2i = _placeable_blueprints[i]
+			var can_place: bool
+			if _phase_index >= 0:
+				can_place = _can_place_phase(pos, _drag_rotation, i)
+			else:
+				can_place = GameManager.can_place_building(selected_building, pos, MAP_SIZE, _drag_rotation)
+			_ghost_nodes[i].position = Vector2(pos - def.anchor_cell) * TILE_SIZE
+			_ghost_nodes[i].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
+			_ghost_nodes[i].visible = true
+		# Hide excess
+		for i in range(count, _ghost_nodes.size()):
+			_ghost_nodes[i].visible = false
+	else:
+		# Single cursor ghost
+		if _ghost_nodes.is_empty():
+			var ghost = _create_ghost_node(selected_building, rotation)
+			if ghost:
+				_ghost_nodes.append(ghost)
+		if not _ghost_nodes.is_empty():
+			var can_place: bool
+			if _phase_index >= 0:
+				can_place = _can_place_phase(cursor_grid_pos, current_rotation, 0)
+			else:
+				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, MAP_SIZE, current_rotation)
+			_ghost_nodes[0].position = Vector2(cursor_grid_pos - def.anchor_cell) * TILE_SIZE
+			_ghost_nodes[0].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
+			_ghost_nodes[0].visible = true
+			for i in range(1, _ghost_nodes.size()):
+				_ghost_nodes[i].visible = false
+
+func _clear_ghosts() -> void:
+	for ghost in _ghost_nodes:
+		if is_instance_valid(ghost):
+			ghost.queue_free()
+	_ghost_nodes.clear()
+	_ghost_building_id = &""
+	_ghost_rotation = -1
+
 # ── Destroy ──────────────────────────────────────────────────────────────────
 
 func _commit_destroy() -> void:
@@ -493,53 +596,9 @@ func _get_visual_nodes(building: Node2D) -> Array:
 # ── Drawing ──────────────────────────────────────────────────────────────────
 
 func _draw() -> void:
-	var cell_size := Vector2(TILE_SIZE, TILE_SIZE)
-
 	if destroy_mode:
+		var cell_size := Vector2(TILE_SIZE, TILE_SIZE)
 		_draw_destroy(cell_size)
-		return
-
-	if not building_mode:
-		return
-
-	var def = GameManager.get_building_def(selected_building)
-	if not def:
-		return
-
-	if _dragging:
-		# Draw only placeable blueprints (non-overlapping)
-		var rotated_shape = GameManager.get_rotated_shape(def, _drag_rotation)
-		var bbox = GameManager.get_rotated_shape_bbox(def, _drag_rotation)
-		var bbox_px := Vector2(bbox.size) * TILE_SIZE
-		var bbox_offset := Vector2(bbox.min_cell) * TILE_SIZE
-		for idx in range(_placeable_blueprints.size()):
-			var pos: Vector2i = _placeable_blueprints[idx]
-			var can_place: bool
-			if _phase_index >= 0:
-				can_place = _can_place_phase(pos, _drag_rotation, idx)
-			else:
-				can_place = GameManager.can_place_building(selected_building, pos, MAP_SIZE, _drag_rotation)
-			var color := BLUEPRINT_COLOR if can_place else BLUEPRINT_INVALID_COLOR
-			var anchor_px := Vector2(pos) * TILE_SIZE
-			for cell in rotated_shape:
-				draw_rect(Rect2(anchor_px + Vector2(cell) * TILE_SIZE, cell_size), color)
-			_draw_direction_arrow(anchor_px + bbox_offset, bbox_px, _drag_rotation)
-	else:
-		# Single ghost cursor
-		var rotated_shape = GameManager.get_rotated_shape(def, current_rotation)
-		var bbox = GameManager.get_rotated_shape_bbox(def, current_rotation)
-		var bbox_px := Vector2(bbox.size) * TILE_SIZE
-		var bbox_offset := Vector2(bbox.min_cell) * TILE_SIZE
-		var can_place: bool
-		if _phase_index >= 0:
-			can_place = _can_place_phase(cursor_grid_pos, current_rotation, 0)
-		else:
-			can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, MAP_SIZE, current_rotation)
-		var color := GHOST_COLOR if can_place else GHOST_INVALID_COLOR
-		var anchor_px := Vector2(cursor_grid_pos) * TILE_SIZE
-		for cell in rotated_shape:
-			draw_rect(Rect2(anchor_px + Vector2(cell) * TILE_SIZE, cell_size), color)
-		_draw_direction_arrow(anchor_px + bbox_offset, bbox_px, current_rotation)
 
 func _draw_destroy(cell_size: Vector2) -> void:
 	if _destroy_dragging:
@@ -560,21 +619,6 @@ func _draw_destroy(cell_size: Vector2) -> void:
 			draw_rect(Rect2(Vector2(cursor_grid_pos) * TILE_SIZE, cell_size), DESTROY_CURSOR_COLOR)
 
 
-func _draw_direction_arrow(origin: Vector2, size_px: Vector2, rot: int) -> void:
-	var center := origin + size_px * 0.5
-	var arrow_len: float = min(size_px.x, size_px.y) * 0.3
-	var dir: Vector2
-	match rot:
-		0: dir = Vector2.RIGHT
-		1: dir = Vector2.DOWN
-		2: dir = Vector2.LEFT
-		3: dir = Vector2.UP
-	var tip: Vector2 = center + dir * arrow_len
-	var base: Vector2 = center - dir * arrow_len
-	draw_line(base, tip, ARROW_COLOR, 2.0)
-	var perp := Vector2(-dir.y, dir.x)
-	draw_line(tip, tip - dir * 6 + perp * 4, ARROW_COLOR, 2.0)
-	draw_line(tip, tip - dir * 6 - perp * 4, ARROW_COLOR, 2.0)
 
 ## Read actual Shape ColorRect positions from the placed building node.
 func _get_building_visual_cells(building: Node2D) -> Array:

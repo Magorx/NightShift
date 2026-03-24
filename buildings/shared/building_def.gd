@@ -8,6 +8,8 @@ extends Resource
 @export var description: String = ""
 @export var scene: PackedScene
 @export var unlock_tech: StringName
+## Building IDs that can replace this building when placed on top of it.
+@export var replaceable_by: Array[StringName] = []
 
 ## Anchor cell offset, read from BuildAnchor node position at load time.
 ## The cursor/grid_pos aligns to this cell when placing.

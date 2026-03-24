@@ -35,7 +35,7 @@ func _reverse_stranded_items() -> void:
 func _advance_items(delta: float) -> void:
 	var speed := 1.0 / traverse_time
 	for axis in 2:
-		buffers[axis].advance_unclamped(delta, speed)
+		buffers[axis].advance_clamped(delta, speed)
 		for item in buffers[axis].items:
 			_position_item(item)
 

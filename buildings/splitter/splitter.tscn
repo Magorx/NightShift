@@ -1,11 +1,42 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=12 format=3 uid="uid://caxs0e23nmsim"]
 
-[ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
-[ext_resource type="Script" path="res://buildings/shared/building_arrow.gd" id="2"]
-[ext_resource type="Script" path="res://buildings/splitter/splitter.gd" id="3"]
-[ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="4"]
-[ext_resource type="Script" path="res://buildings/shared/input_cell.gd" id="5"]
-[ext_resource type="Script" path="res://buildings/shared/output_cell.gd" id="6"]
+[ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
+[ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="2"]
+[ext_resource type="Script" uid="uid://c4tujtdf41td0" path="res://buildings/splitter/splitter.gd" id="3"]
+[ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="4"]
+[ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="5"]
+[ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="6"]
+[ext_resource type="Texture2D" uid="uid://d120krmmn15j5" path="res://buildings/splitter/sprites/main.png" id="7_ceadv"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8jp0p"]
+atlas = ExtResource("7_ceadv")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_dgf0f"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8jp0p")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ap7jq"]
+atlas = ExtResource("7_ceadv")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_2hoe7"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ap7jq")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
 
 [node name="Splitter" type="Node2D"]
 script = ExtResource("1")
@@ -65,3 +96,16 @@ script = ExtResource("2")
 
 [node name="SplitterLogic" type="Node" parent="."]
 script = ExtResource("3")
+
+[node name="SpriteBottom" type="AnimatedSprite2D" parent="."]
+texture_filter = 1
+position = Vector2(16, 16)
+sprite_frames = SubResource("SpriteFrames_dgf0f")
+autoplay = "default"
+
+[node name="SpriteTop" type="AnimatedSprite2D" parent="."]
+z_index = 10
+texture_filter = 1
+position = Vector2(16, 16)
+sprite_frames = SubResource("SpriteFrames_2hoe7")
+autoplay = "default"
