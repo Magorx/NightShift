@@ -20,6 +20,12 @@ var total_currency: int = 0
 # Items delivered to sinks: item_id (StringName) -> count (int)
 var items_delivered: Dictionary = {}
 
+# Multi-phase building configs: building_id -> config dict
+# Config: {phases: [{building_id, max_distance (0=none), count_match (bool)}], link_fn: StringName}
+# The key building_id is what the player selects; each phase has its own building_id to place.
+# After all phases, link_fn(phase_placements: Array) is called on GameManager.
+var placement_phases: Dictionary = {}
+
 # Building hotkeys: key_scancode (int) -> building_id (StringName)
 const DEFAULT_HOTKEYS: Dictionary = {
 	KEY_1: &"conveyor",
@@ -43,6 +49,37 @@ var conveyor_system: Node
 func _ready() -> void:
 	_load_building_defs()
 	_load_recipes()
+	_register_placement_phases()
+
+func _register_placement_phases() -> void:
+	placement_phases[&"tunnel_input"] = {
+		phases = [
+			{building_id = &"tunnel_input"},
+			{building_id = &"tunnel_output", max_distance = 5, count_match = true},
+		],
+		link_fn = &"_link_tunnels",
+	}
+
+## Link tunnel inputs and outputs after multi-phase placement.
+## phase_placements[0] = inputs [{pos, rotation}], phase_placements[1] = outputs [{pos, rotation}]
+func _link_tunnels(phase_placements: Array) -> void:
+	var inputs: Array = phase_placements[0]
+	var outputs: Array = phase_placements[1]
+	var count := mini(inputs.size(), outputs.size())
+	for i in range(count):
+		var in_building = buildings.get(inputs[i].pos)
+		var out_building = buildings.get(outputs[i].pos)
+		if not in_building or not out_building:
+			continue
+		if not in_building.has_meta("tunnel") or not out_building.has_meta("tunnel"):
+			continue
+		var in_logic = in_building.get_meta("tunnel")
+		var out_logic = out_building.get_meta("tunnel")
+		var in_pos: Vector2i = inputs[i].pos
+		var out_pos: Vector2i = outputs[i].pos
+		var dist := absi(out_pos.x - in_pos.x) + absi(out_pos.y - in_pos.y)
+		in_logic.setup_pair(out_logic, dist)
+		out_logic.setup_pair(in_logic, dist)
 
 func _load_building_defs() -> void:
 	var root_dir := DirAccess.open("res://buildings/")
@@ -373,6 +410,17 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 			building.set_meta("junction", jnc)
 			_update_neighbor_conveyor_sprites(grid_pos)
 
+	# Configure tunnel (input or output)
+	if def.category == "tunnel" or def.category == "tunnel_output":
+		var tnl = building.find_child("TunnelLogic", true, false)
+		if tnl:
+			tnl.grid_pos = grid_pos
+			tnl.direction = rotation
+			tnl.is_input = (def.category == "tunnel")
+			tnl.set_physics_process(tnl.is_input)
+			building.set_meta("tunnel", tnl)
+			_update_neighbor_conveyor_sprites(grid_pos)
+
 	return building
 
 func remove_building(grid_pos: Vector2i) -> void:
@@ -399,6 +447,13 @@ func remove_building(grid_pos: Vector2i) -> void:
 		var jnc = building.get_meta("junction")
 		jnc.cleanup_visuals()
 
+	# Clean up tunnel: unlink partner
+	if building.has_meta("tunnel"):
+		var tnl = building.get_meta("tunnel")
+		tnl.cleanup_visuals()
+		if tnl.partner:
+			tnl.partner.partner = null
+
 	# Remove all occupied cells (rotated) and collect them for sprite updates
 	var rotated_shape: Array = []
 	if def:
@@ -422,6 +477,17 @@ func get_conveyor_at(grid_pos: Vector2i):
 	if building and building.has_meta("conveyor"):
 		return building.get_meta("conveyor")
 	return null
+
+## Return an array of grid positions of buildings linked to this one.
+## Linked buildings are co-highlighted and co-removed in destroy mode.
+func get_linked_buildings(building: Node2D) -> Array:
+	if not building or not is_instance_valid(building):
+		return []
+	if building.has_meta("tunnel"):
+		var tnl = building.get_meta("tunnel")
+		if tnl.partner:
+			return [tnl.partner.grid_pos]
+	return []
 
 func get_deposit_at(grid_pos: Vector2i):
 	return deposits.get(grid_pos)
@@ -462,6 +528,9 @@ func clear_all() -> void:
 		if is_instance_valid(building) and building.has_meta("junction"):
 			var jnc = building.get_meta("junction")
 			jnc.cleanup_visuals()
+		if is_instance_valid(building) and building.has_meta("tunnel"):
+			var tnl = building.get_meta("tunnel")
+			tnl.cleanup_visuals()
 	for building in buildings.values():
 		if is_instance_valid(building):
 			building.queue_free()
@@ -493,6 +562,8 @@ func has_output_at(target_pos: Vector2i, from_dir_idx: int) -> bool:
 		return building.get_meta("junction").has_output_toward(target_pos)
 	if building.has_meta("converter"):
 		return building.get_meta("converter").has_output_at(target_pos)
+	if building.has_meta("tunnel"):
+		return building.get_meta("tunnel").has_output_toward(target_pos)
 	return false
 
 ## Check if the building at cell accepts input from direction from_dir_idx.
@@ -506,6 +577,13 @@ func has_input_at(cell: Vector2i, from_dir_idx: int) -> bool:
 		return true
 	if building.has_meta("converter"):
 		return building.get_meta("converter").has_input_from(cell, from_dir_idx)
+	if building.has_meta("tunnel"):
+		var tnl = building.get_meta("tunnel")
+		# Only input end accepts items, and only from the back side
+		if tnl.is_input and tnl.partner != null:
+			var back_dir: int = (tnl.direction + 2) % 4
+			return from_dir_idx == back_dir
+		return false
 	return false
 
 ## Peek at the item available from direction from_dir_idx without removing it.
@@ -538,6 +616,8 @@ func peek_output_item(target_pos: Vector2i, from_dir_idx: int) -> StringName:
 		return building.get_meta("splitter").peek_output_for(target_pos)
 	if building.has_meta("junction"):
 		return building.get_meta("junction").peek_output_for(target_pos)
+	if building.has_meta("tunnel"):
+		return building.get_meta("tunnel").peek_output_for(target_pos)
 	return &""
 
 ## Pull (remove) one item from a building's output in direction from_dir_idx.
@@ -581,5 +661,10 @@ func pull_item(target_pos: Vector2i, from_dir_idx: int) -> Dictionary:
 		var jnc = building.get_meta("junction")
 		if jnc.can_provide_to(target_pos):
 			return {id = jnc.take_item_for(target_pos), entry_from = entry_from}
+		return {}
+	if building.has_meta("tunnel"):
+		var tnl = building.get_meta("tunnel")
+		if tnl.can_provide_to(target_pos):
+			return {id = tnl.take_item_for(target_pos), entry_from = entry_from}
 		return {}
 	return {}

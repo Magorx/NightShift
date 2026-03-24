@@ -23,6 +23,7 @@ func _ready() -> void:
 	GameManager.building_layer = $BuildingLayer
 	GameManager.item_layer = $ItemLayer
 	GameManager.conveyor_system = $ConveyorSystem
+	GameManager.clear_all()
 	GameManager.deposits.clear()
 	_setup_tileset()
 	_fill_ground()

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/tunnel/tunnel_output.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"tunnel_output"
+display_name = "Tunnel Output"
+color = Color(0.5, 0.6, 0.35, 1)
+category = "tunnel_output"
+description = "Output end of a tunnel."
+scene = ExtResource("2")

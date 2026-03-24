@@ -39,6 +39,11 @@ var _drag_rotation: int = 0
 var _blueprints: Array = [] # Array of Vector2i positions (all candidates)
 var _placeable_blueprints: Array = [] # subset that don't overlap each other
 
+# Multi-phase placement state (for buildings like tunnels that need 2+ clicks)
+var _phase_index: int = -1 # -1 = normal single-phase, 0+ = current phase
+var _phase_config: Dictionary = {} # placement_phases entry for current building
+var _phase_placements: Array = [] # Array of Arrays of {pos: Vector2i, rotation: int}
+
 func _process(_delta: float) -> void:
 	cursor_grid_pos = _get_grid_pos_under_mouse()
 	if _dragging:
@@ -69,7 +74,13 @@ func _unhandled_input(event: InputEvent) -> void:
 					_try_inspect(cursor_grid_pos)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			if building_mode:
-				if _dragging:
+				if _phase_index > 0:
+					# In a later phase — cancel everything (remove prior placements)
+					if _dragging:
+						_cancel_drag()
+					_cancel_multiphase()
+					exit_building_mode()
+				elif _dragging:
 					_cancel_drag()
 				else:
 					exit_building_mode()
@@ -105,14 +116,25 @@ func _unhandled_input(event: InputEvent) -> void:
 func enter_building_mode(building_id: StringName) -> void:
 	if destroy_mode:
 		exit_destroy_mode()
+	_cancel_multiphase()
 	selected_building = building_id
 	building_mode = true
 	GameManager.last_selected_building = building_id
+	# Check for multi-phase placement config
+	if GameManager.placement_phases.has(building_id):
+		_phase_config = GameManager.placement_phases[building_id]
+		_phase_index = 0
+		_phase_placements.clear()
+		selected_building = _phase_config.phases[0].building_id
+	else:
+		_phase_index = -1
+		_phase_config = {}
 
 func exit_building_mode() -> void:
 	building_mode = false
 	if _dragging:
 		_cancel_drag()
+	_cancel_multiphase()
 
 func enter_destroy_mode() -> void:
 	if building_mode:
@@ -155,6 +177,9 @@ func _cancel_drag() -> void:
 func _commit_drag() -> void:
 	if not _dragging:
 		return
+	if _phase_index >= 0:
+		_commit_phase_drag()
+		return
 	# Place only non-overlapping blueprints that pass validation
 	for pos in _placeable_blueprints:
 		if GameManager.can_place_building(selected_building, pos, MAP_SIZE, _drag_rotation):
@@ -165,6 +190,80 @@ func _commit_drag() -> void:
 	_placeable_blueprints.clear()
 	# Keep the drag rotation as the current rotation for convenience
 	current_rotation = _drag_rotation
+
+# ── Multi-phase placement ─────────────────────────────────────────────────
+
+func _commit_phase_drag() -> void:
+	var phase_def: Dictionary = _phase_config.phases[_phase_index]
+	var bid: StringName = phase_def.building_id
+	var placed: Array = []
+
+	for pos in _placeable_blueprints:
+		if _can_place_phase(pos, _drag_rotation, placed.size()):
+			GameManager.place_building(bid, pos, _drag_rotation)
+			placed.append({pos = pos, rotation = _drag_rotation})
+
+	_dragging = false
+	_drag_axis = -1
+	_blueprints.clear()
+	_placeable_blueprints.clear()
+	current_rotation = _drag_rotation
+
+	if placed.is_empty():
+		return
+
+	_phase_placements.append(placed)
+	_phase_index += 1
+
+	if _phase_index >= _phase_config.phases.size():
+		_complete_multiphase()
+	else:
+		# Advance to next phase's building
+		selected_building = _phase_config.phases[_phase_index].building_id
+
+## Check if a building can be placed in the current phase at pos with index.
+func _can_place_phase(pos: Vector2i, rot: int, index: int) -> bool:
+	var phase_def: Dictionary = _phase_config.phases[_phase_index]
+	var bid: StringName = phase_def.building_id
+	if not GameManager.can_place_building(bid, pos, MAP_SIZE, rot):
+		return false
+	if _phase_index == 0:
+		return true
+	var prev_placements: Array = _phase_placements[_phase_placements.size() - 1]
+	# Count match: don't allow more placements than prior phase
+	if phase_def.get("count_match", false):
+		if index >= prev_placements.size():
+			return false
+	# Max distance: check against corresponding prior placement
+	var max_dist: int = phase_def.get("max_distance", 0)
+	if max_dist > 0 and index < prev_placements.size():
+		var prev_pos: Vector2i = prev_placements[index].pos
+		var dist := absi(pos.x - prev_pos.x) + absi(pos.y - prev_pos.y)
+		if dist > max_dist:
+			return false
+	return true
+
+func _complete_multiphase() -> void:
+	if _phase_config.has("link_fn"):
+		GameManager.call(_phase_config.link_fn, _phase_placements)
+	# Restart at phase 0 so the player can keep building more of the same
+	_phase_index = 0
+	_phase_placements.clear()
+	selected_building = _phase_config.phases[0].building_id
+
+## Cancel multi-phase placement, removing buildings placed in prior phases.
+func _cancel_multiphase() -> void:
+	if _phase_index <= 0:
+		_phase_index = -1
+		_phase_config = {}
+		_phase_placements.clear()
+		return
+	for phase_placed in _phase_placements:
+		for entry in phase_placed:
+			GameManager.remove_building(entry.pos)
+	_phase_index = -1
+	_phase_config = {}
+	_phase_placements.clear()
 
 func _update_blueprints() -> void:
 	var raw_pos := _get_grid_pos_under_mouse()
@@ -232,7 +331,15 @@ func _filter_placeable_blueprints() -> void:
 		return
 	var rotated_shape = GameManager.get_rotated_shape(def, _drag_rotation)
 	var claimed_cells: Dictionary = {} # Vector2i -> true
+	# Multi-phase count limit: don't show more blueprints than prior phase placed
+	var max_count := 999999
+	if _phase_index > 0:
+		var phase_def: Dictionary = _phase_config.phases[_phase_index]
+		if phase_def.get("count_match", false) and _phase_placements.size() > 0:
+			max_count = _phase_placements[_phase_placements.size() - 1].size()
 	for pos in _blueprints:
+		if _placeable_blueprints.size() >= max_count:
+			break
 		# Check if any cell of this blueprint overlaps a cell claimed by a prior blueprint
 		var overlaps := false
 		var cells: Array = []
@@ -260,17 +367,14 @@ func _commit_destroy() -> void:
 		maxi(_destroy_drag_start.x, cursor_grid_pos.x),
 		maxi(_destroy_drag_start.y, cursor_grid_pos.y))
 
-	# Collect unique buildings in the area
+	# Collect unique buildings in the area, including linked buildings
 	var to_remove: Array = []
 	var seen: Dictionary = {}
 	for x in range(min_pos.x, max_pos.x + 1):
 		for y in range(min_pos.y, max_pos.y + 1):
 			var building = GameManager.get_building_at(Vector2i(x, y))
 			if building and is_instance_valid(building):
-				var nid: int = building.get_instance_id()
-				if not seen.has(nid):
-					seen[nid] = true
-					to_remove.append(building.grid_pos)
+				_collect_building_and_linked(building, seen, to_remove)
 
 	_clear_all_highlights()
 
@@ -300,6 +404,17 @@ func _update_destroy_highlights() -> void:
 		var building = GameManager.get_building_at(cursor_grid_pos)
 		if building and is_instance_valid(building):
 			new_set[building.get_instance_id()] = building
+
+	# Include linked buildings (e.g. tunnel partner) in the highlight set
+	var linked_set: Dictionary = {}
+	for nid in new_set:
+		for linked_pos in GameManager.get_linked_buildings(new_set[nid]):
+			var linked = GameManager.buildings.get(linked_pos)
+			if linked and is_instance_valid(linked):
+				linked_set[linked.get_instance_id()] = linked
+	for nid in linked_set:
+		if not new_set.has(nid):
+			new_set[nid] = linked_set[nid]
 
 	# Remove highlights no longer needed
 	for nid in _highlighted_buildings.keys():
@@ -397,8 +512,13 @@ func _draw() -> void:
 		var bbox = GameManager.get_rotated_shape_bbox(def, _drag_rotation)
 		var bbox_px := Vector2(bbox.size) * TILE_SIZE
 		var bbox_offset := Vector2(bbox.min_cell) * TILE_SIZE
-		for pos in _placeable_blueprints:
-			var can_place = GameManager.can_place_building(selected_building, pos, MAP_SIZE, _drag_rotation)
+		for idx in range(_placeable_blueprints.size()):
+			var pos: Vector2i = _placeable_blueprints[idx]
+			var can_place: bool
+			if _phase_index >= 0:
+				can_place = _can_place_phase(pos, _drag_rotation, idx)
+			else:
+				can_place = GameManager.can_place_building(selected_building, pos, MAP_SIZE, _drag_rotation)
 			var color := BLUEPRINT_COLOR if can_place else BLUEPRINT_INVALID_COLOR
 			var anchor_px := Vector2(pos) * TILE_SIZE
 			for cell in rotated_shape:
@@ -410,7 +530,11 @@ func _draw() -> void:
 		var bbox = GameManager.get_rotated_shape_bbox(def, current_rotation)
 		var bbox_px := Vector2(bbox.size) * TILE_SIZE
 		var bbox_offset := Vector2(bbox.min_cell) * TILE_SIZE
-		var can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, MAP_SIZE, current_rotation)
+		var can_place: bool
+		if _phase_index >= 0:
+			can_place = _can_place_phase(cursor_grid_pos, current_rotation, 0)
+		else:
+			can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, MAP_SIZE, current_rotation)
 		var color := GHOST_COLOR if can_place else GHOST_INVALID_COLOR
 		var anchor_px := Vector2(cursor_grid_pos) * TILE_SIZE
 		for cell in rotated_shape:
@@ -500,6 +624,18 @@ func _get_grid_pos_under_mouse() -> Vector2i:
 
 func _try_remove(pos: Vector2i) -> void:
 	GameManager.remove_building(pos)
+
+## Collect a building and all its linked buildings into to_remove, deduplicating by instance id.
+func _collect_building_and_linked(building: Node2D, seen: Dictionary, to_remove: Array) -> void:
+	var nid: int = building.get_instance_id()
+	if seen.has(nid):
+		return
+	seen[nid] = true
+	to_remove.append(building.grid_pos)
+	for linked_pos in GameManager.get_linked_buildings(building):
+		var linked = GameManager.get_building_at(linked_pos)
+		if linked and is_instance_valid(linked):
+			_collect_building_and_linked(linked, seen, to_remove)
 
 func _debug_spawn_item(pos: Vector2i) -> void:
 	var conv = GameManager.get_conveyor_at(pos)

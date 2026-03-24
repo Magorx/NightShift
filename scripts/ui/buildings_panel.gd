@@ -6,11 +6,15 @@ const CATEGORY_DISPLAY_NAMES := {
 	"conveyor": "Transportation",
 	"splitter": "Transportation",
 	"junction": "Transportation",
+	"tunnel": "Transportation",
 	"extractor": "Extractors",
 	"converter": "Converters",
 	"sink": "Outputs",
 	"source": "Sources",
 }
+
+# Categories hidden from the building panel (placed via multi-phase, not directly)
+const HIDDEN_CATEGORIES := ["tunnel_output"]
 
 # Preferred display order; categories not listed here are appended alphabetically.
 const _PREFERRED_ORDER := ["Transportation", "Extractors", "Converters", "Outputs", "Sources"]
@@ -59,6 +63,8 @@ func _group_buildings() -> void:
 	_by_category.clear()
 	for id in GameManager.building_defs:
 		var def = GameManager.building_defs[id]
+		if def.category in HIDDEN_CATEGORIES:
+			continue
 		var cat_name: String = CATEGORY_DISPLAY_NAMES.get(def.category, def.category.capitalize())
 		if not _by_category.has(cat_name):
 			_by_category[cat_name] = []

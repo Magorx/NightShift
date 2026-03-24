@@ -204,6 +204,24 @@ func _serialize_building_state(building: Node2D) -> Dictionary:
 			axes_data.append(buffer_data)
 		state["junction_buffers"] = axes_data
 
+	# Tunnel: serialize partner position, length, and buffer (input only)
+	if building.has_meta("tunnel"):
+		var tnl = building.get_meta("tunnel")
+		state["tunnel_is_input"] = tnl.is_input
+		state["tunnel_direction"] = tnl.direction
+		state["tunnel_length"] = tnl.tunnel_length
+		if tnl.partner:
+			state["tunnel_partner_x"] = tnl.partner.grid_pos.x
+			state["tunnel_partner_y"] = tnl.partner.grid_pos.y
+		if tnl.is_input:
+			var buffer_data: Array = []
+			for item in tnl._buffer:
+				buffer_data.append({
+					"id": str(item.id),
+					"progress": item.progress,
+				})
+			state["tunnel_buffer"] = buffer_data
+
 	return state
 
 func _serialize_inventory(inv) -> Dictionary:
@@ -235,6 +253,9 @@ func _deserialize_run(data: Dictionary) -> void:
 
 		var state: Dictionary = entry.get("state", {})
 		_deserialize_building_state(building, state)
+
+	# Deferred pass: link tunnel pairs using saved partner positions
+	_link_tunnels_deferred(building_list)
 
 	# Restore items delivered
 	var delivered: Dictionary = data.get("items_delivered", {})
@@ -339,6 +360,37 @@ func _deserialize_building_state(building: Node2D, state: Dictionary) -> void:
 				}
 				jnc._buffers[axis].append(entry)
 				jnc._position_item(entry)
+
+	# Tunnel buffer (input end only) — partner linking is done in _link_tunnels_deferred
+	if building.has_meta("tunnel") and state.has("tunnel_buffer"):
+		var tnl = building.get_meta("tunnel")
+		for item_data in state["tunnel_buffer"]:
+			tnl._buffer.append({
+				id = StringName(item_data["id"]),
+				progress = float(item_data.get("progress", 0.0)),
+			})
+
+## Re-link tunnel input/output pairs after all buildings are deserialized.
+func _link_tunnels_deferred(building_list: Array) -> void:
+	for entry in building_list:
+		var state: Dictionary = entry.get("state", {})
+		if not state.has("tunnel_partner_x"):
+			continue
+		if not state.get("tunnel_is_input", false):
+			continue
+		var grid_pos := Vector2i(int(entry["grid_x"]), int(entry["grid_y"]))
+		var partner_pos := Vector2i(int(state["tunnel_partner_x"]), int(state["tunnel_partner_y"]))
+		var in_building = GameManager.buildings.get(grid_pos)
+		var out_building = GameManager.buildings.get(partner_pos)
+		if not in_building or not out_building:
+			continue
+		if not in_building.has_meta("tunnel") or not out_building.has_meta("tunnel"):
+			continue
+		var in_logic = in_building.get_meta("tunnel")
+		var out_logic = out_building.get_meta("tunnel")
+		var length: int = int(state.get("tunnel_length", 1))
+		in_logic.setup_pair(out_logic, length)
+		out_logic.setup_pair(in_logic, length)
 
 func _deserialize_inventory(inv, data: Dictionary) -> void:
 	for item_id_str in data:
