@@ -1,18 +1,14 @@
 class_name ConveyorBelt
 extends Node2D
 
+const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
 const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 var grid_pos: Vector2i
 var direction: int = 0 # 0=right, 1=down, 2=left, 3=up
 var traverse_time: float = 1.0 # seconds for an item to cross this conveyor
 
-# Array of items on this conveyor, sorted by progress (highest first)
-# Each entry: {id: StringName, progress: float, entry_from: Vector2i, visual: Node2D}
-var items: Array = []
-
-var max_items: int = 2 # capacity, increase for faster belts later
-var item_gap: float = 1.0 / max_items # exact spacing between items
+var buffer = ItemBuffer.new(2)
 
 func get_direction_vector() -> Vector2i:
 	return DIRECTION_VECTORS[direction]
@@ -21,59 +17,37 @@ func get_next_pos() -> Vector2i:
 	return grid_pos + get_direction_vector()
 
 func has_item() -> bool:
-	return items.size() > 0
+	return not buffer.is_empty()
 
 func is_full() -> bool:
-	return items.size() >= max_items
+	return buffer.is_full()
 
 func can_accept() -> bool:
-	if is_full():
-		return false
-	# Check if there's room at the entry (no item too close to progress 0)
-	if items.size() > 0:
-		var last_item = items[items.size() - 1]
-		if last_item.progress < item_gap:
-			return false
-	return true
+	return buffer.can_accept()
 
 # Place item with entry direction tracking for smooth visuals
 # entry_from: the direction FROM which the item entered (e.g. LEFT if item came from the left)
 func place_item(item_id: StringName, entry_from: Vector2i = Vector2i.ZERO) -> bool:
-	if not can_accept():
+	if not buffer.can_accept():
 		return false
 	# Default entry: upstream edge (opposite of conveyor direction)
 	if entry_from == Vector2i.ZERO:
 		entry_from = -get_direction_vector()
-	var visual = _create_item_visual(item_id)
-	var item_data = {id = item_id, progress = 0.0, entry_from = entry_from, visual = visual}
-	items.append(item_data)
-	_position_item(item_data)
+	var item: Dictionary = buffer.add_item(item_id, {entry_from = entry_from})
+	_position_item(item)
 	return true
 
 # Remove and return the frontmost item (highest progress)
 func pop_front_item() -> Dictionary:
-	if items.size() == 0:
-		return {}
-	var item_data = items[0]
-	if item_data.visual:
-		item_data.visual.queue_free()
-	items.remove_at(0)
-	return item_data
+	return buffer.pop_front()
 
 func get_front_item() -> Dictionary:
-	if items.size() == 0:
-		return {}
-	return items[0]
+	return buffer.peek_front()
 
 # Called by conveyor_system each tick
 func update_items(delta: float, speed: float) -> void:
-	for i in range(items.size()):
-		var item = items[i]
-		# Calculate max progress (can't pass the item ahead)
-		var max_progress := 1.0
-		if i > 0:
-			max_progress = items[i - 1].progress - item_gap
-		item.progress = minf(item.progress + speed * delta, max_progress)
+	buffer.advance_clamped(delta, speed)
+	for item in buffer.items:
 		_position_item(item)
 
 func _position_item(item_data: Dictionary) -> void:
@@ -95,25 +69,5 @@ func _position_item(item_data: Dictionary) -> void:
 	var p2 := exit_point
 	item_data.visual.position = p0 * (1 - t) * (1 - t) + p1 * 2 * (1 - t) * t + p2 * t * t
 
-func _create_item_visual(item_id: StringName) -> Node2D:
-	var visual := Node2D.new()
-	var item_def = _get_item_def(item_id)
-	var color := Color.WHITE
-	if item_def:
-		color = item_def.color
-	visual.set_meta("color", color)
-	visual.set_script(load("res://buildings/shared/item_visual.gd"))
-	GameManager.item_layer.add_child(visual)
-	return visual
-
 func cleanup_visuals() -> void:
-	for item in items:
-		if item.visual:
-			item.visual.queue_free()
-	items.clear()
-
-func _get_item_def(item_id: StringName):
-	var path := "res://resources/items/%s.tres" % str(item_id)
-	if ResourceLoader.exists(path):
-		return load(path)
-	return null
+	buffer.cleanup()

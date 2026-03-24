@@ -13,9 +13,9 @@ func run_simulation() -> void:
 	var conv_mid = sim_get_conveyor_at(Vector2i(6, 10))
 	var item_count: int = 0
 	if conv:
-		item_count += conv.items.size()
+		item_count += conv.buffer.size()
 	if conv_mid:
-		item_count += conv_mid.items.size()
+		item_count += conv_mid.buffer.size()
 	sim_assert(item_count >= 1, "Test 1: Source produced item onto conveyor (got %d)" % item_count)
 
 	# === Test 2: Source competes fairly with upstream conveyor via round-robin ===
@@ -45,9 +45,9 @@ func run_simulation() -> void:
 	var mid_conv = sim_get_conveyor_at(Vector2i(6, 11))
 	var total: int = 0
 	if end_conv:
-		total += end_conv.items.size()
+		total += end_conv.buffer.size()
 	if mid_conv:
-		total += mid_conv.items.size()
+		total += mid_conv.buffer.size()
 	# Should have items from both sources (at least 2 from conveyor + 1+ from source)
 	sim_assert(total >= 2, "Test 2: Items from both source and conveyor reached end (got %d)" % total)
 
@@ -81,8 +81,8 @@ func run_simulation() -> void:
 
 	var right_conv = sim_get_conveyor_at(Vector2i(7, 10))
 	var down_conv = sim_get_conveyor_at(Vector2i(6, 11))
-	var right_items: int = right_conv.items.size() if right_conv else 0
-	var down_items: int = down_conv.items.size() if down_conv else 0
+	var right_items: int = right_conv.buffer.size() if right_conv else 0
+	var down_items: int = down_conv.buffer.size() if down_conv else 0
 	sim_assert(right_items + down_items >= 2, "Test 4: Splitter received items from source (got %d)" % (right_items + down_items))
 
 	# === Test 5: Splitter-to-splitter chain (routers in a line) ===
@@ -145,8 +145,8 @@ func run_simulation() -> void:
 	await sim_advance_seconds(2.0)
 
 	var test_conv = sim_get_conveyor_at(Vector2i(6, 10))
-	if test_conv and test_conv.items.size() > 0:
-		var entry_from = test_conv.items[test_conv.items.size() - 1].entry_from
+	if test_conv and test_conv.buffer.size() > 0:
+		var entry_from = test_conv.buffer.items[test_conv.buffer.size() - 1].entry_from
 		sim_assert(entry_from == Vector2i.LEFT, "Test 8: Entry from source is LEFT (got %s)" % str(entry_from))
 	else:
 		sim_assert(false, "Test 8: No item on conveyor to check entry_from")

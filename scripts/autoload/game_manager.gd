@@ -596,7 +596,7 @@ func peek_output_item(target_pos: Vector2i, from_dir_idx: int) -> StringName:
 		return &""
 	if building.has_meta("conveyor"):
 		var conv = building.get_meta("conveyor")
-		if conv.get_next_pos() == target_pos and conv.items.size() > 0:
+		if conv.get_next_pos() == target_pos and conv.has_item():
 			var front = conv.get_front_item()
 			if front.progress >= 1.0:
 				return front.id
@@ -632,7 +632,7 @@ func pull_item(target_pos: Vector2i, from_dir_idx: int) -> Dictionary:
 
 	if building.has_meta("conveyor"):
 		var conv = building.get_meta("conveyor")
-		if conv.get_next_pos() == target_pos and conv.items.size() > 0:
+		if conv.get_next_pos() == target_pos and conv.has_item():
 			var front = conv.get_front_item()
 			if front.progress >= 1.0:
 				var item = conv.pop_front_item()

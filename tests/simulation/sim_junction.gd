@@ -23,9 +23,9 @@ func run_simulation() -> void:
 	var conv_right_mid = sim_get_conveyor_at(Vector2i(11, 10))
 	var right_count: int = 0
 	if conv_right_end:
-		right_count += conv_right_end.items.size()
+		right_count += conv_right_end.buffer.size()
 	if conv_right_mid:
-		right_count += conv_right_mid.items.size()
+		right_count += conv_right_mid.buffer.size()
 	sim_assert(right_count == 1, "Item passed through junction to the right (got %d)" % right_count)
 
 	# === Test 2: No output at opposite side — item should NOT be accepted ===
@@ -102,8 +102,8 @@ func run_simulation() -> void:
 
 	# Item should be stuck in the junction buffer
 	var jnc = sim_get_building_at(Vector2i(6, 10)).get_meta("junction")
-	var h_buf: int = jnc._buffers[0].size()
-	var v_buf: int = jnc._buffers[1].size()
+	var h_buf: int = jnc.buffers[0].size()
+	var v_buf: int = jnc.buffers[1].size()
 	sim_assert(h_buf + v_buf > 0, "Item waiting in junction after output removed")
 
 	# Re-add the output
@@ -113,8 +113,8 @@ func run_simulation() -> void:
 	# Item should have been pushed out
 	out_conv = sim_get_conveyor_at(Vector2i(7, 10))
 	sim_assert(out_conv.has_item(), "Item pushed out after output restored")
-	h_buf = jnc._buffers[0].size()
-	v_buf = jnc._buffers[1].size()
+	h_buf = jnc.buffers[0].size()
+	v_buf = jnc.buffers[1].size()
 	sim_assert(h_buf + v_buf == 0, "Junction buffer empty after output restored")
 
 	# === Test 5: Axis direction reversal — stranded item reverses, no overflow ===
@@ -135,7 +135,7 @@ func run_simulation() -> void:
 	await sim_advance_ticks(2)
 
 	jnc = sim_get_building_at(Vector2i(6, 10)).get_meta("junction")
-	sim_assert(jnc._buffers[0].size() == 1, "Item stranded in horizontal buffer")
+	sim_assert(jnc.buffers[0].size() == 1, "Item stranded in horizontal buffer")
 
 	# Reverse the axis: new input from right, output to left
 	sim_place_building(&"conveyor", Vector2i(7, 10), 2) # points left (new input)
@@ -148,9 +148,9 @@ func run_simulation() -> void:
 	await sim_advance_seconds(5.0)
 
 	# Buffer should never have exceeded capacity — all items should be on the output
-	sim_assert(jnc._buffers[0].size() <= 2, "Horizontal buffer never exceeded capacity (got %d)" % jnc._buffers[0].size())
+	sim_assert(jnc.buffers[0].size() <= 2, "Horizontal buffer never exceeded capacity (got %d)" % jnc.buffers[0].size())
 	var left_out = sim_get_conveyor_at(Vector2i(5, 10))
-	var total_out: int = left_out.items.size() if left_out else 0
+	var total_out: int = left_out.buffer.size() if left_out else 0
 	sim_assert(total_out > 0, "Items arrived at reversed output")
 
 	sim_finish()

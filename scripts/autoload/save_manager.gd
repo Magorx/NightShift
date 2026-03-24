@@ -142,7 +142,7 @@ func _serialize_building_state(building: Node2D) -> Dictionary:
 	if building.has_meta("conveyor"):
 		var conv: ConveyorBelt = building.get_meta("conveyor")
 		var items_data: Array = []
-		for item in conv.items:
+		for item in conv.buffer.items:
 			items_data.append({
 				"id": str(item.id),
 				"progress": item.progress,
@@ -179,7 +179,7 @@ func _serialize_building_state(building: Node2D) -> Dictionary:
 	if building.has_meta("splitter"):
 		var spl = building.get_meta("splitter")
 		var buffer_data: Array = []
-		for item in spl._buffer:
+		for item in spl.buffer.items:
 			buffer_data.append({
 				"id": str(item.id),
 				"from_dir_idx": item.from_dir_idx,
@@ -194,7 +194,7 @@ func _serialize_building_state(building: Node2D) -> Dictionary:
 		var axes_data: Array = []
 		for axis in 2:
 			var buffer_data: Array = []
-			for item in jnc._buffers[axis]:
+			for item in jnc.buffers[axis].items:
 				buffer_data.append({
 					"id": str(item.id),
 					"from_dir_idx": item.from_dir_idx,
@@ -215,7 +215,7 @@ func _serialize_building_state(building: Node2D) -> Dictionary:
 			state["tunnel_partner_y"] = tnl.partner.grid_pos.y
 		if tnl.is_input:
 			var buffer_data: Array = []
-			for item in tnl._buffer:
+			for item in tnl.buffer.items:
 				buffer_data.append({
 					"id": str(item.id),
 					"progress": item.progress,
@@ -292,7 +292,7 @@ func _deserialize_building_state(building: Node2D, state: Dictionary) -> void:
 			var entry_from := Vector2i(int(item_data["entry_from_x"]), int(item_data["entry_from_y"]))
 			if conv.place_item(item_id, entry_from):
 				# Restore exact progress
-				var placed_item = conv.items[conv.items.size() - 1]
+				var placed_item = conv.buffer.items[conv.buffer.size() - 1]
 				placed_item.progress = item_data["progress"]
 				conv._position_item(placed_item)
 
@@ -333,16 +333,12 @@ func _deserialize_building_state(building: Node2D, state: Dictionary) -> void:
 	if building.has_meta("splitter") and state.has("buffer"):
 		var spl = building.get_meta("splitter")
 		for item_data in state["buffer"]:
-			var visual = spl._create_item_visual(StringName(item_data["id"]))
-			var entry := {
-				id = StringName(item_data["id"]),
+			var item: Dictionary = spl.buffer.add_item(StringName(item_data["id"]), {
 				from_dir_idx = int(item_data["from_dir_idx"]),
 				output_dir_idx = int(item_data.get("output_dir_idx", -1)),
-				progress = float(item_data.get("progress", 0.0)),
-				visual = visual,
-			}
-			spl._buffer.append(entry)
-			spl._position_item(entry)
+			})
+			item.progress = float(item_data.get("progress", 0.0))
+			spl._position_item(item)
 
 	# Junction state
 	if building.has_meta("junction") and state.has("junction_buffers"):
@@ -350,25 +346,22 @@ func _deserialize_building_state(building: Node2D, state: Dictionary) -> void:
 		var axes_data: Array = state["junction_buffers"]
 		for axis in mini(axes_data.size(), 2):
 			for item_data in axes_data[axis]:
-				var visual = jnc._create_item_visual(StringName(item_data["id"]))
-				var entry := {
-					id = StringName(item_data["id"]),
+				var item: Dictionary = jnc.buffers[axis].add_item(StringName(item_data["id"]), {
 					from_dir_idx = int(item_data["from_dir_idx"]),
 					output_dir_idx = int(item_data["output_dir_idx"]),
-					progress = float(item_data.get("progress", 0.0)),
-					visual = visual,
-				}
-				jnc._buffers[axis].append(entry)
-				jnc._position_item(entry)
+				})
+				item.progress = float(item_data.get("progress", 0.0))
+				jnc._position_item(item)
 
 	# Tunnel buffer (input end only) — partner linking is done in _link_tunnels_deferred
 	if building.has_meta("tunnel") and state.has("tunnel_buffer"):
 		var tnl = building.get_meta("tunnel")
 		for item_data in state["tunnel_buffer"]:
-			tnl._buffer.append({
+			var item: Dictionary = {
 				id = StringName(item_data["id"]),
 				progress = float(item_data.get("progress", 0.0)),
-			})
+			}
+			tnl.buffer.items.append(item)
 
 ## Re-link tunnel input/output pairs after all buildings are deserialized.
 func _link_tunnels_deferred(building_list: Array) -> void:

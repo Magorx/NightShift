@@ -45,7 +45,7 @@ func _physics_process(delta: float) -> void:
 	# Third pass: clamp items that couldn't transfer (end of chain or blocked)
 	for pos in conveyors:
 		var conv = conveyors[pos]
-		if conv.items.size() == 0:
+		if conv.buffer.is_empty():
 			continue
 		var front = conv.get_front_item()
 		if front.progress > 1.0:

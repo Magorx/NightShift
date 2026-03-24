@@ -36,7 +36,7 @@ func run_simulation() -> void:
 	await sim_advance_seconds(6.0)
 
 	# With max_items=2 the second item fits on the last conveyor behind the first
-	sim_assert(conv_last.items.size() == 2, "Second item stopped behind first (blocked)")
+	sim_assert(conv_last.buffer.size() == 2, "Second item stopped behind first (blocked)")
 
 	# Test side entry: place a downward conveyor and feed from the right chain
 	# Conveyor at (15, 10) pointing down, fed by (14, 10) pointing right

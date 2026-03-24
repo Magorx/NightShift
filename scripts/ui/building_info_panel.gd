@@ -59,7 +59,7 @@ func _update_stats() -> void:
 
 	if _building.has_meta("conveyor"):
 		var conv: ConveyorBelt = _building.get_meta("conveyor")
-		_add_stat("Items on belt: %d/%d" % [conv.items.size(), conv.max_items])
+		_add_stat("Items on belt: %d/%d" % [conv.buffer.size(), conv.buffer.capacity])
 		var dirs := ["Right", "Down", "Left", "Up"]
 		_add_stat("Direction: %s" % dirs[conv.direction])
 

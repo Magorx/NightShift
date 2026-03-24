@@ -1,6 +1,7 @@
 class_name SplitterLogic
 extends Node
 
+const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
 const RoundRobin = preload("res://scripts/round_robin.gd")
 const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
@@ -8,12 +9,7 @@ const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector
 var grid_pos: Vector2i
 var traverse_time: float = 1.3 # seconds for an item to cross the splitter
 
-# Buffer of items in transit through the splitter.
-# Each entry: {id: StringName, from_dir_idx: int, output_dir_idx: int,
-#              progress: float, visual: Node2D}
-var _buffer: Array = []
-var _buffer_capacity: int = 2
-var item_gap: float = 1.0 / _buffer_capacity
+var buffer = ItemBuffer.new(2)
 
 var _input_rr: RoundRobin = RoundRobin.new()
 var _output_rr: RoundRobin = RoundRobin.new()
@@ -25,22 +21,21 @@ func _physics_process(delta: float) -> void:
 
 func _advance_items(delta: float) -> void:
 	var speed := 1.0 / traverse_time
-	for item in _buffer:
-		if item.progress < 1.0:
-			item.progress = minf(item.progress + speed * delta, 1.0)
+	buffer.advance_unclamped(delta, speed)
+	for item in buffer.items:
 		_position_item(item)
 
 # Re-check assigned outputs each tick — if the target was removed or
 # now points at us, pick another valid output from the current position.
 # Also reroute completed items stuck at congested outputs to free ones.
 func _validate_outputs() -> void:
-	for item in _buffer:
+	for item in buffer.items:
 		if item.output_dir_idx >= 0 and _is_valid_output(item.output_dir_idx):
 			continue
 		item.output_dir_idx = _find_any_valid_output(item.from_dir_idx)
 	# Reroute: if a completed item is stuck and a valid output has no items
 	# heading to it, redirect the stuck item there.
-	for item in _buffer:
+	for item in buffer.items:
 		if item.progress < 1.0 or item.output_dir_idx < 0:
 			continue
 		var free_dir := _find_free_output(item)
@@ -48,16 +43,16 @@ func _validate_outputs() -> void:
 			item.output_dir_idx = free_dir
 
 func _try_pull_inputs() -> void:
-	if _buffer.size() >= _buffer_capacity:
+	if buffer.is_full():
 		return
 	# Entry gap: don't pull if the newest item is still too close to the entry.
-	for item in _buffer:
-		if item.progress < item_gap:
+	for item in buffer.items:
+		if item.progress < buffer.item_gap:
 			return
 
 	var start: int = _input_rr.index % 4
 	for i in range(4):
-		if _buffer.size() >= _buffer_capacity:
+		if buffer.is_full():
 			break
 		var dir_idx: int = (start + i) % 4
 		# Don't pull if every valid output is backed up.
@@ -67,16 +62,11 @@ func _try_pull_inputs() -> void:
 		if result.is_empty():
 			continue
 		var output_dir := _assign_output(dir_idx)
-		var visual = _create_item_visual(result.id)
-		var entry := {
-			id = result.id,
+		var item: Dictionary = buffer.add_item(result.id, {
 			from_dir_idx = dir_idx,
 			output_dir_idx = output_dir,
-			progress = 0.0,
-			visual = visual,
-		}
-		_buffer.append(entry)
-		_position_item(entry)
+		})
+		_position_item(item)
 		_input_rr.advance_past(dir_idx)
 
 # Assign output via round-robin, excluding the input direction and backed-up outputs.
@@ -109,7 +99,7 @@ func _has_available_output(from_dir_idx: int) -> bool:
 
 # An output is backed up when a completed item is still waiting to be pulled from it.
 func _is_output_backed_up(dir_idx: int) -> bool:
-	for item in _buffer:
+	for item in buffer.items:
 		if item.output_dir_idx == dir_idx and item.progress >= 1.0:
 			return true
 	return false
@@ -133,7 +123,7 @@ func _find_free_output(stuck_item: Dictionary) -> int:
 		if not _is_valid_output(dir_idx):
 			continue
 		var taken := false
-		for other in _buffer:
+		for other in buffer.items:
 			if other.output_dir_idx == dir_idx:
 				taken = true
 				break
@@ -153,12 +143,10 @@ func _can_downstream_accept(dir_idx: int) -> bool:
 	if building.has_meta("conveyor"):
 		return building.get_meta("conveyor").can_accept()
 	if building.has_meta("splitter"):
-		var spl = building.get_meta("splitter")
-		return spl._buffer.size() < spl._buffer_capacity
+		return not building.get_meta("splitter").buffer.is_full()
 	if building.has_meta("junction"):
 		var jnc = building.get_meta("junction")
-		var axis: int = dir_idx % 2
-		return jnc._buffers[axis].size() < jnc._axis_capacity
+		return not jnc.buffers[dir_idx % 2].is_full()
 	if building.has_meta("sink"):
 		return true
 	return false
@@ -177,28 +165,27 @@ func has_output_toward(target_pos: Vector2i) -> bool:
 # Items report availability based on their assigned output direction.
 # The reroute logic in _validate_outputs handles redirecting stuck items to free outputs.
 func can_provide_to(target_pos: Vector2i) -> bool:
-	for item in _buffer:
+	for item in buffer.items:
 		if item.progress >= 1.0 and item.output_dir_idx >= 0:
 			if grid_pos + DIRECTION_VECTORS[item.output_dir_idx] == target_pos:
 				return true
 	return false
 
 func peek_output_for(target_pos: Vector2i) -> StringName:
-	for item in _buffer:
+	for item in buffer.items:
 		if item.progress >= 1.0 and item.output_dir_idx >= 0:
 			if grid_pos + DIRECTION_VECTORS[item.output_dir_idx] == target_pos:
 				return item.id
 	return &""
 
 func take_item_for(target_pos: Vector2i) -> StringName:
-	for i in range(_buffer.size()):
-		var item = _buffer[i]
+	for i in range(buffer.items.size()):
+		var item = buffer.items[i]
 		if item.progress >= 1.0 and item.output_dir_idx >= 0:
 			if grid_pos + DIRECTION_VECTORS[item.output_dir_idx] == target_pos:
-				if item.visual:
-					item.visual.queue_free()
+				buffer.free_visual(item)
 				var item_id: StringName = item.id
-				_buffer.remove_at(i)
+				buffer.items.remove_at(i)
 				return item_id
 	return &""
 
@@ -222,24 +209,4 @@ func _position_item(item: Dictionary) -> void:
 		item.visual.position = entry_point.lerp(center, t)
 
 func cleanup_visuals() -> void:
-	for item in _buffer:
-		if item.visual:
-			item.visual.queue_free()
-	_buffer.clear()
-
-func _create_item_visual(item_id: StringName) -> Node2D:
-	var visual := Node2D.new()
-	var item_def = _get_item_def(item_id)
-	var color := Color.WHITE
-	if item_def:
-		color = item_def.color
-	visual.set_meta("color", color)
-	visual.set_script(load("res://buildings/shared/item_visual.gd"))
-	GameManager.item_layer.add_child(visual)
-	return visual
-
-func _get_item_def(item_id: StringName):
-	var path := "res://resources/items/%s.tres" % str(item_id)
-	if ResourceLoader.exists(path):
-		return load(path)
-	return null
+	buffer.cleanup()

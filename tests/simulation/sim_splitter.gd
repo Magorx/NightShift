@@ -40,14 +40,14 @@ func run_simulation() -> void:
 	# With round-robin, items should be split between the two outputs
 	var conv_right_end = sim_get_conveyor_at(Vector2i(12, 10))
 	var conv_down_end = sim_get_conveyor_at(Vector2i(10, 12))
-	var right_count = conv_right_end.items.size() if conv_right_end else 0
-	var down_count = conv_down_end.items.size() if conv_down_end else 0
+	var right_count = conv_right_end.buffer.size() if conv_right_end else 0
+	var down_count = conv_down_end.buffer.size() if conv_down_end else 0
 
 	# Also check the intermediate conveyors
 	var conv_right_mid = sim_get_conveyor_at(Vector2i(11, 10))
 	var conv_down_mid = sim_get_conveyor_at(Vector2i(10, 11))
-	right_count += conv_right_mid.items.size() if conv_right_mid else 0
-	down_count += conv_down_mid.items.size() if conv_down_mid else 0
+	right_count += conv_right_mid.buffer.size() if conv_right_mid else 0
+	down_count += conv_down_mid.buffer.size() if conv_down_mid else 0
 
 	var total_output = right_count + down_count
 	sim_assert(total_output == 2, "Both items passed through splitter (got %d)" % total_output)
