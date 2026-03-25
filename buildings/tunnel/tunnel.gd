@@ -150,6 +150,9 @@ func get_linked_positions() -> Array:
 		return [partner.grid_pos]
 	return []
 
+func get_output_visual_distance() -> float:
+	return 0.5
+
 func has_output_toward(target_pos: Vector2i) -> bool:
 	if is_input:
 		return false

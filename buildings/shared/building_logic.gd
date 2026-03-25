@@ -37,6 +37,13 @@ func take_item_for(_target_pos: Vector2i) -> StringName:
 func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 	return false
 
+# ── Visual origin ──────────────────────────────────────────────────────────
+
+## How far (in tile-halves) from the pulling conveyor's center the item visual
+## should originate.  0.5 = tile edge (conveyors), 1.0 = source center (default).
+func get_output_visual_distance() -> float:
+	return 1.0
+
 # ── Downstream acceptance ───────────────────────────────────────────────────
 
 ## Returns true if this building can currently accept an item from the given

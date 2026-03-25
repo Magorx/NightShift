@@ -161,6 +161,9 @@ func _is_valid_output(dir_idx: int) -> bool:
 func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 	return true
 
+func get_output_visual_distance() -> float:
+	return 0.5
+
 func has_output_toward(target_pos: Vector2i) -> bool:
 	var diff: Vector2i = target_pos - grid_pos
 	return diff in DIRECTION_VECTORS

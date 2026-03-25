@@ -1,11 +1,84 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=18 format=3 uid="uid://cas2sgdt0e4jq"]
 
-[ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
-[ext_resource type="Script" path="res://buildings/shared/building_arrow.gd" id="2"]
-[ext_resource type="Script" path="res://buildings/drill/extractor.gd" id="3"]
-[ext_resource type="Script" path="res://buildings/drill/drill_progress.gd" id="4"]
-[ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="5"]
-[ext_resource type="Script" path="res://buildings/shared/output_cell.gd" id="6"]
+[ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
+[ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="2"]
+[ext_resource type="Script" uid="uid://6mvwwob8xwe" path="res://buildings/drill/extractor.gd" id="3"]
+[ext_resource type="Script" uid="uid://bskpekvve1ai8" path="res://buildings/drill/drill_progress.gd" id="4"]
+[ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="5"]
+[ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="6"]
+[ext_resource type="Texture2D" uid="uid://b4n4abh54xt8o" path="res://buildings/drill/sprites/main-Sheet.png" id="7_5dt0b"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7ic84"]
+atlas = ExtResource("7_5dt0b")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5vaft"]
+atlas = ExtResource("7_5dt0b")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qhefy"]
+atlas = ExtResource("7_5dt0b")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_v8n6r"]
+atlas = ExtResource("7_5dt0b")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_cg6se"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7ic84")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5vaft")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qhefy")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_v8n6r")
+}],
+"loop": true,
+"name": &"default",
+"speed": 10.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_aaw4m"]
+atlas = ExtResource("7_5dt0b")
+region = Rect2(0, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d8bk5"]
+atlas = ExtResource("7_5dt0b")
+region = Rect2(32, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3lgpv"]
+atlas = ExtResource("7_5dt0b")
+region = Rect2(64, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6mw4y"]
+atlas = ExtResource("7_5dt0b")
+region = Rect2(96, 32, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_owst7"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_aaw4m")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_d8bk5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3lgpv")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6mw4y")
+}],
+"loop": true,
+"name": &"default",
+"speed": 10.0
+}]
 
 [node name="Drill" type="Node2D"]
 script = ExtResource("1")
@@ -13,21 +86,21 @@ script = ExtResource("1")
 [node name="Shape" type="Node2D" parent="."]
 
 [node name="Cell_0_0" type="ColorRect" parent="Shape"]
-script = ExtResource("5")
 offset_right = 32.0
 offset_bottom = 32.0
 color = Color(0.55, 0.55, 0.6, 1)
+script = ExtResource("5")
 
 [node name="Inputs" type="Node2D" parent="."]
 
 [node name="Outputs" type="Node2D" parent="."]
 
 [node name="Out_0" type="ColorRect" parent="Outputs"]
-script = ExtResource("6")
 offset_left = 32.0
 offset_right = 64.0
 offset_bottom = 32.0
 color = Color(0.3, 0.9, 0.3, 0)
+script = ExtResource("6")
 allow_left = false
 
 [node name="BuildAnchor" type="Node2D" parent="."]
@@ -40,3 +113,16 @@ script = ExtResource("3")
 
 [node name="ProgressBar" type="Node2D" parent="."]
 script = ExtResource("4")
+
+[node name="SpriteBottom" type="AnimatedSprite2D" parent="."]
+texture_filter = 1
+position = Vector2(16, 16)
+sprite_frames = SubResource("SpriteFrames_cg6se")
+autoplay = "default"
+
+[node name="SpriteTop" type="AnimatedSprite2D" parent="."]
+z_index = 10
+texture_filter = 1
+position = Vector2(16, 16)
+sprite_frames = SubResource("SpriteFrames_owst7")
+autoplay = "default"

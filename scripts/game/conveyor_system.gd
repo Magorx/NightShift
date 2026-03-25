@@ -36,7 +36,7 @@ func _physics_process(delta: float) -> void:
 				var dir_idx: int = (start + i) % 4
 				var result = GameManager.pull_item(pos, dir_idx)
 				if not result.is_empty():
-					conv.place_item(result.id, result.entry_from)
+					conv.place_item(result.id, result.entry_from, result.get("entry_dist", 0.5))
 					rr.advance_past(dir_idx)
 					pulled = true
 					break

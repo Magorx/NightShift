@@ -426,4 +426,4 @@ func pull_item(target_pos: Vector2i, from_dir_idx: int) -> Dictionary:
 	var item_id: StringName = building.logic.take_item_for(target_pos)
 	if item_id == &"":
 		return {}
-	return {id = item_id, entry_from = DIRECTION_VECTORS[from_dir_idx]}
+	return {id = item_id, entry_from = DIRECTION_VECTORS[from_dir_idx], entry_dist = building.logic.get_output_visual_distance()}

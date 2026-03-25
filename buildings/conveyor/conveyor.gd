@@ -29,13 +29,13 @@ func can_accept() -> bool:
 
 # Place item with entry direction tracking for smooth visuals
 # entry_from: the direction FROM which the item entered (e.g. LEFT if item came from the left)
-func place_item(item_id: StringName, entry_from: Vector2i = Vector2i.ZERO) -> bool:
+func place_item(item_id: StringName, entry_from: Vector2i = Vector2i.ZERO, entry_dist: float = 0.5) -> bool:
 	if not buffer.can_accept():
 		return false
 	# Default entry: upstream edge (opposite of conveyor direction)
 	if entry_from == Vector2i.ZERO:
 		entry_from = -get_direction_vector()
-	var item: Dictionary = buffer.add_item(item_id, {entry_from = entry_from})
+	var item: Dictionary = buffer.add_item(item_id, {entry_from = entry_from, entry_dist = entry_dist})
 	_position_item(item)
 	return true
 
@@ -59,8 +59,9 @@ func _position_item(item_data: Dictionary) -> void:
 	var exit_dir := Vector2(get_direction_vector())
 	var entry_dir := Vector2(item_data.entry_from)
 
-	# Entry edge: where the item enters the tile
-	var entry_point := center + entry_dir * 0.5 * TILE_SIZE
+	# Entry edge: where the item enters the tile (0.5 = tile edge, 1.0 = source center)
+	var entry_dist: float = item_data.get("entry_dist", 0.5)
+	var entry_point := center + entry_dir * entry_dist * TILE_SIZE
 	# Exit edge: where the item leaves the tile
 	var exit_point := center + exit_dir * 0.5 * TILE_SIZE
 
@@ -72,6 +73,9 @@ func _position_item(item_data: Dictionary) -> void:
 	item_data.visual.position = p0 * (1 - t) * (1 - t) + p1 * 2 * (1 - t) * t + p2 * t * t
 
 # ── Pull interface ─────────────────────────────────────────────────────────────
+
+func get_output_visual_distance() -> float:
+	return 0.5
 
 func has_output_toward(target_pos: Vector2i) -> bool:
 	return get_next_pos() == target_pos
@@ -120,6 +124,7 @@ func serialize_state() -> Dictionary:
 			"progress": item.progress,
 			"entry_from_x": item.entry_from.x,
 			"entry_from_y": item.entry_from.y,
+			"entry_dist": item.get("entry_dist", 0.5),
 		})
 	return {"items": items_data}
 
@@ -129,7 +134,8 @@ func deserialize_state(state: Dictionary) -> void:
 	for item_data in state["items"]:
 		var item_id := StringName(item_data["id"])
 		var entry_from := Vector2i(int(item_data["entry_from_x"]), int(item_data["entry_from_y"]))
-		if place_item(item_id, entry_from):
+		var entry_dist: float = item_data.get("entry_dist", 0.5)
+		if place_item(item_id, entry_from, entry_dist):
 			var placed_item = buffer.items[buffer.size() - 1]
 			placed_item.progress = item_data["progress"]
 			_position_item(placed_item)
