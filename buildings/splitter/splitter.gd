@@ -1,12 +1,9 @@
 class_name SplitterLogic
-extends Node
+extends BuildingLogic
 
 const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
 const RoundRobin = preload("res://scripts/round_robin.gd")
-const TILE_SIZE := 32
-const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
-var grid_pos: Vector2i
 var traverse_time: float = 1.3 # seconds for an item to cross the splitter
 
 var buffer = ItemBuffer.new(2)
@@ -17,6 +14,9 @@ var _output_rr: RoundRobin = RoundRobin.new()
 # Per-direction item count: how many buffer items target each output direction.
 # Avoids O(n) scans in _find_free_output and _is_output_backed_up.
 var _dir_count: Array[int] = [0, 0, 0, 0]
+
+func configure(_def: BuildingDef, p_grid_pos: Vector2i, _rotation: int) -> void:
+	super.configure(_def, p_grid_pos, _rotation)
 
 func _physics_process(delta: float) -> void:
 	_validate_outputs()
@@ -143,20 +143,14 @@ func _find_free_output(stuck_item: Dictionary) -> int:
 	return -1
 
 # Check if the building at the given output direction has room to accept an item.
+# Uses the common BuildingLogic.can_accept_from() interface — no type checks needed.
 func _can_downstream_accept(dir_idx: int) -> bool:
 	var neighbor_pos: Vector2i = grid_pos + DIRECTION_VECTORS[dir_idx]
 	var building = GameManager.buildings.get(neighbor_pos)
 	if not building or not building.logic:
 		return false
-	if building.logic is ConveyorBelt:
-		return building.logic.can_accept()
-	if building.logic is SplitterLogic:
-		return not building.logic.buffer.is_full()
-	if building.logic is JunctionLogic:
-		return not building.logic.buffers[dir_idx % 2].is_full()
-	if building.logic is ItemSink:
-		return true
-	return false
+	var from_dir: int = (dir_idx + 2) % 4
+	return building.logic.can_accept_from(from_dir)
 
 func _is_valid_output(dir_idx: int) -> bool:
 	var neighbor_pos: Vector2i = grid_pos + DIRECTION_VECTORS[dir_idx]
@@ -200,6 +194,9 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 				return item_id
 	return &""
 
+func can_accept_from(_from_dir_idx: int) -> bool:
+	return not buffer.is_full()
+
 # ── Visuals ──────────────────────────────────────────────────────────────────
 
 # Quadratic bezier: entry edge -> center -> exit edge (same curve as conveyor).
@@ -222,3 +219,34 @@ func _position_item(item: Dictionary) -> void:
 func cleanup_visuals() -> void:
 	buffer.cleanup()
 	_dir_count = [0, 0, 0, 0]
+
+# ── Serialization ──────────────────────────────────────────────────────────────
+
+func serialize_state() -> Dictionary:
+	var buffer_data: Array = []
+	for item in buffer.items:
+		buffer_data.append({
+			"id": str(item.id),
+			"from_dir_idx": item.from_dir_idx,
+			"output_dir_idx": item.output_dir_idx,
+			"progress": item.progress,
+		})
+	return {"buffer": buffer_data}
+
+func deserialize_state(state: Dictionary) -> void:
+	if not state.has("buffer"):
+		return
+	for item_data in state["buffer"]:
+		var item: Dictionary = buffer.add_item(StringName(item_data["id"]), {
+			from_dir_idx = int(item_data["from_dir_idx"]),
+			output_dir_idx = int(item_data.get("output_dir_idx", -1)),
+		})
+		item.progress = float(item_data.get("progress", 0.0))
+		_position_item(item)
+
+# ── Info panel ─────────────────────────────────────────────────────────────────
+
+func get_info_stats() -> Array:
+	return [
+		{type = "stat", text = "Items: %d/%d" % [buffer.size(), buffer.capacity]},
+	]

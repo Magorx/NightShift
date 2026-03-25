@@ -32,7 +32,7 @@ Exit code 0 = pass, 1 = failure. All output goes to stdout/stderr.
 
 Three singletons registered in Project Settings > Autoload:
 
-- **GameManager** (`scripts/autoload/game_manager.gd`) — building registry, placement API, unified pull system, currency/delivery tracking, building hotkeys, linked buildings (tunnels)
+- **GameManager** (`scripts/autoload/game_manager.gd`) — building registry, placement/removal API, unified pull system (delegates to BuildingLogic interface), currency/delivery tracking, building hotkeys, conveyor sprite updates
 - **SaveManager** (`scripts/autoload/save_manager.gd`) — JSON-based save/load with autosave rotation
 - **AccountManager** (`scripts/autoload/account_manager.gd`) — 3-slot account management under `user://saves/`
 
@@ -53,19 +53,20 @@ Game content is defined as `.tres` resource files — adding new items, recipes,
 - **ItemDef** (`scripts/resources/item_def.gd`) — id, display_name, color, category, export_value, research_value
 - **RecipeDef** (`scripts/resources/recipe_def.gd`) — converter_type, inputs/outputs as ItemStack arrays, craft_time
 - **ItemStack** (`scripts/resources/item_stack.gd`) — item + quantity pair used in recipes
-- **BuildingDef** (`buildings/shared/building_def.gd`) — scene reference, display_name, color, category, description, unlock_tech, replaceable_by; auto-extracts shape/inputs/outputs/anchor from the scene's marker nodes
+- **BuildingDef** (`buildings/shared/building_def.gd`) — scene reference, display_name, color, category, description, unlock_tech, replaceable_by; auto-extracts shape/inputs/outputs/anchor from the scene's marker nodes; owns all rotation/shape math (`get_rotated_shape()`, `rotate_cell()`, `rotate_node_children()`, `rotate_building_sprites()`)
 
 Current content: 4 items (iron_ore, copper_ore, coal, iron_plate), 1 recipe (smelt_iron). Resources live under `resources/items/` and `resources/recipes/`.
 
 ### Building Organization
 
-Each building type lives in its own folder under `buildings/`:
+Each building type lives in its own folder under `buildings/`. Every building's logic node extends `BuildingLogic` (`buildings/shared/building_logic.gd`), which defines the common interface for the pull system, serialization, info panel, and lifecycle. No type-checking (`is ConveyorBelt`, etc.) is needed — GameManager and other systems interact through the interface.
 
 ```
 buildings/
   shared/              # base scripts shared by all buildings
-	building_base.gd   # BuildingBase class (root node script)
-	building_def.gd    # BuildingDef resource class — auto-extracts shape/IO from scene
+	building_base.gd   # BuildingBase class (root node script), has typed `logic: BuildingLogic`
+	building_logic.gd  # BuildingLogic base class — pull interface, configure, serialize, info stats, lifecycle
+	building_def.gd    # BuildingDef resource class — auto-extracts shape/IO from scene, rotation math
 	item_buffer.gd     # core item queue with progress tracking (0.0–1.0)
 	item_visual.gd     # item dot rendering on ItemLayer
 	input_cell.gd      # ColorRect input marker with directional masks
@@ -73,15 +74,27 @@ buildings/
 	shape_cell.gd      # ColorRect shape marker
 	building_arrow.gd  # direction arrow overlay
 	destroy_highlight.gdshader
-  conveyor/            # belt transport
-  drill/               # resource extractor (timer-based production)
-  smelter/             # converter (recipe crafting with multiple IO)
-  sink/                # infinite item consumer, tracks deliveries
-  source/              # simple timer-based item producer
-  splitter/            # distributes items across multiple outputs
-  junction/            # 4-directional pass-through routing
-  tunnel/              # linked pair (input + output), multi-phase placement
+  conveyor/            # belt transport (ConveyorBelt extends BuildingLogic)
+  drill/               # resource extractor (ExtractorLogic extends BuildingLogic)
+  smelter/             # converter (ConverterLogic extends BuildingLogic)
+  sink/                # infinite item consumer (ItemSink extends BuildingLogic)
+  source/              # simple timer-based item producer (ItemSource extends BuildingLogic)
+  splitter/            # distributes items across multiple outputs (SplitterLogic extends BuildingLogic)
+  junction/            # 4-directional pass-through routing (JunctionLogic extends BuildingLogic)
+  tunnel/              # linked pair (TunnelLogic extends BuildingLogic), multi-phase placement
 ```
+
+### BuildingLogic Interface
+
+All building logic nodes extend `BuildingLogic` and override virtual methods as needed:
+
+- **Pull system**: `has_output_toward()`, `can_provide_to()`, `peek_output_for()`, `take_item_for()`, `has_input_from()`, `can_accept_from()`
+- **Configuration**: `configure(def, grid_pos, rotation)` — each building self-configures from its BuildingDef
+- **Serialization**: `serialize_state()` / `deserialize_state()` — each building handles its own save/load
+- **Info panel**: `get_info_stats()` — returns structured `[{type, ...}]` entries (types: "stat", "progress", "recipe", "inventory")
+- **Lifecycle**: `on_removing()` (cleanup on deletion), `cleanup_visuals()`, `get_linked_positions()`
+
+To add a new building type: create a script extending `BuildingLogic`, override the relevant methods, and place it as a child node in the building's `.tscn` scene. No changes to GameManager or other systems needed.
 
 ### BuildingDef Auto-Extraction
 
@@ -121,7 +134,7 @@ Key scenes: `scenes/game/game_world.tscn` (gameplay), `scenes/game/test_world.ts
 
 - JSON format: `meta.json` (account), `run_autosave.json` + `run_backup.json` (game state)
 - Autosave every 60s with backup rotation; corrupt autosave falls back to backup
-- Serializes: buildings (type, grid_pos, rotation, per-type state including buffers/inventories/timers), currency, items_delivered, camera, time_speed
+- Serializes: buildings (type, grid_pos, rotation, state via `logic.serialize_state()`), currency, items_delivered, camera, time_speed
 - Linked buildings (tunnel pairs) are serialized and restored on load
 - Building hotkeys persisted per account slot in `meta.json`
 - 3 account slots under `user://saves/slot_0/` through `slot_2/`
@@ -136,6 +149,13 @@ Custom lightweight test framework (no plugin dependencies) for headless executio
 - Simulations in `tests/simulation/` extend `SimulationBase` — scripted play-throughs with time advancement and input synthesis
 
 Available simulations: `sim_conveyor_transport`, `sim_unified_pull`, `sim_drill_extractor`, `sim_smelter_converter`, `sim_merge_and_source_sink`, `sim_junction`, `sim_splitter`.
+
+### Workflow for New Buildings
+
+1. Create a folder under `buildings/<name>/` with a `.tscn` scene and a `.tres` BuildingDef
+2. Add a logic script extending `BuildingLogic`, override relevant interface methods
+3. Place the logic node as a child in the `.tscn` scene — GameManager finds it automatically via `is BuildingLogic`
+4. No changes to GameManager, SaveManager, or BuildingInfoPanel needed
 
 ### Workflow for New Features
 

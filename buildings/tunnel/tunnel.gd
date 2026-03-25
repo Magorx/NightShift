@@ -1,15 +1,12 @@
 class_name TunnelLogic
-extends Node
+extends BuildingLogic
 
 const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
-const TILE_SIZE := 32
-const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 const SURFACE_VISIBLE_FRACTION := 0.75 # items vanish at 0.75 of entry cell, appear at 0.25 of exit
 
 ## Maximum number of cells between input and output (exclusive).
 var max_tunnel_gap: int = 4
 
-var grid_pos: Vector2i # position of THIS end (input or output)
 var direction: int = 0 # 0=right, 1=down, 2=left, 3=up
 var is_input: bool = true # true = input end, false = output end
 
@@ -32,6 +29,13 @@ var _surface_speed: float = 1.0 # progress/sec in entry/exit zones
 var _underground_speed: float = 2.0 # progress/sec in underground zone
 
 func _ready() -> void:
+	set_physics_process(is_input)
+	update_sprites()
+
+func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
+	super.configure(def, p_grid_pos, rotation)
+	direction = rotation
+	is_input = (def.category == "tunnel")
 	set_physics_process(is_input)
 	update_sprites()
 
@@ -180,5 +184,57 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 		return item.id
 	return &""
 
+func can_accept_from(_from_dir_idx: int) -> bool:
+	return can_accept()
+
 func cleanup_visuals() -> void:
 	buffer.cleanup()
+
+func on_removing() -> void:
+	if partner:
+		partner.partner = null
+
+# ── Serialization ──────────────────────────────────────────────────────────────
+
+func serialize_state() -> Dictionary:
+	var state := {}
+	state["tunnel_is_input"] = is_input
+	state["tunnel_direction"] = direction
+	state["tunnel_length"] = tunnel_length
+	if partner:
+		state["tunnel_partner_x"] = partner.grid_pos.x
+		state["tunnel_partner_y"] = partner.grid_pos.y
+	if is_input:
+		var buffer_data: Array = []
+		for item in buffer.items:
+			buffer_data.append({
+				"id": str(item.id),
+				"progress": item.progress,
+			})
+		state["tunnel_buffer"] = buffer_data
+	return state
+
+func deserialize_state(state: Dictionary) -> void:
+	if not state.has("tunnel_buffer"):
+		return
+	for item_data in state["tunnel_buffer"]:
+		var item: Dictionary = {
+			id = StringName(item_data["id"]),
+			progress = float(item_data.get("progress", 0.0)),
+		}
+		buffer.items.append(item)
+
+# ── Info panel ─────────────────────────────────────────────────────────────────
+
+func get_info_stats() -> Array:
+	var stats: Array = []
+	if is_input:
+		stats.append({type = "stat", text = "End: Input"})
+	else:
+		stats.append({type = "stat", text = "End: Output"})
+	stats.append({type = "stat", text = "Length: %d" % tunnel_length})
+	if partner:
+		stats.append({type = "stat", text = "Partner: %s" % str(partner.grid_pos)})
+	else:
+		stats.append({type = "stat", text = "Partner: none"})
+	return stats

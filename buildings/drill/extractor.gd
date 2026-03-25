@@ -1,10 +1,8 @@
 class_name ExtractorLogic
-extends Node
+extends BuildingLogic
 
 const Inventory = preload("res://scripts/inventory.gd")
-const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
-var grid_pos: Vector2i
 var direction: int = 0
 var item_id: StringName = &"iron_ore":
 	set(value):
@@ -14,6 +12,11 @@ var item_id: StringName = &"iron_ore":
 var produce_interval: float = 2.0  # 1 item every 2 seconds
 var _timer: float = 0.0
 var inventory: Inventory = Inventory.new()
+
+func configure(_def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
+	super.configure(_def, p_grid_pos, rotation)
+	direction = rotation
+	item_id = GameManager.deposits.get(grid_pos, &"iron_ore")
 
 func _physics_process(delta: float) -> void:
 	_timer += delta
@@ -57,3 +60,32 @@ func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 
 func cleanup_visuals() -> void:
 	pass
+
+# ── Serialization ──────────────────────────────────────────────────────────────
+
+func serialize_state() -> Dictionary:
+	var inv_data := {}
+	for iid in inventory.get_item_ids():
+		inv_data[str(iid)] = inventory.get_count(iid)
+	return {"timer": _timer, "inventory": inv_data}
+
+func deserialize_state(state: Dictionary) -> void:
+	if state.has("timer"):
+		_timer = state["timer"]
+	if state.has("inventory"):
+		for item_id_str in state["inventory"]:
+			var iid := StringName(item_id_str)
+			var count: int = int(state["inventory"][item_id_str])
+			if inventory.get_capacity(iid) == 0:
+				inventory.set_capacity(iid, count + 10)
+			for i in count:
+				inventory.add(iid)
+
+# ── Info panel ─────────────────────────────────────────────────────────────────
+
+func get_info_stats() -> Array:
+	return [
+		{type = "stat", text = "Extracting: %s" % str(item_id).capitalize().replace("_", " ")},
+		{type = "progress", value = get_progress()},
+		{type = "stat", text = "Inventory: %d/5" % inventory.get_count(item_id)},
+	]

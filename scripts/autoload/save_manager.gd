@@ -119,95 +119,16 @@ func _serialize_buildings() -> Array:
 	for building in GameManager.unique_buildings:
 		if not is_instance_valid(building):
 			continue
+		var state: Dictionary = {}
+		if building.logic:
+			state = building.logic.serialize_state()
 		result.append({
 			"type": str(building.building_id),
 			"grid_x": building.grid_pos.x,
 			"grid_y": building.grid_pos.y,
 			"rotation": building.rotation_index,
-			"state": _serialize_building_state(building),
+			"state": state,
 		})
-	return result
-
-func _serialize_building_state(building: Node2D) -> Dictionary:
-	var state := {}
-	var logic: Node = building.logic
-	if not logic:
-		return state
-
-	if logic is ConveyorBelt:
-		var items_data: Array = []
-		for item in logic.buffer.items:
-			items_data.append({
-				"id": str(item.id),
-				"progress": item.progress,
-				"entry_from_x": item.entry_from.x,
-				"entry_from_y": item.entry_from.y,
-			})
-		state["items"] = items_data
-
-	elif logic is ExtractorLogic:
-		state["timer"] = logic._timer
-		state["inventory"] = _serialize_inventory(logic.inventory)
-
-	elif logic is ConverterLogic:
-		state["craft_timer"] = logic._craft_timer
-		state["active_recipe_id"] = str(logic._active_recipe.id) if logic._active_recipe else ""
-		state["input_inv"] = _serialize_inventory(logic.input_inv)
-		state["output_inv"] = _serialize_inventory(logic.output_inv)
-
-	elif logic is ItemSink:
-		state["items_consumed"] = logic.items_consumed
-
-	elif logic is ItemSource:
-		state["timer"] = logic._timer
-
-	elif logic is SplitterLogic:
-		var buffer_data: Array = []
-		for item in logic.buffer.items:
-			buffer_data.append({
-				"id": str(item.id),
-				"from_dir_idx": item.from_dir_idx,
-				"output_dir_idx": item.output_dir_idx,
-				"progress": item.progress,
-			})
-		state["buffer"] = buffer_data
-
-	elif logic is JunctionLogic:
-		var axes_data: Array = []
-		for axis in 2:
-			var buffer_data: Array = []
-			for item in logic.buffers[axis].items:
-				buffer_data.append({
-					"id": str(item.id),
-					"from_dir_idx": item.from_dir_idx,
-					"output_dir_idx": item.output_dir_idx,
-					"progress": item.progress,
-				})
-			axes_data.append(buffer_data)
-		state["junction_buffers"] = axes_data
-
-	elif logic is TunnelLogic:
-		state["tunnel_is_input"] = logic.is_input
-		state["tunnel_direction"] = logic.direction
-		state["tunnel_length"] = logic.tunnel_length
-		if logic.partner:
-			state["tunnel_partner_x"] = logic.partner.grid_pos.x
-			state["tunnel_partner_y"] = logic.partner.grid_pos.y
-		if logic.is_input:
-			var buffer_data: Array = []
-			for item in logic.buffer.items:
-				buffer_data.append({
-					"id": str(item.id),
-					"progress": item.progress,
-				})
-			state["tunnel_buffer"] = buffer_data
-
-	return state
-
-func _serialize_inventory(inv) -> Dictionary:
-	var result := {}
-	for item_id in inv.get_item_ids():
-		result[str(item_id)] = inv.get_count(item_id)
 	return result
 
 # ── Deserialization ──────────────────────────────────────────────────────────
@@ -232,7 +153,8 @@ func _deserialize_run(data: Dictionary) -> void:
 			continue
 
 		var state: Dictionary = entry.get("state", {})
-		_deserialize_building_state(building, state)
+		if building.logic and not state.is_empty():
+			building.logic.deserialize_state(state)
 
 	# Deferred pass: link tunnel pairs using saved partner positions
 	_link_tunnels_deferred(building_list)
@@ -263,74 +185,6 @@ func _deserialize_run(data: Dictionary) -> void:
 	if not cam_data.is_empty():
 		call_deferred("_restore_camera", cam_data)
 
-func _deserialize_building_state(building: Node2D, state: Dictionary) -> void:
-	var logic: Node = building.logic
-	if not logic:
-		return
-
-	if logic is ConveyorBelt and state.has("items"):
-		for item_data in state["items"]:
-			var item_id := StringName(item_data["id"])
-			var entry_from := Vector2i(int(item_data["entry_from_x"]), int(item_data["entry_from_y"]))
-			if logic.place_item(item_id, entry_from):
-				var placed_item = logic.buffer.items[logic.buffer.size() - 1]
-				placed_item.progress = item_data["progress"]
-				logic._position_item(placed_item)
-
-	elif logic is ExtractorLogic:
-		if state.has("timer"):
-			logic._timer = state["timer"]
-		if state.has("inventory"):
-			_deserialize_inventory(logic.inventory, state["inventory"])
-
-	elif logic is ConverterLogic:
-		if state.has("craft_timer"):
-			logic._craft_timer = state["craft_timer"]
-		if state.has("input_inv"):
-			_deserialize_inventory(logic.input_inv, state["input_inv"])
-		if state.has("output_inv"):
-			_deserialize_inventory(logic.output_inv, state["output_inv"])
-		if state.has("active_recipe_id") and state["active_recipe_id"] != "":
-			var recipe_id := StringName(state["active_recipe_id"])
-			for recipe in logic.recipes:
-				if recipe.id == recipe_id:
-					logic._active_recipe = recipe
-					break
-
-	elif logic is ItemSink and state.has("items_consumed"):
-		logic.items_consumed = int(state["items_consumed"])
-
-	elif logic is ItemSource and state.has("timer"):
-		logic._timer = state["timer"]
-
-	elif logic is SplitterLogic and state.has("buffer"):
-		for item_data in state["buffer"]:
-			var item: Dictionary = logic.buffer.add_item(StringName(item_data["id"]), {
-				from_dir_idx = int(item_data["from_dir_idx"]),
-				output_dir_idx = int(item_data.get("output_dir_idx", -1)),
-			})
-			item.progress = float(item_data.get("progress", 0.0))
-			logic._position_item(item)
-
-	elif logic is JunctionLogic and state.has("junction_buffers"):
-		var axes_data: Array = state["junction_buffers"]
-		for axis in mini(axes_data.size(), 2):
-			for item_data in axes_data[axis]:
-				var item: Dictionary = logic.buffers[axis].add_item(StringName(item_data["id"]), {
-					from_dir_idx = int(item_data["from_dir_idx"]),
-					output_dir_idx = int(item_data["output_dir_idx"]),
-				})
-				item.progress = float(item_data.get("progress", 0.0))
-				logic._position_item(item)
-
-	elif logic is TunnelLogic and state.has("tunnel_buffer"):
-		for item_data in state["tunnel_buffer"]:
-			var item: Dictionary = {
-				id = StringName(item_data["id"]),
-				progress = float(item_data.get("progress", 0.0)),
-			}
-			logic.buffer.items.append(item)
-
 ## Re-link tunnel input/output pairs after all buildings are deserialized.
 func _link_tunnels_deferred(building_list: Array) -> void:
 	for entry in building_list:
@@ -351,16 +205,6 @@ func _link_tunnels_deferred(building_list: Array) -> void:
 		in_building.logic.setup_pair(out_building.logic, length)
 		out_building.logic.setup_pair(in_building.logic, length)
 		in_building.logic.restore_visuals()
-
-func _deserialize_inventory(inv, data: Dictionary) -> void:
-	for item_id_str in data:
-		var item_id := StringName(item_id_str)
-		var count: int = int(data[item_id_str])
-		# Ensure capacity exists before adding
-		if inv.get_capacity(item_id) == 0:
-			inv.set_capacity(item_id, count + 10)
-		for i in count:
-			inv.add(item_id)
 
 func _restore_camera(cam_data: Dictionary) -> void:
 	var gw := _get_game_world()

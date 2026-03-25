@@ -1,12 +1,9 @@
 class_name ConverterLogic
-extends Node
+extends BuildingLogic
 
 const Inventory = preload("res://scripts/inventory.gd")
 const RoundRobin = preload("res://scripts/round_robin.gd")
-const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
-## Grid position of the building origin.
-var grid_pos: Vector2i
 ## Building rotation index (0=right, 1=down, 2=left, 3=up).
 var rotation: int = 0
 ## Converter type string for recipe matching (e.g. "smelter").
@@ -31,6 +28,14 @@ var output_inv: Inventory = Inventory.new()
 var _active_recipe = null # RecipeDef or null
 var _craft_timer: float = 0.0
 var _input_rr: RoundRobin = RoundRobin.new()
+
+func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
+	super.configure(def, p_grid_pos, p_rotation)
+	rotation = p_rotation
+	converter_type = str(def.id)
+	input_points = def.get_rotated_inputs(p_rotation)
+	output_points = def.get_rotated_outputs(p_rotation)
+	recipes = GameManager.recipes_by_type.get(converter_type, [])
 
 func _build_capacities() -> void:
 	input_inv = Inventory.new()
@@ -65,12 +70,12 @@ func _try_pull_inputs() -> void:
 		for dir_idx in range(4):
 			if not inp.mask[dir_idx]:
 				continue
-			var item_id = GameManager.peek_output_item(world_cell, dir_idx)
-			if item_id == &"":
+			var peek_id = GameManager.peek_output_item(world_cell, dir_idx)
+			if peek_id == &"":
 				continue
-			if input_inv.has_space(item_id):
+			if input_inv.has_space(peek_id):
 				GameManager.pull_item(world_cell, dir_idx)
-				input_inv.add(item_id)
+				input_inv.add(peek_id)
 
 func _try_start_craft() -> void:
 	for recipe in recipes:
@@ -153,3 +158,75 @@ func get_progress() -> float:
 	if not output_inv.is_empty():
 		return 1.0 # Waiting to push output
 	return 0.0
+
+# ── Serialization ──────────────────────────────────────────────────────────────
+
+func serialize_state() -> Dictionary:
+	var state := {}
+	state["craft_timer"] = _craft_timer
+	state["active_recipe_id"] = str(_active_recipe.id) if _active_recipe else ""
+	state["input_inv"] = _serialize_inventory(input_inv)
+	state["output_inv"] = _serialize_inventory(output_inv)
+	return state
+
+func deserialize_state(state: Dictionary) -> void:
+	if state.has("craft_timer"):
+		_craft_timer = state["craft_timer"]
+	if state.has("input_inv"):
+		_deserialize_inventory(input_inv, state["input_inv"])
+	if state.has("output_inv"):
+		_deserialize_inventory(output_inv, state["output_inv"])
+	if state.has("active_recipe_id") and state["active_recipe_id"] != "":
+		var recipe_id := StringName(state["active_recipe_id"])
+		for recipe in recipes:
+			if recipe.id == recipe_id:
+				_active_recipe = recipe
+				break
+
+func _serialize_inventory(inv: Inventory) -> Dictionary:
+	var result := {}
+	for iid in inv.get_item_ids():
+		result[str(iid)] = inv.get_count(iid)
+	return result
+
+func _deserialize_inventory(inv: Inventory, data: Dictionary) -> void:
+	for item_id_str in data:
+		var iid := StringName(item_id_str)
+		var count: int = int(data[item_id_str])
+		if inv.get_capacity(iid) == 0:
+			inv.set_capacity(iid, count + 10)
+		for i in count:
+			inv.add(iid)
+
+# ── Info panel ─────────────────────────────────────────────────────────────────
+
+func get_info_stats() -> Array:
+	var stats: Array = []
+
+	# Recipe display
+	var display_recipe = _active_recipe if _active_recipe else (recipes[0] if recipes.size() > 0 else null)
+	if display_recipe:
+		stats.append({type = "recipe", recipe = display_recipe, active = _active_recipe != null})
+		if _active_recipe:
+			stats.append({type = "stat", text = "Craft progress:"})
+			stats.append({type = "progress", value = get_progress()})
+
+	# Input buffer
+	var input_items: Array = []
+	for iid in input_inv.get_item_ids():
+		var count := input_inv.get_count(iid)
+		if count > 0:
+			input_items.append({id = iid, count = count})
+	if not input_items.is_empty():
+		stats.append({type = "inventory", label = "Input", items = input_items})
+
+	# Output buffer
+	var output_items: Array = []
+	for iid in output_inv.get_item_ids():
+		var count := output_inv.get_count(iid)
+		if count > 0:
+			output_items.append({id = iid, count = count})
+	if not output_items.is_empty():
+		stats.append({type = "inventory", label = "Output", items = output_items})
+
+	return stats

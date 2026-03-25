@@ -1,14 +1,16 @@
 class_name ConveyorBelt
-extends Node2D
+extends BuildingLogic
 
 const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
-const TILE_SIZE := 32
-const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
-var grid_pos: Vector2i
+
 var direction: int = 0 # 0=right, 1=down, 2=left, 3=up
 var traverse_time: float = 1.0 # seconds for an item to cross this conveyor
 
 var buffer = ItemBuffer.new(2)
+
+func configure(_def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
+	super.configure(_def, p_grid_pos, rotation)
+	direction = rotation
 
 func get_direction_vector() -> Vector2i:
 	return DIRECTION_VECTORS[direction]
@@ -99,5 +101,44 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 func has_input_from(_cell: Vector2i, from_dir_idx: int) -> bool:
 	return from_dir_idx != direction
 
+func can_accept_from(_from_dir_idx: int) -> bool:
+	return can_accept()
+
 func cleanup_visuals() -> void:
 	buffer.cleanup()
+
+func on_removing() -> void:
+	GameManager.conveyor_system.unregister_conveyor(grid_pos)
+
+# ── Serialization ──────────────────────────────────────────────────────────────
+
+func serialize_state() -> Dictionary:
+	var items_data: Array = []
+	for item in buffer.items:
+		items_data.append({
+			"id": str(item.id),
+			"progress": item.progress,
+			"entry_from_x": item.entry_from.x,
+			"entry_from_y": item.entry_from.y,
+		})
+	return {"items": items_data}
+
+func deserialize_state(state: Dictionary) -> void:
+	if not state.has("items"):
+		return
+	for item_data in state["items"]:
+		var item_id := StringName(item_data["id"])
+		var entry_from := Vector2i(int(item_data["entry_from_x"]), int(item_data["entry_from_y"]))
+		if place_item(item_id, entry_from):
+			var placed_item = buffer.items[buffer.size() - 1]
+			placed_item.progress = item_data["progress"]
+			_position_item(placed_item)
+
+# ── Info panel ─────────────────────────────────────────────────────────────────
+
+func get_info_stats() -> Array:
+	var dirs := ["Right", "Down", "Left", "Up"]
+	return [
+		{type = "stat", text = "Items on belt: %d/%d" % [buffer.size(), buffer.capacity]},
+		{type = "stat", text = "Direction: %s" % dirs[direction]},
+	]

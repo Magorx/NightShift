@@ -1,18 +1,18 @@
 class_name JunctionLogic
-extends Node
+extends BuildingLogic
 
-const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
-const RoundRobin = preload("res://scripts/round_robin.gd")
-const TILE_SIZE := 32
-const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
+# const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
+# const RoundRobin = preload("res://scripts/round_robin.gd")
 
-var grid_pos: Vector2i
 var traverse_time: float = 1.3
 
 # Per-axis buffers: 0 = horizontal (right/left), 1 = vertical (down/up).
 var buffers: Array = [ItemBuffer.new(2), ItemBuffer.new(2)]
 
 var _input_rr: RoundRobin = RoundRobin.new()
+
+func configure(_def: BuildingDef, p_grid_pos: Vector2i, _rotation: int) -> void:
+	super.configure(_def, p_grid_pos, _rotation)
 
 func _physics_process(delta: float) -> void:
 	_reverse_stranded_items()
@@ -110,6 +110,9 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 					return item_id
 	return &""
 
+func can_accept_from(from_dir_idx: int) -> bool:
+	return not buffers[from_dir_idx % 2].is_full()
+
 # ── Visuals ──────────────────────────────────────────────────────────────────
 
 # Straight-line interpolation from entry edge to exit edge (opposite sides).
@@ -126,3 +129,41 @@ func _position_item(item: Dictionary) -> void:
 func cleanup_visuals() -> void:
 	for axis in 2:
 		buffers[axis].cleanup()
+
+# ── Serialization ──────────────────────────────────────────────────────────────
+
+func serialize_state() -> Dictionary:
+	var axes_data: Array = []
+	for axis in 2:
+		var buffer_data: Array = []
+		for item in buffers[axis].items:
+			buffer_data.append({
+				"id": str(item.id),
+				"from_dir_idx": item.from_dir_idx,
+				"output_dir_idx": item.output_dir_idx,
+				"progress": item.progress,
+			})
+		axes_data.append(buffer_data)
+	return {"junction_buffers": axes_data}
+
+func deserialize_state(state: Dictionary) -> void:
+	if not state.has("junction_buffers"):
+		return
+	var axes_data: Array = state["junction_buffers"]
+	for axis in mini(axes_data.size(), 2):
+		for item_data in axes_data[axis]:
+			var item: Dictionary = buffers[axis].add_item(StringName(item_data["id"]), {
+				from_dir_idx = int(item_data["from_dir_idx"]),
+				output_dir_idx = int(item_data["output_dir_idx"]),
+			})
+			item.progress = float(item_data.get("progress", 0.0))
+			_position_item(item)
+
+# ── Info panel ─────────────────────────────────────────────────────────────────
+
+func get_info_stats() -> Array:
+	var total_items: int = buffers[0].size() + buffers[1].size()
+	var total_cap: int = buffers[0].capacity + buffers[1].capacity
+	return [
+		{type = "stat", text = "Items: %d/%d" % [total_items, total_cap]},
+	]

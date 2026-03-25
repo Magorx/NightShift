@@ -353,7 +353,7 @@ func _filter_placeable_blueprints() -> void:
 	var def = GameManager.get_building_def(selected_building)
 	if not def:
 		return
-	var rotated_shape = GameManager.get_rotated_shape(def, _drag_rotation)
+	var rotated_shape = def.get_rotated_shape(_drag_rotation)
 	var claimed_cells: Dictionary = {} # Vector2i -> true
 	# Multi-phase count limit: don't show more blueprints than prior phase placed
 	var max_count := 999999
@@ -391,15 +391,14 @@ func _create_ghost_node(building_id: StringName, rotation: int) -> Node2D:
 		arrow.visible = false
 	# Rotate visual elements to match placement rotation
 	if rotation != 0:
-		var anchor_cell: Vector2i = def.anchor_cell
-		GameManager._rotate_node_children(ghost, "Shape", anchor_cell, rotation)
-		GameManager._rotate_node_children(ghost, "Inputs", anchor_cell, rotation)
-		GameManager._rotate_node_children(ghost, "Outputs", anchor_cell, rotation)
+		def.rotate_node_children(ghost, "Shape", rotation)
+		def.rotate_node_children(ghost, "Inputs", rotation)
+		def.rotate_node_children(ghost, "Outputs", rotation)
 	add_child(ghost)
 	# Disable processing after add_child to override any _ready re-enables
 	_disable_processing_recursive(ghost)
 	# Rotate all sprites after add_child to override _ready defaults
-	GameManager._rotate_building_sprites(ghost, rotation)
+	BuildingDef.rotate_building_sprites(ghost, rotation)
 	return ghost
 
 func _disable_processing_recursive(node: Node) -> void:
@@ -736,7 +735,7 @@ func _get_building_visual_cells(building: Node2D) -> Array:
 	if cells.is_empty():
 		var def = GameManager.get_building_def(building.building_id)
 		if def:
-			for cell in GameManager.get_rotated_shape(def, building.rotation_index):
+			for cell in def.get_rotated_shape(building.rotation_index):
 				cells.append(building.grid_pos + cell)
 		else:
 			cells.append(building.grid_pos)

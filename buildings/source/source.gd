@@ -1,14 +1,16 @@
 class_name ItemSource
-extends Node
+extends BuildingLogic
 
-const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
-
-var grid_pos: Vector2i
 var direction: int = 0
 var item_id: StringName = &"iron_ore"
 var produce_interval: float = 1.0
 var _timer: float = 0.0
 var _has_ready_item: bool = false
+
+func configure(_def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
+	super.configure(_def, p_grid_pos, rotation)
+	direction = rotation
+	item_id = &"iron_ore"
 
 func _physics_process(delta: float) -> void:
 	if not _has_ready_item:
@@ -47,3 +49,20 @@ func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 
 func cleanup_visuals() -> void:
 	pass
+
+# ── Serialization ──────────────────────────────────────────────────────────────
+
+func serialize_state() -> Dictionary:
+	return {"timer": _timer}
+
+func deserialize_state(state: Dictionary) -> void:
+	if state.has("timer"):
+		_timer = state["timer"]
+
+# ── Info panel ─────────────────────────────────────────────────────────────────
+
+func get_info_stats() -> Array:
+	return [
+		{type = "stat", text = "Producing: %s" % str(item_id).capitalize().replace("_", " ")},
+		{type = "stat", text = "Rate: 1/%.1fs" % produce_interval},
+	]

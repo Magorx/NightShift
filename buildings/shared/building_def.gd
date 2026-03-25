@@ -1,6 +1,8 @@
 class_name BuildingDef
 extends Resource
 
+const TILE_SIZE := 32
+
 @export var id: StringName
 @export var display_name: String
 @export var color: Color = Color.GRAY
@@ -24,3 +26,164 @@ var shape: Array = []
 ## Defined in default orientation (facing right); rotate at placement time.
 var inputs: Array = []
 var outputs: Array = []
+
+# ── Scene extraction (called once at load time) ────────────────────────────
+
+## Extract anchor, shape, and IO data from the scene.
+func extract_from_scene() -> void:
+	_extract_shape()
+	_extract_io()
+
+func _extract_shape() -> void:
+	if not scene:
+		shape = [Vector2i(0, 0)]
+		anchor_cell = Vector2i(0, 0)
+		return
+
+	var instance = scene.instantiate()
+
+	# Read anchor
+	var a_cell := Vector2i(0, 0)
+	var anchor_node = instance.find_child("BuildAnchor", false, false)
+	if anchor_node and anchor_node is Node2D:
+		@warning_ignore("integer_division")
+		a_cell.x = int(round(anchor_node.position.x)) / TILE_SIZE
+		@warning_ignore("integer_division")
+		a_cell.y = int(round(anchor_node.position.y)) / TILE_SIZE
+	anchor_cell = a_cell
+
+	# Read shape cells, make anchor-relative
+	var cells: Array = []
+	var shape_node = instance.find_child("Shape", false, false)
+	if shape_node:
+		for child in shape_node.get_children():
+			if child is ColorRect:
+				@warning_ignore("integer_division")
+				var gx := int(round(child.offset_left)) / TILE_SIZE
+				@warning_ignore("integer_division")
+				var gy := int(round(child.offset_top)) / TILE_SIZE
+				cells.append(Vector2i(gx, gy) - anchor_cell)
+	instance.free()
+
+	if cells.is_empty():
+		cells.append(Vector2i(0, 0))
+	shape = cells
+
+func _extract_io() -> void:
+	if not scene:
+		inputs = []
+		outputs = []
+		return
+
+	var instance = scene.instantiate()
+	inputs = _read_io_group(instance, "Inputs")
+	outputs = _read_io_group(instance, "Outputs")
+	instance.free()
+
+func _read_io_group(instance: Node, group_name: String) -> Array:
+	var result: Array = []
+	var group_node = instance.find_child(group_name, false, false)
+	if not group_node:
+		return result
+	for child in group_node.get_children():
+		if child is ColorRect:
+			@warning_ignore("integer_division")
+			var gx := int(round(child.offset_left)) / TILE_SIZE
+			@warning_ignore("integer_division")
+			var gy := int(round(child.offset_top)) / TILE_SIZE
+			var mask: Array
+			if child.has_method("get_mask"):
+				mask = child.get_mask()
+			else:
+				mask = [true, true, true, true]
+			result.append({cell = Vector2i(gx, gy) - anchor_cell, mask = mask})
+	return result
+
+# ── Rotation utilities ──────────────────────────────────────────────────────
+
+## Rotate a cell position by the given rotation index (0-3, CW).
+static func rotate_cell(cell: Vector2i, rotation: int) -> Vector2i:
+	match rotation:
+		1: return Vector2i(-cell.y, cell.x)
+		2: return Vector2i(-cell.x, -cell.y)
+		3: return Vector2i(cell.y, -cell.x)
+	return cell
+
+## Rotate a direction mask [right, down, left, up] by rotation steps CW.
+static func rotate_mask(mask: Array, rotation: int) -> Array:
+	if rotation == 0:
+		return mask.duplicate()
+	var result := [false, false, false, false]
+	for i in 4:
+		result[(i + rotation) % 4] = mask[i]
+	return result
+
+## Get shape cells rotated for the given placement rotation.
+func get_rotated_shape(rotation: int) -> Array:
+	if rotation == 0:
+		return shape.duplicate()
+	var result: Array = []
+	for cell in shape:
+		result.append(rotate_cell(cell, rotation))
+	return result
+
+## Compute the bounding box of a rotated shape.
+## Returns {min_cell: Vector2i, size: Vector2i}.
+func get_rotated_shape_bbox(rotation: int) -> Dictionary:
+	var rotated := get_rotated_shape(rotation)
+	var min_c := Vector2i(999, 999)
+	var max_c := Vector2i(-999, -999)
+	for cell in rotated:
+		if cell.x < min_c.x: min_c.x = cell.x
+		if cell.y < min_c.y: min_c.y = cell.y
+		if cell.x + 1 > max_c.x: max_c.x = cell.x + 1
+		if cell.y + 1 > max_c.y: max_c.y = cell.y + 1
+	return {min_cell = min_c, size = max_c - min_c}
+
+## Get outputs rotated for the given placement rotation.
+func get_rotated_outputs(rotation: int) -> Array:
+	var result: Array = []
+	for out in outputs:
+		result.append({
+			cell = rotate_cell(out.cell, rotation),
+			mask = rotate_mask(out.mask, rotation)
+		})
+	return result
+
+## Get inputs rotated for the given placement rotation.
+func get_rotated_inputs(rotation: int) -> Array:
+	var result: Array = []
+	for inp in inputs:
+		result.append({
+			cell = rotate_cell(inp.cell, rotation),
+			mask = rotate_mask(inp.mask, rotation)
+		})
+	return result
+
+# ── Visual rotation (used during placement & ghost preview) ─────────────────
+
+## Reposition ColorRect children of a named sub-node to match the rotated layout.
+func rotate_node_children(building: Node2D, group_name: String, rotation: int) -> void:
+	var group_node = building.find_child(group_name, false, false)
+	if not group_node:
+		return
+	for child in group_node.get_children():
+		if child is ColorRect:
+			@warning_ignore("integer_division")
+			var gx := int(round(child.offset_left)) / TILE_SIZE
+			@warning_ignore("integer_division")
+			var gy := int(round(child.offset_top)) / TILE_SIZE
+			var rel := Vector2i(gx, gy) - anchor_cell
+			var rotated_rel := rotate_cell(rel, rotation)
+			var new_cell := rotated_rel + anchor_cell
+			child.offset_left = new_cell.x * TILE_SIZE
+			child.offset_top = new_cell.y * TILE_SIZE
+			child.offset_right = child.offset_left + TILE_SIZE
+			child.offset_bottom = child.offset_top + TILE_SIZE
+
+## Rotate all direct-child AnimatedSprite2D nodes to match building rotation.
+static func rotate_building_sprites(building: Node2D, rotation: int) -> void:
+	var rot_rad := rotation * PI / 2.0
+	for child in building.get_children():
+		if child is AnimatedSprite2D:
+			child.rotation = rot_rad

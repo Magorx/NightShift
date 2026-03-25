@@ -1,6 +1,7 @@
 extends Node
 
 const TILE_SIZE := 32
+const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 # Building registry: id -> BuildingDef
 var building_defs: Dictionary = {}
@@ -105,8 +106,7 @@ func _load_building_defs() -> void:
 					if file_name.ends_with(".tres"):
 						var def = load(sub_path + file_name)
 						if def:
-							_extract_shape(def)
-							_extract_io(def)
+							def.extract_from_scene()
 							building_defs[def.id] = def
 					file_name = sub_dir.get_next()
 		sub_name = root_dir.get_next()
@@ -128,141 +128,7 @@ func _load_recipes() -> void:
 				recipes_by_type[ctype].append(recipe)
 		file_name = dir.get_next()
 
-## Extract anchor cell and shape cells from the scene.
-## BuildAnchor Node2D position determines the anchor cell (defaults to 0,0).
-## Shape cells are stored relative to the anchor.
-func _extract_shape(def: BuildingDef) -> void:
-	if not def.scene:
-		def.shape = [Vector2i(0, 0)]
-		def.anchor_cell = Vector2i(0, 0)
-		return
-
-	var instance = def.scene.instantiate()
-
-	# Read anchor
-	var anchor_cell := Vector2i(0, 0)
-	var anchor_node = instance.find_child("BuildAnchor", false, false)
-	if anchor_node and anchor_node is Node2D:
-		@warning_ignore("integer_division")
-		anchor_cell.x = int(round(anchor_node.position.x)) / TILE_SIZE
-		@warning_ignore("integer_division")
-		anchor_cell.y = int(round(anchor_node.position.y)) / TILE_SIZE
-	def.anchor_cell = anchor_cell
-
-	# Read shape cells, make anchor-relative
-	var cells: Array = []
-	var shape_node = instance.find_child("Shape", false, false)
-	if shape_node:
-		for child in shape_node.get_children():
-			if child is ColorRect:
-				@warning_ignore("integer_division")
-				var gx := int(round(child.offset_left)) / TILE_SIZE
-				@warning_ignore("integer_division")
-				var gy := int(round(child.offset_top)) / TILE_SIZE
-				cells.append(Vector2i(gx, gy) - anchor_cell)
-	instance.free()
-
-	if cells.is_empty():
-		cells.append(Vector2i(0, 0))
-
-	def.shape = cells
-
-## Extract input/output cells from the scene's Inputs/Outputs sub-nodes.
-## Cells are stored relative to the anchor.
-func _extract_io(def: BuildingDef) -> void:
-	if not def.scene:
-		def.inputs = []
-		def.outputs = []
-		return
-
-	var instance = def.scene.instantiate()
-	var anchor_cell: Vector2i = def.anchor_cell
-
-	def.inputs = _read_io_group(instance, "Inputs", anchor_cell)
-	def.outputs = _read_io_group(instance, "Outputs", anchor_cell)
-
-	instance.free()
-
-func _read_io_group(instance: Node, group_name: String, anchor_cell: Vector2i) -> Array:
-	var result: Array = []
-	var group_node = instance.find_child(group_name, false, false)
-	if not group_node:
-		return result
-	for child in group_node.get_children():
-		if child is ColorRect:
-			@warning_ignore("integer_division")
-			var gx := int(round(child.offset_left)) / TILE_SIZE
-			@warning_ignore("integer_division")
-			var gy := int(round(child.offset_top)) / TILE_SIZE
-			var mask: Array
-			if child.has_method("get_mask"):
-				mask = child.get_mask()
-			else:
-				mask = [true, true, true, true]
-			result.append({cell = Vector2i(gx, gy) - anchor_cell, mask = mask})
-	return result
-
-# ── Direction rotation utilities ──────────────────────────────────────────────
-
-## Rotate a cell position by the given rotation index (0-3, CW).
-func rotate_cell(cell: Vector2i, rotation: int) -> Vector2i:
-	match rotation:
-		1: return Vector2i(-cell.y, cell.x)
-		2: return Vector2i(-cell.x, -cell.y)
-		3: return Vector2i(cell.y, -cell.x)
-	return cell
-
-## Rotate a direction mask [right, down, left, up] by rotation steps CW.
-func rotate_mask(mask: Array, rotation: int) -> Array:
-	if rotation == 0:
-		return mask.duplicate()
-	var result := [false, false, false, false]
-	for i in 4:
-		result[(i + rotation) % 4] = mask[i]
-	return result
-
-## Get a building def's shape cells rotated for the given placement rotation.
-## Cells are anchor-relative, so rotation is simply applied without normalization.
-func get_rotated_shape(def: BuildingDef, rotation: int) -> Array:
-	if rotation == 0:
-		return def.shape.duplicate()
-	var result: Array = []
-	for cell in def.shape:
-		result.append(rotate_cell(cell, rotation))
-	return result
-
-## Compute the bounding box of a rotated shape (min corner and size in cells).
-## Returns {min_cell: Vector2i, size: Vector2i}.
-func get_rotated_shape_bbox(def: BuildingDef, rotation: int) -> Dictionary:
-	var rotated := get_rotated_shape(def, rotation)
-	var min_c := Vector2i(999, 999)
-	var max_c := Vector2i(-999, -999)
-	for cell in rotated:
-		if cell.x < min_c.x: min_c.x = cell.x
-		if cell.y < min_c.y: min_c.y = cell.y
-		if cell.x + 1 > max_c.x: max_c.x = cell.x + 1
-		if cell.y + 1 > max_c.y: max_c.y = cell.y + 1
-	return {min_cell = min_c, size = max_c - min_c}
-
-## Get a building def's outputs rotated for the given placement rotation.
-func get_rotated_outputs(def: BuildingDef, rotation: int) -> Array:
-	var result: Array = []
-	for out in def.outputs:
-		result.append({
-			cell = rotate_cell(out.cell, rotation),
-			mask = rotate_mask(out.mask, rotation)
-		})
-	return result
-
-## Get a building def's inputs rotated for the given placement rotation.
-func get_rotated_inputs(def: BuildingDef, rotation: int) -> Array:
-	var result: Array = []
-	for inp in def.inputs:
-		result.append({
-			cell = rotate_cell(inp.cell, rotation),
-			mask = rotate_mask(inp.mask, rotation)
-		})
-	return result
+# ── Item visual pool ─────────────────────────────────────────────────────────
 
 ## Acquire an item visual from the pool, or create a new one.
 func acquire_visual(color: Color) -> Node2D:
@@ -310,11 +176,13 @@ func record_delivery(item_id: StringName, value: int = 0) -> void:
 func get_building_def(id: StringName):
 	return building_defs.get(id)
 
+# ── Building placement ───────────────────────────────────────────────────────
+
 func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotation: int = 0) -> bool:
 	var def = get_building_def(id)
 	if not def:
 		return false
-	var rotated_shape := get_rotated_shape(def, rotation)
+	var rotated_shape: Array = def.get_rotated_shape(rotation)
 	for cell in rotated_shape:
 		var check_pos: Vector2i = grid_pos + Vector2i(cell)
 		if check_pos.x < 0 or check_pos.y < 0 or check_pos.x >= map_size or check_pos.y >= map_size:
@@ -330,33 +198,6 @@ func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotat
 			return false
 	return true
 
-## Reposition ColorRect children of a named sub-node to match the rotated layout.
-## Rotates around the anchor cell so the anchor stays fixed in the scene.
-func _rotate_node_children(building: Node2D, group_name: String, anchor_cell: Vector2i, rotation: int) -> void:
-	var group_node = building.find_child(group_name, false, false)
-	if not group_node:
-		return
-	for child in group_node.get_children():
-		if child is ColorRect:
-			@warning_ignore("integer_division")
-			var gx := int(round(child.offset_left)) / TILE_SIZE
-			@warning_ignore("integer_division")
-			var gy := int(round(child.offset_top)) / TILE_SIZE
-			var rel := Vector2i(gx, gy) - anchor_cell
-			var rotated_rel := rotate_cell(rel, rotation)
-			var new_cell := rotated_rel + anchor_cell
-			child.offset_left = new_cell.x * TILE_SIZE
-			child.offset_top = new_cell.y * TILE_SIZE
-			child.offset_right = child.offset_left + TILE_SIZE
-			child.offset_bottom = child.offset_top + TILE_SIZE
-
-## Rotate all direct-child AnimatedSprite2D nodes to match building rotation.
-func _rotate_building_sprites(building: Node2D, rotation: int) -> void:
-	var rot_rad := rotation * PI / 2.0
-	for child in building.get_children():
-		if child is AnimatedSprite2D:
-			child.rotation = rot_rad
-
 func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> Node2D:
 	var def = get_building_def(id)
 	if not def or not building_layer:
@@ -366,9 +207,9 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		return null
 
 	# Remove any existing replaceable buildings in the footprint
-	var rotated_shape_pre := get_rotated_shape(def, rotation)
+	var rotated_shape: Array = def.get_rotated_shape(rotation)
 	var to_replace: Dictionary = {} # grid_pos -> true (deduplicate multi-cell buildings)
-	for cell in rotated_shape_pre:
+	for cell in rotated_shape:
 		var check_pos: Vector2i = grid_pos + Vector2i(cell)
 		if buildings.has(check_pos):
 			var existing = buildings[check_pos]
@@ -384,19 +225,18 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		building = base_script.new()
 	building.init(id, grid_pos, rotation)
 	# Position so the anchor cell aligns with grid_pos
-	var anchor_cell: Vector2i = def.anchor_cell
-	building.position = Vector2(grid_pos - anchor_cell) * TILE_SIZE
+	building.position = Vector2(grid_pos - def.anchor_cell) * TILE_SIZE
 
 	# Rotate the visual Shape, Inputs, Outputs ColorRects around the anchor
 	if rotation != 0:
-		_rotate_node_children(building, "Shape", anchor_cell, rotation)
-		_rotate_node_children(building, "Inputs", anchor_cell, rotation)
-		_rotate_node_children(building, "Outputs", anchor_cell, rotation)
+		def.rotate_node_children(building, "Shape", rotation)
+		def.rotate_node_children(building, "Inputs", rotation)
+		def.rotate_node_children(building, "Outputs", rotation)
 
 	# Configure arrow meta if present
 	var arrow = building.find_child("Arrow", true, false)
 	if arrow:
-		var bbox := get_rotated_shape_bbox(def, rotation)
+		var bbox: Dictionary = def.get_rotated_shape_bbox(rotation)
 		arrow.set_meta("rotation_index", rotation)
 		arrow.set_meta("shape_size", bbox.size)
 		arrow.set_meta("bbox_min", bbox.min_cell)
@@ -404,84 +244,40 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	building_layer.add_child(building)
 
 	# Rotate sprite children (after add_child to override _ready defaults)
-	_rotate_building_sprites(building, rotation)
+	BuildingDef.rotate_building_sprites(building, rotation)
 
 	# Register all occupied cells (rotated)
-	var rotated_shape := get_rotated_shape(def, rotation)
 	for cell in rotated_shape:
 		buildings[grid_pos + cell] = building
 	unique_buildings.append(building)
 
-	# Configure and store logic node based on building category
-	_configure_logic(building, def, grid_pos, rotation, rotated_shape)
+	# Find and configure the logic node — no type dispatch needed.
+	# Every building logic extends BuildingLogic, so we find by type.
+	var logic: BuildingLogic = _find_logic_node(building)
+	if logic:
+		logic.configure(def, grid_pos, rotation)
+		building.logic = logic
+		# Register conveyors with ConveyorSystem
+		if logic is ConveyorBelt and conveyor_system:
+			conveyor_system.register_conveyor(logic)
+
+	# Update conveyor sprites for the placed building and its neighbors
+	if def.category == "conveyor":
+		_update_conveyor_sprites(grid_pos)
+	elif rotated_shape.size() > 1:
+		for cell in rotated_shape:
+			_update_neighbor_conveyor_sprites(grid_pos + cell)
+	else:
+		_update_neighbor_conveyor_sprites(grid_pos)
 
 	return building
 
-## Find, configure, and store the logic node for a newly placed building.
-func _configure_logic(building: Node2D, def: BuildingDef, grid_pos: Vector2i, rotation: int, rotated_shape: Array) -> void:
-	var logic: Node = null
-
-	match def.category:
-		"conveyor":
-			logic = building.find_child("ConveyorLogic", true, false)
-			if logic and conveyor_system:
-				logic.grid_pos = grid_pos
-				logic.direction = rotation
-				conveyor_system.register_conveyor(logic)
-		"source":
-			logic = building.find_child("SourceLogic", true, false)
-			if logic:
-				logic.grid_pos = grid_pos
-				logic.direction = rotation
-				logic.item_id = &"iron_ore"
-		"extractor":
-			logic = building.find_child("ExtractorLogic", true, false)
-			if logic:
-				logic.grid_pos = grid_pos
-				logic.direction = rotation
-				logic.item_id = deposits.get(grid_pos, &"iron_ore")
-		"converter":
-			logic = building.find_child("ConverterLogic", true, false)
-			if logic:
-				logic.grid_pos = grid_pos
-				logic.rotation = rotation
-				logic.converter_type = def.id
-				logic.input_points = get_rotated_inputs(def, rotation)
-				logic.output_points = get_rotated_outputs(def, rotation)
-				logic.recipes = recipes_by_type.get(str(def.id), [])
-		"sink":
-			logic = building.find_child("SinkLogic", true, false)
-			if logic:
-				logic.grid_pos = grid_pos
-		"splitter":
-			logic = building.find_child("SplitterLogic", true, false)
-			if logic:
-				logic.grid_pos = grid_pos
-		"junction":
-			logic = building.find_child("JunctionLogic", true, false)
-			if logic:
-				logic.grid_pos = grid_pos
-		"tunnel", "tunnel_output":
-			logic = building.find_child("TunnelLogic", true, false)
-			if logic:
-				logic.grid_pos = grid_pos
-				logic.direction = rotation
-				logic.is_input = (def.category == "tunnel")
-				logic.set_physics_process(logic.is_input)
-				logic.update_sprites()
-
-	# Set logic ref BEFORE sprite updates so the building can see itself
-	building.logic = logic
-
-	# Update conveyor sprites for the placed building and its neighbors
-	match def.category:
-		"conveyor":
-			_update_conveyor_sprites(grid_pos)
-		"converter":
-			for cell in rotated_shape:
-				_update_neighbor_conveyor_sprites(grid_pos + cell)
-		"sink", "source", "extractor", "splitter", "junction", "tunnel", "tunnel_output":
-			_update_neighbor_conveyor_sprites(grid_pos)
+## Find the first BuildingLogic child of a building node.
+func _find_logic_node(building: Node2D) -> BuildingLogic:
+	for child in building.get_children():
+		if child is BuildingLogic:
+			return child
+	return null
 
 func remove_building(grid_pos: Vector2i) -> void:
 	var building = buildings.get(grid_pos)
@@ -490,20 +286,15 @@ func remove_building(grid_pos: Vector2i) -> void:
 	var def = get_building_def(building.building_id)
 	var removed_pos: Vector2i = building.grid_pos
 
-	# Unregister conveyor
-	if def and def.category == "conveyor" and conveyor_system:
-		conveyor_system.unregister_conveyor(removed_pos)
-
-	# Clean up logic node (visuals, partner links)
+	# Let the logic node handle its own cleanup (unregistration, partner unlinking, visuals)
 	if building.logic:
+		building.logic.on_removing()
 		building.logic.cleanup_visuals()
-		if building.logic is TunnelLogic and building.logic.partner:
-			building.logic.partner.partner = null
 
 	# Remove all occupied cells
 	var rotated_shape: Array = []
 	if def:
-		rotated_shape = get_rotated_shape(def, building.rotation_index)
+		rotated_shape = def.get_rotated_shape(building.rotation_index)
 		for cell in rotated_shape:
 			buildings.erase(building.grid_pos + cell)
 	else:
@@ -530,7 +321,7 @@ func get_conveyor_at(grid_pos: Vector2i):
 func get_linked_buildings(building: BuildingBase) -> Array:
 	if not building or not is_instance_valid(building):
 		return []
-	if building.logic and building.logic.has_method("get_linked_positions"):
+	if building.logic:
 		return building.logic.get_linked_positions()
 	return []
 
@@ -548,8 +339,6 @@ func get_building_group(building: BuildingBase) -> Array:
 
 func get_deposit_at(grid_pos: Vector2i):
 	return deposits.get(grid_pos)
-
-const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 # ── Conveyor sprite updates ───────────────────────────────────────────────────
 

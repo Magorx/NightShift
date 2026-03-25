@@ -54,72 +54,34 @@ func _update_stats() -> void:
 		child.queue_free()
 	recipe_section.visible = false
 
-	var def = GameManager.get_building_def(_building.building_id)
-	if not def:
-		return
-
-	var logic: Node = _building.logic
+	var logic = _building.logic
 	if not logic:
 		return
 
-	if logic is ConveyorBelt:
-		_add_stat("Items on belt: %d/%d" % [logic.buffer.size(), logic.buffer.capacity])
-		var dirs := ["Right", "Down", "Left", "Up"]
-		_add_stat("Direction: %s" % dirs[logic.direction])
+	# All building types return structured info via get_info_stats()
+	var stats: Array = logic.get_info_stats()
+	for entry in stats:
+		match entry.type:
+			"stat":
+				_add_stat(entry.text)
+			"progress":
+				_add_progress_bar(entry.value)
+			"recipe":
+				_show_recipe(entry.recipe, entry.active)
+			"inventory":
+				_show_inventory(entry.label, entry.items)
 
-	elif logic is ExtractorLogic:
-		_add_stat("Extracting: %s" % str(logic.item_id).capitalize().replace("_", " "))
-		_add_progress_bar(logic.get_progress())
-		_add_stat("Inventory: %d/5" % logic.inventory.get_count(logic.item_id))
+func _show_recipe(recipe, _active: bool) -> void:
+	recipe_section.visible = true
+	recipe_label.text = "Recipe: %s" % recipe.display_name
+	_populate_io_row(inputs_row, recipe.inputs)
+	_populate_io_row(outputs_row, recipe.outputs)
 
-	elif logic is ConverterLogic:
-		_update_converter_stats(logic)
-
-	elif logic is ItemSink:
-		_add_stat("Items consumed: %d" % logic.items_consumed)
-
-	elif logic is ItemSource:
-		_add_stat("Producing: %s" % str(logic.item_id).capitalize().replace("_", " "))
-		_add_stat("Rate: 1/%.1fs" % logic.produce_interval)
-
-func _update_converter_stats(conv_logic: ConverterLogic) -> void:
-	if conv_logic._active_recipe:
-		recipe_section.visible = true
-		recipe_label.text = "Recipe: %s" % conv_logic._active_recipe.display_name
-		_populate_io_row(inputs_row, conv_logic._active_recipe.inputs)
-		_populate_io_row(outputs_row, conv_logic._active_recipe.outputs)
-		_add_stat("Craft progress:")
-		_add_progress_bar(conv_logic.get_progress())
-	elif conv_logic.recipes.size() > 0:
-		recipe_section.visible = true
-		var first_recipe = conv_logic.recipes[0]
-		recipe_label.text = "Recipe: %s" % first_recipe.display_name
-		_populate_io_row(inputs_row, first_recipe.inputs)
-		_populate_io_row(outputs_row, first_recipe.outputs)
-	else:
-		recipe_section.visible = false
-
-	# Input buffer
-	var input_text := "Input: "
-	var has_input := false
-	for item_id in conv_logic.input_inv.get_item_ids():
-		var count := conv_logic.input_inv.get_count(item_id)
-		if count > 0:
-			input_text += "%dx %s  " % [count, str(item_id).replace("_", " ")]
-			has_input = true
-	if has_input:
-		_add_stat(input_text)
-
-	# Output buffer
-	var output_text := "Output: "
-	var has_output := false
-	for item_id in conv_logic.output_inv.get_item_ids():
-		var count := conv_logic.output_inv.get_count(item_id)
-		if count > 0:
-			output_text += "%dx %s  " % [count, str(item_id).replace("_", " ")]
-			has_output = true
-	if has_output:
-		_add_stat(output_text)
+func _show_inventory(label_text: String, items: Array) -> void:
+	var text := label_text + ": "
+	for item in items:
+		text += "%dx %s  " % [item.count, str(item.id).replace("_", " ")]
+	_add_stat(text)
 
 func _add_stat(text: String) -> void:
 	var label := Label.new()
