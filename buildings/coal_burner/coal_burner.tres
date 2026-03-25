@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/coal_burner/coal_burner.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"coal_burner"
+display_name = "Coal Burner"
+color = Color(0.35, 0.25, 0.2, 1)
+description = "Burns coal to generate energy. No power needed to start."
+category = "generator"
+scene = ExtResource("2")

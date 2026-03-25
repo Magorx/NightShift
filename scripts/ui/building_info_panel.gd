@@ -58,6 +58,10 @@ func _update_stats() -> void:
 	if not logic:
 		return
 
+	# Energy info (shown first for buildings with energy)
+	if logic.energy:
+		_show_energy(logic.energy)
+
 	# All building types return structured info via get_info_stats()
 	var stats: Array = logic.get_info_stats()
 	for entry in stats:
@@ -95,6 +99,16 @@ func _add_progress_bar(value: float) -> void:
 	bar.value = value * 100.0
 	bar.show_percentage = false
 	stats_container.add_child(bar)
+
+func _show_energy(e) -> void:
+	# Stored / capacity with progress bar
+	_add_stat("Energy: %.0f / %.0f" % [e.energy_stored, e.energy_capacity])
+	_add_progress_bar(e.get_fill_ratio())
+	if e.generation_rate > 0.0:
+		_add_stat("Generation: %.1f/s" % e.generation_rate)
+	if e.base_energy_demand > 0.0:
+		var status := "Powered" if e.is_powered else "Unpowered"
+		_add_stat("Demand: %.1f/s  [%s]" % [e.base_energy_demand, status])
 
 func _populate_io_row(row: HBoxContainer, stacks: Array) -> void:
 	for child in row.get_children():

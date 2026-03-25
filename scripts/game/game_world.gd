@@ -24,6 +24,7 @@ func _ready() -> void:
 	GameManager.building_layer = $BuildingLayer
 	GameManager.item_layer = $ItemLayer
 	GameManager.conveyor_system = $ConveyorSystem
+	GameManager.energy_system = $EnergySystem
 	GameManager.clear_all()
 	GameManager.deposits.clear()
 	_setup_tileset()
@@ -73,9 +74,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		_handle_zoom(event)
 	elif event is InputEventPanGesture:
 		_set_zoom(camera.zoom.x - event.delta.y * ZOOM_SPEED)
+	elif event.is_action_pressed("toggle_buildings_panel"):
+		hud.toggle_buildings_panel()
 	elif event.is_action_pressed("ui_cancel"):
-		# ESC cascade: buildings panel → info panel → building mode → destroy mode → pause menu
-		if hud.is_buildings_panel_open():
+		# ESC cascade: link mode → buildings panel → info panel → building mode → destroy mode → pause menu
+		if build_system.energy_link_mode:
+			build_system._exit_energy_link_mode()
+		elif hud.is_buildings_panel_open():
 			hud.close_buildings_panel()
 		elif _info_panel and _info_panel.visible:
 			_info_panel.hide_panel()

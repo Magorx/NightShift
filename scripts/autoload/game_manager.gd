@@ -45,6 +45,9 @@ const DEFAULT_HOTKEYS: Dictionary = {
 	KEY_5: &"sink",
 	KEY_6: &"smelter",
 	KEY_7: &"drill",
+	KEY_8: &"coal_burner",
+	KEY_9: &"energy_pole",
+	KEY_0: &"solar_panel",
 }
 var building_hotkeys: Dictionary = DEFAULT_HOTKEYS.duplicate()
 
@@ -55,6 +58,7 @@ var last_selected_building: StringName = &"conveyor"
 var building_layer: Node2D
 var item_layer: Node2D
 var conveyor_system: Node
+var energy_system: Node  # EnergySystem
 
 func _ready() -> void:
 	_load_building_defs()
@@ -243,8 +247,8 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 
 	building_layer.add_child(building)
 
-	# Rotate sprite children (after add_child to override _ready defaults)
-	BuildingDef.rotate_building_sprites(building, rotation)
+	# Rotate sprite children and EnergyNode positions (after add_child to override _ready defaults)
+	def.rotate_sprites(building, rotation)
 
 	# Register all occupied cells (rotated)
 	for cell in rotated_shape:
@@ -260,6 +264,17 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		# Register conveyors with ConveyorSystem
 		if logic is ConveyorBelt and conveyor_system:
 			conveyor_system.register_conveyor(logic)
+
+		# Register energy-capable buildings with EnergySystem
+		if energy_system and logic.energy:
+			energy_system.register_building(logic)
+			var enode = logic.get_energy_node()
+			if enode:
+				enode.owner_grid_pos = grid_pos
+				enode.owner_logic = logic
+				# Add node's inner_capacity to building's effective capacity
+				logic.energy.energy_capacity += enode.inner_capacity
+				energy_system.register_node(enode)
 
 	# Update conveyor sprites for the placed building and its neighbors
 	if def.category == "conveyor":
@@ -285,6 +300,14 @@ func remove_building(grid_pos: Vector2i) -> void:
 		return
 	var def = get_building_def(building.building_id)
 	var removed_pos: Vector2i = building.grid_pos
+
+	# Unregister from EnergySystem before cleanup
+	if building.logic and energy_system:
+		if building.logic.energy:
+			var enode = building.logic.get_energy_node()
+			if enode:
+				energy_system.unregister_node(enode)
+			energy_system.unregister_building(building.logic)
 
 	# Let the logic node handle its own cleanup (unregistration, partner unlinking, visuals)
 	if building.logic:
@@ -388,6 +411,8 @@ func clear_all() -> void:
 	if conveyor_system:
 		conveyor_system.conveyors.clear()
 		conveyor_system._pull_rr.clear()
+	if energy_system:
+		energy_system.clear_all()
 
 # ── Unified pull system ──────────────────────────────────────────────────────
 

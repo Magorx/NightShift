@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/battery/battery.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"battery"
+display_name = "Battery"
+color = Color(0.25, 0.35, 0.3, 1)
+description = "Stores large amounts of energy. Place near generators or consumers to buffer demand."
+category = "energy"
+scene = ExtResource("2")

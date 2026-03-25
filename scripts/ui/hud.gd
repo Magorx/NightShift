@@ -53,6 +53,9 @@ func is_buildings_panel_open() -> bool:
 func close_buildings_panel() -> void:
 	buildings_panel.visible = false
 
+func toggle_buildings_panel() -> void:
+	buildings_panel.visible = not buildings_panel.visible
+
 func _on_building_selected(id: StringName) -> void:
 	building_selected.emit(id)
 

@@ -159,6 +159,9 @@ func _deserialize_run(data: Dictionary) -> void:
 	# Deferred pass: link tunnel pairs using saved partner positions
 	_link_tunnels_deferred(building_list)
 
+	# Deferred pass: restore energy node connections
+	_link_energy_nodes_deferred(building_list)
+
 	# Restore items delivered
 	var delivered: Dictionary = data.get("items_delivered", {})
 	GameManager.items_delivered.clear()
@@ -205,6 +208,39 @@ func _link_tunnels_deferred(building_list: Array) -> void:
 		in_building.logic.setup_pair(out_building.logic, length)
 		out_building.logic.setup_pair(in_building.logic, length)
 		in_building.logic.restore_visuals()
+
+## Re-link energy node connections after all buildings are deserialized.
+func _link_energy_nodes_deferred(building_list: Array) -> void:
+	if not GameManager.energy_system:
+		return
+	for entry in building_list:
+		var state: Dictionary = entry.get("state", {})
+		if not state.has("energy_node"):
+			continue
+		var en_data: Dictionary = state["energy_node"]
+		if not en_data.has("connections"):
+			continue
+		var grid_pos := Vector2i(int(entry["grid_x"]), int(entry["grid_y"]))
+		var building = GameManager.buildings.get(grid_pos)
+		if not building or not building.logic:
+			continue
+		var enode = building.logic.get_energy_node()
+		if not enode:
+			continue
+		var conn_list: Array = en_data["connections"]
+		for conn in conn_list:
+			var target_pos := Vector2i(int(conn["x"]), int(conn["y"]))
+			var target_building = GameManager.buildings.get(target_pos)
+			if not target_building or not target_building.logic:
+				continue
+			var target_node = target_building.logic.get_energy_node()
+			if not target_node:
+				continue
+			# Only connect if not already connected (avoid duplicates from both sides)
+			if not enode.is_connected_to(target_node):
+				enode.connect_to(target_node)
+	# Mark networks dirty so they rebuild with restored connections
+	GameManager.energy_system.mark_dirty()
 
 func _restore_camera(cam_data: Dictionary) -> void:
 	var gw := _get_game_world()

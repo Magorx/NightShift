@@ -13,6 +13,9 @@ const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector
 
 var grid_pos: Vector2i
 
+## Energy component (BuildingEnergy or null). null = building does not participate in energy grid.
+var energy = null
+
 # ── Configuration (called once during placement) ────────────────────────────
 
 ## Set up building-specific state after placement.
@@ -36,6 +39,16 @@ func take_item_for(_target_pos: Vector2i) -> StringName:
 
 func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 	return false
+
+# ── Energy helpers ─────────────────────────────────────────────────────────
+
+## Find child EnergyNode if present. Returns null if none.
+## Uses duck-typing to avoid compile-time dependency on EnergyNode class.
+func get_energy_node():
+	for child in get_parent().get_children():
+		if child is Node2D and child.has_method("can_connect_to"):
+			return child
+	return null
 
 # ── Visual origin ──────────────────────────────────────────────────────────
 

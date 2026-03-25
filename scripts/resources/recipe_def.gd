@@ -7,3 +7,4 @@ extends Resource
 @export var inputs: Array[ItemStack]
 @export var outputs: Array[ItemStack]
 @export var craft_time: float = 5.0
+@export var energy_cost: float = 0.0  # energy consumed when craft starts (0 = free)

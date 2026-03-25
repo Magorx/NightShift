@@ -181,9 +181,63 @@ func rotate_node_children(building: Node2D, group_name: String, rotation: int) -
 			child.offset_right = child.offset_left + TILE_SIZE
 			child.offset_bottom = child.offset_top + TILE_SIZE
 
-## Rotate all direct-child AnimatedSprite2D nodes to match building rotation.
-static func rotate_building_sprites(building: Node2D, rotation: int) -> void:
+## Rotate all visual sprite children and EnergyNode positions to match building rotation.
+## Handles AnimatedSprite2D (rotation only) and script-drawn Node2D sprites
+## (rotation + position offset to compensate for pivot).
+func rotate_sprites(building: Node2D, rotation: int) -> void:
+	if rotation == 0:
+		return
 	var rot_rad := rotation * PI / 2.0
+
+	# Compute unrotated scene pixel bounding box from shape
+	var scene_w: float = TILE_SIZE
+	var scene_h: float = TILE_SIZE
+	if not shape.is_empty():
+		var min_c := Vector2i(999, 999)
+		var max_c := Vector2i(-999, -999)
+		for cell in shape:
+			var sc: Vector2i = cell + anchor_cell
+			min_c.x = mini(min_c.x, sc.x)
+			min_c.y = mini(min_c.y, sc.y)
+			max_c.x = maxi(max_c.x, sc.x + 1)
+			max_c.y = maxi(max_c.y, sc.y + 1)
+		scene_w = float((max_c.x - min_c.x) * TILE_SIZE)
+		scene_h = float((max_c.y - min_c.y) * TILE_SIZE)
+
+	# Position offset so the rotated drawing aligns with the rotated cell area
+	var offset: Vector2
+	match rotation:
+		1: offset = Vector2(scene_h, 0)
+		2: offset = Vector2(scene_w, scene_h)
+		3: offset = Vector2(0, scene_w)
+		_: offset = Vector2.ZERO
+
+	# Pivot for rotating individual point positions (anchor cell center)
+	var pivot := Vector2(anchor_cell) * TILE_SIZE + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+
 	for child in building.get_children():
 		if child is AnimatedSprite2D:
 			child.rotation = rot_rad
+		elif child is Node2D:
+			# EnergyNode — rotate its position around anchor center
+			if child.has_method("can_connect_to"):
+				var rel: Vector2 = child.position - pivot
+				match rotation:
+					1: child.position = Vector2(-rel.y, rel.x) + pivot
+					2: child.position = Vector2(-rel.x, -rel.y) + pivot
+					3: child.position = Vector2(rel.y, -rel.x) + pivot
+			# Script-drawn sprite nodes — rotate + offset
+			elif _is_drawn_sprite(child):
+				child.rotation = rot_rad
+				child.position = offset
+
+## Check if a node is a script-drawn sprite (not a system node).
+static func _is_drawn_sprite(node: Node) -> bool:
+	if not node is Node2D or node is AnimatedSprite2D or node is Sprite2D:
+		return false
+	var n: String = node.name
+	# System nodes that should NOT be rotated
+	if n in ["Shape", "Inputs", "Outputs", "BuildAnchor", "Arrow"]:
+		return false
+	# Only rotate nodes with custom scripts (sprite draw scripts)
+	return node.get_script() != null

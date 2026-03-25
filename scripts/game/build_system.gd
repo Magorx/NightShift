@@ -17,6 +17,14 @@ const OUTLINE_WIDTH := 2.0
 const GHOST_POOL_MAX := 64
 const GHOST_POOL_BASELINE := 4
 
+# Energy link mode colors
+const LINK_WIRE_VALID := Color(0.3, 0.9, 0.4, 0.7)
+const LINK_WIRE_INVALID := Color(0.5, 0.5, 0.5, 0.35)
+const LINK_WIRE_FULL := Color(0.9, 0.25, 0.2, 0.6)
+const LINK_WIRE_UNLINK := Color(0.9, 0.5, 0.2, 0.7)
+const LINK_RANGE_OUTLINE := Color(0.3, 0.65, 1.0, 0.35)
+const LINK_RANGE_FILL := Color(0.3, 0.65, 1.0, 0.06)
+
 var _destroy_shader: Shader = preload("res://buildings/shared/destroy_highlight.gdshader")
 
 var cursor_grid_pos := Vector2i.ZERO
@@ -37,6 +45,11 @@ var _highlighted_buildings: Dictionary = {}
 # Selection highlight (info panel)
 var _selected_building: Node2D = null
 var _select_highlighted: Dictionary = {} # instance_id -> Array of {node, original}
+
+# Energy link mode
+var energy_link_mode: bool = false
+var _link_origin_node = null  # EnergyNode or null
+var _link_origin_building: Node2D = null
 
 # Drag state (build mode)
 var _dragging: bool = false
@@ -73,7 +86,10 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			if building_mode:
+			if energy_link_mode:
+				if event.pressed:
+					_try_energy_link(cursor_grid_pos)
+			elif building_mode:
 				if event.pressed:
 					_start_drag(cursor_grid_pos)
 				else:
@@ -89,7 +105,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				if event.pressed:
 					_try_inspect(cursor_grid_pos)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			if building_mode:
+			if energy_link_mode:
+				_exit_energy_link_mode()
+			elif building_mode:
 				if _phase_index > 0:
 					# In a later phase — cancel everything (remove prior placements)
 					if _dragging:
@@ -130,6 +148,8 @@ func _unhandled_input(event: InputEvent) -> void:
 # ── Mode management ──────────────────────────────────────────────────────────
 
 func enter_building_mode(building_id: StringName) -> void:
+	if energy_link_mode:
+		_exit_energy_link_mode()
 	if destroy_mode:
 		exit_destroy_mode()
 	clear_select_highlight()
@@ -155,6 +175,8 @@ func exit_building_mode() -> void:
 	_clear_ghosts()
 
 func enter_destroy_mode() -> void:
+	if energy_link_mode:
+		_exit_energy_link_mode()
 	if building_mode:
 		exit_building_mode()
 	clear_select_highlight()
@@ -173,12 +195,112 @@ func select_building(id: StringName) -> void:
 func _try_inspect(pos: Vector2i) -> void:
 	var building = GameManager.get_building_at(pos)
 	if building and is_instance_valid(building):
+		# Second click on same building — check for energy link mode
+		if _selected_building == building and building.logic:
+			var enode = building.logic.get_energy_node()
+			if enode:
+				_enter_energy_link_mode(building, enode)
+				return
 		_set_select_highlight(building)
 		building_clicked.emit(building)
 	else:
 		# Clicked empty space — dismiss info panel
 		clear_select_highlight()
 		building_clicked.emit(null)
+
+# ── Energy link mode ─────────────────────────────────────────────────────────
+
+func _enter_energy_link_mode(building: Node2D, enode) -> void:
+	energy_link_mode = true
+	_link_origin_building = building
+	_link_origin_node = enode
+
+func _exit_energy_link_mode() -> void:
+	energy_link_mode = false
+	_link_origin_node = null
+	_link_origin_building = null
+
+func _try_energy_link(pos: Vector2i) -> void:
+	var target = GameManager.get_building_at(pos)
+	if not target or not is_instance_valid(target) or not target.logic:
+		return
+	var target_node = target.logic.get_energy_node()
+	if not target_node:
+		return
+	# Already connected — unlink
+	if _link_origin_node.is_connected_to(target_node):
+		_link_origin_node.disconnect_from(target_node)
+		if GameManager.energy_system:
+			GameManager.energy_system.mark_dirty()
+		return
+	# Try to connect
+	if _link_origin_node.can_connect_to(target_node):
+		_link_origin_node.connect_to(target_node)
+		if GameManager.energy_system:
+			GameManager.energy_system.mark_dirty()
+
+## Returns the wire color state for the current cursor target.
+## 0 = invalid/empty, 1 = valid link, 2 = already connected (unlink), 3 = full (no slots)
+func _get_link_target_state() -> int:
+	var target = GameManager.get_building_at(cursor_grid_pos)
+	if not target or not is_instance_valid(target) or not target.logic:
+		if not _link_origin_node.has_free_slot():
+			return 3
+		return 0
+	var target_node = target.logic.get_energy_node()
+	if not target_node:
+		if not _link_origin_node.has_free_slot():
+			return 3
+		return 0
+	# Already connected — show unlink color
+	if _link_origin_node.is_connected_to(target_node):
+		return 2
+	# Can connect
+	if _link_origin_node.can_connect_to(target_node):
+		return 1
+	# No free slot on origin
+	if not _link_origin_node.has_free_slot():
+		return 3
+	return 0
+
+func _draw_energy_link() -> void:
+	if not _link_origin_node or not is_instance_valid(_link_origin_node):
+		_exit_energy_link_mode()
+		return
+
+	var from_pos: Vector2 = _link_origin_node.global_position
+	var to_pos: Vector2 = get_global_mouse_position()
+
+	# Range circle
+	var range_px: float = _link_origin_node.connection_range * TILE_SIZE
+	_draw_range_circle(from_pos, range_px)
+
+	# Wire to cursor — colored by target state
+	var state: int = _get_link_target_state()
+	var wire_color: Color
+	match state:
+		1: wire_color = LINK_WIRE_VALID    # can link
+		2: wire_color = LINK_WIRE_UNLINK   # already connected, click to unlink
+		3: wire_color = LINK_WIRE_FULL     # no free slots
+		_: wire_color = LINK_WIRE_INVALID  # no valid target
+	draw_line(from_pos, to_pos, wire_color, 2.0)
+
+	# Draw small dot at origin
+	draw_circle(from_pos, 3.0, LINK_WIRE_VALID)
+
+func _draw_range_circle(center: Vector2, radius: float) -> void:
+	# Filled circle via polygon
+	var points := PackedVector2Array()
+	var seg := 48
+	for i in seg:
+		var angle: float = TAU * float(i) / float(seg)
+		points.append(center + Vector2(cos(angle), sin(angle)) * radius)
+	draw_colored_polygon(points, LINK_RANGE_FILL)
+	# Outline
+	for i in seg:
+		var a: Vector2 = points[i]
+		var b: Vector2 = points[(i + 1) % seg]
+		draw_line(a, b, LINK_RANGE_OUTLINE, 1.0)
 
 # ── Build drag ───────────────────────────────────────────────────────────────
 
@@ -397,8 +519,8 @@ func _create_ghost_node(building_id: StringName, rotation: int) -> Node2D:
 	add_child(ghost)
 	# Disable processing after add_child to override any _ready re-enables
 	_disable_processing_recursive(ghost)
-	# Rotate all sprites after add_child to override _ready defaults
-	BuildingDef.rotate_building_sprites(ghost, rotation)
+	# Rotate all sprites and EnergyNode positions after add_child
+	def.rotate_sprites(ghost, rotation)
 	return ghost
 
 func _disable_processing_recursive(node: Node) -> void:
@@ -660,6 +782,8 @@ func _get_visual_nodes(building: Node2D) -> Array:
 # ── Drawing ──────────────────────────────────────────────────────────────────
 
 func _draw() -> void:
+	if energy_link_mode:
+		_draw_energy_link()
 	if _phase_index > 0 and not _phase_placements.is_empty():
 		_draw_phase_area()
 	if destroy_mode:
