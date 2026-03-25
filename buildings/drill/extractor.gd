@@ -1,7 +1,7 @@
 class_name ExtractorLogic
 extends BuildingLogic
 
-const Inventory = preload("res://scripts/inventory.gd")
+
 
 var direction: int = 0
 var item_id: StringName = &"iron_ore":

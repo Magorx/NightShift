@@ -1,7 +1,7 @@
 class_name TunnelLogic
 extends BuildingLogic
 
-const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
+
 const SURFACE_VISIBLE_FRACTION := 0.75 # items vanish at 0.75 of entry cell, appear at 0.25 of exit
 
 ## Maximum number of cells between input and output (exclusive).

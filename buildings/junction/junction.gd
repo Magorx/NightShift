@@ -1,8 +1,7 @@
 class_name JunctionLogic
 extends BuildingLogic
 
-# const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
-# const RoundRobin = preload("res://scripts/round_robin.gd")
+
 
 var traverse_time: float = 1.3
 

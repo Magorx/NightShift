@@ -79,7 +79,7 @@ func run_simulation() -> void:
 	var v_out = sim_get_conveyor_at(Vector2i(10, 11))
 	sim_assert(v_out.has_item(), "Vertical item crossed junction downward")
 
-	# === Test 4: Items wait when output is removed ===
+	# === Test 4: Items wait when output is removed, resume when restored ===
 	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
@@ -88,53 +88,53 @@ func run_simulation() -> void:
 	sim_place_building(&"conveyor", Vector2i(7, 10), 0)
 
 	sim_spawn_item_on_conveyor(Vector2i(5, 10), &"iron_ore")
-	await sim_advance_seconds(4.0)
-
-	# Item should have passed through
-	var out_conv = sim_get_conveyor_at(Vector2i(7, 10))
-	sim_assert(out_conv.has_item(), "Item passed through before output removal")
-
-	# Spawn another item, then remove output while it's in transit
-	sim_spawn_item_on_conveyor(Vector2i(5, 10), &"iron_ore")
-	await sim_advance_seconds(1.5) # let it get pulled into junction
-	GameManager.remove_building(Vector2i(7, 10)) # remove output
-	await sim_advance_seconds(3.0)
-
-	# Item should be stuck in the junction buffer
 	var jnc = sim_get_building_at(Vector2i(6, 10)).logic
+
+	# Advance tick-by-tick until the item enters the junction buffer
+	var entered = await sim_advance_until(func(): return jnc.buffers[0].size() > 0)
+	sim_assert(entered, "Item entered junction buffer")
+
+	# Remove BOTH sides so the item can't reverse out
+	GameManager.remove_building(Vector2i(7, 10))
+	GameManager.remove_building(Vector2i(5, 10))
+	await sim_advance_ticks(10)
+
+	# Item should be stuck — nowhere to go
 	var h_buf: int = jnc.buffers[0].size()
 	var v_buf: int = jnc.buffers[1].size()
-	sim_assert(h_buf + v_buf > 0, "Item waiting in junction after output removed")
+	sim_assert(h_buf + v_buf > 0, "Item waiting in junction after both sides removed")
 
-	# Re-add the output
+	# Re-add only the output side
 	sim_place_building(&"conveyor", Vector2i(7, 10), 0)
-	await sim_advance_seconds(2.0)
 
-	# Item should have been pushed out
-	out_conv = sim_get_conveyor_at(Vector2i(7, 10))
+	# Advance until the item leaves the junction
+	var drained = await sim_advance_until(func(): return jnc.buffers[0].size() == 0)
+	sim_assert(drained, "Junction buffer drained after output restored")
+
+	var out_conv = sim_get_conveyor_at(Vector2i(7, 10))
 	sim_assert(out_conv.has_item(), "Item pushed out after output restored")
-	h_buf = jnc.buffers[0].size()
-	v_buf = jnc.buffers[1].size()
-	sim_assert(h_buf + v_buf == 0, "Junction buffer empty after output restored")
 
 	# === Test 5: Axis direction reversal — stranded item reverses, no overflow ===
 	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
-	# Item enters from left, heading right
 	sim_place_building(&"conveyor", Vector2i(5, 10), 0) # points right (input)
 	sim_place_building(&"junction", Vector2i(6, 10), 0)
 	sim_place_building(&"conveyor", Vector2i(7, 10), 0) # points right (output)
 
 	sim_spawn_item_on_conveyor(Vector2i(5, 10), &"iron_ore")
-	await sim_advance_seconds(1.5) # let it get pulled into junction
 
-	# Remove both input and output
+	jnc = sim_get_building_at(Vector2i(6, 10)).logic
+
+	# Advance until the item is inside the junction
+	var in_jnc = await sim_advance_until(func(): return jnc.buffers[0].size() > 0)
+	sim_assert(in_jnc, "Item entered junction for reversal test")
+
+	# Remove both input and output — item is stranded
 	GameManager.remove_building(Vector2i(7, 10))
 	GameManager.remove_building(Vector2i(5, 10))
 	await sim_advance_ticks(2)
 
-	jnc = sim_get_building_at(Vector2i(6, 10)).logic
 	sim_assert(jnc.buffers[0].size() == 1, "Item stranded in horizontal buffer")
 
 	# Reverse the axis: new input from right, output to left
@@ -143,12 +143,13 @@ func run_simulation() -> void:
 
 	# Spawn 2 items on the new input
 	sim_spawn_item_on_conveyor(Vector2i(7, 10), &"iron_ore")
-	await sim_advance_seconds(0.5)
+	await sim_advance_ticks(30)
 	sim_spawn_item_on_conveyor(Vector2i(7, 10), &"iron_ore")
-	await sim_advance_seconds(5.0)
 
-	# Buffer should never have exceeded capacity — all items should be on the output
-	sim_assert(jnc.buffers[0].size() <= 2, "Horizontal buffer never exceeded capacity (got %d)" % jnc.buffers[0].size())
+	# Wait for all items to flow through
+	var all_out = await sim_advance_until(func(): return jnc.buffers[0].is_empty(), 600)
+	sim_assert(all_out, "All items exited junction after axis reversal")
+
 	var left_out = sim_get_conveyor_at(Vector2i(5, 10))
 	var total_out: int = left_out.buffer.size() if left_out else 0
 	sim_assert(total_out > 0, "Items arrived at reversed output")

@@ -1,8 +1,7 @@
 class_name ConverterLogic
 extends BuildingLogic
 
-const Inventory = preload("res://scripts/inventory.gd")
-const RoundRobin = preload("res://scripts/round_robin.gd")
+
 
 ## Building rotation index (0=right, 1=down, 2=left, 3=up).
 var rotation: int = 0

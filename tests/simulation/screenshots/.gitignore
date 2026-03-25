@@ -1,0 +1,3 @@
+# Current screenshots are generated during comparison runs — don't commit them.
+# Only baseline/ directories should be version-controlled.
+*/current/

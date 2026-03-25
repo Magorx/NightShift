@@ -1,7 +1,7 @@
 class_name ConveyorBelt
 extends BuildingLogic
 
-const ItemBuffer = preload("res://buildings/shared/item_buffer.gd")
+
 
 var direction: int = 0 # 0=right, 1=down, 2=left, 3=up
 var traverse_time: float = 1.0 # seconds for an item to cross this conveyor

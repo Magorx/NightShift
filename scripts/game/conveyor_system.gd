@@ -1,7 +1,7 @@
 class_name ConveyorSystem
 extends Node
 
-const RoundRobin = preload("res://scripts/round_robin.gd")
+
 
 var conveyors: Dictionary = {} # Vector2i -> ConveyorBelt
 
