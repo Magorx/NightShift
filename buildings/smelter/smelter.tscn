@@ -4,7 +4,6 @@
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="3"]
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="4"]
-[ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="5"]
 [ext_resource type="Script" uid="uid://dbaj4knyfgpst" path="res://buildings/smelter/converter.gd" id="6"]
 [ext_resource type="Script" uid="uid://cu412df6kqpv" path="res://buildings/smelter/smelter_progress.gd" id="7"]
 [ext_resource type="Texture2D" path="res://buildings/smelter/sprites/main-base.png" id="8_base"]
@@ -217,9 +216,6 @@ allow_up = false
 
 [node name="BuildAnchor" type="Node2D" parent="Rotatable"]
 position = Vector2(0, 32)
-
-[node name="Arrow" type="Node2D" parent="Rotatable"]
-script = ExtResource("5")
 
 [node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
 texture_filter = 1
