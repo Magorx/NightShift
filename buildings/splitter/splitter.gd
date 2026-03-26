@@ -24,7 +24,7 @@ func _physics_process(delta: float) -> void:
 
 func _advance_items(delta: float) -> void:
 	var speed := 1.0 / traverse_time
-	buffer.advance_clamped(delta, speed)
+	buffer.advance_unclamped(delta, speed)
 	for item in buffer.items:
 		_position_item(item)
 
@@ -41,10 +41,12 @@ func _validate_outputs() -> void:
 		item.output_dir_idx = _find_any_valid_output(item.from_dir_idx)
 		if item.output_dir_idx >= 0:
 			_dir_count[item.output_dir_idx] += 1
-	# Reroute: if a completed item is stuck and a valid output has no items
-	# heading to it, redirect the stuck item there.
+	# Reroute: completed items stuck at blocked outputs try any other output
+	# whose downstream can still accept.
 	for item in buffer.items:
 		if item.progress < 1.0 or item.output_dir_idx < 0:
+			continue
+		if _can_downstream_accept(item.output_dir_idx):
 			continue
 		var free_dir := _find_free_output(item)
 		if free_dir >= 0:
@@ -125,7 +127,7 @@ func _find_any_valid_output(from_dir_idx: int) -> int:
 			return dir_idx
 	return -1
 
-# Find a valid output that no buffer item is heading to AND whose downstream can accept.
+# Find any valid output (different from current) whose downstream can accept.
 func _find_free_output(stuck_item: Dictionary) -> int:
 	for dir_idx in range(4):
 		if dir_idx == stuck_item.from_dir_idx:
@@ -133,8 +135,6 @@ func _find_free_output(stuck_item: Dictionary) -> int:
 		if dir_idx == stuck_item.output_dir_idx:
 			continue
 		if not _is_valid_output(dir_idx):
-			continue
-		if _dir_count[dir_idx] > 0:
 			continue
 		if not _can_downstream_accept(dir_idx):
 			continue

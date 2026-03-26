@@ -50,6 +50,12 @@ func get_energy_node():
 			return child
 	return null
 
+## Return the energy_cost of the most expensive recipe this building can
+## currently craft (has all input resources). Used by the energy network to
+## compute the building's energy floor. Override in converter-like buildings.
+func get_max_affordable_recipe_cost() -> float:
+	return 0.0
+
 # ── Visual origin ──────────────────────────────────────────────────────────
 
 ## How far (in tile-halves) from the pulling conveyor's center the item visual

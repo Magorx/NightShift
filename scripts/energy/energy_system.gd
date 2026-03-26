@@ -20,6 +20,10 @@ var _networks_dirty: bool = true
 # Tracks last placed node for auto-link on next placement
 var _last_placed_node = null  # EnergyNode or null
 
+# Per-tick edge flow data for visualization (built after ticking networks)
+# Key: "min_logic_id:max_logic_id", Value: net flow (positive = min → max)
+var edge_flows: Dictionary = {}
+
 # ── Registration ────────────────────────────────────────────────────────────
 
 func register_building(logic: BuildingLogic) -> void:
@@ -28,6 +32,8 @@ func register_building(logic: BuildingLogic) -> void:
 		_networks_dirty = true
 
 func unregister_building(logic: BuildingLogic) -> void:
+	if logic.energy:
+		logic.energy.network = null
 	energy_buildings.erase(logic)
 	_networks_dirty = true
 
@@ -58,9 +64,15 @@ func _physics_process(delta: float) -> void:
 	for network in networks:
 		network.tick(delta)
 
-# ── Network rebuild (flood-fill) ────────────────────────────────────────────
+	_build_edge_flows()
+
+# ── Network rebuild (flood-fill + edge graph) ──────────────────────────────
 
 func _rebuild_networks() -> void:
+	# Clear old network references
+	for logic in energy_buildings:
+		if is_instance_valid(logic) and logic.energy:
+			logic.energy.network = null
 	networks.clear()
 
 	# Build adjacency map: grid_pos -> BuildingLogic (only energy-capable buildings)
@@ -70,7 +82,6 @@ func _rebuild_networks() -> void:
 			continue
 		if not logic.energy or logic.energy.energy_capacity <= 0.0:
 			continue
-		# Register all cells this building occupies
 		var building = logic.get_parent()
 		if building and building.has_method("init"):  # BuildingBase
 			var def = GameManager.get_building_def(building.building_id)
@@ -79,10 +90,7 @@ func _rebuild_networks() -> void:
 				for cell in rotated_shape:
 					pos_to_logic[building.grid_pos + cell] = logic
 
-	# Build node adjacency: EnergyNode -> list of connected EnergyNode
-	# (already stored in node.connections)
-
-	# Flood-fill to find connected components
+	# Flood-fill to find connected components and build edge lists
 	var visited_logics: Dictionary = {}  # logic instance_id -> true
 	for logic in energy_buildings:
 		if not is_instance_valid(logic):
@@ -96,6 +104,7 @@ func _rebuild_networks() -> void:
 		# BFS from this building
 		var network = EnergyNetwork.new()
 		var queue: Array = [logic]
+		var edge_set: Dictionary = {}  # "min_max" -> true, dedup all edges
 		visited_logics[lid] = true
 
 		while not queue.is_empty():
@@ -107,7 +116,7 @@ func _rebuild_networks() -> void:
 			if current.energy.base_energy_demand > 0.0:
 				network.consumers.append(current)
 
-			# Find neighbors via adjacency (4-directional)
+			# Find neighbors via grid adjacency and create adjacency edges
 			var current_building = current.get_parent()
 			if not current_building:
 				continue
@@ -119,14 +128,34 @@ func _rebuild_networks() -> void:
 				var world_cell: Vector2i = current_building.grid_pos + cell
 				for dir in DIRECTION_VECTORS:
 					var neighbor_pos = world_cell + dir
-					if pos_to_logic.has(neighbor_pos):
-						var neighbor_logic = pos_to_logic[neighbor_pos]
-						var nlid = neighbor_logic.get_instance_id()
-						if not visited_logics.has(nlid):
-							visited_logics[nlid] = true
-							queue.append(neighbor_logic)
+					if not pos_to_logic.has(neighbor_pos):
+						continue
+					var neighbor_logic = pos_to_logic[neighbor_pos]
+					if neighbor_logic == current:
+						continue  # same building occupies both cells
+					var nlid = neighbor_logic.get_instance_id()
 
-			# Find neighbors via EnergyNode connections
+					# Record adjacency edge (deduplicated per building pair)
+					var eid_a: int = current.get_instance_id()
+					var eid_b: int = nlid
+					var edge_key := "adj_%d_%d" % [mini(eid_a, eid_b), maxi(eid_a, eid_b)]
+					if not edge_set.has(edge_key):
+						edge_set[edge_key] = true
+						var throughput := minf(
+							current.energy.adjacency_throughput,
+							neighbor_logic.energy.adjacency_throughput
+						)
+						network.edges.append({
+							a = current, b = neighbor_logic,
+							throughput = throughput,
+							net_flow = 0.0
+						})
+
+					if not visited_logics.has(nlid):
+						visited_logics[nlid] = true
+						queue.append(neighbor_logic)
+
+			# Find neighbors via EnergyNode connections and create node edges
 			var enode = current.get_energy_node()
 			if enode:
 				for connected_node in enode.connections:
@@ -139,10 +168,22 @@ func _rebuild_networks() -> void:
 					if not visited_logics.has(cn_lid):
 						visited_logics[cn_lid] = true
 						queue.append(cn_logic)
-					# Record node edge for throughput constraints
-					network.node_edges.append({from_node = enode, to_node = connected_node})
+					# Record node edge (deduplicated)
+					var eid_a: int = enode.get_instance_id()
+					var eid_b: int = connected_node.get_instance_id()
+					var edge_key := "node_%d_%d" % [mini(eid_a, eid_b), maxi(eid_a, eid_b)]
+					if not edge_set.has(edge_key):
+						edge_set[edge_key] = true
+						var throughput := minf(enode.throughput, connected_node.throughput)
+						network.edges.append({
+							a = current, b = cn_logic,
+							throughput = throughput,
+							net_flow = 0.0
+						})
 
 		if not network.buildings.is_empty():
+			for b in network.buildings:
+				b.energy.network = network
 			networks.append(network)
 
 # ── Utility ─────────────────────────────────────────────────────────────────
@@ -156,6 +197,25 @@ func clear_all() -> void:
 	networks.clear()
 	_networks_dirty = true
 	_last_placed_node = null
+
+## Build a lookup of per-tick net energy flow for each edge (for overlay visualization).
+func _build_edge_flows() -> void:
+	edge_flows.clear()
+	for network in networks:
+		for edge in network.edges:
+			if not is_instance_valid(edge.a) or not is_instance_valid(edge.b):
+				continue
+			var id_a: int = edge.a.get_instance_id()
+			var id_b: int = edge.b.get_instance_id()
+			var min_id: int = mini(id_a, id_b)
+			var max_id: int = maxi(id_a, id_b)
+			var key := "%d:%d" % [min_id, max_id]
+			# Canonicalize: positive = flow from min_id toward max_id
+			var canonical_flow: float = edge.net_flow if id_a == min_id else -edge.net_flow
+			if edge_flows.has(key):
+				edge_flows[key] += canonical_flow
+			else:
+				edge_flows[key] = canonical_flow
 
 ## Get the network a building belongs to (for debug/info panel).
 func get_network_for(logic: BuildingLogic) -> EnergyNetwork:

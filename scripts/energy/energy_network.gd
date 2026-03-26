@@ -4,176 +4,266 @@ extends RefCounted
 ## A connected component of buildings that can exchange energy.
 ## Rebuilt by EnergySystem when the network topology changes.
 ##
-## Tick algorithm:
-## 1. Collect generation into a pool (generated_now) — NOT added to individual buildings
-## 2. Fulfill base demand from generated_now first, then grid storage
-## 3. Distribute remaining generated_now instantly + equalize existing storage via lerp
-##    (combined step: targets computed from total energy, generation portion is instant)
-
-const EQUALIZE_SPEED := 2.0  # convergence rate for stored-energy equalization
+## Tick algorithm (4 phases, shared throughput budget per edge per tick):
+## 1. Generate — add energy to each generator (capped at capacity)
+## 2. Demand redistribution — fulfill base_energy_demand orders, then consume + set is_powered
+## 3. Recipe redistribution — fulfill recipe energy orders for converters with resources
+## 4. Equalization — balance fill ratios across the network
+##
+## Redistribution rules:
+## - Energy flows through edges, each with a per-tick throughput budget
+## - A building never releases energy below its floor:
+##   floor = base_energy_demand * DEMAND_BUFFER_SECONDS + max affordable recipe cost
+## - Budget is shared across all 4 phases (sum of transfers per edge per tick <= budget)
 
 var buildings: Array = []       # Array[BuildingLogic] — all energy-capable buildings
-var generators: Array = []      # subset where energy.generation_rate > 0 (at build time)
+var generators: Array = []      # subset where energy.generation_rate > 0
 var consumers: Array = []       # subset where energy.base_energy_demand > 0
-var node_edges: Array = []      # Array[{from_node, to_node}]
+var edges: Array = []           # Array[{a: BuildingLogic, b: BuildingLogic, throughput: float}]
 var total_capacity: float = 0.0
 var total_stored: float = 0.0   # cached, updated each tick
+
+## Tuning constants
+const DEMAND_BUFFER_SECONDS := 5.0   # how many seconds of demand a building protects
+const RELAXATION_PASSES := 3         # iterations per redistribution phase
+
+## Per-tick edge budgets (parallel array to edges, reset each tick)
+var _edge_budgets: Array = []   # Array[float]
 
 func tick(delta: float) -> void:
 	if buildings.is_empty():
 		return
-	# Step 1: Collect generation into a pool (not added to individual buildings)
-	var generated_now := _step_generate(delta)
-	# Step 2: Fulfill base demand from generated_now first, then grid storage
-	generated_now = _step_consume_demand(delta, generated_now)
-	# Step 3+4: Distribute remaining generation instantly + equalize grid storage
-	_step_distribute_and_equalize(delta, generated_now)
 
-## Collect total generation this tick. Energy stays in the pool, not in buildings.
-## Checks all buildings (not just generators list) because generation_rate can change
-## dynamically (e.g. coal burner starts/stops burning).
-func _step_generate(delta: float) -> float:
-	var total := 0.0
-	for building in buildings:
-		if building.energy.generation_rate > 0.0:
-			total += building.energy.generation_rate * delta
-	return total
+	# Initialize per-tick throughput budgets
+	_init_edge_budgets(delta)
 
-## Fulfill base energy demand. Uses generated_now first, then grid storage.
-## Returns remaining generated_now after demand fulfillment.
-func _step_consume_demand(delta: float, generated_now: float) -> float:
-	var total_demand := 0.0
-	for building in consumers:
-		total_demand += building.energy.base_energy_demand * delta
+	# Phase 1: Generate
+	_phase_generate(delta)
+	# Phase 2: Demand redistribution
+	_phase_demand(delta)
+	# Phase 3: Recipe redistribution
+	_phase_recipe()
+	# Phase 4: Equalization
+	_phase_equalize()
+	# Finalize
+	_step_finalize()
 
-	if total_demand <= 0.0:
-		for building in consumers:
-			building.energy.is_powered = true
-		return generated_now
+# ── Phase 1: Generation ─────────────────────────────────────────────────────
 
-	# Fulfill from generation first
-	var from_gen := minf(generated_now, total_demand)
-	generated_now -= from_gen
-	var deficit := total_demand - from_gen
-
-	if deficit <= 0.0:
-		for building in consumers:
-			building.energy.is_powered = true
-		return generated_now
-
-	# Draw deficit from grid storage (proportionally from all buildings)
-	var grid_stored := 0.0
-	for building in buildings:
-		grid_stored += building.energy.energy_stored
-
-	if grid_stored >= deficit:
-		var ratio := deficit / grid_stored
-		for building in buildings:
-			building.energy.energy_stored *= (1.0 - ratio)
-		for building in consumers:
-			building.energy.is_powered = true
-	else:
-		# Not enough — drain all storage, mark unpowered
-		for building in buildings:
-			building.energy.energy_stored = 0.0
-		for building in consumers:
-			building.energy.is_powered = false
-
-	return generated_now
-
-## Distribute remaining generation instantly + equalize existing storage via lerp.
-## Generated energy flows immediately to where there's space; existing stored energy
-## lerps toward equal absolute levels across buildings.
-func _step_distribute_and_equalize(delta: float, generated_now: float) -> void:
+func _phase_generate(delta: float) -> void:
+	# Check if grid is full
 	total_stored = 0.0
 	total_capacity = 0.0
 	for building in buildings:
 		total_stored += building.energy.energy_stored
 		total_capacity += building.energy.energy_capacity
+	var is_full := total_capacity > 0.0 and total_stored >= total_capacity
 
-	if total_capacity <= 0.0:
+	for building in buildings:
+		building.energy.grid_full = is_full
+
+	if is_full:
 		return
 
-	var total_energy := total_stored + generated_now
+	# Iterate all buildings — generation_rate can be dynamic (e.g. coal burner)
+	for building in buildings:
+		if building.energy.generation_rate > 0.0:
+			var gen: float = building.energy.generation_rate * delta
+			building.energy.energy_stored = minf(
+				building.energy.energy_stored + gen,
+				building.energy.energy_capacity
+			)
 
-	# Compute equalization targets for total energy (existing + generation)
-	var final_targets := _compute_targets(total_energy)
-	# Compute equalization targets for existing storage only
-	var existing_targets := _compute_targets(total_stored)
+# ── Phase 2: Demand redistribution ──────────────────────────────────────────
 
-	var lerp_factor := clampf(EQUALIZE_SPEED * delta, 0.0, 1.0)
-
-	for i in buildings.size():
-		var e = buildings[i].energy
-		# Lerp existing storage toward equalized target (smooth convergence)
-		var equalized := lerpf(e.energy_stored, existing_targets[i], lerp_factor)
-		# Add generation share instantly (not lerped — fresh energy flows immediately)
-		var gen_share := maxf(final_targets[i] - existing_targets[i], 0.0)
-		e.energy_stored = equalized + gen_share
-
-	# Node connection throughput constraints
-	for edge in node_edges:
-		var from_node = edge.from_node
-		var to_node = edge.to_node
-		if not is_instance_valid(from_node) or not is_instance_valid(to_node):
+func _phase_demand(delta: float) -> void:
+	# Collect demand orders: each consumer needs base_energy_demand * delta
+	var orders: Dictionary = {}  # building instance_id -> amount needed
+	var order_buildings: Array = []  # buildings that placed orders
+	for building in consumers:
+		var need: float = building.energy.base_energy_demand * delta
+		if need <= 0.0:
+			building.energy.is_powered = true
 			continue
-		if not from_node.owner_logic or not to_node.owner_logic:
-			continue
-		var from_e = from_node.owner_logic.energy
-		var to_e = to_node.owner_logic.energy
-		if not from_e or not to_e:
-			continue
-		var min_throughput: float = minf(from_node.throughput, to_node.throughput)
-		var max_transfer: float = min_throughput * delta
-		var diff: float = from_e.energy_stored - to_e.energy_stored
-		if absf(diff) < 0.5:
-			continue
-		var desired: float = diff * 0.5
-		var actual: float = clampf(desired, -max_transfer, max_transfer)
-		if actual > 0.0:
-			actual = minf(actual, maxf(to_e.energy_capacity - to_e.energy_stored, 0.0))
-			actual = minf(actual, from_e.energy_stored)
-		elif actual < 0.0:
-			actual = maxf(actual, -maxf(from_e.energy_capacity - from_e.energy_stored, 0.0))
-			actual = maxf(actual, -to_e.energy_stored)
-		from_e.energy_stored -= actual
-		to_e.energy_stored += actual
+		# Building needs this much. If it already has enough, no order needed,
+		# but we still consume after redistribution.
+		var deficit: float = need - building.energy.energy_stored
+		if deficit > 0.0:
+			orders[building.get_instance_id()] = deficit
+			order_buildings.append(building)
 
-	# Final clamp — safety net for floating-point drift
+	# Redistribute to fill demand deficits
+	if not orders.is_empty():
+		_redistribute(orders)
+
+	# Consume demand and set powered state
+	for building in consumers:
+		var need: float = building.energy.base_energy_demand * delta
+		if need <= 0.0:
+			building.energy.is_powered = true
+			continue
+		if building.energy.energy_stored >= need:
+			building.energy.energy_stored -= need
+			building.energy.is_powered = true
+		else:
+			# Consume whatever is left
+			building.energy.energy_stored = 0.0
+			building.energy.is_powered = false
+
+# ── Phase 3: Recipe redistribution ──────────────────────────────────────────
+
+func _phase_recipe() -> void:
+	# Collect recipe orders: converters that want energy for a powered recipe
+	var orders: Dictionary = {}
+	for building in buildings:
+		var demand: float = building.energy.energy_demand
+		if demand <= 0.0:
+			continue
+		var deficit: float = demand - building.energy.energy_stored
+		if deficit > 0.0:
+			orders[building.get_instance_id()] = deficit
+
+	if not orders.is_empty():
+		_redistribute(orders)
+
+# ── Phase 4: Equalization ───────────────────────────────────────────────────
+
+func _phase_equalize() -> void:
+	# Flow energy from higher fill-ratio buildings to lower, respecting floors
+	for _pass in range(RELAXATION_PASSES):
+		for i in range(edges.size()):
+			if _edge_budgets[i] <= 0.001:
+				continue
+			var edge = edges[i]
+			var a = edge.a
+			var b = edge.b
+			if not is_instance_valid(a) or not is_instance_valid(b):
+				continue
+			var a_e = a.energy
+			var b_e = b.energy
+			if not a_e or not b_e:
+				continue
+			if a_e.energy_capacity <= 0.0 or b_e.energy_capacity <= 0.0:
+				continue
+
+			var a_fill: float = a_e.energy_stored / a_e.energy_capacity
+			var b_fill: float = b_e.energy_stored / b_e.energy_capacity
+			var diff: float = a_fill - b_fill
+			if absf(diff) < 0.001:
+				continue
+
+			var a_floor := _get_floor(a)
+			var b_floor := _get_floor(b)
+
+			# Flow from higher fill to lower fill
+			if diff > 0.0:
+				# a -> b
+				var a_surplus := maxf(a_e.energy_stored - a_floor, 0.0)
+				var b_space := maxf(b_e.energy_capacity - b_e.energy_stored, 0.0)
+				# Target: equalize fill ratios. Transfer half the difference in energy terms.
+				var target_transfer := diff * 0.5 * minf(a_e.energy_capacity, b_e.energy_capacity)
+				var transfer := minf(target_transfer, minf(a_surplus, minf(b_space, _edge_budgets[i])))
+				if transfer > 0.001:
+					a_e.energy_stored -= transfer
+					b_e.energy_stored += transfer
+					_edge_budgets[i] -= transfer
+					edges[i].net_flow += transfer
+			else:
+				# b -> a
+				var b_surplus := maxf(b_e.energy_stored - b_floor, 0.0)
+				var a_space := maxf(a_e.energy_capacity - a_e.energy_stored, 0.0)
+				var target_transfer := -diff * 0.5 * minf(a_e.energy_capacity, b_e.energy_capacity)
+				var transfer := minf(target_transfer, minf(b_surplus, minf(a_space, _edge_budgets[i])))
+				if transfer > 0.001:
+					b_e.energy_stored -= transfer
+					a_e.energy_stored += transfer
+					_edge_budgets[i] -= transfer
+					edges[i].net_flow -= transfer
+
+# ── Core redistribution ─────────────────────────────────────────────────────
+
+## Iterative edge relaxation: try to fulfill orders by flowing energy through edges.
+## Each pass, for each edge, if one side has an order deficit and the other has surplus
+## above its floor, transfer energy (clamped by edge budget).
+func _redistribute(orders: Dictionary) -> void:
+	for _pass in range(RELAXATION_PASSES):
+		for i in range(edges.size()):
+			if _edge_budgets[i] <= 0.001:
+				continue
+			var edge = edges[i]
+			var a = edge.a
+			var b = edge.b
+			if not is_instance_valid(a) or not is_instance_valid(b):
+				continue
+			var a_e = a.energy
+			var b_e = b.energy
+			if not a_e or not b_e:
+				continue
+
+			var a_id: int = a.get_instance_id()
+			var b_id: int = b.get_instance_id()
+			var a_want: float = orders.get(a_id, 0.0)
+			var b_want: float = orders.get(b_id, 0.0)
+
+			# Determine flow direction: from the side without (or less) want to the side with want
+			var flow := 0.0  # positive = a->b, negative = b->a
+			if b_want > 0.0 and a_want <= 0.0:
+				# b needs energy, a can supply
+				var a_floor := _get_floor(a)
+				var a_surplus := maxf(a_e.energy_stored - a_floor, 0.0)
+				var b_space := maxf(b_e.energy_capacity - b_e.energy_stored, 0.0)
+				flow = minf(b_want, minf(a_surplus, minf(b_space, _edge_budgets[i])))
+			elif a_want > 0.0 and b_want <= 0.0:
+				# a needs energy, b can supply
+				var b_floor := _get_floor(b)
+				var b_surplus := maxf(b_e.energy_stored - b_floor, 0.0)
+				var a_space := maxf(a_e.energy_capacity - a_e.energy_stored, 0.0)
+				flow = -minf(a_want, minf(b_surplus, minf(a_space, _edge_budgets[i])))
+			elif a_want > 0.0 and b_want > 0.0:
+				# Both need energy — don't transfer between starving buildings
+				continue
+
+			if absf(flow) < 0.001:
+				continue
+
+			if flow > 0.0:
+				a_e.energy_stored -= flow
+				b_e.energy_stored += flow
+				_edge_budgets[i] -= flow
+				edges[i].net_flow += flow
+				orders[b_id] = maxf(b_want - flow, 0.0)
+			else:
+				var abs_flow := -flow
+				b_e.energy_stored -= abs_flow
+				a_e.energy_stored += abs_flow
+				_edge_budgets[i] -= abs_flow
+				edges[i].net_flow -= abs_flow
+				orders[a_id] = maxf(a_want - abs_flow, 0.0)
+
+# ── Finalize ────────────────────────────────────────────────────────────────
+
+func _step_finalize() -> void:
+	total_stored = 0.0
+	total_capacity = 0.0
 	for building in buildings:
 		var e = building.energy
 		e.energy_stored = clampf(e.energy_stored, 0.0, e.energy_capacity)
+		total_stored += e.energy_stored
+		total_capacity += e.energy_capacity
 
-## Compute equal-distribution targets for a given total energy amount.
-## Handles capacity caps: full buildings get their cap, remainder redistributed to others.
-func _compute_targets(total_energy: float) -> Array:
-	var count := buildings.size()
-	var targets: Array = []
-	targets.resize(count)
-	var settled: Array = []
-	settled.resize(count)
-	for i in count:
-		settled[i] = false
-	var remaining := total_energy
-	var unsettled_count := count
+# ── Helpers ─────────────────────────────────────────────────────────────────
 
-	while unsettled_count > 0:
-		var share: float = remaining / float(unsettled_count)
-		var any_capped := false
-		for i in count:
-			if settled[i]:
-				continue
-			var cap: float = buildings[i].energy.energy_capacity
-			if cap < share:
-				targets[i] = cap
-				remaining -= cap
-				settled[i] = true
-				unsettled_count -= 1
-				any_capped = true
-		if not any_capped:
-			for i in count:
-				if not settled[i]:
-					targets[i] = share
-			break
+func _init_edge_budgets(delta: float) -> void:
+	_edge_budgets.resize(edges.size())
+	for i in range(edges.size()):
+		_edge_budgets[i] = edges[i].throughput * delta
+		edges[i].net_flow = 0.0
 
-	return targets
+## Compute the energy floor for a building: the minimum energy it will not
+## voluntarily release during redistribution.
+## floor = base_energy_demand * DEMAND_BUFFER_SECONDS + max affordable recipe cost
+func _get_floor(logic) -> float:
+	var e = logic.energy
+	var demand_floor: float = e.base_energy_demand * DEMAND_BUFFER_SECONDS
+	var recipe_floor: float = logic.get_max_affordable_recipe_cost()
+	return minf(demand_floor + recipe_floor, e.energy_capacity)

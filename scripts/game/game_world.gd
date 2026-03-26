@@ -18,6 +18,7 @@ const AUTOSAVE_INTERVAL := 60.0
 var _autosave_timer: float = 0.0
 var _pause_menu_scene: PackedScene = preload("res://scenes/ui/pause_menu.tscn")
 var _info_panel_scene: PackedScene = preload("res://scenes/ui/building_info_panel.tscn")
+var _world_gen_script = preload("res://scripts/game/world_generator.gd")
 var _info_panel: PanelContainer
 
 func _ready() -> void:
@@ -27,9 +28,18 @@ func _ready() -> void:
 	GameManager.energy_system = $EnergySystem
 	GameManager.clear_all()
 	GameManager.deposits.clear()
+	GameManager.walls.clear()
+
+	# Determine world seed: use saved seed when loading, random for new game
+	if SaveManager.pending_load:
+		var save_data: Dictionary = SaveManager.peek_save_data()
+		GameManager.world_seed = int(save_data.get("world_seed", randi()))
+	elif GameManager.world_seed == 0:
+		GameManager.world_seed = randi()
+
 	_setup_tileset()
-	_fill_ground()
-	_place_deposits()
+	var gen = _world_gen_script.new()
+	gen.generate(tile_map, MAP_SIZE, GameManager.world_seed)
 
 	# Wire HUD signals
 	hud.building_selected.connect(_on_building_selected)
@@ -127,6 +137,9 @@ const TILE_GROUND := 0
 const TILE_IRON := 1
 const TILE_COPPER := 2
 const TILE_COAL := 3
+const TILE_WALL := 4
+const TILE_GROUND_DARK := 5
+const TILE_GROUND_LIGHT := 6
 
 # Deposit colors
 const DEPOSIT_COLORS := {
@@ -158,39 +171,8 @@ func _setup_tileset() -> void:
 	_create_tile_source(tile_set, TILE_GROUND, Color(0.28, 0.36, 0.24))
 	for id in DEPOSIT_COLORS:
 		_create_tile_source(tile_set, id, DEPOSIT_COLORS[id])
+	_create_tile_source(tile_set, TILE_WALL, Color(0.38, 0.34, 0.30))
+	_create_tile_source(tile_set, TILE_GROUND_DARK, Color(0.24, 0.30, 0.20))
+	_create_tile_source(tile_set, TILE_GROUND_LIGHT, Color(0.32, 0.40, 0.28))
 	tile_map.tile_set = tile_set
 
-func _fill_ground() -> void:
-	for x in range(MAP_SIZE):
-		for y in range(MAP_SIZE):
-			tile_map.set_cell(Vector2i(x, y), TILE_GROUND, Vector2i(0, 0))
-
-func _place_deposits() -> void:
-	# Place several deposit patches around the map
-	var deposit_patches := [
-		# [center_x, center_y, tile_source_id, patch_radius]
-		[10, 10, TILE_IRON, 2],
-		[10, 25, TILE_IRON, 2],
-		[30, 8, TILE_COPPER, 2],
-		[25, 30, TILE_COPPER, 2],
-		[45, 15, TILE_COAL, 2],
-		[18, 45, TILE_COAL, 2],
-		[50, 40, TILE_IRON, 3],
-		[40, 50, TILE_COPPER, 2],
-	]
-	for patch in deposit_patches:
-		var cx: int = patch[0]
-		var cy: int = patch[1]
-		var tile_id: int = patch[2]
-		var radius: int = patch[3]
-		var item_id: StringName = DEPOSIT_ITEMS[tile_id]
-		for dx in range(-radius, radius + 1):
-			for dy in range(-radius, radius + 1):
-				# Circular-ish shape
-				if dx * dx + dy * dy > radius * radius + 1:
-					continue
-				var pos := Vector2i(cx + dx, cy + dy)
-				if pos.x < 0 or pos.y < 0 or pos.x >= MAP_SIZE or pos.y >= MAP_SIZE:
-					continue
-				tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
-				GameManager.deposits[pos] = item_id

@@ -28,6 +28,11 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 func _physics_process(delta: float) -> void:
 	_try_pull_fuel()
 
+	# Pause burning when the energy grid is at capacity — don't waste fuel
+	if energy.grid_full:
+		energy.generation_rate = 0.0
+		return
+
 	if _is_burning:
 		_burn_timer += delta
 		# Signal generation rate — network handles energy distribution
@@ -111,7 +116,9 @@ func deserialize_state(state: Dictionary) -> void:
 func get_info_stats() -> Array:
 	var stats: Array = []
 	stats.append({type = "stat", text = "Coal Burner (25 energy/s)"})
-	if _is_burning:
+	if energy.grid_full:
+		stats.append({type = "stat", text = "Status: Grid Full"})
+	elif _is_burning:
 		stats.append({type = "stat", text = "Status: Burning"})
 		stats.append({type = "progress", value = _burn_timer / BURN_TIME})
 	else:

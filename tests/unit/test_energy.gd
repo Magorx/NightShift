@@ -7,6 +7,10 @@ extends "res://tests/base_test.gd"
 
 class MockBuilding extends RefCounted:
 	var energy
+	var _max_recipe_cost: float = 0.0
+
+	func get_max_affordable_recipe_cost() -> float:
+		return _max_recipe_cost
 
 # ── BuildingEnergy tests ─────────────────────────────────────────────────────
 
@@ -62,24 +66,9 @@ func test_building_energy_fill_ratio_zero_capacity() -> void:
 	var e := BuildingEnergy.new(0.0)
 	assert_eq(e.get_fill_ratio(), 0.0, "zero capacity = 0 ratio")
 
-func test_building_energy_can_afford() -> void:
+func test_building_energy_adjacency_throughput_default() -> void:
 	var e := BuildingEnergy.new(100.0)
-	e.energy_stored = 50.0
-	assert_true(e.can_afford(50.0), "can afford exact amount")
-	assert_true(e.can_afford(30.0), "can afford less")
-	assert_false(e.can_afford(60.0), "cannot afford more")
-
-func test_building_energy_consume_for_recipe() -> void:
-	var e := BuildingEnergy.new(100.0)
-	e.energy_stored = 50.0
-	assert_true(e.consume_for_recipe(30.0), "consume success")
-	assert_eq(e.energy_stored, 20.0, "stored decreased by cost")
-
-func test_building_energy_consume_insufficient() -> void:
-	var e := BuildingEnergy.new(100.0)
-	e.energy_stored = 10.0
-	assert_false(e.consume_for_recipe(30.0), "consume fails")
-	assert_eq(e.energy_stored, 10.0, "stored unchanged on failure")
+	assert_eq(e.adjacency_throughput, 200.0, "default adjacency throughput")
 
 func test_building_energy_serialize_roundtrip() -> void:
 	var e := BuildingEnergy.new(100.0, 5.0, 10.0)
@@ -236,13 +225,29 @@ func _make_mock(capacity: float, demand: float = 0.0, generation: float = 0.0) -
 	m.energy = BuildingEnergy.new(capacity, demand, generation)
 	return m
 
+## Helper to create a network with edges between all consecutive buildings (chain).
+func _make_chain_network(mocks: Array) -> EnergyNetwork:
+	var net := EnergyNetwork.new()
+	net.buildings = mocks.duplicate()
+	for m in mocks:
+		if m.energy.generation_rate > 0.0:
+			net.generators.append(m)
+		if m.energy.base_energy_demand > 0.0:
+			net.consumers.append(m)
+	# Chain edges: 0-1, 1-2, 2-3, ...
+	for i in range(mocks.size() - 1):
+		net.edges.append({
+			a = mocks[i], b = mocks[i + 1],
+			throughput = minf(mocks[i].energy.adjacency_throughput, mocks[i + 1].energy.adjacency_throughput)
+		})
+	return net
+
 func test_network_generation() -> void:
 	var gen := _make_mock(200.0, 0.0, 25.0)  # generator: 25/s
 	var net := EnergyNetwork.new()
 	net.buildings = [gen]
 	net.generators = [gen]
 	net.tick(1.0)  # 1 second
-	# Generated 25 energy, equalization won't change anything with 1 building
 	assert_true(gen.energy.energy_stored > 20.0, "generator produced energy (got %.1f)" % gen.energy.energy_stored)
 
 func test_network_consume_base_sufficient() -> void:
@@ -253,7 +258,6 @@ func test_network_consume_base_sufficient() -> void:
 	net.consumers = [consumer]
 	net.tick(1.0)
 	assert_true(consumer.energy.is_powered, "powered when sufficient energy")
-	# Consumed 10, equalized (single building = no change)
 	assert_true(consumer.energy.energy_stored < 50.0, "energy consumed")
 
 func test_network_consume_base_insufficient() -> void:
@@ -270,8 +274,7 @@ func test_network_equalization_two_buildings() -> void:
 	var b := _make_mock(100.0)
 	a.energy.energy_stored = 100.0  # full
 	b.energy.energy_stored = 0.0    # empty
-	var net := EnergyNetwork.new()
-	net.buildings = [a, b]
+	var net := _make_chain_network([a, b])
 	# Run several ticks to let equalization converge
 	for i in 10:
 		net.tick(0.5)
@@ -284,22 +287,17 @@ func test_network_equalization_unequal_capacity() -> void:
 	var small := _make_mock(50.0)
 	big.energy.energy_stored = 200.0
 	small.energy.energy_stored = 0.0
-	var net := EnergyNetwork.new()
-	net.buildings = [big, small]
+	var net := _make_chain_network([big, small])
 	for i in 20:
 		net.tick(0.5)
-	# Absolute equalization: equal share = 200/2 = 100, but small caps at 50
-	# So small -> 50, big -> 150
-	assert_true(small.energy.energy_stored > 40.0, "small filled near cap (%.1f)" % small.energy.energy_stored)
-	assert_true(big.energy.energy_stored > 100.0, "big retains excess (%.1f)" % big.energy.energy_stored)
+	# Fill-ratio equalization: both should converge to similar ratios
+	assert_true(small.energy.energy_stored > 30.0, "small filled (%.1f)" % small.energy.energy_stored)
+	assert_true(big.energy.energy_stored > 100.0, "big retains bulk (%.1f)" % big.energy.energy_stored)
 
 func test_network_gen_plus_consumer() -> void:
 	var gen := _make_mock(200.0, 0.0, 50.0)  # generates 50/s
 	var consumer := _make_mock(100.0, 10.0)   # demands 10/s
-	var net := EnergyNetwork.new()
-	net.buildings = [gen, consumer]
-	net.generators = [gen]
-	net.consumers = [consumer]
+	var net := _make_chain_network([gen, consumer])
 	# Run for 5 seconds
 	for i in 50:
 		net.tick(0.1)
@@ -312,10 +310,7 @@ func test_network_rationing() -> void:
 	var c1 := _make_mock(100.0, 10.0)
 	var c2 := _make_mock(100.0, 10.0)
 	var c3 := _make_mock(100.0, 10.0)
-	var net := EnergyNetwork.new()
-	net.buildings = [gen, c1, c2, c3]
-	net.generators = [gen]
-	net.consumers = [c1, c2, c3]
+	var net := _make_chain_network([gen, c1, c2, c3])
 	# Run a few ticks — demand (30/s) far exceeds supply (5/s)
 	for i in 20:
 		net.tick(0.5)
@@ -332,8 +327,7 @@ func test_network_empty_tick() -> void:
 func test_network_zero_demand_all_powered() -> void:
 	var a := _make_mock(50.0)
 	var b := _make_mock(50.0)
-	var net := EnergyNetwork.new()
-	net.buildings = [a, b]
+	var net := _make_chain_network([a, b])
 	net.tick(1.0)
 	# No consumers, so nothing to check for is_powered — just ensure no crash
 	assert_true(true, "network with no consumers ticks fine")
@@ -343,17 +337,12 @@ func test_network_storage_gets_surplus() -> void:
 	var gen := _make_mock(100.0, 0.0, 50.0)  # generates 50/s
 	var consumer := _make_mock(100.0, 10.0)   # demands 10/s
 	var battery := _make_mock(2000.0)          # pure storage
-	var net := EnergyNetwork.new()
-	net.buildings = [gen, consumer, battery]
-	net.generators = [gen]
-	net.consumers = [consumer]
+	var net := _make_chain_network([gen, consumer, battery])
 	# Run enough ticks for energy to accumulate and spread
 	for i in 20:
 		net.tick(0.5)
-	# Consumer should be powered (demand met by generation)
 	assert_true(consumer.energy.is_powered,
 		"Consumer powered while battery charges")
-	# Battery should have received energy via equalization
 	assert_true(battery.energy.energy_stored > 1.0,
 		"Battery received surplus energy (%.1f)" % battery.energy.energy_stored)
 
@@ -364,3 +353,44 @@ func test_network_generator_fills_capacity() -> void:
 	net.generators = [gen]
 	net.tick(1.0)
 	assert_eq(gen.energy.energy_stored, 100.0, "capped at capacity")
+
+func test_network_floor_protects_recipe_energy() -> void:
+	# Building with recipe cost should not give away that energy
+	var source := _make_mock(200.0)
+	source.energy.energy_stored = 200.0
+	source._max_recipe_cost = 50.0  # floor = 50
+	var sink := _make_mock(200.0)
+	sink.energy.energy_stored = 0.0
+	var net := _make_chain_network([source, sink])
+	for i in 20:
+		net.tick(0.5)
+	# Source should retain at least its floor (50)
+	assert_true(source.energy.energy_stored >= 45.0,
+		"Source retained floor energy (%.1f)" % source.energy.energy_stored)
+
+func test_network_battery_gives_all() -> void:
+	# Battery (floor=0) donates freely to needy consumer
+	var battery := _make_mock(2000.0)
+	battery.energy.energy_stored = 500.0
+	var consumer := _make_mock(100.0, 10.0)
+	consumer.energy.energy_stored = 0.0
+	var net := _make_chain_network([battery, consumer])
+	for i in 10:
+		net.tick(0.5)
+	assert_true(consumer.energy.is_powered, "consumer powered from battery")
+	assert_true(consumer.energy.energy_stored > 0.0, "consumer has energy")
+
+func test_network_throughput_limits_transfer() -> void:
+	# Two buildings with low throughput — energy transfer is bounded
+	var a := _make_mock(1000.0)
+	var b := _make_mock(1000.0)
+	a.energy.energy_stored = 1000.0
+	b.energy.energy_stored = 0.0
+	a.energy.adjacency_throughput = 10.0  # very low throughput
+	b.energy.adjacency_throughput = 10.0
+	var net := _make_chain_network([a, b])
+	net.tick(1.0)  # 1 second: max transfer = 10 * 1.0 = 10
+	# b should have received at most ~10 energy (across all phases)
+	assert_true(b.energy.energy_stored <= 15.0,
+		"Throughput limited transfer (b=%.1f)" % b.energy.energy_stored)
+	assert_true(b.energy.energy_stored > 0.0, "Some energy transferred")

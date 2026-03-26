@@ -13,11 +13,15 @@ const PARTICLE_SPEED := 40.0
 const PARTICLE_SPACING := 16.0
 const PARTICLE_RADIUS := 1.8
 const NO_POWER_COLOR := Color(1.0, 0.25, 0.15, 0.85)
+const SMOOTH_RATE := 2.5  # how fast flow direction changes (per second)
 
 var _time: float = 0.0
+var _delta: float = 0.0
+var _smoothed_flow: Dictionary = {}  # canonical pair key -> smoothed velocity (-1..1)
 
 func _process(delta: float) -> void:
 	_time += delta
+	_delta = delta
 	queue_redraw()
 
 func _draw() -> void:
@@ -83,23 +87,41 @@ func _draw_energy_wire(from_node, to_node) -> void:
 		draw_line(prev, point, wire_col, WIRE_WIDTH)
 		prev = point
 
-	# Energy particles
-	if avg_fill < 0.01:
+	# Look up actual energy flow from the network
+	var target_dir: float = 0.0
+	var from_logic = from_node.owner_logic
+	var to_logic = to_node.owner_logic
+	if from_logic and to_logic and GameManager.energy_system:
+		var es = GameManager.energy_system
+		var id_from: int = from_logic.get_instance_id()
+		var id_to: int = to_logic.get_instance_id()
+		var min_id: int = mini(id_from, id_to)
+		var max_id: int = maxi(id_from, id_to)
+		var flow_key := "%d:%d" % [min_id, max_id]
+		var canonical_flow: float = es.edge_flows.get(flow_key, 0.0)
+		# Convert canonical (min→max) to from→to convention
+		var directed_flow: float = canonical_flow if id_from == min_id else -canonical_flow
+		if absf(directed_flow) >= 0.01:
+			target_dir = signf(directed_flow)
+
+	# Smooth the flow direction for momentum/impulse effect
+	var node_id_a: int = from_node.get_instance_id()
+	var node_id_b: int = to_node.get_instance_id()
+	var smooth_key := "%d:%d" % [mini(node_id_a, node_id_b), maxi(node_id_a, node_id_b)]
+	var from_is_min: bool = (node_id_a <= node_id_b)
+	var canonical_target: float = target_dir if from_is_min else -target_dir
+	var current_vel: float = _smoothed_flow.get(smooth_key, 0.0)
+	current_vel = move_toward(current_vel, canonical_target, _delta * SMOOTH_RATE)
+	_smoothed_flow[smooth_key] = current_vel
+	var flow_dir: float = current_vel if from_is_min else -current_vel
+
+	# Energy particles — show when there's stored energy OR active flow
+	var activity: float = maxf(avg_fill, absf(flow_dir))
+	if activity < 0.01:
 		return
 
-	# Particles flow from high stored energy toward low stored energy
-	var from_stored: float = 0.0
-	var to_stored: float = 0.0
-	if from_node.owner_logic and from_node.owner_logic.energy:
-		from_stored = from_node.owner_logic.energy.energy_stored
-	if to_node.owner_logic and to_node.owner_logic.energy:
-		to_stored = to_node.owner_logic.energy.energy_stored
-	var flow_dir: float = sign(from_stored - to_stored)
-	if absf(from_stored - to_stored) < 0.5:
-		flow_dir = 0.0
-
 	var particle_count: int = maxi(int(dist / PARTICLE_SPACING), 1)
-	var particle_alpha: float = 0.3 + avg_fill * 0.7
+	var particle_alpha: float = 0.3 + activity * 0.7
 	var p_color := Color(PARTICLE_COLOR.r, PARTICLE_COLOR.g, PARTICLE_COLOR.b, particle_alpha)
 
 	for i in range(particle_count):
@@ -110,7 +132,7 @@ func _draw_energy_wire(from_node, to_node) -> void:
 		var a: Vector2 = from_pos.lerp(mid_sagged, offset_t)
 		var b: Vector2 = mid_sagged.lerp(to_pos, offset_t)
 		var p_pos: Vector2 = a.lerp(b, offset_t)
-		var radius: float = PARTICLE_RADIUS * (0.7 + avg_fill * 0.3)
+		var radius: float = PARTICLE_RADIUS * (0.7 + activity * 0.3)
 		draw_circle(p_pos, radius, p_color)
 
 func _draw_no_power_icon(logic) -> void:

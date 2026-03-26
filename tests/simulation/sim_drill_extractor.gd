@@ -2,11 +2,12 @@ extends "simulation_base.gd"
 
 func run_simulation() -> void:
 	# Test 1: Drill can only be placed on a deposit
-	# Position (0, 0) is ground — drill should fail
-	var result = sim_place_building(&"drill", Vector2i(0, 0), 0)
+	# Position (5, 5) is ground — drill should fail
+	var result = sim_place_building(&"drill", Vector2i(5, 5), 0)
 	sim_assert(result == null, "Drill cannot be placed on empty ground")
 
-	# Test 2: Place drill on an iron deposit (10, 10 is iron per game_world.gd)
+	# Test 2: Place drill on an iron deposit
+	sim_add_deposit(Vector2i(10, 10), &"iron_ore")
 	result = sim_place_building(&"drill", Vector2i(10, 10), 0)
 	sim_assert(result != null, "Drill placed on iron deposit at (10, 10)")
 
@@ -26,6 +27,7 @@ func run_simulation() -> void:
 	sim_assert(consumed > 0, "Sink consumed items from drill chain (got %d)" % consumed)
 
 	# Test 4: Place drill on copper deposit
+	sim_add_deposit(Vector2i(30, 8), &"copper_ore")
 	sim_place_building(&"drill", Vector2i(30, 8), 1)  # direction: down
 	sim_place_building(&"conveyor", Vector2i(30, 9), 1)
 	sim_place_building(&"conveyor", Vector2i(30, 10), 1)

@@ -74,7 +74,8 @@ func run_simulation() -> void:
 	# ═══════════════════════════════════════════════════════════════
 	# TEST 5: Coal Burner pulls fuel and generates energy
 	# ═══════════════════════════════════════════════════════════════
-	# Coal deposit at center (45,15) radius 2
+	# Coal deposit — add explicitly for procedural world
+	sim_add_deposit(Vector2i(45, 15), &"coal")
 	var drill = sim_place_building(&"drill", Vector2i(45, 15), 0)
 	sim_assert(drill != null, "Drill placed on coal deposit")
 	sim_place_building(&"conveyor", Vector2i(46, 15), 0)
@@ -109,6 +110,7 @@ func run_simulation() -> void:
 	# ═══════════════════════════════════════════════════════════════
 	# Iron deposit at (10,10). Drill -> conveyors -> smelter.
 	# Solar panels adjacent to smelter provide energy.
+	sim_add_deposit(Vector2i(10, 10), &"iron_ore")
 	sim_place_building(&"drill", Vector2i(10, 10), 0)
 	sim_place_building(&"conveyor", Vector2i(11, 10), 0)
 	sim_place_building(&"conveyor", Vector2i(12, 10), 0)
@@ -201,31 +203,36 @@ func run_simulation() -> void:
 	# Warmup: let coal arrive and burning start (3 ticks ≈ 5 game-seconds at 100x)
 	await sim_advance_ticks(3)
 
-	# Phase 1: After 4 more ticks (~6.7s), both should have similar energy
-	# Each tick generates ~41.7 energy, split ~20.8 each. After 4 ticks ≈ 83 each.
+	# Phase 1: After 4 more ticks (~6.7s), both should have energy.
+	# Fill-ratio equalization: battery (2000 cap) absorbs proportionally more than
+	# burner (200 cap). Both fill ratios should roughly converge.
 	await sim_advance_ticks(4)
 	var be9: float = burner9.logic.energy.energy_stored
 	var bte9: float = battery9.logic.energy.energy_stored
-	sim_assert(be9 > 20.0, "T9: Burner has energy (%.1f)" % be9)
-	sim_assert(bte9 > 20.0, "T9: Battery has energy (%.1f)" % bte9)
-	sim_assert(absf(be9 - bte9) < 15.0,
-		"T9 Phase 1: Burner (%.1f) ≈ Battery (%.1f), diff=%.1f" % [be9, bte9, absf(be9 - bte9)])
+	sim_assert(be9 > 1.0, "T9: Burner has energy (%.1f)" % be9)
+	sim_assert(bte9 > 10.0, "T9: Battery has energy (%.1f)" % bte9)
+	var fill_diff := absf(burner9.logic.energy.get_fill_ratio() - battery9.logic.energy.get_fill_ratio())
+	sim_assert(fill_diff < 0.15,
+		"T9 Phase 1: Fill ratios close (burner=%.3f, battery=%.3f, diff=%.3f)" % [
+			burner9.logic.energy.get_fill_ratio(),
+			battery9.logic.energy.get_fill_ratio(), fill_diff])
 
-	# Phase 2: Run 10 more ticks — burner should cap at 200
-	# Total ~17 ticks of generation ≈ 28 game-seconds, ~700 energy generated.
-	# Burner caps at 200, excess flows to battery.
+	# Phase 2: Run 10 more ticks — burner stays proportional, battery accumulates bulk.
+	# Total ~17 ticks ≈ 700 energy generated. Burner share ≈ 9% of total ≈ 63.
 	await sim_advance_ticks(10)
 	be9 = burner9.logic.energy.energy_stored
-	sim_assert(be9 >= 195.0,
-		"T9 Phase 2: Burner near capacity (%.1f / 200)" % be9)
+	bte9 = battery9.logic.energy.energy_stored
+	sim_assert(be9 > 10.0,
+		"T9 Phase 2: Burner has proportional share (%.1f / 200)" % be9)
+	sim_assert(bte9 > 100.0,
+		"T9 Phase 2: Battery absorbed bulk energy (%.1f / 2000)" % bte9)
 
-	# Phase 3: Verify battery keeps gaining energy after burner is full.
-	# Over 5 ticks, all generation (~208 energy) should flow to battery.
+	# Phase 3: Verify battery keeps gaining energy over time.
 	var batt_before: float = battery9.logic.energy.energy_stored
 	await sim_advance_ticks(5)
 	var batt_after: float = battery9.logic.energy.energy_stored
 	var gain: float = batt_after - batt_before
-	sim_assert(gain > 100.0,
+	sim_assert(gain > 50.0,
 		"T9 Phase 3: Battery gaining energy (gain=%.1f over 5 ticks, %.1f → %.1f)" % [gain, batt_before, batt_after])
 
 	sim_finish()

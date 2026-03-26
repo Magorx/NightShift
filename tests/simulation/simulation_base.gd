@@ -55,6 +55,9 @@ func _ready():
 		"screenshot_compare":
 			_setup_screenshot_dir("current")
 
+	# Clear walls for simulations — tests need a clean grid, not terrain obstacles
+	_sim_clear_walls()
+
 	# Defer so game_world._ready() completes first
 	run_simulation.call_deferred()
 
@@ -67,6 +70,20 @@ func _setup_screenshot_dir(subdir: String) -> void:
 func run_simulation() -> void:
 	# Override in subclass
 	pass
+
+# ── World helpers ────────────────────────────────────────────────────────
+
+## Clear all walls so simulations have a clean grid for building placement.
+func _sim_clear_walls() -> void:
+	var tm = game_world.find_child("TileMapLayer", false, false)
+	if tm:
+		for pos in GameManager.walls:
+			tm.set_cell(pos, 0, Vector2i(0, 0))  # TILE_GROUND = 0
+	GameManager.walls.clear()
+
+## Register a deposit at a position so drills can be placed there.
+func sim_add_deposit(pos: Vector2i, item_id: StringName) -> void:
+	GameManager.deposits[pos] = item_id
 
 # ── Building helpers (use GameManager directly) ──────────────────────────
 

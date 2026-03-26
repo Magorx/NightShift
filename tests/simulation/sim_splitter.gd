@@ -79,4 +79,43 @@ func run_simulation() -> void:
 	var conv_output = sim_get_conveyor_at(Vector2i(7, 5))
 	sim_assert(conv_output.has_item(), "Item pushed to output conveyor after it was placed")
 
+	# === Test 3: Blocked output reroute ===
+	# Two items heading for the same output should both advance to progress 1.0
+	# independently and exit promptly when a free output appears. With the old
+	# clamped advancement, item 2 would be stuck at progress 0.5 behind item 1.
+	GameManager.clear_all()
+	await sim_advance_ticks(2)
+
+	# Input and splitter only — no outputs so items buffer internally
+	sim_place_building(&"conveyor", Vector2i(9, 10), 0)
+	sim_place_building(&"splitter", Vector2i(10, 10), 0)
+
+	# Send 2 items in, staggered for entry-gap clearance
+	sim_spawn_item_on_conveyor(Vector2i(9, 10), &"iron_ore")
+	await sim_advance_seconds(0.7)
+	sim_spawn_item_on_conveyor(Vector2i(9, 10), &"iron_ore")
+
+	# Wait for both items to enter the splitter and advance
+	await sim_advance_seconds(3.0)
+
+	var spl3 = sim_get_building_at(Vector2i(10, 10))
+	sim_assert(spl3.logic.buffer.size() == 2,
+		"2 items buffered in splitter (got %d)" % spl3.logic.buffer.size())
+
+	# With unclamped advancement, both items reach progress 1.0 independently
+	var all_complete := true
+	for item in spl3.logic.buffer.items:
+		if item.progress < 1.0:
+			all_complete = false
+	sim_assert(all_complete, "Both items at progress 1.0 (unclamped advancement)")
+
+	# Add an output — both should exit within a few ticks, not just the first
+	sim_place_building(&"conveyor", Vector2i(10, 11), 1)
+	sim_place_building(&"conveyor", Vector2i(10, 12), 1)
+
+	await sim_advance_seconds(0.5)
+
+	sim_assert(spl3.logic.buffer.size() == 0,
+		"Both items exited promptly (%d stuck)" % spl3.logic.buffer.size())
+
 	sim_finish()

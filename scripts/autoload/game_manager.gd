@@ -17,6 +17,12 @@ var unique_buildings: Array = []
 # Deposits: grid_pos -> item_id (what resource this deposit produces)
 var deposits: Dictionary = {}
 
+# Walls: grid_pos -> true (impassable rock, blocks building placement)
+var walls: Dictionary = {}
+
+# World generation seed (saved/loaded for reproducibility)
+var world_seed: int = 0
+
 # Cached item definitions: item_id -> ItemDef
 var _item_def_cache: Dictionary = {}
 
@@ -190,6 +196,8 @@ func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotat
 	for cell in rotated_shape:
 		var check_pos: Vector2i = grid_pos + Vector2i(cell)
 		if check_pos.x < 0 or check_pos.y < 0 or check_pos.x >= map_size or check_pos.y >= map_size:
+			return false
+		if walls.has(check_pos):
 			return false
 		if buildings.has(check_pos):
 			var existing = buildings[check_pos]

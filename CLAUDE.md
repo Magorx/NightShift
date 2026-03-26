@@ -17,8 +17,15 @@ $GODOT --headless --path . --quit
 # Run all tests (unit + integration)
 $GODOT --headless --path . --script res://tests/run_tests.gd
 
-# Run a specific simulation
-$GODOT --headless --path . --script res://tests/run_simulation.gd -- <sim_name>
+# Run a specific simulation (fast headless — ~1s per sim)
+# --fixed-fps 60 is REQUIRED: without it sims run in real time (~24s instead of ~1s)
+$GODOT --headless --fixed-fps 60 --path . --script res://tests/run_simulation.gd -- <sim_name>
+
+# Run simulation in visual mode (windowed, interactive, doesn't auto-quit)
+$GODOT --path . --script res://tests/run_simulation.gd -- <sim_name> --visual
+
+# Run simulation in screenshot mode (needs rendering, no --headless)
+$GODOT --fixed-fps 60 --path . --script res://tests/run_simulation.gd -- <sim_name> --screenshot-baseline
 
 # Launch game with visible window
 $GODOT --path .
@@ -89,6 +96,7 @@ buildings/
 All building logic nodes extend `BuildingLogic` and override virtual methods as needed:
 
 - **Pull system**: `has_output_toward()`, `can_provide_to()`, `peek_output_for()`, `take_item_for()`, `has_input_from()`, `can_accept_from()`
+- **Energy**: `get_max_affordable_recipe_cost()` — returns highest energy_cost of craftable recipes (used by network for floor calculation)
 - **Configuration**: `configure(def, grid_pos, rotation)` — each building self-configures from its BuildingDef
 - **Serialization**: `serialize_state()` / `deserialize_state()` — each building handles its own save/load
 - **Info panel**: `get_info_stats()` — returns structured `[{type, ...}]` entries (types: "stat", "progress", "recipe", "inventory")
@@ -106,10 +114,38 @@ BuildingDef reads the `.tscn` scene at load time to extract:
 
 This means IO configuration lives in the `.tscn` scene, not in code.
 
+### Energy System
+
+Energy flows through a graph of buildings connected by adjacency edges and EnergyNode links. **Energy never teleports** — all transfers respect per-edge throughput limits.
+
+**Core classes:**
+- **EnergySystem** (`scripts/energy/energy_system.gd`) — registration, network rebuild (flood-fill + full edge graph)
+- **EnergyNetwork** (`scripts/energy/energy_network.gd`) — per-tick 4-phase distribution algorithm
+- **BuildingEnergy** (`buildings/shared/building_energy.gd`) — per-building energy state component (null = no energy)
+- **EnergyNode** (`buildings/shared/energy_node.gd`) — long-range connection component (attach to scene for explicit links)
+
+**4-phase tick algorithm (shared throughput budget per edge per tick):**
+1. **Generate** — generators add `generation_rate * delta` to own storage
+2. **Demand redistribution** — buildings with `base_energy_demand > 0` order energy; iterative edge relaxation fills deficits; then consume demand and set `is_powered`
+3. **Recipe redistribution** — converters signal `energy_demand` (set every tick via `get_max_affordable_recipe_cost()`); edge relaxation delivers energy toward them
+4. **Equalization** — balance fill ratios across the network, respecting floors and remaining throughput
+
+**Energy floor:** each building protects a minimum energy level it won't release during redistribution:
+`floor = base_energy_demand * DEMAND_BUFFER_SECONDS + get_max_affordable_recipe_cost()`
+- Batteries/generators (no demand, no recipes): floor = 0 → freely donate
+- Converters with resources for powered recipes: floor = recipe cost → hold energy for crafting
+
+**Throughput:** every edge has a per-tick budget (`throughput * delta`), shared across all 4 phases. Adjacency edges use `min(a.adjacency_throughput, b.adjacency_throughput)` (default 200/s). Node edges use `min(node_a.throughput, node_b.throughput)`.
+
+**Tuning constants** (in EnergyNetwork): `DEMAND_BUFFER_SECONDS = 5.0`, `RELAXATION_PASSES = 3`.
+
+**Converter energy behavior:** converters try the most productive recipe first. If a powered recipe can't be afforded locally, they immediately fall back to a cheaper/free recipe — no waiting. `energy_demand` is signaled every tick (even mid-craft) so redistribution proactively delivers energy.
+
 ### Game Systems
 
 - **BuildSystem** (`scripts/game/build_system.gd`) — grid-based placement with rotation, drag multi-placement, destroy mode with shader highlights, multi-phase building support (tunnels)
 - **ConveyorSystem** (`scripts/game/conveyor_system.gd`) — per-physics-frame processing: item advancement, pull-based transfers, progress clamping
+- **EnergySystem** (`scripts/energy/energy_system.gd`) — energy network management, edge graph rebuild, per-tick distribution
 - **GridOverlay** (`scripts/game/grid_overlay.gd`) — visual grid rendering
 - **Inventory** (`scripts/inventory.gd`) — per-item storage with capacity limits (used by extractors/converters)
 - **RoundRobin** (`scripts/round_robin.gd`) — fair round-robin iterator for multi-directional pulling
@@ -148,7 +184,7 @@ Custom lightweight test framework (no plugin dependencies) for headless executio
 - Unit tests in `tests/unit/`, integration tests in `tests/integration/`
 - Simulations in `tests/simulation/` extend `SimulationBase` — scripted play-throughs with time advancement and input synthesis
 
-Available simulations: `sim_conveyor_transport`, `sim_unified_pull`, `sim_drill_extractor`, `sim_smelter_converter`, `sim_merge_and_source_sink`, `sim_junction`, `sim_splitter`.
+Available simulations: `sim_conveyor_transport`, `sim_unified_pull`, `sim_drill_extractor`, `sim_smelter_converter`, `sim_merge_and_source_sink`, `sim_junction`, `sim_splitter`, `sim_energy`.
 
 ### Workflow for New Buildings
 

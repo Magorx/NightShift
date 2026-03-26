@@ -9,6 +9,10 @@ var energy_capacity: float = 0.0      # max local storage
 var base_energy_demand: float = 0.0   # continuous energy/s needed to operate
 var is_powered: bool = true           # computed: true if base_demand is met
 var generation_rate: float = 0.0      # energy/s produced (generators only)
+var grid_full: bool = false            # set by network: true when grid is at capacity
+var network = null                     # EnergyNetwork ref, set by EnergySystem on rebuild
+var energy_demand: float = 0.0         # pending recipe energy need (set by converter logic)
+var adjacency_throughput: float = 200.0  # max energy/s through adjacency edges
 
 func _init(p_capacity: float = 0.0, p_demand: float = 0.0, p_generation: float = 0.0) -> void:
 	energy_capacity = p_capacity
@@ -35,17 +39,6 @@ func remove_energy(amount: float) -> float:
 	var removed := minf(amount, energy_stored)
 	energy_stored -= removed
 	return removed
-
-## Check if building can afford a recipe energy cost.
-func can_afford(cost: float) -> bool:
-	return energy_stored >= cost
-
-## Consume energy for a recipe. Returns true if successful.
-func consume_for_recipe(cost: float) -> bool:
-	if energy_stored < cost:
-		return false
-	energy_stored -= cost
-	return true
 
 # ── Serialization ────────────────────────────────────────────────────────────
 

@@ -63,6 +63,9 @@ func _build_capacities() -> void:
 				output_inv.set_capacity(out.item.id, out.quantity * 5)
 
 func _physics_process(delta: float) -> void:
+	# Always signal energy demand so redistribution delivers energy proactively
+	_update_energy_demand()
+
 	# If building requires power and is unpowered, stop all processing
 	if energy and energy.base_energy_demand > 0.0 and not energy.is_powered:
 		return
@@ -93,6 +96,11 @@ func _try_pull_inputs() -> void:
 				GameManager.pull_item(world_cell, dir_idx)
 				input_inv.add(peek_id)
 
+func _update_energy_demand() -> void:
+	if not energy:
+		return
+	energy.energy_demand = get_max_affordable_recipe_cost()
+
 func _try_start_craft() -> void:
 	# Sort candidates by total output quantity (highest first) — prefer most productive recipe
 	var candidates: Array = []
@@ -102,10 +110,9 @@ func _try_start_craft() -> void:
 	candidates.sort_custom(_compare_recipes_by_output)
 
 	for recipe in candidates:
-		# Check energy cost if recipe requires it
 		if recipe.energy_cost > 0.0:
-			if not energy or not energy.can_afford(recipe.energy_cost):
-				continue  # Skip to cheaper recipe
+			if not energy or energy.energy_stored < recipe.energy_cost:
+				continue
 		_start_craft(recipe)
 		return
 
@@ -128,10 +135,17 @@ func _can_craft(recipe) -> bool:
 			return false
 	return true
 
+func get_max_affordable_recipe_cost() -> float:
+	var max_cost := 0.0
+	for recipe in recipes:
+		if recipe.energy_cost > max_cost and _can_craft(recipe):
+			max_cost = recipe.energy_cost
+	return max_cost
+
 func _start_craft(recipe) -> void:
-	# Consume energy cost if needed
+	# Consume energy cost locally
 	if recipe.energy_cost > 0.0 and energy:
-		energy.consume_for_recipe(recipe.energy_cost)
+		energy.energy_stored = maxf(energy.energy_stored - recipe.energy_cost, 0.0)
 	for inp in recipe.inputs:
 		input_inv.remove(inp.item.id, inp.quantity)
 	_active_recipe = recipe

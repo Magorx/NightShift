@@ -16,6 +16,7 @@ func run_simulation() -> void:
 	#   Sink at (17,10)
 
 	# Place drill on iron deposit
+	sim_add_deposit(Vector2i(10, 10), &"iron_ore")
 	var result = sim_place_building(&"drill", Vector2i(10, 10), 0)
 	sim_assert(result != null, "Drill placed on iron deposit")
 

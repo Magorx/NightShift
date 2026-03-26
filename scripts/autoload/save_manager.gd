@@ -67,6 +67,14 @@ func load_run() -> bool:
 	print("[SaveManager] Run loaded from slot %d" % AccountManager.active_slot)
 	return true
 
+## Peek at save data without doing a full load (used for world seed on startup).
+func peek_save_data() -> Dictionary:
+	var slot_dir := AccountManager.get_slot_dir(AccountManager.active_slot)
+	var data := _read_json(slot_dir + "run_autosave.json")
+	if data.is_empty():
+		data = _read_json(slot_dir + "run_backup.json")
+	return data
+
 ## Check if a run save exists for the active slot.
 func has_run_save() -> bool:
 	return AccountManager.has_run_save()
@@ -85,6 +93,7 @@ func _serialize_run() -> Dictionary:
 	var data := {
 		"version": SAVE_VERSION,
 		"saved_at": Time.get_datetime_string_from_system(true),
+		"world_seed": GameManager.world_seed,
 		"camera": _serialize_camera(),
 		"currency": GameManager.total_currency,
 		"buildings": _serialize_buildings(),
