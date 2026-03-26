@@ -1,55 +1,179 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=21 format=3 uid="uid://c63p8mesdlobv"]
 
-[ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
-[ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="2"]
-[ext_resource type="Script" path="res://buildings/shared/input_cell.gd" id="3"]
-[ext_resource type="Script" path="res://buildings/shared/building_arrow.gd" id="5"]
-[ext_resource type="Script" path="res://buildings/coal_burner/coal_burner_logic.gd" id="6"]
-[ext_resource type="Script" path="res://buildings/coal_burner/coal_burner_sprite.gd" id="7"]
+[ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
+[ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
+[ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="3"]
+[ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="5"]
+[ext_resource type="Texture2D" uid="uid://b2of7llhfonpv" path="res://buildings/coal_burner/sprites/main-Sheet.png" id="5_wcmba"]
+[ext_resource type="Script" uid="uid://b3j5yw3ptf61h" path="res://buildings/coal_burner/coal_burner_logic.gd" id="6"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8mflb"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(0, 64, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t63fj"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(64, 64, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ohaam"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(128, 64, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5rxbj"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(192, 64, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_k2bgb"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(0, 0, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mexkc"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(64, 0, 64, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_0egua"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8mflb")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t63fj")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ohaam")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5rxbj")
+}],
+"loop": true,
+"name": &"active",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_k2bgb")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mexkc")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_o30jh"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(0, 96, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_464v3"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(64, 96, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r54qx"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(128, 96, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8hqg6"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(192, 96, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_p04wu"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(0, 32, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_56gal"]
+atlas = ExtResource("5_wcmba")
+region = Rect2(64, 32, 64, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_2s72c"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_o30jh")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_464v3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_r54qx")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8hqg6")
+}],
+"loop": true,
+"name": &"active",
+"speed": 10.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_p04wu")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_56gal")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 10.0
+}]
 
 [node name="CoalBurner" type="Node2D"]
 script = ExtResource("1")
 
-[node name="Shape" type="Node2D" parent="."]
+[node name="Rotatable" type="Node2D" parent="."]
 
-[node name="Cell_0_0" type="ColorRect" parent="Shape"]
+[node name="Shape" type="Node2D" parent="Rotatable"]
+
+[node name="Cell_0_0" type="ColorRect" parent="Rotatable/Shape"]
 offset_right = 32.0
 offset_bottom = 32.0
 color = Color(0.35, 0.25, 0.2, 1)
 script = ExtResource("2")
 
-[node name="Cell_1_0" type="ColorRect" parent="Shape"]
+[node name="Cell_1_0" type="ColorRect" parent="Rotatable/Shape"]
 offset_left = 32.0
 offset_right = 64.0
 offset_bottom = 32.0
 color = Color(0.35, 0.25, 0.2, 1)
 script = ExtResource("2")
 
-[node name="Inputs" type="Node2D" parent="."]
+[node name="Inputs" type="Node2D" parent="Rotatable"]
 
-[node name="In_0" type="ColorRect" parent="Inputs"]
+[node name="In_0" type="ColorRect" parent="Rotatable/Inputs"]
 offset_right = 32.0
 offset_bottom = 32.0
 color = Color(0.3, 0.5, 0.9, 0)
 script = ExtResource("3")
 allow_right = false
 
-[node name="In_1" type="ColorRect" parent="Inputs"]
+[node name="In_1" type="ColorRect" parent="Rotatable/Inputs"]
 offset_left = 32.0
 offset_right = 64.0
 offset_bottom = 32.0
 color = Color(0.3, 0.5, 0.9, 0)
 script = ExtResource("3")
 
-[node name="Outputs" type="Node2D" parent="."]
+[node name="Outputs" type="Node2D" parent="Rotatable"]
 
-[node name="BuildAnchor" type="Node2D" parent="."]
+[node name="BuildAnchor" type="Node2D" parent="Rotatable"]
 
-[node name="Arrow" type="Node2D" parent="."]
+[node name="Arrow" type="Node2D" parent="Rotatable"]
 script = ExtResource("5")
+
+[node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
+texture_filter = 1
+position = Vector2(32, 16)
+sprite_frames = SubResource("SpriteFrames_0egua")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
+z_index = 10
+texture_filter = 1
+position = Vector2(32, 16)
+sprite_frames = SubResource("SpriteFrames_2s72c")
+animation = &"active"
+autoplay = "idle"
 
 [node name="CoalBurnerLogic" type="Node" parent="."]
 script = ExtResource("6")
-
-[node name="CoalBurnerSprite" type="Node2D" parent="."]
-script = ExtResource("7")

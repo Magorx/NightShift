@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://dmmfpftg5syl2"]
+[gd_scene load_steps=22 format=3 uid="uid://dmmfpftg5syl2"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
@@ -7,40 +7,154 @@
 [ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="5"]
 [ext_resource type="Script" uid="uid://dbaj4knyfgpst" path="res://buildings/smelter/converter.gd" id="6"]
 [ext_resource type="Script" uid="uid://cu412df6kqpv" path="res://buildings/smelter/smelter_progress.gd" id="7"]
+[ext_resource type="Texture2D" path="res://buildings/smelter/sprites/main-base.png" id="8_base"]
+[ext_resource type="Texture2D" path="res://buildings/smelter/sprites/main-top.png" id="8_top"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bi0"]
+atlas = ExtResource("8_base")
+region = Rect2(0, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bi1"]
+atlas = ExtResource("8_base")
+region = Rect2(64, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba0"]
+atlas = ExtResource("8_base")
+region = Rect2(128, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba1"]
+atlas = ExtResource("8_base")
+region = Rect2(192, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba2"]
+atlas = ExtResource("8_base")
+region = Rect2(256, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba3"]
+atlas = ExtResource("8_base")
+region = Rect2(320, 0, 64, 96)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_base"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ba0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ba1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ba2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ba3")
+}],
+"loop": true,
+"name": &"active",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bi0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bi1")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ti0"]
+atlas = ExtResource("8_top")
+region = Rect2(0, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ti1"]
+atlas = ExtResource("8_top")
+region = Rect2(64, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta0"]
+atlas = ExtResource("8_top")
+region = Rect2(128, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta1"]
+atlas = ExtResource("8_top")
+region = Rect2(192, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta2"]
+atlas = ExtResource("8_top")
+region = Rect2(256, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta3"]
+atlas = ExtResource("8_top")
+region = Rect2(320, 0, 64, 96)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_top"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ta0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ta1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ta2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ta3")
+}],
+"loop": true,
+"name": &"active",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ti0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ti1")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}]
 
 [node name="Smelter" type="Node2D"]
 script = ExtResource("1")
 
-[node name="Shape" type="Node2D" parent="."]
+[node name="Rotatable" type="Node2D" parent="."]
 
-[node name="Cell_0_0" type="ColorRect" parent="Shape"]
+[node name="Shape" type="Node2D" parent="Rotatable"]
+
+[node name="Cell_0_0" type="ColorRect" parent="Rotatable/Shape"]
 offset_right = 32.0
 offset_bottom = 32.0
 color = Color(0.9, 0.5, 0.15, 1)
 script = ExtResource("2")
 
-[node name="Cell_1_0" type="ColorRect" parent="Shape"]
+[node name="Cell_1_0" type="ColorRect" parent="Rotatable/Shape"]
 offset_left = 32.0
 offset_right = 64.0
 offset_bottom = 32.0
 color = Color(0.9, 0.5, 0.15, 1)
 script = ExtResource("2")
 
-[node name="Cell_0_1" type="ColorRect" parent="Shape"]
+[node name="Cell_0_1" type="ColorRect" parent="Rotatable/Shape"]
 offset_top = 32.0
 offset_right = 32.0
 offset_bottom = 64.0
 color = Color(0.9, 0.5, 0.15, 1)
 script = ExtResource("2")
 
-[node name="Cell_0_2" type="ColorRect" parent="Shape"]
+[node name="Cell_0_2" type="ColorRect" parent="Rotatable/Shape"]
 offset_top = 64.0
 offset_right = 32.0
 offset_bottom = 96.0
 color = Color(0.9, 0.5, 0.15, 1)
 script = ExtResource("2")
 
-[node name="Cell_1_2" type="ColorRect" parent="Shape"]
+[node name="Cell_1_2" type="ColorRect" parent="Rotatable/Shape"]
 offset_left = 32.0
 offset_top = 64.0
 offset_right = 64.0
@@ -48,9 +162,9 @@ offset_bottom = 96.0
 color = Color(0.9, 0.5, 0.15, 1)
 script = ExtResource("2")
 
-[node name="Inputs" type="Node2D" parent="."]
+[node name="Inputs" type="Node2D" parent="Rotatable"]
 
-[node name="In_0" type="ColorRect" parent="Inputs"]
+[node name="In_0" type="ColorRect" parent="Rotatable/Inputs"]
 offset_top = 32.0
 offset_right = 32.0
 offset_bottom = 64.0
@@ -60,21 +174,21 @@ allow_right = false
 allow_down = false
 allow_up = false
 
-[node name="In_1" type="ColorRect" parent="Inputs"]
+[node name="In_1" type="ColorRect" parent="Rotatable/Inputs"]
 offset_left = 32.0
 offset_right = 64.0
 offset_bottom = 32.0
 color = Color(0.3, 0.5, 0.9, 0)
 script = ExtResource("3")
 
-[node name="In_2" type="ColorRect" parent="Inputs"]
+[node name="In_2" type="ColorRect" parent="Rotatable/Inputs"]
 offset_top = 64.0
 offset_right = 32.0
 offset_bottom = 96.0
 color = Color(0.3, 0.5, 0.9, 0)
 script = ExtResource("3")
 
-[node name="In_3" type="ColorRect" parent="Inputs"]
+[node name="In_3" type="ColorRect" parent="Rotatable/Inputs"]
 offset_left = 32.0
 offset_top = 64.0
 offset_right = 64.0
@@ -82,15 +196,15 @@ offset_bottom = 96.0
 color = Color(0.3, 0.5, 0.9, 0)
 script = ExtResource("3")
 
-[node name="In_4" type="ColorRect" parent="Inputs"]
+[node name="In_4" type="ColorRect" parent="Rotatable/Inputs"]
 offset_right = 32.0
 offset_bottom = 32.0
 color = Color(0.3, 0.5, 0.9, 0)
 script = ExtResource("3")
 
-[node name="Outputs" type="Node2D" parent="."]
+[node name="Outputs" type="Node2D" parent="Rotatable"]
 
-[node name="Out_0" type="ColorRect" parent="Outputs"]
+[node name="Out_0" type="ColorRect" parent="Rotatable/Outputs"]
 offset_left = 32.0
 offset_top = 32.0
 offset_right = 64.0
@@ -101,14 +215,29 @@ allow_down = false
 allow_left = false
 allow_up = false
 
-[node name="BuildAnchor" type="Node2D" parent="."]
+[node name="BuildAnchor" type="Node2D" parent="Rotatable"]
 position = Vector2(0, 32)
 
-[node name="Arrow" type="Node2D" parent="."]
+[node name="Arrow" type="Node2D" parent="Rotatable"]
 script = ExtResource("5")
+
+[node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
+texture_filter = 1
+position = Vector2(32, 48)
+sprite_frames = SubResource("SpriteFrames_base")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
+z_index = 10
+texture_filter = 1
+position = Vector2(32, 48)
+sprite_frames = SubResource("SpriteFrames_top")
+animation = &"idle"
+autoplay = "idle"
 
 [node name="ConverterLogic" type="Node" parent="."]
 script = ExtResource("6")
 
-[node name="ProgressBar" type="Node2D" parent="."]
+[node name="ProgressBar" type="Node2D" parent="Rotatable"]
 script = ExtResource("7")

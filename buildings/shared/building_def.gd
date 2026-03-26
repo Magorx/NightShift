@@ -34,6 +34,11 @@ func extract_from_scene() -> void:
 	_extract_shape()
 	_extract_io()
 
+## Find the Rotatable container inside a building (or fall back to the node itself).
+static func get_rotatable(building: Node) -> Node:
+	var rotatable = building.find_child("Rotatable", false, false)
+	return rotatable if rotatable else building
+
 func _extract_shape() -> void:
 	if not scene:
 		shape = [Vector2i(0, 0)]
@@ -41,10 +46,11 @@ func _extract_shape() -> void:
 		return
 
 	var instance = scene.instantiate()
+	var container = get_rotatable(instance)
 
 	# Read anchor
 	var a_cell := Vector2i(0, 0)
-	var anchor_node = instance.find_child("BuildAnchor", false, false)
+	var anchor_node = container.find_child("BuildAnchor", false, false)
 	if anchor_node and anchor_node is Node2D:
 		@warning_ignore("integer_division")
 		a_cell.x = int(round(anchor_node.position.x)) / TILE_SIZE
@@ -54,7 +60,7 @@ func _extract_shape() -> void:
 
 	# Read shape cells, make anchor-relative
 	var cells: Array = []
-	var shape_node = instance.find_child("Shape", false, false)
+	var shape_node = container.find_child("Shape", false, false)
 	if shape_node:
 		for child in shape_node.get_children():
 			if child is ColorRect:
@@ -76,13 +82,14 @@ func _extract_io() -> void:
 		return
 
 	var instance = scene.instantiate()
-	inputs = _read_io_group(instance, "Inputs")
-	outputs = _read_io_group(instance, "Outputs")
+	var container = get_rotatable(instance)
+	inputs = _read_io_group(container, "Inputs")
+	outputs = _read_io_group(container, "Outputs")
 	instance.free()
 
-func _read_io_group(instance: Node, group_name: String) -> Array:
+func _read_io_group(container: Node, group_name: String) -> Array:
 	var result: Array = []
-	var group_node = instance.find_child(group_name, false, false)
+	var group_node = container.find_child(group_name, false, false)
 	if not group_node:
 		return result
 	for child in group_node.get_children():
@@ -160,11 +167,30 @@ func get_rotated_inputs(rotation: int) -> Array:
 		})
 	return result
 
-# ── Visual rotation (used during placement & ghost preview) ─────────────────
+# ── Visual rotation ───────────────────────────────────────────────────────────
 
-## Reposition ColorRect children of a named sub-node to match the rotated layout.
-func rotate_node_children(building: Node2D, group_name: String, rotation: int) -> void:
-	var group_node = building.find_child(group_name, false, false)
+## Apply all visual rotation to a building instance in one call.
+## Repositions Shape/Inputs/Outputs ColorRects, rotates sprites and Sprite2Ds,
+## repositions EnergyNodes, and configures the Arrow overlay.
+## Must be called after add_child (so _ready defaults are overridden).
+func apply_rotation(building: Node2D, rotation: int) -> void:
+	if rotation == 0:
+		return
+	var container: Node = get_rotatable(building)
+	_rotate_group(container, "Shape", rotation)
+	_rotate_group(container, "Inputs", rotation)
+	_rotate_group(container, "Outputs", rotation)
+	_rotate_visuals(container, rotation)
+	var arrow = container.find_child("Arrow", false, false)
+	if arrow:
+		var bbox: Dictionary = get_rotated_shape_bbox(rotation)
+		arrow.set_meta("rotation_index", rotation)
+		arrow.set_meta("shape_size", bbox.size)
+		arrow.set_meta("bbox_min", bbox.min_cell)
+
+## Reposition ColorRect children of a named group to match the rotated layout.
+func _rotate_group(container: Node, group_name: String, rotation: int) -> void:
+	var group_node = container.find_child(group_name, false, false)
 	if not group_node:
 		return
 	for child in group_node.get_children():
@@ -181,12 +207,8 @@ func rotate_node_children(building: Node2D, group_name: String, rotation: int) -
 			child.offset_right = child.offset_left + TILE_SIZE
 			child.offset_bottom = child.offset_top + TILE_SIZE
 
-## Rotate all visual sprite children and EnergyNode positions to match building rotation.
-## Handles AnimatedSprite2D (rotation only) and script-drawn Node2D sprites
-## (rotation + position offset to compensate for pivot).
-func rotate_sprites(building: Node2D, rotation: int) -> void:
-	if rotation == 0:
-		return
+## Rotate sprite children and EnergyNode positions inside the Rotatable container.
+func _rotate_visuals(container: Node, rotation: int) -> void:
 	var rot_rad := rotation * PI / 2.0
 
 	# Compute unrotated scene pixel bounding box from shape
@@ -215,9 +237,21 @@ func rotate_sprites(building: Node2D, rotation: int) -> void:
 	# Pivot for rotating individual point positions (anchor cell center)
 	var pivot := Vector2(anchor_cell) * TILE_SIZE + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 
-	for child in building.get_children():
+	for child in container.get_children():
 		if child is AnimatedSprite2D:
 			child.rotation = rot_rad
+			var rel: Vector2 = child.position - pivot
+			match rotation:
+				1: child.position = Vector2(-rel.y, rel.x) + pivot
+				2: child.position = Vector2(-rel.x, -rel.y) + pivot
+				3: child.position = Vector2(rel.y, -rel.x) + pivot
+		elif child is Sprite2D:
+			child.rotation = rot_rad
+			var rel: Vector2 = child.position - pivot
+			match rotation:
+				1: child.position = Vector2(-rel.y, rel.x) + pivot
+				2: child.position = Vector2(-rel.x, -rel.y) + pivot
+				3: child.position = Vector2(rel.y, -rel.x) + pivot
 		elif child is Node2D:
 			# EnergyNode — rotate its position around anchor center
 			if child.has_method("can_connect_to"):
@@ -236,8 +270,6 @@ static func _is_drawn_sprite(node: Node) -> bool:
 	if not node is Node2D or node is AnimatedSprite2D or node is Sprite2D:
 		return false
 	var n: String = node.name
-	# System nodes that should NOT be rotated
 	if n in ["Shape", "Inputs", "Outputs", "BuildAnchor", "Arrow"]:
 		return false
-	# Only rotate nodes with custom scripts (sprite draw scripts)
 	return node.get_script() != null

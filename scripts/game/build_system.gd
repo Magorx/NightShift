@@ -22,8 +22,6 @@ const LINK_WIRE_VALID := Color(0.3, 0.9, 0.4, 0.7)
 const LINK_WIRE_INVALID := Color(0.5, 0.5, 0.5, 0.35)
 const LINK_WIRE_FULL := Color(0.9, 0.25, 0.2, 0.6)
 const LINK_WIRE_UNLINK := Color(0.9, 0.5, 0.2, 0.7)
-const LINK_RANGE_OUTLINE := Color(0.3, 0.65, 1.0, 0.35)
-const LINK_RANGE_FILL := Color(0.3, 0.65, 1.0, 0.06)
 
 var _destroy_shader: Shader = preload("res://buildings/shared/destroy_highlight.gdshader")
 
@@ -271,9 +269,10 @@ func _draw_energy_link() -> void:
 	var from_pos: Vector2 = _link_origin_node.global_position
 	var to_pos: Vector2 = get_global_mouse_position()
 
-	# Range circle
-	var range_px: float = _link_origin_node.connection_range * TILE_SIZE
-	_draw_range_circle(from_pos, range_px)
+	# Range area (Manhattan diamond)
+	var origin_grid: Vector2i = _link_origin_node.owner_grid_pos
+	var range_tiles: int = int(_link_origin_node.connection_range)
+	DrawUtils.draw_manhattan_area(self, [origin_grid], range_tiles, TILE_SIZE, MAP_SIZE, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 	# Wire to cursor — colored by target state
 	var state: int = _get_link_target_state()
@@ -288,19 +287,6 @@ func _draw_energy_link() -> void:
 	# Draw small dot at origin
 	draw_circle(from_pos, 3.0, LINK_WIRE_VALID)
 
-func _draw_range_circle(center: Vector2, radius: float) -> void:
-	# Filled circle via polygon
-	var points := PackedVector2Array()
-	var seg := 48
-	for i in seg:
-		var angle: float = TAU * float(i) / float(seg)
-		points.append(center + Vector2(cos(angle), sin(angle)) * radius)
-	draw_colored_polygon(points, LINK_RANGE_FILL)
-	# Outline
-	for i in seg:
-		var a: Vector2 = points[i]
-		var b: Vector2 = points[(i + 1) % seg]
-		draw_line(a, b, LINK_RANGE_OUTLINE, 1.0)
 
 # ── Build drag ───────────────────────────────────────────────────────────────
 
@@ -511,16 +497,11 @@ func _create_ghost_node(building_id: StringName, rotation: int) -> Node2D:
 	var arrow = ghost.find_child("Arrow", true, false)
 	if arrow:
 		arrow.visible = false
-	# Rotate visual elements to match placement rotation
-	if rotation != 0:
-		def.rotate_node_children(ghost, "Shape", rotation)
-		def.rotate_node_children(ghost, "Inputs", rotation)
-		def.rotate_node_children(ghost, "Outputs", rotation)
 	add_child(ghost)
 	# Disable processing after add_child to override any _ready re-enables
 	_disable_processing_recursive(ghost)
-	# Rotate all sprites and EnergyNode positions after add_child
-	def.rotate_sprites(ghost, rotation)
+	# Apply all visual rotation after add_child so _ready defaults are overridden
+	def.apply_rotation(ghost, rotation)
 	return ghost
 
 func _disable_processing_recursive(node: Node) -> void:
@@ -767,14 +748,16 @@ func clear_select_highlight() -> void:
 ## Find visual children of a building to apply the destroy shader to.
 func _get_visual_nodes(building: Node2D) -> Array:
 	var result: Array = []
+	var rotatable = building.find_child("Rotatable", false, false)
+	var container = rotatable if rotatable else building
 	# Shape ColorRects
-	var shape_node = building.find_child("Shape", false, false)
+	var shape_node = container.find_child("Shape", false, false)
 	if shape_node:
 		for child in shape_node.get_children():
 			if child is ColorRect:
 				result.append(child)
-	# Sprite2D and AnimatedSprite2D (direct children)
-	for child in building.get_children():
+	# Sprite2D and AnimatedSprite2D inside Rotatable
+	for child in container.get_children():
 		if child is Sprite2D or child is AnimatedSprite2D:
 			result.append(child)
 	return result
@@ -818,38 +801,19 @@ func _draw_phase_area() -> void:
 	var prev_placements: Array = _phase_placements[_phase_placements.size() - 1]
 	if prev_placements.is_empty():
 		return
-	# Collect all valid cells across all prior placements into a set
-	var cell_set: Dictionary = {}
+	var origins: Array = []
 	for entry in prev_placements:
-		var origin: Vector2i = entry.pos
-		for dx in range(-max_dist, max_dist + 1):
-			var remaining := max_dist - absi(dx)
-			for dy in range(-remaining, remaining + 1):
-				var cell := Vector2i(origin.x + dx, origin.y + dy)
-				if cell.x >= 0 and cell.x < MAP_SIZE and cell.y >= 0 and cell.y < MAP_SIZE:
-					cell_set[cell] = true
-	# Draw filled cells
-	var s := float(TILE_SIZE)
-	for cell in cell_set:
-		draw_rect(Rect2(Vector2(cell) * s, Vector2(s, s)), PHASE_AREA_COLOR)
-	# Draw outline on outer edges
-	for cell in cell_set:
-		var wp := Vector2(cell) * s
-		if not cell_set.has(cell + Vector2i(1, 0)):
-			draw_line(Vector2(wp.x + s, wp.y), Vector2(wp.x + s, wp.y + s), PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
-		if not cell_set.has(cell + Vector2i(0, 1)):
-			draw_line(Vector2(wp.x, wp.y + s), Vector2(wp.x + s, wp.y + s), PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
-		if not cell_set.has(cell + Vector2i(-1, 0)):
-			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x, wp.y + s), PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
-		if not cell_set.has(cell + Vector2i(0, -1)):
-			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x + s, wp.y), PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
+		origins.append(entry.pos as Vector2i)
+	DrawUtils.draw_manhattan_area(self, origins, max_dist, TILE_SIZE, MAP_SIZE, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 ## Read actual Shape ColorRect positions from the placed building node.
 func _get_building_visual_cells(building: Node2D) -> Array:
 	var cells: Array = []
 	var bx := floori(building.position.x / TILE_SIZE)
 	var by := floori(building.position.y / TILE_SIZE)
-	var shape_node = building.find_child("Shape", false, false)
+	var rotatable = building.find_child("Rotatable", false, false)
+	var container = rotatable if rotatable else building
+	var shape_node = container.find_child("Shape", false, false)
 	if shape_node:
 		for child in shape_node.get_children():
 			if child is ColorRect:

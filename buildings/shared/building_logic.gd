@@ -45,7 +45,10 @@ func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 ## Find child EnergyNode if present. Returns null if none.
 ## Uses duck-typing to avoid compile-time dependency on EnergyNode class.
 func get_energy_node():
-	for child in get_parent().get_children():
+	var building = get_parent()
+	var rotatable = building.find_child("Rotatable", false, false)
+	var container = rotatable if rotatable else building
+	for child in container.get_children():
 		if child is Node2D and child.has_method("can_connect_to"):
 			return child
 	return null

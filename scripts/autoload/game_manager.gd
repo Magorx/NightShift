@@ -239,24 +239,11 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	# Position so the anchor cell aligns with grid_pos
 	building.position = Vector2(grid_pos - def.anchor_cell) * TILE_SIZE
 
-	# Rotate the visual Shape, Inputs, Outputs ColorRects around the anchor
-	if rotation != 0:
-		def.rotate_node_children(building, "Shape", rotation)
-		def.rotate_node_children(building, "Inputs", rotation)
-		def.rotate_node_children(building, "Outputs", rotation)
-
-	# Configure arrow meta if present
-	var arrow = building.find_child("Arrow", true, false)
-	if arrow:
-		var bbox: Dictionary = def.get_rotated_shape_bbox(rotation)
-		arrow.set_meta("rotation_index", rotation)
-		arrow.set_meta("shape_size", bbox.size)
-		arrow.set_meta("bbox_min", bbox.min_cell)
-
 	building_layer.add_child(building)
 
-	# Rotate sprite children and EnergyNode positions (after add_child to override _ready defaults)
-	def.rotate_sprites(building, rotation)
+	# Apply all visual rotation (ColorRects, sprites, arrow) after add_child
+	# so _ready defaults are overridden
+	def.apply_rotation(building, rotation)
 
 	# Register all occupied cells (rotated)
 	for cell in rotated_shape:
