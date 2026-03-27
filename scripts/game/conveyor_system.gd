@@ -1,8 +1,6 @@
 class_name ConveyorSystem
 extends Node
 
-
-
 var conveyors: Dictionary = {} # Vector2i -> ConveyorBelt
 
 # Per-conveyor round-robin for input direction fairness

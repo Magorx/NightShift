@@ -38,7 +38,7 @@ func can_accept() -> bool:
 ## Create an item with a visual and append it. Returns the item dict.
 ## Extra fields (entry_from, from_dir_idx, etc.) are merged into the item.
 func add_item(item_id: StringName, extra: Dictionary = {}) -> Dictionary:
-	var visual := create_visual(item_id)
+	var visual = create_visual(item_id)
 	var item := {id = item_id, progress = 0.0, visual = visual}
 	item.merge(extra)
 	items.append(item)
@@ -83,7 +83,7 @@ func cleanup() -> void:
 	items.clear()
 
 ## Create a colored item-dot visual from the pool.
-func create_visual(item_id: StringName) -> Node2D:
+func create_visual(item_id: StringName):
 	var item_def = GameManager.get_item_def(item_id)
 	var color := Color.WHITE
 	if item_def:

@@ -32,9 +32,9 @@ var stress_test_pending: bool = false
 # Cached item definitions: item_id -> ItemDef
 var _item_def_cache: Dictionary = {}
 
-# Item visual node pool: reuse Node2D instances instead of alloc/free each time
-var _visual_pool: Array[Node2D] = []
-const _VISUAL_POOL_MAX := 256
+# MultiMesh-based item visual manager (replaces per-item Node2D)
+var item_visual_manager  # ItemVisualManager (preloaded in game_world)
+var _ItemVisualHandle = preload("res://scripts/game/item_visual_handle.gd")
 
 # Currency earned from sinks
 var total_currency: int = 0
@@ -71,6 +71,7 @@ var building_layer: Node2D
 var item_layer: Node2D
 var conveyor_system: Node
 var energy_system: Node  # EnergySystem
+var building_tick_system: Node  # BuildingTickSystem
 
 func _ready() -> void:
 	_load_building_defs()
@@ -144,33 +145,16 @@ func _load_recipes() -> void:
 				recipes_by_type[ctype].append(recipe)
 		file_name = dir.get_next()
 
-# ── Item visual pool ─────────────────────────────────────────────────────────
+# ── Item visuals (MultiMesh) ──────────────────────────────────────────────────
 
-## Acquire an item visual from the pool, or create a new one.
-func acquire_visual(color: Color) -> Node2D:
-	var visual: Node2D
-	if not _visual_pool.is_empty():
-		visual = _visual_pool.pop_back()
-		visual.set_meta("color", color)
-		visual.visible = true
-		visual.queue_redraw()
-	else:
-		visual = Node2D.new()
-		visual.set_meta("color", color)
-		visual.set_script(load("res://buildings/shared/item_visual.gd"))
-	item_layer.add_child(visual)
-	return visual
+## Acquire an item visual handle backed by the shared MultiMesh.
+func acquire_visual(color: Color):
+	return _ItemVisualHandle.new(item_visual_manager, item_visual_manager.allocate(color))
 
-## Return an item visual to the pool instead of freeing it.
-func release_visual(visual: Node2D) -> void:
-	if not is_instance_valid(visual):
-		return
-	visual.visible = false
-	item_layer.remove_child(visual)
-	if _visual_pool.size() < _VISUAL_POOL_MAX:
-		_visual_pool.append(visual)
-	else:
-		visual.queue_free()
+## Release an item visual handle back to the MultiMesh free pool.
+func release_visual(handle) -> void:
+	if handle and handle is RefCounted and handle.has_method("release"):
+		handle.release()
 
 ## Get a cached ItemDef resource by id. Loads from disk on first access.
 func get_item_def(item_id: StringName):
@@ -262,9 +246,11 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	if logic:
 		logic.configure(def, grid_pos, rotation)
 		building.logic = logic
-		# Register conveyors with ConveyorSystem
+		# Register conveyors with ConveyorSystem, others with BuildingTickSystem
 		if logic is ConveyorBelt and conveyor_system:
 			conveyor_system.register_conveyor(logic)
+		elif building_tick_system:
+			building_tick_system.register(logic)
 
 		# Register energy-capable buildings with EnergySystem
 		if energy_system and logic.energy:
@@ -309,6 +295,10 @@ func remove_building(grid_pos: Vector2i) -> void:
 			if enode:
 				energy_system.unregister_node(enode)
 			energy_system.unregister_building(building.logic)
+
+	# Unregister from BuildingTickSystem
+	if building.logic and building_tick_system:
+		building_tick_system.unregister(building.logic)
 
 	# Let the logic node handle its own cleanup (unregistration, partner unlinking, visuals)
 	if building.logic:
@@ -402,11 +392,9 @@ func clear_all() -> void:
 			building.queue_free()
 	buildings.clear()
 	unique_buildings.clear()
-	# Free pooled visuals
-	for v in _visual_pool:
-		if is_instance_valid(v):
-			v.queue_free()
-	_visual_pool.clear()
+	# Reset the MultiMesh visual pool
+	if item_visual_manager:
+		item_visual_manager.clear_all()
 	total_currency = 0
 	items_delivered.clear()
 	if conveyor_system:
@@ -414,6 +402,8 @@ func clear_all() -> void:
 		conveyor_system._pull_rr.clear()
 	if energy_system:
 		energy_system.clear_all()
+	if building_tick_system:
+		building_tick_system.clear_all()
 
 # ── Unified pull system ──────────────────────────────────────────────────────
 

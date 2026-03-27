@@ -17,9 +17,9 @@ var _emitter_scene: PackedScene = preload("res://scripts/energy/energy_wire_emit
 
 var _time: float = 0.0
 var _delta: float = 0.0
-var _smoothed_flow: Dictionary = {}  # canonical pair key -> smoothed direction (-1..1)
-var _wire_emitters: Dictionary = {}  # pair_key -> GPUParticles2D
-var _active_pairs: Dictionary = {}   # pair_key -> true, built each frame
+var _smoothed_flow: Dictionary = {}  # int pair key -> smoothed direction (-1..1)
+var _wire_emitters: Dictionary = {}  # int pair_key -> GPUParticles2D
+var _active_pairs: Dictionary = {}   # int pair_key -> true, built each frame
 
 func _is_energy_mode() -> bool:
 	var bs = get_node_or_null("../BuildSystem")
@@ -28,10 +28,36 @@ func _is_energy_mode() -> bool:
 func _process(delta: float) -> void:
 	_time += delta
 	_delta = delta
-	_active_pairs.clear()
-	_update_emitters()
-	_cleanup_stale_emitters()
-	queue_redraw()
+
+	var in_energy_mode := _is_energy_mode()
+	var has_unpowered := _has_unpowered_buildings()
+
+	# Tell the energy system whether to compute per-edge flow data
+	if GameManager.energy_system:
+		GameManager.energy_system.needs_edge_flows = in_energy_mode
+
+	if in_energy_mode:
+		_active_pairs.clear()
+		_update_emitters()
+		_cleanup_stale_emitters()
+
+	# Only redraw when there's something to show
+	if in_energy_mode or has_unpowered:
+		queue_redraw()
+	elif not _wire_emitters.is_empty():
+		# Clean up emitters when leaving energy mode
+		_stop_all_emitters()
+		_cleanup_stale_emitters()
+		queue_redraw()
+
+func _has_unpowered_buildings() -> bool:
+	if not GameManager.energy_system:
+		return false
+	for logic in GameManager.energy_system.energy_buildings:
+		if is_instance_valid(logic) and logic.energy:
+			if logic.energy.base_energy_demand > 0.0 and not logic.energy.is_powered:
+				return true
+	return false
 
 func _draw() -> void:
 	if not GameManager.energy_system:
@@ -50,11 +76,9 @@ func _draw() -> void:
 					continue
 				var id_a: int = node.get_instance_id()
 				var id_b: int = other.get_instance_id()
-				var pair_key: String
-				if id_a < id_b:
-					pair_key = "%d:%d" % [id_a, id_b]
-				else:
-					pair_key = "%d:%d" % [id_b, id_a]
+				var min_id: int = mini(id_a, id_b)
+				var max_id: int = maxi(id_a, id_b)
+				var pair_key: int = (min_id + max_id) * (min_id + max_id + 1) / 2 + max_id
 				if drawn_pairs.has(pair_key):
 					continue
 				drawn_pairs[pair_key] = true
@@ -104,11 +128,11 @@ func _update_emitters() -> void:
 			var id_b: int = other.get_instance_id()
 			if id_a >= id_b:
 				continue  # process each pair once
-			var pair_key: String = "%d:%d" % [id_a, id_b]
+			var pair_key: int = (id_a + id_b) * (id_a + id_b + 1) / 2 + id_b
 			_active_pairs[pair_key] = true
 			_update_wire_emitter(pair_key, node, other)
 
-func _update_wire_emitter(pair_key: String, from_node, to_node) -> void:
+func _update_wire_emitter(pair_key: int, from_node, to_node) -> void:
 	var from_pos: Vector2 = _get_node_world_pos(from_node)
 	var to_pos: Vector2 = _get_node_world_pos(to_node)
 	var dist: float = from_pos.distance_to(to_pos)
@@ -126,7 +150,7 @@ func _update_wire_emitter(pair_key: String, from_node, to_node) -> void:
 		var id_to: int = to_logic.get_instance_id()
 		var min_id: int = mini(id_from, id_to)
 		var max_id: int = maxi(id_from, id_to)
-		var flow_key := "%d:%d" % [min_id, max_id]
+		var flow_key: int = (min_id + max_id) * (min_id + max_id + 1) / 2 + max_id
 		var canonical_flow: float = es.edge_flows.get(flow_key, 0.0)
 		var directed_flow: float = canonical_flow if id_from == min_id else -canonical_flow
 		if absf(directed_flow) >= 0.01:
@@ -193,7 +217,7 @@ func _stop_all_emitters() -> void:
 		if is_instance_valid(emitter):
 			emitter.emitting = false
 
-func _stop_emitter(pair_key: String) -> void:
+func _stop_emitter(pair_key: int) -> void:
 	var emitter: GPUParticles2D = _wire_emitters.get(pair_key)
 	if emitter and is_instance_valid(emitter):
 		emitter.emitting = false

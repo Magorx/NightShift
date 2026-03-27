@@ -50,6 +50,9 @@ func _ready():
 				hud.speed_index = 4
 				hud.speed_label.text = "x2"
 				hud._update_speed_buttons()
+		"benchmark":
+			if DisplayServer.get_name() != "headless":
+				DisplayServer.window_set_title("BENCHMARK: %s" % sim_name)
 		"screenshot_baseline":
 			_setup_screenshot_dir("baseline")
 		"screenshot_compare":
@@ -217,6 +220,41 @@ func _compute_image_diff(a: Image, b: Image) -> float:
 			var cb := b.get_pixel(x, y)
 			total_diff += (absf(ca.r - cb.r) + absf(ca.g - cb.g) + absf(ca.b - cb.b)) / 3.0
 	return total_diff / pixel_count
+
+# ── Benchmark helpers ───────────────────────────────────────────────────
+
+## Measure average FPS over a number of rendered frames.
+## Returns {avg_fps, min_fps, max_fps, frame_count}.
+func sim_benchmark_fps(duration_seconds: float, label: String = "") -> Dictionary:
+	var frame_times: Array[float] = []  # microseconds per frame
+	var start_time := Time.get_ticks_usec()
+	var end_time := start_time + int(duration_seconds * 1000000.0)
+	var prev_time := start_time
+
+	while Time.get_ticks_usec() < end_time:
+		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		frame_times.append(float(now - prev_time))
+		prev_time = now
+
+	if frame_times.is_empty():
+		return {avg_fps = 0.0, min_fps = 0.0, max_fps = 0.0, frame_count = 0}
+
+	var total_time := 0.0
+	var min_ft := 9999999.0
+	var max_ft := 0.0
+	for ft in frame_times:
+		total_time += ft
+		min_ft = minf(min_ft, ft)
+		max_ft = maxf(max_ft, ft)
+	var avg_ft := total_time / frame_times.size()
+	var avg_fps := 1000000.0 / avg_ft
+	var min_fps := 1000000.0 / max_ft  # worst frame time = min FPS
+	var max_fps := 1000000.0 / min_ft  # best frame time = max FPS
+
+	var tag := (" [%s]" % label) if label != "" else ""
+	print("[BENCH]%s avg=%.1f min=%.0f max=%.0f frames=%d" % [tag, avg_fps, min_fps, max_fps, frame_times.size()])
+	return {avg_fps = avg_fps, min_fps = min_fps, max_fps = max_fps, frame_count = frame_times.size()}
 
 # ── Assertion helpers ────────────────────────────────────────────────────
 

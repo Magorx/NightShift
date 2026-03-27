@@ -33,6 +33,8 @@ func _on_root_ready():
 		match arg:
 			"--visual":
 				mode = "visual"
+			"--benchmark":
+				mode = "benchmark"
 			"--screenshot-baseline":
 				mode = "screenshot_baseline"
 			"--screenshot-compare":
@@ -48,6 +50,15 @@ func _on_root_ready():
 			# Combined with --fixed-fps 60, each iteration processes 100 ticks.
 			Engine.time_scale = 100.0
 			Engine.max_physics_steps_per_frame = 100
+		"benchmark":
+			# Real-time rendering with vsync off for accurate FPS measurement
+			Engine.time_scale = 1.0
+			Engine.max_fps = 0
+			if DisplayServer.get_name() != "headless":
+				DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+				# macOS: also try mailbox mode as fallback if disabled doesn't work
+				if DisplayServer.window_get_vsync_mode() != DisplayServer.VSYNC_DISABLED:
+					DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_MAILBOX)
 		"screenshot_baseline", "screenshot_compare":
 			# Moderate batching — fast but still rendering each frame
 			Engine.time_scale = 8.0

@@ -21,6 +21,8 @@ var _pause_menu_scene: PackedScene = preload("res://scenes/ui/pause_menu.tscn")
 var _info_panel_scene: PackedScene = preload("res://scenes/ui/building_info_panel.tscn")
 var _world_gen_script = preload("res://scripts/game/world_generator.gd")
 var _stress_gen_script = preload("res://scripts/game/stress_test_generator.gd")
+var _visual_mgr_script = preload("res://scripts/game/item_visual_manager.gd")
+var _tick_system_script = preload("res://scripts/game/building_tick_system.gd")
 var _info_panel: PanelContainer
 
 func _ready() -> void:
@@ -28,6 +30,14 @@ func _ready() -> void:
 	GameManager.item_layer = $ItemLayer
 	GameManager.conveyor_system = $ConveyorSystem
 	GameManager.energy_system = $EnergySystem
+	# Initialize MultiMesh item visual system
+	GameManager.item_visual_manager = _visual_mgr_script.new()
+	GameManager.item_visual_manager.attach_to($ItemLayer)
+	# Initialize batched building tick system
+	var tick_system = _tick_system_script.new()
+	tick_system.name = "BuildingTickSystem"
+	add_child(tick_system)
+	GameManager.building_tick_system = tick_system
 	GameManager.clear_all()
 	GameManager.deposits.clear()
 	GameManager.walls.clear()

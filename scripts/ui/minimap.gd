@@ -6,6 +6,9 @@ var _camera: Camera2D
 var _last_cam_pos := Vector2.ZERO
 var _last_cam_zoom := 1.0
 var _redraw_timer: float = 0.0
+var _cached_image: ImageTexture
+var _cached_building_count: int = -1
+var _cache_dirty: bool = true
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -16,25 +19,56 @@ func set_camera(cam: Camera2D) -> void:
 func _process(delta: float) -> void:
 	if not _camera:
 		return
-	# Always redraw if camera moved
+	# Always redraw if camera moved (lightweight — just camera rect on cached texture)
 	if _camera.position != _last_cam_pos or _camera.zoom.x != _last_cam_zoom:
 		_last_cam_pos = _camera.position
 		_last_cam_zoom = _camera.zoom.x
 		queue_redraw()
-	# Periodic full redraw for building changes
+	# Periodic check for building changes
 	_redraw_timer += delta
 	if _redraw_timer >= 1.0:
 		_redraw_timer = 0.0
-		queue_redraw()
+		var count := GameManager.unique_buildings.size()
+		if count != _cached_building_count:
+			_cache_dirty = true
+			queue_redraw()
 
 func _draw() -> void:
 	var map_px := float(GameManager.map_size * TILE_SIZE)
 	var display_size := size
+
+	if _cache_dirty or not _cached_image:
+		_rebuild_cache(map_px, display_size)
+		_cache_dirty = false
+
+	# Draw cached texture
+	if _cached_image:
+		draw_texture_rect(_cached_image, Rect2(Vector2.ZERO, display_size), false)
+
+	# Camera viewport rectangle (drawn every frame — very cheap)
+	if _camera:
+		var scale_x := display_size.x / map_px
+		var scale_y := display_size.y / map_px
+		var viewport_size := get_viewport_rect().size
+		var cam_half := viewport_size / (2.0 * _camera.zoom.x)
+		var cam_tl := _camera.position - cam_half
+		var cam_br := _camera.position + cam_half
+		var rect_tl := Vector2(cam_tl.x * scale_x, cam_tl.y * scale_y)
+		var rect_size := Vector2((cam_br.x - cam_tl.x) * scale_x, (cam_br.y - cam_tl.y) * scale_y)
+		draw_rect(Rect2(rect_tl, rect_size), Color(1, 1, 1, 0.6), false, 1.0)
+
+func _rebuild_cache(map_px: float, display_size: Vector2) -> void:
+	var w := int(display_size.x)
+	var h := int(display_size.y)
+	if w <= 0 or h <= 0:
+		return
+
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var bg := Color(0.08, 0.08, 0.1)
+	img.fill(bg)
+
 	var scale_x := display_size.x / map_px
 	var scale_y := display_size.y / map_px
-
-	# Background
-	draw_rect(Rect2(Vector2.ZERO, display_size), Color(0.08, 0.08, 0.1))
 
 	# Deposits
 	for pos in GameManager.deposits:
@@ -44,11 +78,11 @@ func _draw() -> void:
 		if item_def:
 			color = item_def.color
 			color.a = 0.35
-		var x1 := floorf(pos.x * TILE_SIZE * scale_x)
-		var y1 := floorf(pos.y * TILE_SIZE * scale_y)
-		var x2 := ceilf((pos.x + 1) * TILE_SIZE * scale_x)
-		var y2 := ceilf((pos.y + 1) * TILE_SIZE * scale_y)
-		draw_rect(Rect2(x1, y1, x2 - x1, y2 - y1), color)
+		var x1 := int(pos.x * TILE_SIZE * scale_x)
+		var y1 := int(pos.y * TILE_SIZE * scale_y)
+		var x2 := int((pos.x + 1) * TILE_SIZE * scale_x)
+		var y2 := int((pos.y + 1) * TILE_SIZE * scale_y)
+		_fill_rect_on_image(img, x1, y1, maxi(x2 - x1, 1), maxi(y2 - y1, 1), color, w, h)
 
 	# Buildings
 	var drawn_buildings: Dictionary = {}
@@ -64,21 +98,23 @@ func _draw() -> void:
 		var color := Color.WHITE
 		if def:
 			color = def.color
-		var bx1 := floorf(pos.x * TILE_SIZE * scale_x)
-		var by1 := floorf(pos.y * TILE_SIZE * scale_y)
-		var bx2 := ceilf((pos.x + 1) * TILE_SIZE * scale_x)
-		var by2 := ceilf((pos.y + 1) * TILE_SIZE * scale_y)
-		draw_rect(Rect2(bx1, by1, maxf(bx2 - bx1, 2), maxf(by2 - by1, 2)), color)
+		var bx1 := int(pos.x * TILE_SIZE * scale_x)
+		var by1 := int(pos.y * TILE_SIZE * scale_y)
+		var bx2 := int((pos.x + 1) * TILE_SIZE * scale_x)
+		var by2 := int((pos.y + 1) * TILE_SIZE * scale_y)
+		_fill_rect_on_image(img, bx1, by1, maxi(bx2 - bx1, 2), maxi(by2 - by1, 2), color, w, h)
 
-	# Camera viewport rectangle
-	if _camera:
-		var viewport_size := get_viewport_rect().size
-		var cam_half := viewport_size / (2.0 * _camera.zoom.x)
-		var cam_tl := _camera.position - cam_half
-		var cam_br := _camera.position + cam_half
-		var rect_tl := Vector2(cam_tl.x * scale_x, cam_tl.y * scale_y)
-		var rect_size := Vector2((cam_br.x - cam_tl.x) * scale_x, (cam_br.y - cam_tl.y) * scale_y)
-		draw_rect(Rect2(rect_tl, rect_size), Color(1, 1, 1, 0.6), false, 1.0)
+	_cached_building_count = GameManager.unique_buildings.size()
+	_cached_image = ImageTexture.create_from_image(img)
+
+func _fill_rect_on_image(img: Image, x: int, y: int, w: int, h: int, color: Color, img_w: int, img_h: int) -> void:
+	var x_end := mini(x + w, img_w)
+	var y_end := mini(y + h, img_h)
+	x = maxi(x, 0)
+	y = maxi(y, 0)
+	for py in range(y, y_end):
+		for px in range(x, x_end):
+			img.set_pixel(px, py, color)
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:

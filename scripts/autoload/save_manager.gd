@@ -11,6 +11,8 @@ var pending_load: bool = false
 ## When false, save_run() is a no-op. Disabled during simulations/tests.
 var autosave_enabled: bool = true
 
+var _saved_max_physics_steps: int = 8
+
 ## Save the current run state to the active account slot.
 func save_run() -> void:
 	if not autosave_enabled:
@@ -207,6 +209,13 @@ func _deserialize_run(data: Dictionary) -> void:
 	# Load hotkeys from account meta (not from run save)
 	AccountManager.load_hotkeys()
 
+	# Prevent physics catch-up: loading takes real time, so Godot would run
+	# multiple physics ticks on the first frame, making items jump forward.
+	# Limit to 1 tick, then restore on the next frame.
+	_saved_max_physics_steps = Engine.max_physics_steps_per_frame
+	Engine.max_physics_steps_per_frame = 1
+	call_deferred("_reset_max_physics_steps")
+
 	# Restore time speed (deferred so HUD is ready)
 	var time_data: Dictionary = data.get("time_speed", {})
 	if not time_data.is_empty():
@@ -270,6 +279,9 @@ func _link_energy_nodes_deferred(building_list: Array) -> void:
 				enode.connect_to(target_node)
 	# Mark networks dirty so they rebuild with restored connections
 	GameManager.energy_system.mark_dirty()
+
+func _reset_max_physics_steps() -> void:
+	Engine.max_physics_steps_per_frame = _saved_max_physics_steps
 
 func _restore_camera(cam_data: Dictionary) -> void:
 	var gw := _get_game_world()

@@ -27,6 +27,9 @@ var loading: bool = false
 # Key: "min_logic_id:max_logic_id", Value: net flow (positive = min → max)
 var edge_flows: Dictionary = {}
 
+# Set to true by EnergyOverlay when it needs flow data (energy link mode active)
+var needs_edge_flows: bool = false
+
 # ── Registration ────────────────────────────────────────────────────────────
 
 func register_building(logic: BuildingLogic) -> void:
@@ -69,7 +72,10 @@ func _physics_process(delta: float) -> void:
 	for network in networks:
 		network.tick(delta)
 
-	_build_edge_flows()
+	if needs_edge_flows:
+		_build_edge_flows()
+	elif not edge_flows.is_empty():
+		edge_flows.clear()
 
 # ── Network rebuild (flood-fill + edge graph) ──────────────────────────────
 
@@ -109,7 +115,7 @@ func _rebuild_networks() -> void:
 		# BFS from this building
 		var network = EnergyNetwork.new()
 		var queue: Array = [logic]
-		var edge_set: Dictionary = {}  # "min_max" -> true, dedup all edges
+		var edge_set: Dictionary = {}  # int key -> true, dedup all edges
 		visited_logics[lid] = true
 
 		while not queue.is_empty():
@@ -143,7 +149,9 @@ func _rebuild_networks() -> void:
 					# Record adjacency edge (deduplicated per building pair)
 					var eid_a: int = current.get_instance_id()
 					var eid_b: int = nlid
-					var edge_key := "adj_%d_%d" % [mini(eid_a, eid_b), maxi(eid_a, eid_b)]
+					var min_e: int = mini(eid_a, eid_b)
+					var max_e: int = maxi(eid_a, eid_b)
+					var edge_key: int = (min_e + max_e) * (min_e + max_e + 1) / 2 + max_e
 					if not edge_set.has(edge_key):
 						edge_set[edge_key] = true
 						var throughput := minf(
@@ -173,10 +181,12 @@ func _rebuild_networks() -> void:
 					if not visited_logics.has(cn_lid):
 						visited_logics[cn_lid] = true
 						queue.append(cn_logic)
-					# Record node edge (deduplicated)
+					# Record node edge (deduplicated, offset by 1 to distinguish from adjacency)
 					var eid_a: int = enode.get_instance_id()
 					var eid_b: int = connected_node.get_instance_id()
-					var edge_key := "node_%d_%d" % [mini(eid_a, eid_b), maxi(eid_a, eid_b)]
+					var min_n: int = mini(eid_a, eid_b)
+					var max_n: int = maxi(eid_a, eid_b)
+					var edge_key: int = (min_n + max_n) * (min_n + max_n + 1) / 2 + max_n + 1
 					if not edge_set.has(edge_key):
 						edge_set[edge_key] = true
 						var throughput := minf(enode.throughput, connected_node.throughput)
@@ -227,6 +237,7 @@ func _are_buildings_adjacent(logic_a, logic_b) -> bool:
 	return false
 
 ## Build a lookup of per-tick net energy flow for each edge (for overlay visualization).
+## Uses integer pair keys (Cantor pairing) instead of string formatting.
 func _build_edge_flows() -> void:
 	edge_flows.clear()
 	for network in networks:
@@ -237,8 +248,8 @@ func _build_edge_flows() -> void:
 			var id_b: int = edge.b.get_instance_id()
 			var min_id: int = mini(id_a, id_b)
 			var max_id: int = maxi(id_a, id_b)
-			var key := "%d:%d" % [min_id, max_id]
-			# Canonicalize: positive = flow from min_id toward max_id
+			# Cantor pairing: unique int key from two ints (no string formatting)
+			var key: int = (min_id + max_id) * (min_id + max_id + 1) / 2 + max_id
 			var canonical_flow: float = edge.net_flow if id_a == min_id else -edge.net_flow
 			if edge_flows.has(key):
 				edge_flows[key] += canonical_flow

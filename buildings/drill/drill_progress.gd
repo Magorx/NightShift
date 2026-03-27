@@ -7,6 +7,7 @@ const BG_COLOR := Color(0.2, 0.2, 0.2, 0.8)
 const FILL_COLOR := Color(0.3, 0.85, 0.4, 0.9)
 
 var _extractor: Node
+var _last_progress: float = -1.0
 
 func _ready() -> void:
 	var parent = get_parent()
@@ -16,7 +17,11 @@ func _ready() -> void:
 			_extractor = ext
 
 func _process(_delta: float) -> void:
-	queue_redraw()
+	if _extractor:
+		var p: float = _extractor.get_progress()
+		if absf(p - _last_progress) > 0.005:
+			_last_progress = p
+			queue_redraw()
 
 func _draw() -> void:
 	if not _extractor:
