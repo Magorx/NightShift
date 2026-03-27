@@ -27,7 +27,6 @@ var output_inv: Inventory = Inventory.new()
 var _active_recipe = null # RecipeDef or null
 var _craft_timer: float = 0.0
 var _input_rr: RoundRobin = RoundRobin.new()
-var _was_active: bool = false
 
 ## Energy configuration per converter type.
 ## capacity, base_demand — set in configure based on building type.
@@ -80,18 +79,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_try_start_craft()
 
-	var is_active := _active_recipe != null
-	if is_active != _was_active:
-		_was_active = is_active
-		var anim: StringName = &"active" if is_active else &"idle"
-		var base: Node = get_parent().get_node_or_null("Rotatable/SpriteBottom")
-		var top: Node = get_parent().get_node_or_null("Rotatable/SpriteTop")
-		if base:
-			base.animation = anim
-			base.play()
-		if top:
-			top.animation = anim
-			top.play()
+	_update_building_sprites(_active_recipe != null, delta)
 
 func _try_pull_inputs() -> void:
 	var count: int = input_points.size()

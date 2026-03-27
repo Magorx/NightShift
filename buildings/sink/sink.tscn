@@ -1,10 +1,84 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" path="res://buildings/shared/building_arrow.gd" id="2"]
 [ext_resource type="Script" path="res://buildings/sink/sink.gd" id="3"]
 [ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="4"]
 [ext_resource type="Script" path="res://buildings/shared/input_cell.gd" id="5"]
+[ext_resource type="Texture2D" path="res://buildings/sink/sprites/main-base.png" id="6_base"]
+[ext_resource type="Texture2D" path="res://buildings/sink/sprites/main-top.png" id="6_top"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b1"]
+atlas = ExtResource("6_base")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b2"]
+atlas = ExtResource("6_base")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b3"]
+atlas = ExtResource("6_base")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b4"]
+atlas = ExtResource("6_base")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_base"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b4")
+}],
+"loop": true,
+"name": &"default",
+"speed": 3.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t1"]
+atlas = ExtResource("6_top")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t2"]
+atlas = ExtResource("6_top")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t3"]
+atlas = ExtResource("6_top")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t4"]
+atlas = ExtResource("6_top")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_top"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t4")
+}],
+"loop": true,
+"name": &"default",
+"speed": 3.0
+}]
 
 [node name="Sink" type="Node2D"]
 script = ExtResource("1")
@@ -33,6 +107,19 @@ color = Color(0.3, 0.5, 0.9, 0)
 
 [node name="Arrow" type="Node2D" parent="Rotatable"]
 script = ExtResource("2")
+
+[node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
+texture_filter = 1
+position = Vector2(16, 16)
+sprite_frames = SubResource("SpriteFrames_base")
+autoplay = "default"
+
+[node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
+z_index = 10
+texture_filter = 1
+position = Vector2(16, 16)
+sprite_frames = SubResource("SpriteFrames_top")
+autoplay = "default"
 
 [node name="SinkLogic" type="Node" parent="."]
 script = ExtResource("3")

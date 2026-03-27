@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3 uid="uid://dmmfpftg5syl2"]
+[gd_scene load_steps=31 format=3 uid="uid://dmmfpftg5syl2"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
@@ -17,21 +17,37 @@ region = Rect2(0, 0, 64, 96)
 atlas = ExtResource("8_base")
 region = Rect2(64, 0, 64, 96)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ba0"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_bw0"]
 atlas = ExtResource("8_base")
 region = Rect2(128, 0, 64, 96)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ba1"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_bw1"]
 atlas = ExtResource("8_base")
 region = Rect2(192, 0, 64, 96)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ba2"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba0"]
 atlas = ExtResource("8_base")
 region = Rect2(256, 0, 64, 96)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ba3"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba1"]
 atlas = ExtResource("8_base")
 region = Rect2(320, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba2"]
+atlas = ExtResource("8_base")
+region = Rect2(384, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba3"]
+atlas = ExtResource("8_base")
+region = Rect2(448, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bd0"]
+atlas = ExtResource("8_base")
+region = Rect2(512, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bd1"]
+atlas = ExtResource("8_base")
+region = Rect2(576, 0, 64, 96)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{
@@ -62,6 +78,28 @@ animations = [{
 "loop": true,
 "name": &"idle",
 "speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bd0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bd1")
+}],
+"loop": false,
+"name": &"winddown",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bw0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bw1")
+}],
+"loop": false,
+"name": &"windup",
+"speed": 6.0
 }]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ti0"]
@@ -72,21 +110,37 @@ region = Rect2(0, 0, 64, 96)
 atlas = ExtResource("8_top")
 region = Rect2(64, 0, 64, 96)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ta0"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_tw0"]
 atlas = ExtResource("8_top")
 region = Rect2(128, 0, 64, 96)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ta1"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_tw1"]
 atlas = ExtResource("8_top")
 region = Rect2(192, 0, 64, 96)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ta2"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta0"]
 atlas = ExtResource("8_top")
 region = Rect2(256, 0, 64, 96)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ta3"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta1"]
 atlas = ExtResource("8_top")
 region = Rect2(320, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta2"]
+atlas = ExtResource("8_top")
+region = Rect2(384, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta3"]
+atlas = ExtResource("8_top")
+region = Rect2(448, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_td0"]
+atlas = ExtResource("8_top")
+region = Rect2(512, 0, 64, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_td1"]
+atlas = ExtResource("8_top")
+region = Rect2(576, 0, 64, 96)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{
@@ -117,6 +171,28 @@ animations = [{
 "loop": true,
 "name": &"idle",
 "speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_td0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_td1")
+}],
+"loop": false,
+"name": &"winddown",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tw0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tw1")
+}],
+"loop": false,
+"name": &"windup",
+"speed": 6.0
 }]
 
 [node name="Smelter" type="Node2D"]

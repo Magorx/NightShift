@@ -15,7 +15,6 @@ var fuel_inv: Inventory = Inventory.new()
 var _burn_timer: float = 0.0
 var _is_burning: bool = false
 var _input_rr: RoundRobin = RoundRobin.new()
-var _was_burning: bool = false
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	super.configure(def, p_grid_pos, p_rotation)
@@ -55,17 +54,7 @@ func _physics_process(delta: float) -> void:
 			_is_burning = true
 			_burn_timer = 0.0
 
-	if _is_burning != _was_burning:
-		_was_burning = _is_burning
-		var anim: StringName = &"active" if _is_burning else &"idle"
-		var base: Node = get_parent().get_node_or_null("Rotatable/SpriteBottom")
-		var top: Node = get_parent().get_node_or_null("Rotatable/SpriteTop")
-		if base:
-			base.animation = anim
-			base.play()
-		if top:
-			top.animation = anim
-			top.play()
+	_update_building_sprites(_is_burning, delta)
 
 func _try_pull_fuel() -> void:
 	if not fuel_inv.has_space(FUEL_ID):

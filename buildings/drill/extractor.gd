@@ -25,6 +25,7 @@ func _physics_process(delta: float) -> void:
 		_timer = 0.0
 	elif _timer >= produce_interval:
 		_timer = produce_interval  # cap timer while full
+	_update_building_sprites(inventory.has_space(item_id), delta)
 
 func get_output_cell() -> Vector2i:
 	return grid_pos + DIRECTION_VECTORS[direction]

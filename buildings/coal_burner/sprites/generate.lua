@@ -1,6 +1,7 @@
 -- coal_burner_sprite.lua
 -- Top-down coal burner: sooty dark identity, grate bars over fire pit.
--- 2x1 tiles (64x32 per frame), 2 layers, 6 frames (2 idle + 4 active).
+-- 2x1 tiles (64x32 per frame), 2 layers, 10 frames:
+-- idle(2) + windup(2) + active(4) + winddown(2).
 
 local H = dofile("/Users/gorishniymax/Repos/factor/tools/aseprite_helper.lua")
 local C = H.load_palette("buildings")
@@ -8,8 +9,10 @@ local C = H.load_palette("buildings")
 local W, FH = 64, 32
 local LAYERS = {"base", "top"}
 local TAGS = {
-  {name="idle",   from=1, to=2, duration=0.5},
-  {name="active", from=3, to=6, duration=0.15},
+  {name="idle",     from=1, to=2, duration=0.5},
+  {name="windup",   from=3, to=4, duration=0.15},
+  {name="active",   from=5, to=8, duration=0.15},
+  {name="winddown", from=9, to=10, duration=0.15},
 }
 
 -- Coal burner identity: sooty, dark, ember glow
@@ -27,7 +30,7 @@ local function draw_base(img, tag, phase)
   H.rect(img, 1, 1, 30, 30, C.body)
   H.rect(img, 2, 2, 29, 29, SOOT)
   H.rect(img, 3, 3, 28, 28, COAL)
-  -- coal chunk texture (2px wide blocks scattered)
+  -- coal chunk texture
   local chunks = {
     {5,5},{10,6},{15,4},{20,7},{25,5},
     {6,11},{12,10},{17,13},{22,11},{27,12},
@@ -39,31 +42,28 @@ local function draw_base(img, tag, phase)
     H.px(img, p[1], p[2], COAL_MID)
     H.px(img, p[1]+1, p[2], COAL_MID)
   end
-  -- bright specks on coal
   for _, p in ipairs({{8,8},{19,15},{25,23},{12,20},{6,14}}) do
     H.px(img, p[1], p[2], COAL_HI)
   end
 
-  -- fuel chute connecting to combustion chamber (y 13-18)
+  -- fuel chute
   H.rect(img, 28, 13, 33, 18, C.panel_inner)
   H.line(img, 28, 12, 33, 12, C.body)
   H.line(img, 28, 19, 33, 19, C.body)
 
-  -- RIGHT TILE: combustion chamber (top-down fire pit)
+  -- RIGHT TILE: combustion chamber
   H.rect(img, 32, 1, 62, 30, C.body)
   H.rect(img, 33, 2, 61, 29, C.panel)
-  -- corner rivets
   for _, p in ipairs({{34,3},{60,3},{34,28},{60,28}}) do
     H.px(img, p[1], p[2], C.rivet)
   end
 
-  -- round fire pit (center 47,15)
+  -- round fire pit
   local cx, cy = 47, 15
   H.circle(img, cx, cy, 12, C.rim)
   H.circle(img, cx, cy, 11, C.chamber)
 
   if tag == "active" then
-    -- layered fire glow with per-frame flicker
     H.circle(img, cx, cy, 10, C.fire_dim)
     H.circle(img, cx, cy, 8, C.ember)
     local sh = {{-1,0},{1,0},{0,-1},{0,1}}
@@ -73,8 +73,32 @@ local function draw_base(img, tag, phase)
     H.circle(img, cx + s[2], cy + s[1], 2, C.fire_inner)
     if phase >= 2 then H.px(img, cx, cy, C.fire_core) end
     H.circle_outline(img, cx, cy, 11, C.glow_wall)
+  elseif tag == "windup" then
+    H.circle(img, cx, cy, 10, C.chamber_deep)
+    if phase == 0 then
+      -- Faint spark
+      H.px(img, cx-2, cy, C.ember)
+      H.px(img, cx+2, cy+1, C.ember)
+    else
+      -- Growing ember
+      H.circle(img, cx, cy, 4, C.fire_dim)
+      H.circle(img, cx, cy, 2, C.ember)
+    end
+  elseif tag == "winddown" then
+    if phase == 0 then
+      -- Fading fire
+      H.circle(img, cx, cy, 10, C.fire_dim)
+      H.circle(img, cx, cy, 5, C.ember)
+      H.circle(img, cx, cy, 2, C.fire_outer)
+    else
+      -- Just embers
+      H.circle(img, cx, cy, 10, C.chamber_deep)
+      H.px(img, cx-2, cy, C.ember)
+      H.px(img, cx+3, cy+1, C.ember)
+      H.px(img, cx, cy-2, C.fire_dim)
+    end
   else
-    -- idle: dim embers scattered in dark chamber
+    -- idle: dim embers
     H.circle(img, cx, cy, 10, C.chamber_deep)
     local em = phase == 0
       and {{cx-3,cy-2},{cx+4,cy+3},{cx+1,cy-5},{cx-5,cy+1}}
@@ -89,7 +113,6 @@ local function draw_top(img, tag, phase)
 
   -- grate bars over fire pit (coal burner signature)
   local R = 10
-  -- horizontal bars every 4px
   for _, yo in ipairs({-8, -4, 0, 4, 8}) do
     for x = cx - R, cx + R do
       if (x - cx) * (x - cx) + yo * yo <= R * R then
@@ -97,21 +120,20 @@ local function draw_top(img, tag, phase)
       end
     end
   end
-  -- vertical center bar
   for y = cy - R, cy + R do
     if (y - cy) * (y - cy) <= R * R then
       H.px(img, cx, y, C.grate)
     end
   end
 
-  -- chimney cap (top-right of right tile)
+  -- chimney cap
   local chx, chy = 57, 6
   H.circle(img, chx, chy, 3, C.shadow)
   H.circle_outline(img, chx, chy, 3, C.rim)
   H.px(img, chx, chy, C.chamber_deep)
 
-  -- smoke wisps (active only)
-  if tag == "active" then
+  -- smoke wisps (active/windup)
+  if tag == "active" or tag == "windup" then
     local offsets = {{-1,-1},{1,-1},{0,-1},{-1,0}}
     local o = offsets[(phase % 4) + 1]
     H.px(img, chx + o[1], chy - 3 + o[2], C.smoke_dark)
@@ -124,7 +146,6 @@ local function draw_top(img, tag, phase)
   end
 end
 
--- render & export
 local spr, lm = H.new_sprite(W, FH, LAYERS, TAGS)
 H.render_frames(spr, lm, TAGS, function(img, layer, fi, tag, phase)
   if layer == "base" then draw_base(img, tag, phase)

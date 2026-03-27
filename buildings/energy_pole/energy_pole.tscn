@@ -1,10 +1,83 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="2"]
 [ext_resource type="Script" path="res://buildings/energy_pole/energy_pole_logic.gd" id="3"]
 [ext_resource type="Script" path="res://buildings/shared/energy_node.gd" id="4"]
-[ext_resource type="Script" path="res://buildings/energy_pole/energy_pole_sprite.gd" id="5"]
+[ext_resource type="Texture2D" path="res://buildings/energy_pole/sprites/main-base.png" id="5_base"]
+[ext_resource type="Texture2D" path="res://buildings/energy_pole/sprites/main-top.png" id="5_top"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b1"]
+atlas = ExtResource("5_base")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b2"]
+atlas = ExtResource("5_base")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b3"]
+atlas = ExtResource("5_base")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b4"]
+atlas = ExtResource("5_base")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_base"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b4")
+}],
+"loop": true,
+"name": &"default",
+"speed": 3.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t1"]
+atlas = ExtResource("5_top")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t2"]
+atlas = ExtResource("5_top")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t3"]
+atlas = ExtResource("5_top")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t4"]
+atlas = ExtResource("5_top")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_top"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t4")
+}],
+"loop": true,
+"name": &"default",
+"speed": 3.0
+}]
 
 [node name="EnergyPole" type="Node2D"]
 script = ExtResource("1")
@@ -25,9 +98,6 @@ script = ExtResource("2")
 
 [node name="BuildAnchor" type="Node2D" parent="Rotatable"]
 
-[node name="EnergyPoleLogic" type="Node" parent="."]
-script = ExtResource("3")
-
 [node name="EnergyNode" type="Node2D" parent="Rotatable"]
 position = Vector2(16, 16)
 script = ExtResource("4")
@@ -36,5 +106,18 @@ throughput = 100.0
 inner_capacity = 50.0
 connection_range = 5.0
 
-[node name="EnergyPoleSprite" type="Node2D" parent="Rotatable"]
-script = ExtResource("5")
+[node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
+texture_filter = 1
+position = Vector2(16, 16)
+sprite_frames = SubResource("SpriteFrames_base")
+autoplay = "default"
+
+[node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
+z_index = 10
+texture_filter = 1
+position = Vector2(16, 16)
+sprite_frames = SubResource("SpriteFrames_top")
+autoplay = "default"
+
+[node name="EnergyPoleLogic" type="Node" parent="."]
+script = ExtResource("3")
