@@ -9,7 +9,7 @@
 --   Compositing: H.stamp, H.load_stamp, H.flip_h, H.flip_v, H.clear
 --   Sprite:     H.new_sprite(w, h, layers, tags) — one-call setup
 --   Rendering:  H.render_frames(spr, layers, tags, draw_fn)
---   Export:     H.export_layers(sprite, dir, name) — per-layer horizontal spritesheets
+--   Export:     H.export_spritesheet(sprite, dir, name) — combined spritesheet (split by layers+tags)
 --   Palette:    H.load_palette(name) — load a named palette from tools/palettes/
 
 local H = {}
@@ -401,35 +401,36 @@ end
 -- EXPORT
 -- ═══════════════════════════════════════════════════════════════════════════
 
---- Export per-layer horizontal spritesheets.
---- Outputs: {dir}/{name}-{layer_name}.png for each layer.
---- Returns list of exported paths.
-function H.export_layers(spr, dir, name)
-  local paths = {}
-  for _, layer in ipairs(spr.layers) do
-    local sheet = Image(spr.width * #spr.frames, spr.height, ColorMode.RGB)
-    for i, frame in ipairs(spr.frames) do
-      local cel = layer:cel(frame.frameNumber)
-      if cel then
-        local offset_x = (i - 1) * spr.width + cel.position.x
-        local offset_y = cel.position.y
-        sheet:drawImage(cel.image, Point(offset_x, offset_y))
-      end
-    end
-    local path = dir .. "/" .. name .. "-" .. layer.name .. ".png"
-    sheet:saveAs(path)
-    table.insert(paths, path)
-    print("Exported: " .. path)
-  end
-  return paths
+--- Export a combined spritesheet with layers and tags split into rows.
+--- Produces: {dir}/{name}.png (spritesheet) and {dir}/{name}.json (metadata).
+--- Returns: png_path, json_path
+function H.export_spritesheet(spr, dir, name)
+  local png_path = dir .. "/" .. name .. ".png"
+  local json_path = dir .. "/" .. name .. ".json"
+
+  app.command.ExportSpriteSheet {
+    ui = false,
+    askOverwrite = false,
+    type = SpriteSheetType.ROWS,
+    textureFilename = png_path,
+    dataFilename = json_path,
+    dataFormat = SpriteSheetDataFormat.JSON_ARRAY,
+    splitLayers = true,
+    splitTags = true,
+    listLayers = true,
+    listTags = true,
+  }
+
+  print("Exported spritesheet: " .. png_path)
+  return png_path, json_path
 end
 
---- Save .aseprite and export layer sheets in one call.
+--- Save .aseprite and export combined spritesheet in one call.
 function H.save_and_export(spr, dir, name)
   spr:saveAs(dir .. "/" .. name .. ".aseprite")
-  local paths = H.export_layers(spr, dir, name)
+  local png_path, json_path = H.export_spritesheet(spr, dir, name)
   spr:close()
-  return paths
+  return png_path, json_path
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════

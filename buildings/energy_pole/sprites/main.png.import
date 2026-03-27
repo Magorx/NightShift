@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cmu8jb2gdkne3"
-path="res://.godot/imported/main-top.png-4baf231749a94a2a75a0f90686b2df51.ctex"
+uid="uid://b8d00u2hlgtjs"
+path="res://.godot/imported/main.png-4f5527c7713528440ff5f99dbe074492.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://buildings/coal_burner/sprites/main-top.png"
-dest_files=["res://.godot/imported/main-top.png-4baf231749a94a2a75a0f90686b2df51.ctex"]
+source_file="res://buildings/energy_pole/sprites/main.png"
+dest_files=["res://.godot/imported/main.png-4f5527c7713528440ff5f99dbe074492.ctex"]
 
 [params]
 

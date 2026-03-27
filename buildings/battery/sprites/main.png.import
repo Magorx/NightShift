@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://sk1rx5n71kho"
-path="res://.godot/imported/main-base.png-d649c7b66eb681d957594ed50541890a.ctex"
+uid="uid://v8ui6j0gle3v"
+path="res://.godot/imported/main.png-71227203fcd9a7a0f2b94441095f84be.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://buildings/source/sprites/main-base.png"
-dest_files=["res://.godot/imported/main-base.png-d649c7b66eb681d957594ed50541890a.ctex"]
+source_file="res://buildings/battery/sprites/main.png"
+dest_files=["res://.godot/imported/main.png-71227203fcd9a7a0f2b94441095f84be.ctex"]
 
 [params]
 

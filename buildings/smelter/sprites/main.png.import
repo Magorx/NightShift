@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b47xc4oxj7y6g"
-path="res://.godot/imported/main-top.png-cfc2a23003bd4f359a72ec63b781eb7e.ctex"
+uid="uid://vu8nnb1i5eej"
+path="res://.godot/imported/main.png-80edeb7b3f4325f21848c7e05ca22798.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://buildings/battery/sprites/main-top.png"
-dest_files=["res://.godot/imported/main-top.png-cfc2a23003bd4f359a72ec63b781eb7e.ctex"]
+source_file="res://buildings/smelter/sprites/main.png"
+dest_files=["res://.godot/imported/main.png-80edeb7b3f4325f21848c7e05ca22798.ctex"]
 
 [params]
 

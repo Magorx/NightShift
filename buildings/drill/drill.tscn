@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=3 uid="uid://cas2sgdt0e4jq"]
+[gd_scene load_steps=30 format=3 uid="uid://cas2sgdt0e4jq"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="2"]
@@ -6,48 +6,47 @@
 [ext_resource type="Script" uid="uid://bskpekvve1ai8" path="res://buildings/drill/drill_progress.gd" id="4"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="5"]
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="6"]
-[ext_resource type="Texture2D" path="res://buildings/drill/sprites/main-base.png" id="7_base"]
-[ext_resource type="Texture2D" path="res://buildings/drill/sprites/main-top.png" id="7_top"]
+[ext_resource type="Texture2D" path="res://buildings/drill/sprites/main.png" id="7_sheet"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bi0"]
-atlas = ExtResource("7_base")
+atlas = ExtResource("7_sheet")
 region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bi1"]
-atlas = ExtResource("7_base")
+atlas = ExtResource("7_sheet")
 region = Rect2(32, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bw0"]
-atlas = ExtResource("7_base")
-region = Rect2(64, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 64, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bw1"]
-atlas = ExtResource("7_base")
-region = Rect2(96, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 64, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba0"]
-atlas = ExtResource("7_base")
-region = Rect2(128, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 128, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba1"]
-atlas = ExtResource("7_base")
-region = Rect2(160, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 128, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba2"]
-atlas = ExtResource("7_base")
-region = Rect2(192, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 128, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba3"]
-atlas = ExtResource("7_base")
-region = Rect2(224, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(96, 128, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd0"]
-atlas = ExtResource("7_base")
-region = Rect2(256, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 192, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd1"]
-atlas = ExtResource("7_base")
-region = Rect2(288, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 192, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{
@@ -103,44 +102,44 @@ animations = [{
 }]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ti0"]
-atlas = ExtResource("7_top")
-region = Rect2(0, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ti1"]
-atlas = ExtResource("7_top")
-region = Rect2(32, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tw0"]
-atlas = ExtResource("7_top")
-region = Rect2(64, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 96, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tw1"]
-atlas = ExtResource("7_top")
-region = Rect2(96, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 96, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta0"]
-atlas = ExtResource("7_top")
-region = Rect2(128, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 160, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta1"]
-atlas = ExtResource("7_top")
-region = Rect2(160, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 160, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta2"]
-atlas = ExtResource("7_top")
-region = Rect2(192, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 160, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta3"]
-atlas = ExtResource("7_top")
-region = Rect2(224, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(96, 160, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_td0"]
-atlas = ExtResource("7_top")
-region = Rect2(256, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 224, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_td1"]
-atlas = ExtResource("7_top")
-region = Rect2(288, 0, 32, 32)
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 224, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{

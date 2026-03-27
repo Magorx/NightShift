@@ -1,6 +1,7 @@
 -- battery_sprite.lua
 -- Top-down battery: energy storage block with charge indicator.
 -- 2 layers (base, top), 4 frames with subtle charge pulse.
+-- Fill level is driven by code via BuildingFill — base is just the empty shell.
 
 local H = dofile("/Users/gorishniymax/Repos/factor/tools/aseprite_helper.lua")
 local C = H.load_palette("buildings")
@@ -18,9 +19,6 @@ local CASE_DK = H.hex("#1A3028")
 local CASE_LT = H.hex("#3A5048")
 local TERM    = H.hex("#808880")
 local TERM_BR = H.hex("#A0A8A0")
-local CHARGE  = H.hex("#4CAF50")
-local CHG_DK  = H.hex("#388E3C")
-local CHG_BR  = H.hex("#66BB6A")
 local BOLT    = H.hex("#FFD232")
 local BOLT_DM = H.hex("#C8A028")
 
@@ -32,15 +30,8 @@ local function draw_base(img, tag, phase)
   -- Terminal nubs (top center)
   H.rect(img, 13, 1, 18, 3, TERM)
   H.line(img, 14, 1, 17, 1, TERM_BR)
-  -- Inner fill area background
+  -- Inner fill area background (empty — fill level is a ColorRect driven by code)
   H.rect(img, 4, 6, 27, 27, CASE_DK)
-  -- Charge fill (shown as half-full static indicator)
-  H.rect(img, 5, 16, 26, 26, CHG_DK)
-  H.rect(img, 5, 18, 26, 26, CHARGE)
-  -- Segment dividers (4 cells)
-  for y = 11, 26, 5 do
-    H.line(img, 4, y, 27, y, CASE)
-  end
   -- Corner rivets
   for _, p in ipairs({{3,4},{28,4},{3,28},{28,28}}) do
     H.px(img, p[1], p[2], C.rivet)
@@ -48,9 +39,12 @@ local function draw_base(img, tag, phase)
 end
 
 local function draw_top(img, tag, phase)
+  -- Segment dividers (grid overlay on top of the fill rect)
+  for y = 11, 26, 5 do
+    H.line(img, 4, y, 27, y, CASE)
+  end
   -- Lightning bolt symbol (centered)
   local cx = 15
-  -- Bolt shape: zig-zag
   -- Top segment
   H.line(img, cx+1, 8, cx-1, 14, BOLT)
   H.line(img, cx+2, 8, cx, 14, BOLT)

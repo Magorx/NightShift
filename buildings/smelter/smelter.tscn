@@ -6,48 +6,48 @@
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="4"]
 [ext_resource type="Script" uid="uid://dbaj4knyfgpst" path="res://buildings/smelter/converter.gd" id="6"]
 [ext_resource type="Script" uid="uid://cu412df6kqpv" path="res://buildings/smelter/smelter_progress.gd" id="7"]
-[ext_resource type="Texture2D" path="res://buildings/smelter/sprites/main-base.png" id="8_base"]
-[ext_resource type="Texture2D" path="res://buildings/smelter/sprites/main-top.png" id="8_top"]
+[ext_resource type="Texture2D" path="res://buildings/smelter/sprites/main.png" id="8_sheet"]
+[ext_resource type="Script" path="res://buildings/smelter/smelter_bars.gd" id="9_bars"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bi0"]
-atlas = ExtResource("8_base")
+atlas = ExtResource("8_sheet")
 region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bi1"]
-atlas = ExtResource("8_base")
+atlas = ExtResource("8_sheet")
 region = Rect2(64, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bw0"]
-atlas = ExtResource("8_base")
-region = Rect2(128, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(0, 192, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bw1"]
-atlas = ExtResource("8_base")
-region = Rect2(192, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(64, 192, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba0"]
-atlas = ExtResource("8_base")
-region = Rect2(256, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(0, 384, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba1"]
-atlas = ExtResource("8_base")
-region = Rect2(320, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(64, 384, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba2"]
-atlas = ExtResource("8_base")
-region = Rect2(384, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(128, 384, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba3"]
-atlas = ExtResource("8_base")
-region = Rect2(448, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(192, 384, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd0"]
-atlas = ExtResource("8_base")
-region = Rect2(512, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(0, 576, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd1"]
-atlas = ExtResource("8_base")
-region = Rect2(576, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(64, 576, 64, 96)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{
@@ -103,44 +103,44 @@ animations = [{
 }]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ti0"]
-atlas = ExtResource("8_top")
-region = Rect2(0, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(0, 96, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ti1"]
-atlas = ExtResource("8_top")
-region = Rect2(64, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(64, 96, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tw0"]
-atlas = ExtResource("8_top")
-region = Rect2(128, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(0, 288, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tw1"]
-atlas = ExtResource("8_top")
-region = Rect2(192, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(64, 288, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta0"]
-atlas = ExtResource("8_top")
-region = Rect2(256, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(0, 480, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta1"]
-atlas = ExtResource("8_top")
-region = Rect2(320, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(64, 480, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta2"]
-atlas = ExtResource("8_top")
-region = Rect2(384, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(128, 480, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta3"]
-atlas = ExtResource("8_top")
-region = Rect2(448, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(192, 480, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_td0"]
-atlas = ExtResource("8_top")
-region = Rect2(512, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(0, 672, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_td1"]
-atlas = ExtResource("8_top")
-region = Rect2(576, 0, 64, 96)
+atlas = ExtResource("8_sheet")
+region = Rect2(64, 672, 64, 96)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{
@@ -299,6 +299,10 @@ position = Vector2(32, 48)
 sprite_frames = SubResource("SpriteFrames_base")
 animation = &"idle"
 autoplay = "idle"
+
+[node name="CodeAnim" type="Node2D" parent="Rotatable"]
+z_index = 5
+script = ExtResource("9_bars")
 
 [node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
 z_index = 10

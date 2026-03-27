@@ -260,7 +260,15 @@ func _rotate_visuals(container: Node, rotation: int) -> void:
 					1: child.position = Vector2(-rel.y, rel.x) + pivot
 					2: child.position = Vector2(-rel.x, -rel.y) + pivot
 					3: child.position = Vector2(rel.y, -rel.x) + pivot
-			# Script-drawn sprite nodes — rotate + offset
+			# Code-animated parts (name starts with "CodeAnim") — pivot rotation
+			elif String(child.name).begins_with("CodeAnim"):
+				child.rotation = rot_rad
+				var rel: Vector2 = child.position - pivot
+				match rotation:
+					1: child.position = Vector2(-rel.y, rel.x) + pivot
+					2: child.position = Vector2(-rel.x, -rel.y) + pivot
+					3: child.position = Vector2(rel.y, -rel.x) + pivot
+			# Full-canvas drawn sprites (ProgressBar, etc.) — offset + rotation
 			elif _is_drawn_sprite(child):
 				child.rotation = rot_rad
 				child.position = offset

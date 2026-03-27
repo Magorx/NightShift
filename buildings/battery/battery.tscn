@@ -1,26 +1,26 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=17 format=3 uid="uid://du12qruuw4fjk"]
 
-[ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
-[ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="2"]
-[ext_resource type="Script" path="res://buildings/battery/battery_logic.gd" id="3"]
+[ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
+[ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
+[ext_resource type="Script" uid="uid://ddqmpnpd4hxgw" path="res://buildings/battery/battery_logic.gd" id="3"]
 [ext_resource type="Script" path="res://buildings/shared/energy_node.gd" id="4"]
-[ext_resource type="Texture2D" path="res://buildings/battery/sprites/main-base.png" id="5_base"]
-[ext_resource type="Texture2D" path="res://buildings/battery/sprites/main-top.png" id="5_top"]
+[ext_resource type="Texture2D" path="res://buildings/battery/sprites/main.png" id="5_sheet"]
+[ext_resource type="Script" uid="uid://cwuewgnsohkky" path="res://buildings/shared/building_fill.gd" id="6_fill"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b1"]
-atlas = ExtResource("5_base")
+atlas = ExtResource("5_sheet")
 region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b2"]
-atlas = ExtResource("5_base")
+atlas = ExtResource("5_sheet")
 region = Rect2(32, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b3"]
-atlas = ExtResource("5_base")
+atlas = ExtResource("5_sheet")
 region = Rect2(64, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b4"]
-atlas = ExtResource("5_base")
+atlas = ExtResource("5_sheet")
 region = Rect2(96, 0, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
@@ -44,20 +44,20 @@ animations = [{
 }]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t1"]
-atlas = ExtResource("5_top")
-region = Rect2(0, 0, 32, 32)
+atlas = ExtResource("5_sheet")
+region = Rect2(0, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t2"]
-atlas = ExtResource("5_top")
-region = Rect2(32, 0, 32, 32)
+atlas = ExtResource("5_sheet")
+region = Rect2(32, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t3"]
-atlas = ExtResource("5_top")
-region = Rect2(64, 0, 32, 32)
+atlas = ExtResource("5_sheet")
+region = Rect2(64, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t4"]
-atlas = ExtResource("5_top")
-region = Rect2(96, 0, 32, 32)
+atlas = ExtResource("5_sheet")
+region = Rect2(96, 32, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{
@@ -104,13 +104,19 @@ script = ExtResource("4")
 max_connections = 1
 throughput = 200.0
 inner_capacity = 2000.0
-connection_range = 5.0
 
 [node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
 texture_filter = 1
 position = Vector2(16, 16)
 sprite_frames = SubResource("SpriteFrames_base")
 autoplay = "default"
+
+[node name="CodeAnim" type="Node2D" parent="Rotatable"]
+z_index = 5
+position = Vector2(5, 7)
+script = ExtResource("6_fill")
+fill_size = Vector2(22, 20)
+fill_color = Color(0.298, 0.686, 0.314, 1)
 
 [node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
 z_index = 10

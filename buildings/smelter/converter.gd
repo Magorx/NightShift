@@ -27,6 +27,7 @@ var output_inv: Inventory = Inventory.new()
 var _active_recipe = null # RecipeDef or null
 var _craft_timer: float = 0.0
 var _input_rr: RoundRobin = RoundRobin.new()
+var _code_anim: Node2D
 
 ## Energy configuration per converter type.
 ## capacity, base_demand — set in configure based on building type.
@@ -44,6 +45,7 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	input_points = def.get_rotated_inputs(p_rotation)
 	output_points = def.get_rotated_outputs(p_rotation)
 	recipes = GameManager.recipes_by_type.get(converter_type, [])
+	_code_anim = get_parent().get_node_or_null("Rotatable/CodeAnim")
 	# Set up energy for converters that participate in the energy grid
 	if ENERGY_CONFIG.has(converter_type):
 		var cfg = ENERGY_CONFIG[converter_type]
@@ -80,6 +82,8 @@ func _physics_process(delta: float) -> void:
 		_try_start_craft()
 
 	_update_building_sprites(_active_recipe != null, delta)
+	if _code_anim and _code_anim.has_method("set_active"):
+		_code_anim.set_active(_active_recipe != null)
 
 func _try_pull_inputs() -> void:
 	var count: int = input_points.size()

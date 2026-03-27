@@ -1,26 +1,25 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="2"]
 [ext_resource type="Script" path="res://buildings/energy_pole/energy_pole_logic.gd" id="3"]
 [ext_resource type="Script" path="res://buildings/shared/energy_node.gd" id="4"]
-[ext_resource type="Texture2D" path="res://buildings/energy_pole/sprites/main-base.png" id="5_base"]
-[ext_resource type="Texture2D" path="res://buildings/energy_pole/sprites/main-top.png" id="5_top"]
+[ext_resource type="Texture2D" path="res://buildings/energy_pole/sprites/main.png" id="5_sheet"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b1"]
-atlas = ExtResource("5_base")
+atlas = ExtResource("5_sheet")
 region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b2"]
-atlas = ExtResource("5_base")
+atlas = ExtResource("5_sheet")
 region = Rect2(32, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b3"]
-atlas = ExtResource("5_base")
+atlas = ExtResource("5_sheet")
 region = Rect2(64, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b4"]
-atlas = ExtResource("5_base")
+atlas = ExtResource("5_sheet")
 region = Rect2(96, 0, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
@@ -44,20 +43,20 @@ animations = [{
 }]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t1"]
-atlas = ExtResource("5_top")
-region = Rect2(0, 0, 32, 32)
+atlas = ExtResource("5_sheet")
+region = Rect2(0, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t2"]
-atlas = ExtResource("5_top")
-region = Rect2(32, 0, 32, 32)
+atlas = ExtResource("5_sheet")
+region = Rect2(32, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t3"]
-atlas = ExtResource("5_top")
-region = Rect2(64, 0, 32, 32)
+atlas = ExtResource("5_sheet")
+region = Rect2(64, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t4"]
-atlas = ExtResource("5_top")
-region = Rect2(96, 0, 32, 32)
+atlas = ExtResource("5_sheet")
+region = Rect2(96, 32, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{
