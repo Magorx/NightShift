@@ -8,6 +8,8 @@ const ZOOM_SPEED := 0.1
 const MIN_ZOOM := 0.25
 const MAX_ZOOM := 3.0
 const AUTOSAVE_INTERVAL := 60.0
+const CAMERA_ELASTIC_RETURN := 5.0
+const CAMERA_OVERSCROLL_SOFTNESS := 80.0
 
 @onready var camera: Camera2D = $Camera2D
 @onready var tile_map: TileMapLayer = $TileMapLayer
@@ -73,6 +75,7 @@ func _on_building_clicked(building: Node2D) -> void:
 
 func _process(delta: float) -> void:
 	_handle_pan(delta)
+	_apply_camera_elastic(delta)
 	# Autosave
 	_autosave_timer += delta
 	if _autosave_timer >= AUTOSAVE_INTERVAL:
@@ -120,7 +123,11 @@ func _handle_pan(delta: float) -> void:
 	if Input.is_action_pressed(&"pan_right"):
 		direction.x += 1
 	if direction != Vector2.ZERO:
-		camera.position += direction.normalized() * PAN_SPEED * delta / camera.zoom.x
+		var move := direction.normalized() * PAN_SPEED * delta / camera.zoom.x
+		var bounds := _get_camera_bounds()
+		move.x *= _overscroll_factor(camera.position.x, bounds.position.x, bounds.end.x, move.x)
+		move.y *= _overscroll_factor(camera.position.y, bounds.position.y, bounds.end.y, move.y)
+		camera.position += move
 
 func _handle_zoom(event: InputEventMouseButton) -> void:
 	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -175,4 +182,37 @@ func _setup_tileset() -> void:
 	_create_tile_source(tile_set, TILE_GROUND_DARK, Color(0.24, 0.30, 0.20))
 	_create_tile_source(tile_set, TILE_GROUND_LIGHT, Color(0.32, 0.40, 0.28))
 	tile_map.tile_set = tile_set
+
+func _get_camera_bounds() -> Rect2:
+	var viewport_size := get_viewport_rect().size
+	var half_view := viewport_size / (2.0 * camera.zoom.x)
+	var world_size := float(MAP_SIZE * TILE_SIZE)
+	var min_pos := half_view
+	var max_pos := Vector2(world_size, world_size) - half_view
+	if min_pos.x > max_pos.x:
+		min_pos.x = world_size / 2.0
+		max_pos.x = world_size / 2.0
+	if min_pos.y > max_pos.y:
+		min_pos.y = world_size / 2.0
+		max_pos.y = world_size / 2.0
+	return Rect2(min_pos, max_pos - min_pos)
+
+func _overscroll_factor(pos: float, min_b: float, max_b: float, move_dir: float) -> float:
+	var over := 0.0
+	if pos < min_b and move_dir < 0.0:
+		over = min_b - pos
+	elif pos > max_b and move_dir > 0.0:
+		over = pos - max_b
+	else:
+		return 1.0
+	return exp(-over / CAMERA_OVERSCROLL_SOFTNESS)
+
+func _apply_camera_elastic(delta: float) -> void:
+	var bounds := _get_camera_bounds()
+	var target := Vector2(
+		clampf(camera.position.x, bounds.position.x, bounds.end.x),
+		clampf(camera.position.y, bounds.position.y, bounds.end.y)
+	)
+	if not camera.position.is_equal_approx(target):
+		camera.position = camera.position.lerp(target, 1.0 - exp(-CAMERA_ELASTIC_RETURN * delta))
 
