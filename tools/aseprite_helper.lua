@@ -417,6 +417,7 @@ function H.export_spritesheet(spr, dir, name)
     dataFormat = SpriteSheetDataFormat.JSON_ARRAY,
     splitLayers = true,
     splitTags = true,
+    mergeDuplicates = true,
     listLayers = true,
     listTags = true,
   }

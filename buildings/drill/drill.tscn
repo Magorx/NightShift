@@ -14,7 +14,7 @@ region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bi1"]
 atlas = ExtResource("7_sheet")
-region = Rect2(32, 0, 32, 32)
+region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bw0"]
 atlas = ExtResource("7_sheet")
@@ -46,7 +46,7 @@ region = Rect2(0, 192, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd1"]
 atlas = ExtResource("7_sheet")
-region = Rect2(32, 192, 32, 32)
+region = Rect2(0, 64, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{
@@ -107,31 +107,31 @@ region = Rect2(0, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ti1"]
 atlas = ExtResource("7_sheet")
-region = Rect2(32, 32, 32, 32)
+region = Rect2(0, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tw0"]
 atlas = ExtResource("7_sheet")
-region = Rect2(0, 96, 32, 32)
+region = Rect2(0, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tw1"]
 atlas = ExtResource("7_sheet")
-region = Rect2(32, 96, 32, 32)
+region = Rect2(0, 96, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta0"]
 atlas = ExtResource("7_sheet")
-region = Rect2(0, 160, 32, 32)
+region = Rect2(0, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta1"]
 atlas = ExtResource("7_sheet")
-region = Rect2(32, 160, 32, 32)
+region = Rect2(0, 160, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta2"]
 atlas = ExtResource("7_sheet")
-region = Rect2(64, 160, 32, 32)
+region = Rect2(0, 32, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta3"]
 atlas = ExtResource("7_sheet")
-region = Rect2(96, 160, 32, 32)
+region = Rect2(0, 160, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_td0"]
 atlas = ExtResource("7_sheet")
@@ -139,7 +139,7 @@ region = Rect2(0, 224, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_td1"]
 atlas = ExtResource("7_sheet")
-region = Rect2(32, 224, 32, 32)
+region = Rect2(0, 32, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{

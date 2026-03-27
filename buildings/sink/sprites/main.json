@@ -46,7 +46,7 @@
    },
    {
     "filename": "main (top) #default 1.aseprite",
-    "frame": { "x": 32, "y": 32, "w": 32, "h": 32 },
+    "frame": { "x": 0, "y": 32, "w": 32, "h": 32 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 32 },
@@ -55,7 +55,7 @@
    },
    {
     "filename": "main (top) #default 2.aseprite",
-    "frame": { "x": 64, "y": 32, "w": 32, "h": 32 },
+    "frame": { "x": 0, "y": 32, "w": 32, "h": 32 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 32 },
@@ -64,7 +64,7 @@
    },
    {
     "filename": "main (top) #default 3.aseprite",
-    "frame": { "x": 96, "y": 32, "w": 32, "h": 32 },
+    "frame": { "x": 0, "y": 32, "w": 32, "h": 32 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 32, "h": 32 },

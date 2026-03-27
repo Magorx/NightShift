@@ -39,6 +39,18 @@ local function draw_base(img, tag, phase)
   -- Output cell floor (visible through top layer opening; conveyor overlays this)
   H.rect(img, 34, 34, 62, 62, C.panel)
   H.rect(img, 35, 43, 63, 52, C.panel_inner)
+
+  -- Diagonal channel from crucible to mold area (idle frame 0 only)
+  if tag == "idle" and phase == 0 then
+    local ch = {
+      {60,0,2},{61,2,6},{62,7,9},{63,10,12},{64,12,14},{65,14,15},
+      {66,16,17},{67,17,19},{68,19,21},{69,21,22},{70,23,24},
+      {71,24,26},{72,26,27},{73,27,29},{74,29,29},
+    }
+    for _, r in ipairs(ch) do
+      H.line(img, r[2], r[1], r[3], r[1], C.conv_light)
+    end
+  end
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -162,6 +174,13 @@ local function draw_top(img, tag, phase)
   -- Mold separators (bars slide underneath)
   H.line(img, 8, 80, 24, 80, C.panel_inner)
   H.line(img, 39, 80, 55, 80, C.panel_inner)
+
+  -- Clear mold interiors so base layer bars/items show through
+  local CLEAR = H.rgba(0, 0, 0, 0)
+  H.rect(img, 9, 74, 23, 79, CLEAR)
+  H.rect(img, 9, 81, 23, 86, CLEAR)
+  H.rect(img, 40, 74, 54, 79, CLEAR)
+  H.rect(img, 40, 81, 54, 86, CLEAR)
 
   -- ── Pipes: hoppers → crucible ────────────────────────────────────────
   H.line(img, 15, 28, 15, 35, C.pipe)

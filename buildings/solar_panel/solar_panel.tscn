@@ -11,15 +11,15 @@ region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b2"]
 atlas = ExtResource("4_sheet")
-region = Rect2(32, 0, 32, 32)
+region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b3"]
 atlas = ExtResource("4_sheet")
-region = Rect2(64, 0, 32, 32)
+region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b4"]
 atlas = ExtResource("4_sheet")
-region = Rect2(96, 0, 32, 32)
+region = Rect2(0, 0, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{

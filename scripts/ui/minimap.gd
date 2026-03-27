@@ -45,8 +45,11 @@ func _draw() -> void:
 		if item_def:
 			color = item_def.color
 			color.a = 0.35
-		var rect_pos := Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE)
-		draw_rect(Rect2(rect_pos * scale_x, Vector2(TILE_SIZE * scale_x, TILE_SIZE * scale_y)), color)
+		var x1 := floorf(pos.x * TILE_SIZE * scale_x)
+		var y1 := floorf(pos.y * TILE_SIZE * scale_y)
+		var x2 := ceilf((pos.x + 1) * TILE_SIZE * scale_x)
+		var y2 := ceilf((pos.y + 1) * TILE_SIZE * scale_y)
+		draw_rect(Rect2(x1, y1, x2 - x1, y2 - y1), color)
 
 	# Buildings
 	var drawn_buildings: Dictionary = {}
@@ -62,9 +65,11 @@ func _draw() -> void:
 		var color := Color.WHITE
 		if def:
 			color = def.color
-		var bld_pos := Vector2(pos.x * TILE_SIZE, pos.y * TILE_SIZE)
-		var dot_size := Vector2(maxf(TILE_SIZE * scale_x, 2), maxf(TILE_SIZE * scale_y, 2))
-		draw_rect(Rect2(bld_pos * scale_x, dot_size), color)
+		var bx1 := floorf(pos.x * TILE_SIZE * scale_x)
+		var by1 := floorf(pos.y * TILE_SIZE * scale_y)
+		var bx2 := ceilf((pos.x + 1) * TILE_SIZE * scale_x)
+		var by2 := ceilf((pos.y + 1) * TILE_SIZE * scale_y)
+		draw_rect(Rect2(bx1, by1, maxf(bx2 - bx1, 2), maxf(by2 - by1, 2)), color)
 
 	# Camera viewport rectangle
 	if _camera:
