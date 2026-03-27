@@ -4,7 +4,6 @@ extends Node2D
 signal building_clicked(building: Node2D)
 
 const TILE_SIZE := 32
-const MAP_SIZE := 64
 const GHOST_MODULATE := Color(0.8, 0.9, 1.0, 0.55)
 const GHOST_INVALID_MODULATE := Color(1.0, 0.5, 0.5, 0.45)
 const DESTROY_AREA_COLOR := Color(1.0, 0.2, 0.2, 0.15)
@@ -272,7 +271,7 @@ func _draw_energy_link() -> void:
 	# Range area (Manhattan diamond)
 	var origin_grid: Vector2i = _link_origin_node.owner_grid_pos
 	var range_tiles: int = int(_link_origin_node.connection_range)
-	DrawUtils.draw_manhattan_area(self, [origin_grid], range_tiles, TILE_SIZE, MAP_SIZE, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
+	DrawUtils.draw_manhattan_area(self, [origin_grid], range_tiles, TILE_SIZE, GameManager.map_size, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 	# Wire to cursor — colored by target state
 	var state: int = _get_link_target_state()
@@ -312,7 +311,7 @@ func _commit_drag() -> void:
 		return
 	# Place only non-overlapping blueprints that pass validation
 	for pos in _placeable_blueprints:
-		if GameManager.can_place_building(selected_building, pos, MAP_SIZE, _drag_rotation):
+		if GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation):
 			GameManager.place_building(selected_building, pos, _drag_rotation)
 	_dragging = false
 	_drag_axis = -1
@@ -357,7 +356,7 @@ func _commit_phase_drag() -> void:
 func _can_place_phase(pos: Vector2i, rot: int, index: int) -> bool:
 	var phase_def: Dictionary = _phase_config.phases[_phase_index]
 	var bid: StringName = phase_def.building_id
-	if not GameManager.can_place_building(bid, pos, MAP_SIZE, rot):
+	if not GameManager.can_place_building(bid, pos, GameManager.map_size, rot):
 		return false
 	if _phase_index == 0:
 		return true
@@ -544,7 +543,7 @@ func _update_ghosts() -> void:
 			if _phase_index >= 0:
 				can_place = _can_place_phase(pos, _drag_rotation, i)
 			else:
-				can_place = GameManager.can_place_building(selected_building, pos, MAP_SIZE, _drag_rotation)
+				can_place = GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation)
 			_ghost_nodes[i].position = Vector2(pos - def.anchor_cell) * TILE_SIZE
 			_ghost_nodes[i].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
 			_ghost_nodes[i].visible = true
@@ -562,7 +561,7 @@ func _update_ghosts() -> void:
 			if _phase_index >= 0:
 				can_place = _can_place_phase(cursor_grid_pos, current_rotation, 0)
 			else:
-				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, MAP_SIZE, current_rotation)
+				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, GameManager.map_size, current_rotation)
 			_ghost_nodes[0].position = Vector2(cursor_grid_pos - def.anchor_cell) * TILE_SIZE
 			_ghost_nodes[0].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
 			_ghost_nodes[0].visible = true
@@ -804,7 +803,7 @@ func _draw_phase_area() -> void:
 	var origins: Array = []
 	for entry in prev_placements:
 		origins.append(entry.pos as Vector2i)
-	DrawUtils.draw_manhattan_area(self, origins, max_dist, TILE_SIZE, MAP_SIZE, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
+	DrawUtils.draw_manhattan_area(self, origins, max_dist, TILE_SIZE, GameManager.map_size, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 ## Read actual Shape ColorRect positions from the placed building node.
 func _get_building_visual_cells(building: Node2D) -> Array:

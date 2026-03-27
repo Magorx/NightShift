@@ -1,7 +1,6 @@
 extends Control
 
 const TILE_SIZE := 32
-const MAP_SIZE := 64
 
 var _camera: Camera2D
 var _last_cam_pos := Vector2.ZERO
@@ -29,7 +28,7 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func _draw() -> void:
-	var map_px := float(MAP_SIZE * TILE_SIZE)
+	var map_px := float(GameManager.map_size * TILE_SIZE)
 	var display_size := size
 	var scale_x := display_size.x / map_px
 	var scale_y := display_size.y / map_px
@@ -92,7 +91,7 @@ func _gui_input(event: InputEvent) -> void:
 func _pan_camera_to(local_pos: Vector2) -> void:
 	if not _camera:
 		return
-	var map_px := float(MAP_SIZE * TILE_SIZE)
+	var map_px := float(GameManager.map_size * TILE_SIZE)
 	var world_x := (local_pos.x / size.x) * map_px
 	var world_y := (local_pos.y / size.y) * map_px
 	_camera.position = Vector2(world_x, world_y)

@@ -3,6 +3,7 @@ extends Control
 @onready var continue_button: Button = $CenterMargin/VBox/ContinueButton
 @onready var new_run_button: Button = $CenterMargin/VBox/NewRunButton
 @onready var test_button: Button = $CenterMargin/VBox/TestButton
+@onready var stress_test_button: Button = $CenterMargin/VBox/StressTestButton
 @onready var quit_button: Button = $CenterMargin/VBox/QuitButton
 @onready var account_button: Button = $AccountButton
 @onready var account_panel: PanelContainer = $AccountPanel
@@ -22,6 +23,7 @@ func _ready() -> void:
 	continue_button.pressed.connect(_on_continue_pressed)
 	new_run_button.pressed.connect(_on_new_run_pressed)
 	test_button.pressed.connect(_on_test_pressed)
+	stress_test_button.pressed.connect(_on_stress_test_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	account_button.pressed.connect(_on_account_button_pressed)
 	confirm_yes.pressed.connect(func(): _confirm_action.call())
@@ -73,6 +75,8 @@ func _start_new_run() -> void:
 	confirm_overlay.visible = false
 	SaveManager.delete_run_save()
 	GameManager.total_currency = 0
+	GameManager.map_size = 64
+	GameManager.stress_test_pending = false
 	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
 
 func _on_test_pressed() -> void:
@@ -84,6 +88,21 @@ func _on_test_pressed() -> void:
 func _start_test_scene() -> void:
 	confirm_overlay.visible = false
 	get_tree().change_scene_to_file("res://scenes/game/test_world.tscn")
+
+func _on_stress_test_pressed() -> void:
+	if SaveManager.has_run_save():
+		_show_confirm("Stress test will overwrite your current run. Continue?", _start_stress_test)
+	else:
+		_start_stress_test()
+
+func _start_stress_test() -> void:
+	confirm_overlay.visible = false
+	SaveManager.delete_run_save()
+	GameManager.total_currency = 0
+	GameManager.map_size = 160
+	GameManager.stress_test_pending = true
+	GameManager.world_seed = 0
+	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
 
 func _show_confirm(message: String, action: Callable) -> void:
 	confirm_label.text = message

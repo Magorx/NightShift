@@ -94,12 +94,16 @@ func _serialize_run() -> Dictionary:
 		"version": SAVE_VERSION,
 		"saved_at": Time.get_datetime_string_from_system(true),
 		"world_seed": GameManager.world_seed,
+		"map_size": GameManager.map_size,
 		"camera": _serialize_camera(),
 		"currency": GameManager.total_currency,
 		"buildings": _serialize_buildings(),
 		"items_delivered": _serialize_items_delivered(),
 		"time_speed": _serialize_time_speed(),
 	}
+	var gw := _get_game_world()
+	if gw:
+		data["terrain"] = gw.serialize_terrain()
 	return data
 
 func _serialize_items_delivered() -> Dictionary:
@@ -146,8 +150,20 @@ func _deserialize_run(data: Dictionary) -> void:
 	# Clear existing state
 	GameManager.clear_all()
 
-	# Restore currency
+	# Restore map size and currency
+	GameManager.map_size = int(data.get("map_size", 64))
 	GameManager.total_currency = data.get("currency", 0)
+
+	# Restore terrain (deposits, walls, grass variants) from packed data
+	var terrain_data: String = data.get("terrain", "")
+	if not terrain_data.is_empty():
+		var gw := _get_game_world()
+		if gw:
+			gw.deserialize_terrain(terrain_data)
+
+	# Suppress energy auto-linking while placing saved buildings
+	if GameManager.energy_system:
+		GameManager.energy_system.loading = true
 
 	# Restore buildings
 	var building_list: Array = data.get("buildings", [])
@@ -164,6 +180,10 @@ func _deserialize_run(data: Dictionary) -> void:
 		var state: Dictionary = entry.get("state", {})
 		if building.logic and not state.is_empty():
 			building.logic.deserialize_state(state)
+
+	if GameManager.energy_system:
+		GameManager.energy_system.loading = false
+		GameManager.energy_system._last_placed_node = null
 
 	# Deferred pass: link tunnel pairs using saved partner positions
 	_link_tunnels_deferred(building_list)

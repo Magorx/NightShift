@@ -20,6 +20,9 @@ var _networks_dirty: bool = true
 # Tracks last placed node for auto-link on next placement
 var _last_placed_node = null  # EnergyNode or null
 
+# When true, register_node() skips auto-linking (set during save load)
+var loading: bool = false
+
 # Per-tick edge flow data for visualization (built after ticking networks)
 # Key: "min_logic_id:max_logic_id", Value: net flow (positive = min → max)
 var edge_flows: Dictionary = {}
@@ -40,11 +43,13 @@ func unregister_building(logic: BuildingLogic) -> void:
 func register_node(node) -> void:
 	if not energy_nodes.has(node):
 		energy_nodes.append(node)
-		# Auto-link to last placed node if in range and both have free slots
-		if _last_placed_node and is_instance_valid(_last_placed_node):
-			if node.can_connect_to(_last_placed_node):
-				node.connect_to(_last_placed_node)
-		_last_placed_node = node
+		if not loading:
+			# Auto-link to last placed node if in range, both have free slots,
+			# and buildings are NOT already adjacent (adjacency edges handle that)
+			if _last_placed_node and is_instance_valid(_last_placed_node):
+				if node.can_connect_to(_last_placed_node) and not _are_buildings_adjacent(node.owner_logic, _last_placed_node.owner_logic):
+					node.connect_to(_last_placed_node)
+			_last_placed_node = node
 		_networks_dirty = true
 
 func unregister_node(node) -> void:
@@ -197,6 +202,29 @@ func clear_all() -> void:
 	networks.clear()
 	_networks_dirty = true
 	_last_placed_node = null
+	loading = false
+
+## Check if two buildings share a cardinal-adjacent cell.
+func _are_buildings_adjacent(logic_a, logic_b) -> bool:
+	if not logic_a or not logic_b:
+		return false
+	var building_a = logic_a.get_parent()
+	var building_b = logic_b.get_parent()
+	if not building_a or not building_b:
+		return false
+	var def_a = GameManager.get_building_def(building_a.building_id)
+	var def_b = GameManager.get_building_def(building_b.building_id)
+	if not def_a or not def_b:
+		return false
+	var cells_b: Dictionary = {}
+	for cb in def_b.get_rotated_shape(building_b.rotation_index):
+		cells_b[building_b.grid_pos + cb] = true
+	for ca in def_a.get_rotated_shape(building_a.rotation_index):
+		var wca: Vector2i = building_a.grid_pos + ca
+		for dir in DIRECTION_VECTORS:
+			if cells_b.has(wca + dir):
+				return true
+	return false
 
 ## Build a lookup of per-tick net energy flow for each edge (for overlay visualization).
 func _build_edge_flows() -> void:

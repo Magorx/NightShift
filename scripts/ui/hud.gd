@@ -12,6 +12,7 @@ const SPEED_LABELS := ["x0.25", "x0.5", "x1", "x1.5", "x2", "x3"]
 @onready var fast_button: Button = %FastButton
 @onready var buildings_button: Button = %BuildingsButton
 @onready var buildings_panel: PanelContainer = $BuildingsPanel
+@onready var fps_label: Label = %FpsLabel
 @onready var minimap_display: Control = $BottomRight/MinimapPanel/MinimapDisplay
 
 var speed_index: int = 2 # default x1
@@ -28,6 +29,7 @@ func set_camera(cam: Camera2D) -> void:
 	minimap_display.set_camera(cam)
 
 func _process(delta: float) -> void:
+	fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
 	_delivery_timer += delta
 	if _delivery_timer >= 0.5:
 		_delivery_timer = 0.0

@@ -2,7 +2,6 @@ class_name GameWorld
 extends Node2D
 
 const TILE_SIZE := 32
-const MAP_SIZE := 64 # tiles in each direction
 const PAN_SPEED := 600.0
 const ZOOM_SPEED := 0.1
 const MIN_ZOOM := 0.25
@@ -21,6 +20,7 @@ var _autosave_timer: float = 0.0
 var _pause_menu_scene: PackedScene = preload("res://scenes/ui/pause_menu.tscn")
 var _info_panel_scene: PackedScene = preload("res://scenes/ui/building_info_panel.tscn")
 var _world_gen_script = preload("res://scripts/game/world_generator.gd")
+var _stress_gen_script = preload("res://scripts/game/stress_test_generator.gd")
 var _info_panel: PanelContainer
 
 func _ready() -> void:
@@ -33,15 +33,26 @@ func _ready() -> void:
 	GameManager.walls.clear()
 
 	# Determine world seed: use saved seed when loading, random for new game
+	var has_saved_terrain := false
 	if SaveManager.pending_load:
 		var save_data: Dictionary = SaveManager.peek_save_data()
 		GameManager.world_seed = int(save_data.get("world_seed", randi()))
+		GameManager.map_size = int(save_data.get("map_size", 64))
+		has_saved_terrain = save_data.has("terrain")
 	elif GameManager.world_seed == 0:
 		GameManager.world_seed = randi()
 
 	_setup_tileset()
-	var gen = _world_gen_script.new()
-	gen.generate(tile_map, MAP_SIZE, GameManager.world_seed)
+	# Skip world generation if terrain will be restored from save
+	if not has_saved_terrain:
+		var gen = _world_gen_script.new()
+		gen.generate(tile_map, GameManager.map_size, GameManager.world_seed)
+
+	# Run stress test generator if requested
+	if GameManager.stress_test_pending:
+		GameManager.stress_test_pending = false
+		var stress_gen = _stress_gen_script.new()
+		stress_gen.generate(tile_map, GameManager.map_size)
 
 	# Wire HUD signals
 	hud.building_selected.connect(_on_building_selected)
@@ -186,7 +197,7 @@ func _setup_tileset() -> void:
 func _get_camera_bounds() -> Rect2:
 	var viewport_size := get_viewport_rect().size
 	var half_view := viewport_size / (2.0 * camera.zoom.x)
-	var world_size := float(MAP_SIZE * TILE_SIZE)
+	var world_size := float(GameManager.map_size * TILE_SIZE)
 	var min_pos := half_view
 	var max_pos := Vector2(world_size, world_size) - half_view
 	if min_pos.x > max_pos.x:
@@ -215,4 +226,47 @@ func _apply_camera_elastic(delta: float) -> void:
 	)
 	if not camera.position.is_equal_approx(target):
 		camera.position = camera.position.lerp(target, 1.0 - exp(-CAMERA_ELASTIC_RETURN * delta))
+
+# ── Terrain Serialization ────────────────────────────────────────────────────
+
+## Pack all tile map cells into a base64 string (nibble-packed: 2 cells per byte).
+func serialize_terrain() -> String:
+	var map_size := GameManager.map_size
+	var cell_count := map_size * map_size
+	var byte_count := (cell_count + 1) / 2
+	var bytes := PackedByteArray()
+	bytes.resize(byte_count)
+	bytes.fill(0)
+	for y in range(map_size):
+		for x in range(map_size):
+			var idx := y * map_size + x
+			var source_id := tile_map.get_cell_source_id(Vector2i(x, y))
+			if source_id < 0:
+				source_id = TILE_GROUND
+			if idx % 2 == 0:
+				bytes[idx / 2] = source_id
+			else:
+				bytes[idx / 2] = bytes[idx / 2] | (source_id << 4)
+	return Marshalls.raw_to_base64(bytes)
+
+## Restore tile map and GameManager.deposits/walls from base64 terrain data.
+func deserialize_terrain(data: String) -> void:
+	var bytes := Marshalls.base64_to_raw(data)
+	var map_size := GameManager.map_size
+	GameManager.deposits.clear()
+	GameManager.walls.clear()
+	for y in range(map_size):
+		for x in range(map_size):
+			var idx := y * map_size + x
+			var source_id: int
+			if idx % 2 == 0:
+				source_id = bytes[idx / 2] & 0x0F
+			else:
+				source_id = (bytes[idx / 2] >> 4) & 0x0F
+			var pos := Vector2i(x, y)
+			tile_map.set_cell(pos, source_id, Vector2i(0, 0))
+			if source_id == TILE_WALL:
+				GameManager.walls[pos] = true
+			elif DEPOSIT_ITEMS.has(source_id):
+				GameManager.deposits[pos] = DEPOSIT_ITEMS[source_id]
 

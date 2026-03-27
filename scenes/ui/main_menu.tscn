@@ -66,6 +66,12 @@ size_flags_vertical = 3
 theme_override_font_sizes/font_size = 28
 text = "Test Scene"
 
+[node name="StressTestButton" type="Button" parent="CenterMargin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 28
+text = "Stress Test"
+
 [node name="QuitButton" type="Button" parent="CenterMargin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3

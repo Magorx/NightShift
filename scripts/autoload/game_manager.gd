@@ -23,6 +23,12 @@ var walls: Dictionary = {}
 # World generation seed (saved/loaded for reproducibility)
 var world_seed: int = 0
 
+# Map size in tiles per side (default 64, stress test uses 640)
+var map_size: int = 64
+
+# When true, game_world runs the stress test generator after world gen
+var stress_test_pending: bool = false
+
 # Cached item definitions: item_id -> ItemDef
 var _item_def_cache: Dictionary = {}
 
