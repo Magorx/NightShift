@@ -197,8 +197,9 @@ void fragment() {
 		float w = (FRAGCOORD.x + FRAGCOORD.y) * STRIPE_FREQ + TIME * 2.0;
 		float stripe = step(0.5, fract(w));
 		result = mix(result, STRIPE_RGB, stripe * STRIPE_A);
-		// Edge outline: sample 8 neighbors, outline where any is transparent
-		vec2 cell_uv = vec2(u, v);
+		// Edge outline: sample 8 neighbors, treat out-of-cell as transparent
+		vec2 cell_min = vec2(col / COLS, row / ROWS);
+		vec2 cell_max = vec2((col + 1.0) / COLS, (row + 1.0) / ROWS);
 		vec2 ps = vec2(1.0 / (COLS * 32.0), 1.0 / (ROWS * 32.0));
 		vec2 offsets[8] = {
 			vec2(-ps.x, 0.0), vec2(ps.x, 0.0),
@@ -209,7 +210,11 @@ void fragment() {
 		float n = 0.0;
 		for (int i = 0; i < 8; i++) {
 			vec2 s = atlas_uv + offsets[i];
-			n += step(0.01, texture(TEXTURE, s).a);
+			if (s.x < cell_min.x || s.x > cell_max.x || s.y < cell_min.y || s.y > cell_max.y) {
+				n += 0.0; // out-of-cell = transparent
+			} else {
+				n += step(0.01, texture(TEXTURE, s).a);
+			}
 		}
 		if (n < 7.99) {
 			result = mix(result, OUTLINE_COL.rgb, OUTLINE_COL.a);
