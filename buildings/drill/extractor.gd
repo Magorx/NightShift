@@ -90,3 +90,11 @@ func get_info_stats() -> Array:
 		{type = "progress", value = get_progress()},
 		{type = "stat", text = "Inventory: %d/5" % inventory.get_count(item_id)},
 	]
+
+func get_inventory_items() -> Array:
+	var result: Array = []
+	for iid in inventory.get_item_ids():
+		var count := inventory.get_count(iid)
+		if count > 0:
+			result.append({id = iid, count = count})
+	return result

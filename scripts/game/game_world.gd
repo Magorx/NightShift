@@ -9,6 +9,8 @@ const MAX_ZOOM := 3.0
 const AUTOSAVE_INTERVAL := 60.0
 const CAMERA_ELASTIC_RETURN := 5.0
 const CAMERA_OVERSCROLL_SOFTNESS := 80.0
+const SHIFT_SPEED_MULTIPLIER := 2.0
+const SHIFT_LERP_SPEED := 8.0
 
 @onready var camera: Camera2D = $Camera2D
 @onready var tile_map: TileMapLayer = $TileMapLayer
@@ -18,13 +20,15 @@ const CAMERA_OVERSCROLL_SOFTNESS := 80.0
 
 var _autosave_timer: float = 0.0
 var _pause_menu_scene: PackedScene = preload("res://scenes/ui/pause_menu.tscn")
-var _info_panel_scene: PackedScene = preload("res://scenes/ui/building_info_panel.tscn")
+var _popup_scene: PackedScene = preload("res://scenes/ui/building_popup.tscn")
 var _world_gen_script = preload("res://scripts/game/world_generator.gd")
 var _stress_gen_script = preload("res://scripts/game/stress_test_generator.gd")
 var _visual_mgr_script = preload("res://scripts/game/item_visual_manager.gd")
 var _tick_system_script = preload("res://scripts/game/building_tick_system.gd")
 var _conv_visual_mgr_script = preload("res://scripts/game/conveyor_visual_manager.gd")
-var _info_panel: PanelContainer
+var _popup: PanelContainer
+var _last_time_usec: int = 0
+var _camera_speed_mult: float = 1.0
 
 func _ready() -> void:
 	GameManager.building_layer = $BuildingLayer
@@ -75,9 +79,9 @@ func _ready() -> void:
 	# Wire build system signals
 	build_system.building_clicked.connect(_on_building_clicked)
 
-	# Add building info panel to UI layer
-	_info_panel = _info_panel_scene.instantiate()
-	$UI.add_child(_info_panel)
+	# Add building popup to UI layer
+	_popup = _popup_scene.instantiate()
+	$UI.add_child(_popup)
 
 	# If continuing from a save, load the run now that the world is ready
 	if SaveManager.pending_load:
@@ -86,21 +90,25 @@ func _ready() -> void:
 
 func _on_building_selected(id: StringName) -> void:
 	build_system.select_building(id)
-	# Dismiss info panel when entering build mode
-	if _info_panel:
-		_info_panel.hide_panel()
+	# Dismiss popup when entering build mode
+	if _popup:
+		_popup.hide_popup()
 		build_system.clear_select_highlight()
 
 func _on_building_clicked(building: Node2D) -> void:
-	if _info_panel:
+	if _popup:
 		if building:
-			_info_panel.show_building(building)
+			_popup.show_building(building, camera)
 		else:
-			_info_panel.hide_panel()
+			_popup.hide_popup()
 
 func _process(delta: float) -> void:
-	_handle_pan(delta)
-	_apply_camera_elastic(delta)
+	var now := Time.get_ticks_usec()
+	var real_delta := (now - _last_time_usec) / 1_000_000.0 if _last_time_usec > 0 else delta
+	_last_time_usec = now
+	real_delta = minf(real_delta, 0.1) # cap to avoid jumps
+	_handle_pan(real_delta)
+	_apply_camera_elastic(real_delta)
 	# Advance conveyor MultiMesh animation frame
 	if GameManager.conveyor_visual_manager:
 		GameManager.conveyor_visual_manager.update_animation()
@@ -111,10 +119,10 @@ func _process(delta: float) -> void:
 		SaveManager.save_run()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
 		_handle_zoom(event)
 	elif event is InputEventPanGesture:
-		_set_zoom(camera.zoom.x - event.delta.y * ZOOM_SPEED)
+		_zoom_toward_mouse(camera.zoom.x - event.delta.y * ZOOM_SPEED)
 	elif event.is_action_pressed("toggle_buildings_panel"):
 		hud.toggle_buildings_panel()
 	elif event.is_action_pressed("ui_cancel"):
@@ -123,8 +131,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			build_system._exit_energy_link_mode()
 		elif hud.is_buildings_panel_open():
 			hud.close_buildings_panel()
-		elif _info_panel and _info_panel.visible:
-			_info_panel.hide_panel()
+		elif _popup and _popup.visible:
+			_popup.hide_popup()
 			build_system.clear_select_highlight()
 		elif build_system.building_mode:
 			build_system.exit_building_mode()
@@ -140,7 +148,11 @@ func _open_pause_menu() -> void:
 	var pause_menu := _pause_menu_scene.instantiate()
 	$UI.add_child(pause_menu)
 
-func _handle_pan(delta: float) -> void:
+func _handle_pan(real_delta: float) -> void:
+	# Smooth shift-to-sprint interpolation
+	var target_mult := SHIFT_SPEED_MULTIPLIER if Input.is_key_pressed(KEY_SHIFT) else 1.0
+	_camera_speed_mult = lerpf(_camera_speed_mult, target_mult, 1.0 - exp(-SHIFT_LERP_SPEED * real_delta))
+
 	var direction := Vector2.ZERO
 	if Input.is_action_pressed(&"pan_up"):
 		direction.y -= 1
@@ -151,21 +163,29 @@ func _handle_pan(delta: float) -> void:
 	if Input.is_action_pressed(&"pan_right"):
 		direction.x += 1
 	if direction != Vector2.ZERO:
-		var move := direction.normalized() * PAN_SPEED * delta / camera.zoom.x
+		var move := direction.normalized() * PAN_SPEED * _camera_speed_mult * real_delta / camera.zoom.x
 		var bounds := _get_camera_bounds()
 		move.x *= _overscroll_factor(camera.position.x, bounds.position.x, bounds.end.x, move.x)
 		move.y *= _overscroll_factor(camera.position.y, bounds.position.y, bounds.end.y, move.y)
 		camera.position += move
 
 func _handle_zoom(event: InputEventMouseButton) -> void:
-	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-		_set_zoom(camera.zoom.x + ZOOM_SPEED)
-	elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-		_set_zoom(camera.zoom.x - ZOOM_SPEED)
+	if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT]:
+		_zoom_toward_mouse(camera.zoom.x + ZOOM_SPEED)
+	elif event.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT]:
+		_zoom_toward_mouse(camera.zoom.x - ZOOM_SPEED)
 
-func _set_zoom(new_zoom: float) -> void:
+func _zoom_toward_mouse(new_zoom: float) -> void:
 	var clamped := clampf(new_zoom, MIN_ZOOM, MAX_ZOOM)
+	if is_equal_approx(clamped, camera.zoom.x):
+		return
+	var mouse_screen := get_viewport().get_mouse_position()
+	var viewport_size := get_viewport_rect().size
+	var offset := mouse_screen - viewport_size / 2.0
+	var world_before := camera.position + offset / camera.zoom.x
 	camera.zoom = Vector2(clamped, clamped)
+	var world_after := camera.position + offset / camera.zoom.x
+	camera.position += world_before - world_after
 
 # Tile source IDs
 const TILE_GROUND := 0

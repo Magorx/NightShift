@@ -169,3 +169,15 @@ func deserialize_state(_state: Dictionary) -> void:
 ##   {type="inventory", label=String, items=Array[{id, count}]}
 func get_info_stats() -> Array:
 	return []
+
+# ── Popup interface ────────────────────────────────────────────────────────
+
+## Return the recipe to display in the popup (current, last, or first available).
+## Override in converter-like buildings.
+func get_popup_recipe():
+	return null
+
+## Return items inside this building as [{id: StringName, count: int}, ...].
+## Override in all buildings that hold items.
+func get_inventory_items() -> Array:
+	return []

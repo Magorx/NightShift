@@ -127,6 +127,15 @@ func _toggle_pause() -> void:
 	_update_speed_buttons()
 
 func _change_speed(direction: int) -> void:
+	if paused and direction > 0:
+		# Unpause at minimum speed
+		speed_index = 0
+		paused = false
+		Engine.time_scale = SPEED_STEPS[speed_index]
+		speed_label.text = SPEED_LABELS[speed_index]
+		speed_label.remove_theme_color_override("font_color")
+		_update_speed_buttons()
+		return
 	speed_index = clampi(speed_index + direction, 0, SPEED_STEPS.size() - 1)
 	if not paused:
 		Engine.time_scale = SPEED_STEPS[speed_index]

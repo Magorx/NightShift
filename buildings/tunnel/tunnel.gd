@@ -241,3 +241,12 @@ func get_info_stats() -> Array:
 	else:
 		stats.append({type = "stat", text = "Partner: none"})
 	return stats
+
+func get_inventory_items() -> Array:
+	# Items are stored on the input end only
+	if not is_input:
+		return []
+	var result: Array = []
+	for id in buffer.get_item_counts():
+		result.append({id = id, count = buffer.get_item_counts()[id]})
+	return result

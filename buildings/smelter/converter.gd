@@ -25,6 +25,7 @@ var output_inv: Inventory = Inventory.new()
 
 ## Current crafting state.
 var _active_recipe = null # RecipeDef or null
+var _last_recipe = null # last completed recipe (for popup display)
 var _craft_timer: float = 0.0
 var _input_rr: RoundRobin = RoundRobin.new()
 var _code_anim: Node2D
@@ -163,6 +164,7 @@ func _try_finish_craft() -> void:
 			return # Hold craft until output has room
 	for out in _active_recipe.outputs:
 		output_inv.add(out.item.id, out.quantity)
+	_last_recipe = _active_recipe
 	_active_recipe = null
 	_craft_timer = 0.0
 
@@ -224,6 +226,7 @@ func serialize_state() -> Dictionary:
 	var state := {}
 	state["craft_timer"] = _craft_timer
 	state["active_recipe_id"] = str(_active_recipe.id) if _active_recipe else ""
+	state["last_recipe_id"] = str(_last_recipe.id) if _last_recipe else ""
 	state["input_inv"] = _serialize_inventory(input_inv)
 	state["output_inv"] = _serialize_inventory(output_inv)
 	if energy:
@@ -242,6 +245,12 @@ func deserialize_state(state: Dictionary) -> void:
 		for recipe in recipes:
 			if recipe.id == recipe_id:
 				_active_recipe = recipe
+				break
+	if state.has("last_recipe_id") and state["last_recipe_id"] != "":
+		var recipe_id := StringName(state["last_recipe_id"])
+		for recipe in recipes:
+			if recipe.id == recipe_id:
+				_last_recipe = recipe
 				break
 	if state.has("energy") and energy:
 		energy.deserialize(state["energy"])
@@ -293,3 +302,27 @@ func get_info_stats() -> Array:
 		stats.append({type = "inventory", label = "Output", items = output_items})
 
 	return stats
+
+func get_popup_recipe():
+	if _active_recipe:
+		return _active_recipe
+	if _last_recipe:
+		return _last_recipe
+	if recipes.size() > 0:
+		return recipes[0]
+	return null
+
+func get_inventory_items() -> Array:
+	var counts := {}
+	for iid in input_inv.get_item_ids():
+		var c := input_inv.get_count(iid)
+		if c > 0:
+			counts[iid] = counts.get(iid, 0) + c
+	for iid in output_inv.get_item_ids():
+		var c := output_inv.get_count(iid)
+		if c > 0:
+			counts[iid] = counts.get(iid, 0) + c
+	var result: Array = []
+	for id in counts:
+		result.append({id = id, count = counts[id]})
+	return result

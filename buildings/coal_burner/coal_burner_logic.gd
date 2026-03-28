@@ -134,3 +134,11 @@ func get_info_stats() -> Array:
 	if energy:
 		stats.append({type = "stat", text = "Energy: %.0f/%.0f" % [energy.energy_stored, energy.energy_capacity]})
 	return stats
+
+func get_inventory_items() -> Array:
+	var result: Array = []
+	for iid in fuel_inv.get_item_ids():
+		var count := fuel_inv.get_count(iid)
+		if count > 0:
+			result.append({id = iid, count = count})
+	return result

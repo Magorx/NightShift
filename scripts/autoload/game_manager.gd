@@ -3,6 +3,14 @@ extends Node
 const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
+## Z-index layers for draw ordering within BuildingLayer.
+## Building scenes use these values in their .tscn z_index properties.
+const Z_BUILDING_BASE := 0   # bottom sprite of multi-layer buildings
+const Z_CONVEYOR := 1        # conveyor belt MultiMesh
+const Z_ITEM := 2            # item dot MultiMesh (resources on belts)
+const Z_BUILDING_OVERLAY := 5 # mid-layer overlays (smelter progress bars)
+const Z_BUILDING_TOP := 10   # top sprite of multi-layer buildings
+
 # Building registry: id -> BuildingDef
 var building_defs: Dictionary = {}
 

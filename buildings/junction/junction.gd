@@ -169,3 +169,13 @@ func get_info_stats() -> Array:
 	return [
 		{type = "stat", text = "Items: %d/%d" % [total_items, total_cap]},
 	]
+
+func get_inventory_items() -> Array:
+	var counts := {}
+	for axis in 2:
+		for id in buffers[axis].get_item_counts():
+			counts[id] = counts.get(id, 0) + buffers[axis].get_item_counts()[id]
+	var result: Array = []
+	for id in counts:
+		result.append({id = id, count = counts[id]})
+	return result

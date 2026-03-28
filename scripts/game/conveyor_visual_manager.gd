@@ -37,6 +37,7 @@ func _init() -> void:
 	instance.texture = load("res://buildings/conveyor/sprites/straight.png")
 	instance.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	instance.material = _material
+	instance.z_index = GameManager.Z_CONVEYOR
 
 	_grow(INITIAL_CAPACITY)
 

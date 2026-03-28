@@ -20,6 +20,8 @@ func _init() -> void:
 
 	instance = MultiMeshInstance2D.new()
 	instance.multimesh = multimesh
+	instance.z_index = GameManager.Z_ITEM
+	instance.material = _create_circle_material()
 
 	_grow(INITIAL_CAPACITY)
 
@@ -75,6 +77,9 @@ func _grow(new_capacity: int) -> void:
 func _create_mesh() -> Mesh:
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2(ITEM_RADIUS * 2, ITEM_RADIUS * 2)
+	return mesh
+
+func _create_circle_material() -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = "shader_type canvas_item;
 void fragment() {
@@ -86,5 +91,4 @@ void fragment() {
 "
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
-	mesh.material = mat
-	return mesh
+	return mat

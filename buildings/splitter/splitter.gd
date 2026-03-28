@@ -252,3 +252,9 @@ func get_info_stats() -> Array:
 	return [
 		{type = "stat", text = "Items: %d/%d" % [buffer.size(), buffer.capacity]},
 	]
+
+func get_inventory_items() -> Array:
+	var result: Array = []
+	for id in buffer.get_item_counts():
+		result.append({id = id, count = buffer.get_item_counts()[id]})
+	return result

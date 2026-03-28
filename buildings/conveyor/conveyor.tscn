@@ -246,7 +246,7 @@ allow_left = false
 [node name="ConveyorSprite" type="AnimatedSprite2D" parent="Rotatable"]
 position = Vector2(16, 16)
 sprite_frames = SubResource("SpriteFrames_d3tmi")
-animation = &"turn"
+animation = &"straight"
 script = ExtResource("3")
 
 [node name="ConveyorLogic" type="Node2D" parent="."]

@@ -90,6 +90,13 @@ func create_visual(item_id: StringName):
 		color = item_def.color
 	return GameManager.acquire_visual(color)
 
+## Count items by id. Returns Dictionary: StringName -> int.
+func get_item_counts() -> Dictionary:
+	var counts := {}
+	for item in items:
+		counts[item.id] = counts.get(item.id, 0) + 1
+	return counts
+
 ## Return a single item's visual node to the pool.
 func free_visual(item: Dictionary) -> void:
 	if item.has("visual") and item.visual:
