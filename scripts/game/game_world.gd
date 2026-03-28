@@ -2,21 +2,20 @@ class_name GameWorld
 extends Node2D
 
 const TILE_SIZE := 32
-const PAN_SPEED := 600.0
 const ZOOM_SPEED := 0.1
 const MIN_ZOOM := 0.25
 const MAX_ZOOM := 3.0
 const AUTOSAVE_INTERVAL := 60.0
-const CAMERA_ELASTIC_RETURN := 5.0
-const CAMERA_OVERSCROLL_SOFTNESS := 80.0
-const SHIFT_SPEED_MULTIPLIER := 2.0
-const SHIFT_LERP_SPEED := 8.0
+const CAMERA_FOLLOW_SPEED := 8.0
 
 @onready var camera: Camera2D = $Camera2D
 @onready var tile_map: TileMapLayer = $TileMapLayer
 @onready var grid_overlay: Node2D = $GridOverlay
 @onready var build_system: Node2D = $BuildSystem
 @onready var hud: Control = $UI/HUD
+
+var player  # Player (CharacterBody2D)
+var building_collision  # BuildingCollision (StaticBody2D)
 
 var _autosave_timer: float = 0.0
 var _pause_menu_scene: PackedScene = preload("res://scenes/ui/pause_menu.tscn")
@@ -26,9 +25,10 @@ var _stress_gen_script = preload("res://scripts/game/stress_test_generator.gd")
 var _visual_mgr_script = preload("res://scripts/game/item_visual_manager.gd")
 var _tick_system_script = preload("res://scripts/game/building_tick_system.gd")
 var _conv_visual_mgr_script = preload("res://scripts/game/conveyor_visual_manager.gd")
+var _player_scene: PackedScene = preload("res://player/player.tscn")
+var _building_collision_script = preload("res://scripts/game/building_collision.gd")
 var _popup: PanelContainer
 var _last_time_usec: int = 0
-var _camera_speed_mult: float = 1.0
 
 func _ready() -> void:
 	GameManager.building_layer = $BuildingLayer
@@ -49,6 +49,12 @@ func _ready() -> void:
 	GameManager.clear_all()
 	GameManager.deposits.clear()
 	GameManager.walls.clear()
+
+	# Create building collision body (must exist before placing buildings)
+	building_collision = _building_collision_script.new()
+	building_collision.name = "BuildingCollision"
+	add_child(building_collision)
+	GameManager.building_collision = building_collision
 
 	# Determine world seed: use saved seed when loading, random for new game
 	var has_saved_terrain := false
@@ -88,6 +94,9 @@ func _ready() -> void:
 		SaveManager.pending_load = false
 		SaveManager.load_run()
 
+	# Create player (after save load so collision tiles are set up)
+	_spawn_player()
+
 func _on_building_selected(id: StringName) -> void:
 	build_system.select_building(id)
 	# Dismiss popup when entering build mode
@@ -107,8 +116,7 @@ func _process(delta: float) -> void:
 	var real_delta := (now - _last_time_usec) / 1_000_000.0 if _last_time_usec > 0 else delta
 	_last_time_usec = now
 	real_delta = minf(real_delta, 0.1) # cap to avoid jumps
-	_handle_pan(real_delta)
-	_apply_camera_elastic(real_delta)
+	_follow_camera(real_delta)
 	# Advance conveyor MultiMesh animation frame
 	if GameManager.conveyor_visual_manager:
 		GameManager.conveyor_visual_manager.update_animation()
@@ -148,26 +156,25 @@ func _open_pause_menu() -> void:
 	var pause_menu := _pause_menu_scene.instantiate()
 	$UI.add_child(pause_menu)
 
-func _handle_pan(real_delta: float) -> void:
-	# Smooth shift-to-sprint interpolation
-	var target_mult := SHIFT_SPEED_MULTIPLIER if Input.is_key_pressed(KEY_SHIFT) else 1.0
-	_camera_speed_mult = lerpf(_camera_speed_mult, target_mult, 1.0 - exp(-SHIFT_LERP_SPEED * real_delta))
+func _spawn_player() -> void:
+	player = _player_scene.instantiate()
+	# Spawn at map center
+	var center := Vector2(GameManager.map_size * TILE_SIZE, GameManager.map_size * TILE_SIZE) * 0.5
+	player.position = center
+	player.spawn_position = center
+	add_child(player)
+	GameManager.player = player
+	# Snap camera to player immediately
+	camera.position = player.position
 
-	var direction := Vector2.ZERO
-	if Input.is_action_pressed(&"pan_up"):
-		direction.y -= 1
-	if Input.is_action_pressed(&"pan_down"):
-		direction.y += 1
-	if Input.is_action_pressed(&"pan_left"):
-		direction.x -= 1
-	if Input.is_action_pressed(&"pan_right"):
-		direction.x += 1
-	if direction != Vector2.ZERO:
-		var move := direction.normalized() * PAN_SPEED * _camera_speed_mult * real_delta / camera.zoom.x
+func _follow_camera(real_delta: float) -> void:
+	if player and is_instance_valid(player):
+		var target: Vector2 = player.position
+		# Clamp to world bounds
 		var bounds := _get_camera_bounds()
-		move.x *= _overscroll_factor(camera.position.x, bounds.position.x, bounds.end.x, move.x)
-		move.y *= _overscroll_factor(camera.position.y, bounds.position.y, bounds.end.y, move.y)
-		camera.position += move
+		target.x = clampf(target.x, bounds.position.x, bounds.end.x)
+		target.y = clampf(target.y, bounds.position.y, bounds.end.y)
+		camera.position = camera.position.lerp(target, 1.0 - exp(-CAMERA_FOLLOW_SPEED * real_delta))
 
 func _handle_zoom(event: InputEventMouseButton) -> void:
 	if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT]:
@@ -245,24 +252,6 @@ func _get_camera_bounds() -> Rect2:
 		max_pos.y = world_size / 2.0
 	return Rect2(min_pos, max_pos - min_pos)
 
-func _overscroll_factor(pos: float, min_b: float, max_b: float, move_dir: float) -> float:
-	var over := 0.0
-	if pos < min_b and move_dir < 0.0:
-		over = min_b - pos
-	elif pos > max_b and move_dir > 0.0:
-		over = pos - max_b
-	else:
-		return 1.0
-	return exp(-over / CAMERA_OVERSCROLL_SOFTNESS)
-
-func _apply_camera_elastic(delta: float) -> void:
-	var bounds := _get_camera_bounds()
-	var target := Vector2(
-		clampf(camera.position.x, bounds.position.x, bounds.end.x),
-		clampf(camera.position.y, bounds.position.y, bounds.end.y)
-	)
-	if not camera.position.is_equal_approx(target):
-		camera.position = camera.position.lerp(target, 1.0 - exp(-CAMERA_ELASTIC_RETURN * delta))
 
 # ── Terrain Serialization ────────────────────────────────────────────────────
 

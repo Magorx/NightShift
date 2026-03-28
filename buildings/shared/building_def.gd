@@ -12,6 +12,8 @@ const TILE_SIZE := 32
 @export var unlock_tech: StringName
 ## Building IDs that can replace this building when placed on top of it.
 @export var replaceable_by: Array[StringName] = []
+## Ground-level buildings (conveyors, junctions, etc.) don't block the player.
+@export var is_ground_level: bool = false
 
 ## Anchor cell offset, read from BuildAnchor node position at load time.
 ## The cursor/grid_pos aligns to this cell when placing.

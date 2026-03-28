@@ -49,3 +49,25 @@ func _physics_process(delta: float) -> void:
 		var front = conv.get_front_item()
 		if front.progress > 1.0:
 			front.progress = 1.0
+
+	# Fourth pass: pick up ground items sitting on conveyors
+	_pickup_ground_items()
+
+const TILE_SIZE := 32
+
+func _pickup_ground_items() -> void:
+	var ground_items := get_tree().get_nodes_in_group("ground_items")
+	if ground_items.is_empty():
+		return
+	for item in ground_items:
+		if not is_instance_valid(item) or item.quantity <= 0:
+			continue
+		var grid_pos := Vector2i(floori(item.position.x / TILE_SIZE), floori(item.position.y / TILE_SIZE))
+		if not conveyors.has(grid_pos):
+			continue
+		var conv = conveyors[grid_pos]
+		while conv.can_accept() and item.quantity > 0:
+			conv.place_item(item.item_id)
+			item.quantity -= 1
+		if item.quantity <= 0:
+			item.queue_free()

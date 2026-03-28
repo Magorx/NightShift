@@ -12,3 +12,4 @@ category = "splitter"
 description = "Splits items to multiple outputs. Round-robin distribution."
 scene = ExtResource("2")
 replaceable_by = Array[StringName]([&"conveyor"])
+is_ground_level = true

@@ -81,6 +81,8 @@ var conveyor_system: Node
 var energy_system: Node  # EnergySystem
 var building_tick_system: Node  # BuildingTickSystem
 var conveyor_visual_manager  # ConveyorVisualManager (MultiMesh rendering)
+var building_collision  # BuildingCollision (StaticBody2D for player collision)
+var player  # Player (CharacterBody2D)
 
 func _ready() -> void:
 	_load_building_defs()
@@ -283,6 +285,11 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 				logic.energy.energy_capacity += enode.inner_capacity
 				energy_system.register_node(enode)
 
+	# Update collision for player
+	if building_collision and not def.is_ground_level:
+		for cell in rotated_shape:
+			building_collision.add_tile(grid_pos + cell)
+
 	# Update conveyor sprites for the placed building and its neighbors
 	if def.category == "conveyor":
 		_update_conveyor_sprites(grid_pos)
@@ -335,6 +342,10 @@ func remove_building(grid_pos: Vector2i) -> void:
 		rotated_shape = def.get_rotated_shape(building.rotation_index)
 		for cell in rotated_shape:
 			buildings.erase(building.grid_pos + cell)
+		# Remove collision for player
+		if building_collision and not def.is_ground_level:
+			for cell in rotated_shape:
+				building_collision.remove_tile(building.grid_pos + cell)
 	else:
 		buildings.erase(grid_pos)
 	unique_buildings.erase(building)
@@ -433,6 +444,8 @@ func clear_all() -> void:
 		energy_system.clear_all()
 	if building_tick_system:
 		building_tick_system.clear_all()
+	if building_collision:
+		building_collision.clear_all()
 
 # ── Unified pull system ──────────────────────────────────────────────────────
 

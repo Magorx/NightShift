@@ -5,6 +5,7 @@ extends BuildingLogic
 
 var direction: int = 0 # 0=right, 1=down, 2=left, 3=up
 var traverse_time: float = 1.0 # seconds for an item to cross this conveyor
+var push_speed: float = 1.0 # tiles/s — how fast the conveyor pushes the player
 
 var buffer = ItemBuffer.new(2)
 

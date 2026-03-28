@@ -106,7 +106,20 @@ func _serialize_run() -> Dictionary:
 	var gw := _get_game_world()
 	if gw:
 		data["terrain"] = gw.serialize_terrain()
+	if GameManager.player and is_instance_valid(GameManager.player):
+		data["player"] = GameManager.player.serialize()
+	data["ground_items"] = _serialize_ground_items()
 	return data
+
+func _serialize_ground_items() -> Array:
+	var result: Array = []
+	var gw := _get_game_world()
+	if not gw:
+		return result
+	for item in gw.get_tree().get_nodes_in_group("ground_items"):
+		if is_instance_valid(item) and item.has_method("serialize"):
+			result.append(item.serialize())
+	return result
 
 func _serialize_items_delivered() -> Dictionary:
 	var result := {}
@@ -221,6 +234,15 @@ func _deserialize_run(data: Dictionary) -> void:
 	if not time_data.is_empty():
 		call_deferred("_restore_time_speed", time_data)
 
+	# Restore player state
+	var player_data: Dictionary = data.get("player", {})
+	if not player_data.is_empty() and GameManager.player:
+		GameManager.player.deserialize(player_data)
+
+	# Restore ground items
+	var ground_items_data: Array = data.get("ground_items", [])
+	_deserialize_ground_items(ground_items_data)
+
 	# Restore camera (deferred so game world is ready)
 	var cam_data: Dictionary = data.get("camera", {})
 	if not cam_data.is_empty():
@@ -280,6 +302,19 @@ func _link_energy_nodes_deferred(building_list: Array) -> void:
 	# Mark networks dirty so they rebuild with restored connections
 	GameManager.energy_system.mark_dirty()
 
+func _deserialize_ground_items(items_data: Array) -> void:
+	var gw := _get_game_world()
+	if not gw:
+		return
+	var ground_item_scene := preload("res://player/ground_item.tscn")
+	for entry in items_data:
+		var item = ground_item_scene.instantiate()
+		item.item_id = StringName(entry.get("item_id", ""))
+		item.quantity = int(entry.get("quantity", 1))
+		item.position = Vector2(float(entry.get("x", 0)), float(entry.get("y", 0)))
+		item.despawn_timer = float(entry.get("despawn", 120))
+		gw.add_child(item)
+
 func _reset_max_physics_steps() -> void:
 	Engine.max_physics_steps_per_frame = _saved_max_physics_steps
 
@@ -289,9 +324,12 @@ func _restore_camera(cam_data: Dictionary) -> void:
 		return
 	var cam: Camera2D = gw.find_child("Camera2D", false, false)
 	if cam:
-		cam.position = Vector2(cam_data.get("x", 640), cam_data.get("y", 360))
+		# Position follows the player; only restore zoom
 		var z: float = cam_data.get("zoom", 1.0)
 		cam.zoom = Vector2(z, z)
+		# Snap camera to player position if available
+		if GameManager.player and is_instance_valid(GameManager.player):
+			cam.position = GameManager.player.position
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

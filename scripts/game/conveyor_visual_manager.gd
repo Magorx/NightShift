@@ -100,6 +100,14 @@ func update_animation() -> void:
 	var frame: float = float(int(fmod(global_time, cycle_time) * ANIM_FPS) % FRAME_COUNT)
 	_material.set_shader_parameter("frame_idx", frame)
 
+func set_highlight(grid_pos: Vector2i, enabled: bool) -> void:
+	if not _idx_map.has(grid_pos):
+		return
+	var idx: int = _idx_map[grid_pos]
+	var c: Color = multimesh.get_instance_custom_data(idx)
+	c.b = 1.0 if enabled else 0.0
+	multimesh.set_instance_custom_data(idx, c)
+
 func clear_all() -> void:
 	_free_list.clear()
 	_idx_map.clear()
@@ -161,23 +169,54 @@ uniform float frame_idx = 0.0;
 // Total texture: 128x192
 const float COLS = 4.0;
 const float ROWS = 6.0;
+const float DARKEN = 0.3;
+const float STRIPE_FREQ = 0.3 / 32.0;
+const vec3 STRIPE_RGB = vec3(1.0, 0.3, 0.25);
+const float STRIPE_A = 0.15;
+const vec4 OUTLINE_COL = vec4(0.8, 0.1, 0.07, 0.85);
 varying flat float v_row;
 varying flat float v_flip;
+varying flat float v_highlight;
 void vertex() {
 	v_row = INSTANCE_CUSTOM.r;
 	v_flip = INSTANCE_CUSTOM.g;
+	v_highlight = INSTANCE_CUSTOM.b;
 }
 void fragment() {
 	float u = UV.x;
 	float v = UV.y;
-	// Flip vertically for mirrored variants (side_input left, turn left)
 	if (v_flip < 0.5) {
 		v = 1.0 - v;
 	}
 	float col = floor(frame_idx);
 	float row = v_row;
 	vec2 atlas_uv = vec2((col + u) / COLS, (row + v) / ROWS);
-	COLOR = texture(TEXTURE, atlas_uv);
+	vec4 base = texture(TEXTURE, atlas_uv);
+	if (v_highlight > 0.5 && base.a > 0.0) {
+		vec3 result = base.rgb * (1.0 - DARKEN);
+		float w = (FRAGCOORD.x + FRAGCOORD.y) * STRIPE_FREQ + TIME * 2.0;
+		float stripe = step(0.5, fract(w));
+		result = mix(result, STRIPE_RGB, stripe * STRIPE_A);
+		// Edge outline: sample 8 neighbors, outline where any is transparent
+		vec2 cell_uv = vec2(u, v);
+		vec2 ps = vec2(1.0 / (COLS * 32.0), 1.0 / (ROWS * 32.0));
+		vec2 offsets[8] = {
+			vec2(-ps.x, 0.0), vec2(ps.x, 0.0),
+			vec2(0.0, -ps.y), vec2(0.0, ps.y),
+			vec2(-2.0*ps.x, 0.0), vec2(2.0*ps.x, 0.0),
+			vec2(0.0, -2.0*ps.y), vec2(0.0, 2.0*ps.y)
+		};
+		float n = 0.0;
+		for (int i = 0; i < 8; i++) {
+			vec2 s = atlas_uv + offsets[i];
+			n += step(0.01, texture(TEXTURE, s).a);
+		}
+		if (n < 7.99) {
+			result = mix(result, OUTLINE_COL.rgb, OUTLINE_COL.a);
+		}
+		base = vec4(result, base.a);
+	}
+	COLOR = base;
 }
 "
 	var mat := ShaderMaterial.new()

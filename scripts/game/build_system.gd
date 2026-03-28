@@ -16,6 +16,11 @@ const OUTLINE_WIDTH := 2.0
 const GHOST_POOL_MAX := 64
 const GHOST_POOL_BASELINE := 4
 
+# Player interaction range (tiles)
+const BUILD_RANGE := 4
+const DESTROY_RANGE := 4
+const INSPECT_RANGE := 4
+
 # Energy link mode colors
 const LINK_WIRE_VALID := Color(0.3, 0.9, 0.4, 0.7)
 const LINK_WIRE_INVALID := Color(0.5, 0.5, 0.5, 0.35)
@@ -190,6 +195,8 @@ func select_building(id: StringName) -> void:
 # ── Inspect ──────────────────────────────────────────────────────────────────
 
 func _try_inspect(pos: Vector2i) -> void:
+	if not _is_in_player_range(pos, INSPECT_RANGE):
+		return
 	var building = GameManager.get_building_at(pos)
 	if building and is_instance_valid(building):
 		# Second click on same building — check for energy link mode
@@ -309,9 +316,9 @@ func _commit_drag() -> void:
 	if _phase_index >= 0:
 		_commit_phase_drag()
 		return
-	# Place only non-overlapping blueprints that pass validation
+	# Place only non-overlapping blueprints that pass validation and are in range
 	for pos in _placeable_blueprints:
-		if GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation):
+		if _is_in_player_range(pos, BUILD_RANGE) and GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation):
 			GameManager.place_building(selected_building, pos, _drag_rotation)
 	_dragging = false
 	_drag_axis = -1
@@ -540,7 +547,9 @@ func _update_ghosts() -> void:
 		for i in range(mini(count, _ghost_nodes.size())):
 			var pos: Vector2i = _placeable_blueprints[i]
 			var can_place: bool
-			if _phase_index >= 0:
+			if not _is_in_player_range(pos, BUILD_RANGE):
+				can_place = false
+			elif _phase_index >= 0:
 				can_place = _can_place_phase(pos, _drag_rotation, i)
 			else:
 				can_place = GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation)
@@ -559,7 +568,9 @@ func _update_ghosts() -> void:
 				_ghost_nodes.append(ghost)
 		if not _ghost_nodes.is_empty():
 			var can_place: bool
-			if _phase_index >= 0:
+			if not _is_in_player_range(cursor_grid_pos, BUILD_RANGE):
+				can_place = false
+			elif _phase_index >= 0:
 				can_place = _can_place_phase(cursor_grid_pos, current_rotation, 0)
 			else:
 				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, GameManager.map_size, current_rotation)
@@ -658,12 +669,15 @@ func _commit_destroy() -> void:
 		maxi(_destroy_drag_start.x, cursor_grid_pos.x),
 		maxi(_destroy_drag_start.y, cursor_grid_pos.y))
 
-	# Collect unique buildings in the area, including linked buildings
+	# Collect unique buildings in the area (within range), including linked buildings
 	var to_remove: Array = []
 	var seen: Dictionary = {}
 	for x in range(min_pos.x, max_pos.x + 1):
 		for y in range(min_pos.y, max_pos.y + 1):
-			var building = GameManager.get_building_at(Vector2i(x, y))
+			var pos := Vector2i(x, y)
+			if not _is_in_player_range(pos, DESTROY_RANGE):
+				continue
+			var building = GameManager.get_building_at(pos)
 			if building and is_instance_valid(building):
 				_collect_building_and_linked(building, seen, to_remove)
 
@@ -717,7 +731,7 @@ func _update_destroy_highlights() -> void:
 
 	# Update frame UV bounds for animated sprites (frame changes each tick)
 	for nid in _highlighted_buildings:
-		var entries: Array = _highlighted_buildings[nid]
+		var entries: Array = _highlighted_buildings[nid].entries
 		for entry in entries:
 			if is_instance_valid(entry.node) and entry.node is AnimatedSprite2D:
 				var bounds := _get_frame_uv_bounds(entry.node)
@@ -725,6 +739,13 @@ func _update_destroy_highlights() -> void:
 				entry.node.material.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
 
 func _apply_highlight(building: Node2D) -> void:
+	var orig_z := building.z_index
+	building.z_index = 100
+	# Conveyors use MultiMesh rendering — highlight via the visual manager
+	if building.logic is ConveyorBelt and GameManager.conveyor_visual_manager:
+		GameManager.conveyor_visual_manager.set_highlight(building.logic.grid_pos, true)
+		_highlighted_buildings[building.get_instance_id()] = {entries = [], building = building, orig_z = orig_z}
+		return
 	var entries: Array = []
 	for node in _get_visual_nodes(building):
 		var orig = node.material
@@ -737,7 +758,7 @@ func _apply_highlight(building: Node2D) -> void:
 		mat.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
 		node.material = mat
 		entries.append({node = node, original = orig})
-	_highlighted_buildings[building.get_instance_id()] = entries
+	_highlighted_buildings[building.get_instance_id()] = {entries = entries, building = building, orig_z = orig_z}
 
 ## Get the UV bounds of the current frame within the atlas texture.
 func _get_frame_uv_bounds(node: CanvasItem) -> Rect2:
@@ -755,10 +776,16 @@ func _get_frame_uv_bounds(node: CanvasItem) -> Rect2:
 func _remove_highlight(nid: int) -> void:
 	if not _highlighted_buildings.has(nid):
 		return
-	var entries: Array = _highlighted_buildings[nid]
+	var data: Dictionary = _highlighted_buildings[nid]
+	var entries: Array = data.entries
 	for entry in entries:
 		if is_instance_valid(entry.node):
 			entry.node.material = entry.original
+	if is_instance_valid(data.building):
+		# Clear conveyor multimesh highlight
+		if data.building.logic is ConveyorBelt and GameManager.conveyor_visual_manager:
+			GameManager.conveyor_visual_manager.set_highlight(data.building.logic.grid_pos, false)
+		data.building.z_index = data.orig_z
 	_highlighted_buildings.erase(nid)
 
 func _clear_all_highlights() -> void:
@@ -847,10 +874,7 @@ func _draw_destroy(cell_size: Vector2) -> void:
 		var rect_size := Vector2(max_pos - min_pos + Vector2i.ONE) * TILE_SIZE
 		draw_rect(Rect2(rect_pos, rect_size), DESTROY_AREA_COLOR)
 	else:
-		# No building under cursor — show cursor indicator
-		var building = GameManager.get_building_at(cursor_grid_pos)
-		if not building or not is_instance_valid(building):
-			draw_rect(Rect2(Vector2(cursor_grid_pos) * TILE_SIZE, cell_size), DESTROY_CURSOR_COLOR)
+		draw_rect(Rect2(Vector2(cursor_grid_pos) * TILE_SIZE, cell_size), DESTROY_CURSOR_COLOR)
 
 
 
@@ -931,3 +955,12 @@ func _debug_spawn_item(pos: Vector2i) -> void:
 	var conv = GameManager.get_conveyor_at(pos)
 	if conv and conv.can_accept():
 		conv.place_item(&"iron_ore")
+
+## Check if a grid position is within tile range of the player.
+func _is_in_player_range(grid_pos: Vector2i, range_tiles: int) -> bool:
+	var player = GameManager.player
+	if not player or not is_instance_valid(player):
+		return true  # No player = no range limit (e.g. simulations)
+	var player_grid := Vector2i(floori(player.position.x / TILE_SIZE), floori(player.position.y / TILE_SIZE))
+	var dist := absi(grid_pos.x - player_grid.x) + absi(grid_pos.y - player_grid.y)
+	return dist <= range_tiles

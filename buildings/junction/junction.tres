@@ -12,3 +12,4 @@ category = "junction"
 description = "Routes items straight through to the opposite side. Supports crossing paths."
 scene = ExtResource("2")
 replaceable_by = Array[StringName]([&"conveyor"])
+is_ground_level = true
