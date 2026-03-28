@@ -1,0 +1,185 @@
+extends RefCounted
+
+## Renders all conveyor sprites via a single MultiMeshInstance2D instead of
+## individual AnimatedSprite2D nodes. Drastically reduces draw calls.
+
+const TILE_SIZE := 32.0
+const INITIAL_CAPACITY := 512
+const HIDDEN_POS := Vector2(-99999, -99999)
+const ANIM_FPS := 10.0
+const FRAME_COUNT := 4
+
+# Atlas: 4 cols × 6 rows of 32×32 in straight.png (128×192)
+# Columns 0-3 are animation frames, rows 0-5 are variants:
+#   Row 0: straight, Row 1: turn, Row 2: dual_side_input,
+#   Row 3: side_input, Row 4: crossroad, Row 5: start
+
+var multimesh: MultiMesh
+var instance: MultiMeshInstance2D
+var _free_list: Array[int] = []
+var _capacity: int = 0
+var _material: ShaderMaterial
+var _idx_map: Dictionary = {}  # Vector2i → int (multimesh index)
+
+func _init() -> void:
+	multimesh = MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_2D
+	multimesh.use_custom_data = true
+
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(TILE_SIZE, TILE_SIZE)
+	multimesh.mesh = mesh
+
+	_material = _create_material()
+
+	instance = MultiMeshInstance2D.new()
+	instance.multimesh = multimesh
+	instance.texture = load("res://buildings/conveyor/sprites/straight.png")
+	instance.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	instance.material = _material
+
+	_grow(INITIAL_CAPACITY)
+
+func attach_to(parent: Node) -> void:
+	parent.add_child(instance)
+
+func register(grid_pos: Vector2i, conv) -> void:
+	var idx := _allocate()
+	_idx_map[grid_pos] = idx
+	var center := Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
+	multimesh.set_instance_transform_2d(idx, Transform2D(conv.direction * PI / 2.0, center))
+	multimesh.set_instance_custom_data(idx, Color(5.0, 0.0, 0.0, 1.0))  # default: "start"
+
+func unregister(grid_pos: Vector2i) -> void:
+	if _idx_map.has(grid_pos):
+		_release(_idx_map[grid_pos])
+		_idx_map.erase(grid_pos)
+
+func update_variant(conv) -> void:
+	if not _idx_map.has(conv.grid_pos):
+		return
+	var idx: int = _idx_map[conv.grid_pos]
+
+	var dir_vec := Vector2i(conv.get_direction_vector())
+	var back := -dir_vec
+	var right_side := Vector2i(-dir_vec.y, dir_vec.x)
+	var left_side := Vector2i(dir_vec.y, -dir_vec.x)
+
+	var has_back := _is_feeding(conv.grid_pos, back)
+	var has_right := _is_feeding(conv.grid_pos, right_side)
+	var has_left := _is_feeding(conv.grid_pos, left_side)
+
+	var variant_row: float = 5.0  # start (default)
+	var flip_v: float = 0.0
+
+	if has_right and has_left and has_back:
+		variant_row = 4.0  # crossroad
+	elif has_right and has_left:
+		variant_row = 2.0  # dual_side_input
+	elif has_back and has_right:
+		variant_row = 3.0  # side_input
+	elif has_back and has_left:
+		variant_row = 3.0  # side_input
+		flip_v = 1.0
+	elif has_right and not has_back:
+		variant_row = 1.0  # turn
+	elif has_left and not has_back:
+		variant_row = 1.0  # turn
+		flip_v = 1.0
+	elif has_back:
+		variant_row = 0.0  # straight
+
+	var center := Vector2(conv.grid_pos) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
+	multimesh.set_instance_transform_2d(idx, Transform2D(conv.direction * PI / 2.0, center))
+	multimesh.set_instance_custom_data(idx, Color(variant_row, flip_v, 0.0, 1.0))
+
+func update_animation() -> void:
+	var cycle_time := FRAME_COUNT / ANIM_FPS
+	var global_time := Time.get_ticks_msec() / 1000.0
+	var frame: float = float(int(fmod(global_time, cycle_time) * ANIM_FPS) % FRAME_COUNT)
+	_material.set_shader_parameter("frame_idx", frame)
+
+func clear_all() -> void:
+	_free_list.clear()
+	_idx_map.clear()
+	_capacity = 0
+	multimesh.instance_count = 0
+	_grow(INITIAL_CAPACITY)
+
+# ── Private ──────────────────────────────────────────────────────────────────
+
+func _allocate() -> int:
+	if _free_list.is_empty():
+		_grow(maxi(_capacity * 2, INITIAL_CAPACITY))
+	return _free_list.pop_back()
+
+func _release(idx: int) -> void:
+	if idx < 0:
+		return
+	multimesh.set_instance_transform_2d(idx, Transform2D(0, HIDDEN_POS))
+	_free_list.append(idx)
+
+func _is_feeding(grid_pos: Vector2i, dir_offset: Vector2i) -> bool:
+	var dir_idx: int
+	if dir_offset == Vector2i.RIGHT:
+		dir_idx = 0
+	elif dir_offset == Vector2i.DOWN:
+		dir_idx = 1
+	elif dir_offset == Vector2i.LEFT:
+		dir_idx = 2
+	elif dir_offset == Vector2i.UP:
+		dir_idx = 3
+	else:
+		return false
+	return GameManager.has_output_at(grid_pos, dir_idx)
+
+func _grow(new_capacity: int) -> void:
+	var old := _capacity
+	_capacity = new_capacity
+	if old == 0:
+		multimesh.instance_count = _capacity
+	else:
+		var old_transforms: Array = []
+		var old_custom: Array = []
+		for i in range(old):
+			old_transforms.append(multimesh.get_instance_transform_2d(i))
+			old_custom.append(multimesh.get_instance_custom_data(i))
+		multimesh.instance_count = _capacity
+		for i in range(old):
+			multimesh.set_instance_transform_2d(i, old_transforms[i])
+			multimesh.set_instance_custom_data(i, old_custom[i])
+	for i in range(old, _capacity):
+		multimesh.set_instance_transform_2d(i, Transform2D(0, HIDDEN_POS))
+		_free_list.append(i)
+
+func _create_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = "shader_type canvas_item;
+uniform float frame_idx = 0.0;
+// Atlas layout: 4 columns (frames) x 6 rows (variants), each cell 32x32
+// Total texture: 128x192
+const float COLS = 4.0;
+const float ROWS = 6.0;
+varying flat float v_row;
+varying flat float v_flip;
+void vertex() {
+	v_row = INSTANCE_CUSTOM.r;
+	v_flip = INSTANCE_CUSTOM.g;
+}
+void fragment() {
+	float u = UV.x;
+	float v = UV.y;
+	// Flip vertically for mirrored variants (side_input left, turn left)
+	if (v_flip < 0.5) {
+		v = 1.0 - v;
+	}
+	float col = floor(frame_idx);
+	float row = v_row;
+	vec2 atlas_uv = vec2((col + u) / COLS, (row + v) / ROWS);
+	COLOR = texture(TEXTURE, atlas_uv);
+}
+"
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("frame_idx", 0.0)
+	return mat

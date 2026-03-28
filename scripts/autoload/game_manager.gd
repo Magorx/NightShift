@@ -72,6 +72,7 @@ var item_layer: Node2D
 var conveyor_system: Node
 var energy_system: Node  # EnergySystem
 var building_tick_system: Node  # BuildingTickSystem
+var conveyor_visual_manager  # ConveyorVisualManager (MultiMesh rendering)
 
 func _ready() -> void:
 	_load_building_defs()
@@ -249,8 +250,19 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		# Register conveyors with ConveyorSystem, others with BuildingTickSystem
 		if logic is ConveyorBelt and conveyor_system:
 			conveyor_system.register_conveyor(logic)
+			# Register with MultiMesh visual manager and hide scene sprite
+			if conveyor_visual_manager:
+				conveyor_visual_manager.register(grid_pos, logic)
+				var rotatable = building.find_child("Rotatable", false, false)
+				if rotatable:
+					rotatable.visible = false
+				var sprite = building.find_child("ConveyorSprite", true, false)
+				if sprite:
+					sprite.stop()
 		elif building_tick_system:
 			building_tick_system.register(logic)
+		# Hide guide ColorRects (Shape/Input/Output cells) to reduce draw calls
+		_hide_guide_nodes(building)
 
 		# Register energy-capable buildings with EnergySystem
 		if energy_system and logic.energy:
@@ -299,6 +311,10 @@ func remove_building(grid_pos: Vector2i) -> void:
 	# Unregister from BuildingTickSystem
 	if building.logic and building_tick_system:
 		building_tick_system.unregister(building.logic)
+
+	# Unregister from ConveyorVisualManager
+	if building.logic is ConveyorBelt and conveyor_visual_manager:
+		conveyor_visual_manager.unregister(building.logic.grid_pos)
 
 	# Let the logic node handle its own cleanup (unregistration, partner unlinking, visuals)
 	if building.logic:
@@ -371,9 +387,12 @@ func _update_single_conveyor_sprite(grid_pos: Vector2i) -> void:
 		return
 	if not building.logic is ConveyorBelt:
 		return
-	var sprite = building.find_child("ConveyorSprite", true, false)
-	if sprite and conveyor_system:
-		sprite.update_variant(building.logic, conveyor_system)
+	if conveyor_visual_manager:
+		conveyor_visual_manager.update_variant(building.logic)
+	else:
+		var sprite = building.find_child("ConveyorSprite", true, false)
+		if sprite and conveyor_system:
+			sprite.update_variant(building.logic, conveyor_system)
 
 func clear_all() -> void:
 	# Clean up item visuals via logic nodes
@@ -392,9 +411,11 @@ func clear_all() -> void:
 			building.queue_free()
 	buildings.clear()
 	unique_buildings.clear()
-	# Reset the MultiMesh visual pool
+	# Reset the MultiMesh visual pools
 	if item_visual_manager:
 		item_visual_manager.clear_all()
+	if conveyor_visual_manager:
+		conveyor_visual_manager.clear_all()
 	total_currency = 0
 	items_delivered.clear()
 	if conveyor_system:
@@ -443,3 +464,14 @@ func pull_item(target_pos: Vector2i, from_dir_idx: int) -> Dictionary:
 	if item_id == &"":
 		return {}
 	return {id = item_id, entry_from = DIRECTION_VECTORS[from_dir_idx], entry_dist = building.logic.get_output_visual_distance()}
+
+## Hide guide ColorRect nodes (Shape/Input/Output cells) to reduce draw calls.
+## These nodes have alpha=0 but are still processed by the renderer.
+func _hide_guide_nodes(building: Node2D) -> void:
+	var rotatable = building.find_child("Rotatable", false, false)
+	if not rotatable:
+		return
+	for group_name in ["Shape", "Inputs", "Outputs"]:
+		var group = rotatable.find_child(group_name, false, false)
+		if group:
+			group.visible = false

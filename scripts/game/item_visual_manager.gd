@@ -58,13 +58,16 @@ func _grow(new_capacity: int) -> void:
 	if old == 0:
 		multimesh.instance_count = _capacity
 	else:
-		# Setting instance_count may clear existing data — preserve it
-		var old_buf := multimesh.buffer.duplicate()
+		# Setting instance_count clears existing data — save and restore per-instance
+		var old_transforms: Array = []
+		var old_colors: Array = []
+		for i in range(old):
+			old_transforms.append(multimesh.get_instance_transform_2d(i))
+			old_colors.append(multimesh.get_instance_color(i))
 		multimesh.instance_count = _capacity
-		var new_buf := multimesh.buffer
-		for i in range(mini(old_buf.size(), new_buf.size())):
-			new_buf[i] = old_buf[i]
-		multimesh.buffer = new_buf
+		for i in range(old):
+			multimesh.set_instance_transform_2d(i, old_transforms[i])
+			multimesh.set_instance_color(i, old_colors[i])
 	for i in range(old, _capacity):
 		multimesh.set_instance_transform_2d(i, Transform2D(0, HIDDEN_POS))
 		_free_list.append(i)

@@ -23,6 +23,7 @@ var _world_gen_script = preload("res://scripts/game/world_generator.gd")
 var _stress_gen_script = preload("res://scripts/game/stress_test_generator.gd")
 var _visual_mgr_script = preload("res://scripts/game/item_visual_manager.gd")
 var _tick_system_script = preload("res://scripts/game/building_tick_system.gd")
+var _conv_visual_mgr_script = preload("res://scripts/game/conveyor_visual_manager.gd")
 var _info_panel: PanelContainer
 
 func _ready() -> void:
@@ -38,6 +39,9 @@ func _ready() -> void:
 	tick_system.name = "BuildingTickSystem"
 	add_child(tick_system)
 	GameManager.building_tick_system = tick_system
+	# Initialize MultiMesh conveyor visual system
+	GameManager.conveyor_visual_manager = _conv_visual_mgr_script.new()
+	GameManager.conveyor_visual_manager.attach_to($BuildingLayer)
 	GameManager.clear_all()
 	GameManager.deposits.clear()
 	GameManager.walls.clear()
@@ -97,6 +101,9 @@ func _on_building_clicked(building: Node2D) -> void:
 func _process(delta: float) -> void:
 	_handle_pan(delta)
 	_apply_camera_elastic(delta)
+	# Advance conveyor MultiMesh animation frame
+	if GameManager.conveyor_visual_manager:
+		GameManager.conveyor_visual_manager.update_animation()
 	# Autosave
 	_autosave_timer += delta
 	if _autosave_timer >= AUTOSAVE_INTERVAL:

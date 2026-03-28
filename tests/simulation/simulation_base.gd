@@ -32,6 +32,12 @@ func _ready():
 	# Prevent simulations from overwriting real save files
 	SaveManager.autosave_enabled = false
 
+	# Ensure deterministic terrain for reproducible screenshots.
+	# game_world._ready() replaces world_seed=0 with randi(), so set a
+	# non-zero fixed seed when no subclass has provided one.
+	if GameManager.world_seed == 0:
+		GameManager.world_seed = 42
+
 	# Load the real game world scene
 	var scene = load("res://scenes/game/game_world.tscn")
 	game_world = scene.instantiate()

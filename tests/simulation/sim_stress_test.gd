@@ -57,6 +57,24 @@ func run_simulation() -> void:
 			cam.zoom = Vector2(0.6, 0.6)
 			await sim_advance_ticks(2)
 			await sim_capture_screenshot("factory_closeup")
+			# Find a conveyor with neighbors for UV debug
+			var conv_pos := Vector2.ZERO
+			for b in GameManager.unique_buildings:
+				if is_instance_valid(b) and b.building_id == &"conveyor":
+					var gp: Vector2i = b.logic.grid_pos
+					var has_neighbor := false
+					for offset in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
+						var nb = GameManager.buildings.get(gp + offset)
+						if nb and is_instance_valid(nb) and nb.building_id == &"conveyor":
+							has_neighbor = true
+							break
+					if has_neighbor:
+						conv_pos = Vector2(gp) * 32.0 + Vector2(16, 16)
+						break
+			cam.position = conv_pos
+			cam.zoom = Vector2(6.0, 6.0)
+			await sim_advance_ticks(2)
+			await sim_capture_screenshot("uv_debug")
 
 	sim_finish()
 
