@@ -135,6 +135,20 @@ func get_info_stats() -> Array:
 		stats.append({type = "stat", text = "Energy: %.0f/%.0f" % [energy.energy_stored, energy.energy_capacity]})
 	return stats
 
+func get_popup_recipe():
+	var coal_def = GameManager.get_item_def(FUEL_ID)
+	var coal_color: Color = coal_def.color if coal_def else Color.DIM_GRAY
+	var energy_color := Color(0.95, 0.85, 0.2) # yellow for energy
+	return {
+		inputs = [{quantity = 1, color = coal_color}],
+		outputs = [{quantity = int(ENERGY_PER_COAL), color = energy_color}],
+	}
+
+func get_popup_progress() -> float:
+	if _is_burning:
+		return clampf(_burn_timer / BURN_TIME, 0.0, 1.0)
+	return 0.0
+
 func get_inventory_items() -> Array:
 	var result: Array = []
 	for iid in fuel_inv.get_item_ids():

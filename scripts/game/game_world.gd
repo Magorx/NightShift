@@ -2,13 +2,9 @@ class_name GameWorld
 extends Node2D
 
 const TILE_SIZE := 32
-const ZOOM_SPEED := 0.1
-const MIN_ZOOM := 0.25
-const MAX_ZOOM := 3.0
 const AUTOSAVE_INTERVAL := 60.0
-const CAMERA_FOLLOW_SPEED := 8.0
 
-@onready var camera: Camera2D = $Camera2D
+@onready var camera: GameCamera = $Camera2D
 @onready var tile_map: TileMapLayer = $TileMapLayer
 @onready var grid_overlay: Node2D = $GridOverlay
 @onready var build_system: Node2D = $BuildSystem
@@ -89,13 +85,14 @@ func _ready() -> void:
 	_popup = _popup_scene.instantiate()
 	$UI.add_child(_popup)
 
+	# Create player before loading save so deserialize can restore position/inventory
+	_spawn_player()
+
 	# If continuing from a save, load the run now that the world is ready
 	if SaveManager.pending_load:
 		SaveManager.pending_load = false
 		SaveManager.load_run()
-
-	# Create player (after save load so collision tiles are set up)
-	_spawn_player()
+	camera.target_node = player
 
 func _on_building_selected(id: StringName) -> void:
 	build_system.select_building(id)
@@ -116,7 +113,7 @@ func _process(delta: float) -> void:
 	var real_delta := (now - _last_time_usec) / 1_000_000.0 if _last_time_usec > 0 else delta
 	_last_time_usec = now
 	real_delta = minf(real_delta, 0.1) # cap to avoid jumps
-	_follow_camera(real_delta)
+	camera.update_camera(real_delta)
 	# Advance conveyor MultiMesh animation frame
 	if GameManager.conveyor_visual_manager:
 		GameManager.conveyor_visual_manager.update_animation()
@@ -128,11 +125,13 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]:
-		_handle_zoom(event)
+		camera.handle_zoom_input(event)
 	elif event is InputEventPanGesture:
-		_zoom_toward_mouse(camera.zoom.x - event.delta.y * ZOOM_SPEED)
+		camera.handle_zoom_input(event)
 	elif event.is_action_pressed("toggle_buildings_panel"):
 		hud.toggle_buildings_panel()
+	elif event.is_action_pressed("toggle_inventory"):
+		hud.toggle_inventory_panel()
 	elif event.is_action_pressed("ui_cancel"):
 		# ESC cascade: link mode → buildings panel → info panel → building mode → destroy mode → pause menu
 		if build_system.energy_link_mode:
@@ -164,35 +163,7 @@ func _spawn_player() -> void:
 	player.spawn_position = center
 	add_child(player)
 	GameManager.player = player
-	# Snap camera to player immediately
-	camera.position = player.position
-
-func _follow_camera(real_delta: float) -> void:
-	if player and is_instance_valid(player):
-		var target: Vector2 = player.position
-		# Clamp to world bounds
-		var bounds := _get_camera_bounds()
-		target.x = clampf(target.x, bounds.position.x, bounds.end.x)
-		target.y = clampf(target.y, bounds.position.y, bounds.end.y)
-		camera.position = camera.position.lerp(target, 1.0 - exp(-CAMERA_FOLLOW_SPEED * real_delta))
-
-func _handle_zoom(event: InputEventMouseButton) -> void:
-	if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT]:
-		_zoom_toward_mouse(camera.zoom.x + ZOOM_SPEED)
-	elif event.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT]:
-		_zoom_toward_mouse(camera.zoom.x - ZOOM_SPEED)
-
-func _zoom_toward_mouse(new_zoom: float) -> void:
-	var clamped := clampf(new_zoom, MIN_ZOOM, MAX_ZOOM)
-	if is_equal_approx(clamped, camera.zoom.x):
-		return
-	var mouse_screen := get_viewport().get_mouse_position()
-	var viewport_size := get_viewport_rect().size
-	var offset := mouse_screen - viewport_size / 2.0
-	var world_before := camera.position + offset / camera.zoom.x
-	camera.zoom = Vector2(clamped, clamped)
-	var world_after := camera.position + offset / camera.zoom.x
-	camera.position += world_before - world_after
+	camera.snap_to(player.position)
 
 # Tile source IDs
 const TILE_GROUND := 0
@@ -237,20 +208,6 @@ func _setup_tileset() -> void:
 	_create_tile_source(tile_set, TILE_GROUND_DARK, Color(0.24, 0.30, 0.20))
 	_create_tile_source(tile_set, TILE_GROUND_LIGHT, Color(0.32, 0.40, 0.28))
 	tile_map.tile_set = tile_set
-
-func _get_camera_bounds() -> Rect2:
-	var viewport_size := get_viewport_rect().size
-	var half_view := viewport_size / (2.0 * camera.zoom.x)
-	var world_size := float(GameManager.map_size * TILE_SIZE)
-	var min_pos := half_view
-	var max_pos := Vector2(world_size, world_size) - half_view
-	if min_pos.x > max_pos.x:
-		min_pos.x = world_size / 2.0
-		max_pos.x = world_size / 2.0
-	if min_pos.y > max_pos.y:
-		min_pos.y = world_size / 2.0
-		max_pos.y = world_size / 2.0
-	return Rect2(min_pos, max_pos - min_pos)
 
 
 # ── Terrain Serialization ────────────────────────────────────────────────────

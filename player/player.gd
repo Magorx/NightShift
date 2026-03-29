@@ -11,13 +11,15 @@ const FRICTION := 480.0         # 15 tiles/s^2
 const STAMINA_MAX := 3.0        # seconds of sprint
 const STAMINA_REGEN := 1.0      # seconds recovered per second
 
-# ── Jump ─────────────────────────────────────────────────────────────────────
-const JUMP_DURATION := 0.3
+# ── Vertical physics ─────────────────────────────────────────────────────────
+const JUMP_SPEED := 8.0          # height-units/s upward
+const JUMP_GRAVITY := 22.0       # height-units/s^2
 const JUMP_COOLDOWN := 0.1
+const BUILDING_Z_HEIGHT := 1.0   # height of non-ground-level buildings
 
-enum JumpState { GROUNDED, JUMPING, ELEVATED, DROPPING }
-var jump_state: JumpState = JumpState.GROUNDED
-var _jump_timer: float = 0.0
+var z_height: float = 0.0        # current height above ground level
+var z_velocity: float = 0.0      # vertical speed (positive = up)
+var _is_grounded: bool = true
 var _jump_cooldown_timer: float = 0.0
 
 # ── Health ───────────────────────────────────────────────────────────────────
@@ -36,7 +38,7 @@ var _invuln_timer: float = 0.0
 var spawn_position: Vector2 = Vector2.ZERO
 
 # ── Inventory ────────────────────────────────────────────────────────────────
-const INVENTORY_SLOTS := 8
+const INVENTORY_SLOTS := 24
 const STACK_SIZE := 16
 const PICKUP_RANGE := 48.0      # 1.5 tiles
 const DROP_RANGE := 32.0        # 1 tile
@@ -79,7 +81,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_handle_invulnerability(delta)
-	_handle_jump(delta)
+	_handle_vertical_physics(delta)
 	_handle_movement(delta)
 	_handle_conveyor_push()
 	_handle_health_regen(delta)
@@ -145,53 +147,58 @@ func _handle_movement(delta: float) -> void:
 	else:
 		velocity = velocity.move_toward(_conveyor_push, FRICTION * delta)
 
-# ── Jump State Machine ──────────────────────────────────────────────────────
+# ── Vertical Physics ────────────────────────────────────────────────────────
 
 func _try_jump() -> void:
-	if _jump_cooldown_timer > 0:
+	if not _is_grounded or _jump_cooldown_timer > 0:
 		return
-	if jump_state == JumpState.GROUNDED:
-		jump_state = JumpState.JUMPING
-		_jump_timer = JUMP_DURATION
-		_jump_cooldown_timer = JUMP_COOLDOWN
-		_update_collision_mask()
+	z_velocity = JUMP_SPEED
+	_is_grounded = false
+	_jump_cooldown_timer = JUMP_COOLDOWN
+	_update_collision_for_height()
 
-func _handle_jump(delta: float) -> void:
+func _handle_vertical_physics(delta: float) -> void:
 	_jump_cooldown_timer = maxf(_jump_cooldown_timer - delta, 0.0)
 
-	match jump_state:
-		JumpState.JUMPING:
-			_jump_timer -= delta
-			if _jump_timer <= 0:
-				jump_state = JumpState.ELEVATED
-				_update_collision_mask()
-		JumpState.ELEVATED:
-			# Check if player moved onto empty ground / ground-level building
-			if _is_over_ground_level():
-				jump_state = JumpState.DROPPING
-				_jump_timer = JUMP_DURATION
-		JumpState.DROPPING:
-			_jump_timer -= delta
-			if _jump_timer <= 0:
-				if _is_over_ground_level():
-					jump_state = JumpState.GROUNDED
-					_update_collision_mask()
-				else:
-					# Landed on another building — stay elevated
-					jump_state = JumpState.ELEVATED
+	var ground := _get_ground_height()
 
-func _is_over_ground_level() -> bool:
+	if _is_grounded:
+		if z_height > ground + 0.01:
+			# Walked off an edge — start falling
+			_is_grounded = false
+			z_velocity = 0.0
+			_update_collision_for_height()
+		else:
+			z_height = ground
+		if _is_grounded:
+			return
+
+	# Airborne
+	z_velocity -= JUMP_GRAVITY * delta
+	z_height += z_velocity * delta
+	ground = _get_ground_height()
+	if z_height <= ground and z_velocity <= 0:
+		z_height = ground
+		z_velocity = 0.0
+		_is_grounded = true
+		_on_landed()
+
+func _on_landed() -> void:
+	_conveyor_push = Vector2.ZERO
+	_update_collision_for_height()
+
+func _get_ground_height() -> float:
 	var grid_pos := _get_grid_pos()
 	var building = GameManager.get_building_at(grid_pos)
 	if not building:
-		return true  # Empty tile = ground level
+		return 0.0
 	var def = GameManager.get_building_def(building.building_id)
 	if def and def.is_ground_level:
-		return true  # Ground-level building (conveyor, etc.)
-	return false
+		return 0.0
+	return BUILDING_Z_HEIGHT
 
-func _update_collision_mask() -> void:
-	if jump_state == JumpState.GROUNDED:
+func _update_collision_for_height() -> void:
+	if _is_grounded and z_height < 0.01:
 		collision_mask = (1 << (BUILDING_COLLISION_LAYER - 1))
 		z_index = 5
 	else:
@@ -201,8 +208,7 @@ func _update_collision_mask() -> void:
 # ── Conveyor Push (bezier curve, same path as items) ────────────────────────
 
 func _handle_conveyor_push() -> void:
-	if jump_state != JumpState.GROUNDED:
-		# Airborne — keep the last _conveyor_push as inertia (don't zero it)
+	if not _is_grounded or z_height > 0.01:
 		_conv_grid = Vector2i(-999, -999)
 		return
 	_conveyor_push = Vector2.ZERO
@@ -283,8 +289,10 @@ func _respawn() -> void:
 	_regen_timer = REGEN_DELAY
 	_invuln_timer = INVULN_TIME
 	position = spawn_position
-	jump_state = JumpState.GROUNDED
-	_update_collision_mask()
+	z_height = 0.0
+	z_velocity = 0.0
+	_is_grounded = true
+	_update_collision_for_height()
 	visible = true
 
 func _drop_all_inventory() -> void:
@@ -340,18 +348,16 @@ func _try_pickup() -> void:
 	# Try to pick up the nearest ground item or conveyor item within range
 	var picked_up := false
 
-	# Check ground items first
+	# Check ground items — only pick up the one the mouse is hovering
 	var ground_items := get_tree().get_nodes_in_group("ground_items")
-	var nearest_dist := PICKUP_RANGE + 1.0
 	var nearest_item: Node2D = null
 	for item in ground_items:
-		if not is_instance_valid(item):
+		if not is_instance_valid(item) or not item._hovered:
 			continue
-		var dist := position.distance_to(item.position)
-		if dist < nearest_dist:
-			nearest_dist = dist
+		if position.distance_to(item.position) <= PICKUP_RANGE:
 			nearest_item = item
-	if nearest_item and nearest_dist <= PICKUP_RANGE:
+			break
+	if nearest_item:
 		var remaining := add_item(nearest_item.item_id, nearest_item.quantity)
 		if remaining < nearest_item.quantity:
 			if remaining <= 0:
@@ -392,24 +398,30 @@ func _try_drop(drop_stack: bool) -> void:
 
 	# Calculate drop position in front of player
 	var drop_pos := position + facing_direction.normalized() * DROP_RANGE
+	var drop_grid := Vector2i(floori(drop_pos.x / TILE_SIZE), floori(drop_pos.y / TILE_SIZE))
 
-	# Try to place on conveyor if facing one
-	if not drop_stack:
-		var drop_grid := Vector2i(floori(drop_pos.x / TILE_SIZE), floori(drop_pos.y / TILE_SIZE))
-		var conv = GameManager.get_conveyor_at(drop_grid)
-		if conv and conv.can_accept():
-			conv.place_item(dropped.item_id)
+	# Try to insert into building at drop position
+	var building = GameManager.get_building_at(drop_grid)
+	if building and building.logic:
+		var leftover: int = building.logic.try_insert_item(dropped.item_id, dropped.quantity)
+		if leftover <= 0:
 			return
+		# Drop the remainder that didn't fit
+		dropped.quantity = leftover
 
-	_spawn_ground_item(dropped.item_id, dropped.quantity, drop_pos)
+	_spawn_ground_item(dropped.item_id, dropped.quantity, drop_pos if not building else position)
 
 func _spawn_ground_item(item_id: StringName, quantity: int, pos: Vector2) -> void:
+	# Merge with nearby existing ground item of same type
+	for existing in get_tree().get_nodes_in_group("ground_items"):
+		if is_instance_valid(existing) and existing.item_id == item_id and existing.position.distance_to(pos) < GroundItem.MERGE_RANGE:
+			existing.quantity += quantity
+			return
 	var ground_item_scene := preload("res://player/ground_item.tscn")
 	var item := ground_item_scene.instantiate()
 	item.item_id = item_id
 	item.quantity = quantity
 	item.position = pos
-	# Add to the game world's building layer so it renders in world space
 	var game_world = get_parent()
 	if game_world:
 		game_world.add_child(item)
@@ -436,20 +448,13 @@ func _update_visuals(delta: float) -> void:
 	# Direction indicator rotation
 	sprite.rotation = facing_direction.angle()
 
-	# Jump/elevated scale
-	match jump_state:
-		JumpState.JUMPING, JumpState.DROPPING:
-			var t := _jump_timer / JUMP_DURATION
-			var scale_val := lerpf(1.1, 1.2, t) if jump_state == JumpState.JUMPING else lerpf(1.0, 1.1, t)
-			sprite.scale = Vector2(scale_val, scale_val)
-		JumpState.ELEVATED:
-			sprite.scale = Vector2(1.1, 1.1)
-		JumpState.GROUNDED:
-			sprite.scale = Vector2(1.0, 1.0)
+	# Height-based scale
+	var scale_val := 1.0 + z_height * 0.13
+	sprite.scale = Vector2(scale_val, scale_val)
 
 	# Shadow visibility
 	if shadow:
-		shadow.visible = jump_state != JumpState.GROUNDED
+		shadow.visible = z_height > 0.01
 		if shadow.visible:
 			shadow.modulate.a = 0.3
 
@@ -483,7 +488,9 @@ func serialize() -> Dictionary:
 		health = hp,
 		stamina = stamina,
 		inventory = inv_data,
-		state = JumpState.keys()[jump_state],
+		z_height = z_height,
+		z_velocity = z_velocity,
+		is_grounded = _is_grounded,
 		selected_slot = selected_slot,
 	}
 
@@ -501,9 +508,8 @@ func deserialize(data: Dictionary) -> void:
 		else:
 			inventory[i] = null
 
-	# Restore jump state
-	var state_name: String = data.get("state", "GROUNDED")
-	match state_name:
-		"ELEVATED": jump_state = JumpState.ELEVATED
-		_: jump_state = JumpState.GROUNDED
-	_update_collision_mask()
+	# Restore vertical state
+	z_height = data.get("z_height", 0.0)
+	z_velocity = data.get("z_velocity", 0.0)
+	_is_grounded = data.get("is_grounded", true)
+	_update_collision_for_height()

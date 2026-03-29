@@ -16,13 +16,30 @@ theme_override_constants/margin_bottom = 4
 
 [node name="VBox" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 3
+theme_override_constants/separation = 4
 
-[node name="RecipeRow" type="HBoxContainer" parent="MarginContainer/VBox"]
+[node name="RecipeSection" type="VBoxContainer" parent="MarginContainer/VBox"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="RecipeRow" type="HBoxContainer" parent="MarginContainer/VBox/RecipeSection"]
+unique_name_in_owner = true
+layout_mode = 2
 theme_override_constants/separation = 3
+
+[node name="CraftBarRow" type="HBoxContainer" parent="MarginContainer/VBox/RecipeSection"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CraftBar" type="HBoxContainer" parent="MarginContainer/VBox/RecipeSection/CraftBarRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(80, 12)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
 
 [node name="EnergyRow" type="HBoxContainer" parent="MarginContainer/VBox"]
 unique_name_in_owner = true
@@ -40,8 +57,9 @@ show_percentage = false
 [node name="EnergyLabel" type="Label" parent="MarginContainer/VBox/EnergyRow"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 10
+theme_override_font_sizes/font_size = 11
 text = "0/0"
+horizontal_alignment = 2
 
 [node name="InventoryRow" type="HBoxContainer" parent="MarginContainer/VBox"]
 unique_name_in_owner = true

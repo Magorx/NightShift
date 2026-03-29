@@ -17,6 +17,13 @@ var _dir_count: Array[int] = [0, 0, 0, 0]
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, _rotation: int) -> void:
 	super.configure(_def, p_grid_pos, _rotation)
 
+func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
+	var remaining := quantity
+	while remaining > 0 and buffer.can_accept():
+		buffer.add_item(item_id, {from_dir_idx = -1, output_dir_idx = -1})
+		remaining -= 1
+	return remaining
+
 func _physics_process(delta: float) -> void:
 	_validate_outputs()
 	_advance_items(delta)

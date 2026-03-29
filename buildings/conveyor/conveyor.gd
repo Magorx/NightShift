@@ -40,6 +40,12 @@ func place_item(item_id: StringName, entry_from: Vector2i = Vector2i.ZERO, entry
 	_position_item(item)
 	return true
 
+func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
+	var remaining := quantity
+	while remaining > 0 and place_item(item_id):
+		remaining -= 1
+	return remaining
+
 # Remove and return the frontmost item (highest progress)
 func pop_front_item() -> Dictionary:
 	return buffer.pop_front()

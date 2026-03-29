@@ -13,6 +13,20 @@ var _input_rr: RoundRobin = RoundRobin.new()
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, _rotation: int) -> void:
 	super.configure(_def, p_grid_pos, _rotation)
 
+func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
+	var remaining := quantity
+	while remaining > 0:
+		var inserted := false
+		for axis in 2:
+			if not buffers[axis].is_full():
+				buffers[axis].add_item(item_id, {from_dir_idx = -1, output_dir_idx = -1})
+				inserted = true
+				break
+		if not inserted:
+			break
+		remaining -= 1
+	return remaining
+
 func _physics_process(delta: float) -> void:
 	_reverse_stranded_items()
 	_advance_items(delta)

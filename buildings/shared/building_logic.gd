@@ -82,6 +82,12 @@ func get_output_visual_distance() -> float:
 func can_accept_from(_from_dir_idx: int) -> bool:
 	return false
 
+# ── Player item insertion ──────────────────────────────────────────────────
+
+## Try to insert items directly (e.g. player drops). Returns leftover count.
+func try_insert_item(_item_id: StringName, quantity: int = 1) -> int:
+	return quantity # Default: building does not accept items
+
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
 func cleanup_visuals() -> void:
@@ -176,6 +182,11 @@ func get_info_stats() -> Array:
 ## Override in converter-like buildings.
 func get_popup_recipe():
 	return null
+
+## Return craft progress 0.0–1.0 for the popup segmented bar.
+## Override in converter-like buildings.
+func get_popup_progress() -> float:
+	return -1.0 # negative means no progress bar
 
 ## Return items inside this building as [{id: StringName, count: int}, ...].
 ## Override in all buildings that hold items.

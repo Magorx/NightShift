@@ -1,18 +1,22 @@
 extends HBoxContainer
-## Inventory hotbar at the bottom of the screen.
+## Inventory hotbar at the bottom of the screen. Interactive — delegates clicks
+## to the inventory panel so held-item state is shared.
 
 const SLOT_SIZE := 40
 const SLOT_MARGIN := 2
 const EMPTY_COLOR := Color(0.2, 0.2, 0.2, 0.4)
 const SELECTED_COLOR := Color(0.9, 0.85, 0.3, 0.8)
+const HOVER_COLOR := Color(0.6, 0.6, 0.6, 0.9)
+const SELECTION_COLOR := Color(0.4, 0.8, 1.0, 0.9)
 const SLOT_BG_COLOR := Color(0.15, 0.15, 0.15, 0.6)
 
 var _slots: Array = []  # Array of PanelContainer
+var _hovered_slot: int = -1
+var inventory_panel = null  # Set by HUD in _ready
 
 func _ready() -> void:
 	alignment = BoxContainer.ALIGNMENT_CENTER
 	add_theme_constant_override("separation", SLOT_MARGIN)
-	# Create slot nodes (8 slots matches Player.INVENTORY_SLOTS)
 	for i in 8:
 		var slot := _create_slot(i)
 		add_child(slot)
@@ -25,7 +29,7 @@ func _process(_delta: float) -> void:
 	for i in _slots.size():
 		_update_slot(i, player)
 
-func _create_slot(_index: int) -> PanelContainer:
+func _create_slot(index: int) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
 
@@ -44,6 +48,7 @@ func _create_slot(_index: int) -> PanelContainer:
 	color_rect.position = Vector2(10, 6)
 	color_rect.size = Vector2(20, 20)
 	color_rect.visible = false
+	color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(color_rect)
 
 	# Quantity label
@@ -55,9 +60,30 @@ func _create_slot(_index: int) -> PanelContainer:
 	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	label.offset_right = -3
 	label.offset_bottom = -1
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(label)
 
+	# Slot number
+	var idx_label := Label.new()
+	idx_label.name = "IndexLabel"
+	idx_label.text = str(index + 1)
+	idx_label.add_theme_font_size_override("font_size", 9)
+	idx_label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
+	idx_label.position = Vector2(3, 1)
+	idx_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(idx_label)
+
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.gui_input.connect(_on_slot_input.bind(index))
+	panel.mouse_entered.connect(func(): _hovered_slot = index)
+	panel.mouse_exited.connect(func():
+		if _hovered_slot == index: _hovered_slot = -1)
+
 	return panel
+
+func _on_slot_input(event: InputEvent, index: int) -> void:
+	if inventory_panel:
+		inventory_panel._on_slot_input(event, index)
 
 func _update_slot(index: int, player) -> void:
 	var panel: PanelContainer = _slots[index]
@@ -66,13 +92,23 @@ func _update_slot(index: int, player) -> void:
 	var label: Label = panel.get_node("QuantityLabel")
 	var slot_data = player.inventory[index]
 
-	# Selected highlight
-	if index == player.selected_slot:
+	var is_source_empty := false
+	var is_selected := false
+	if inventory_panel:
+		is_source_empty = (index == inventory_panel._held_source_slot and not inventory_panel._held_item.is_empty() and slot_data == null)
+		is_selected = inventory_panel._selected_slots.has(index)
+
+	# Border: selection > hover > active hotbar slot > default
+	if is_selected:
+		style.border_color = SELECTION_COLOR
+	elif _hovered_slot == index:
+		style.border_color = HOVER_COLOR
+	elif index == player.selected_slot:
 		style.border_color = SELECTED_COLOR
 	else:
 		style.border_color = EMPTY_COLOR
 
-	if slot_data != null:
+	if slot_data != null and not is_source_empty:
 		var item_def = GameManager.get_item_def(slot_data.item_id)
 		color_rect.color = item_def.color if item_def else Color.WHITE
 		color_rect.visible = true
@@ -80,3 +116,5 @@ func _update_slot(index: int, player) -> void:
 	else:
 		color_rect.visible = false
 		label.text = ""
+
+	panel.modulate = Color(0.5, 0.5, 0.5, 0.5) if is_source_empty else Color.WHITE

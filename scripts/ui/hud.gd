@@ -12,6 +12,8 @@ const SPEED_LABELS := ["x0.25", "x0.5", "x1", "x1.5", "x2", "x3"]
 @onready var fast_button: Button = %FastButton
 @onready var buildings_button: Button = %BuildingsButton
 @onready var buildings_panel: PanelContainer = $BuildingsPanel
+@onready var inventory_button: Button = %InventoryButton
+@onready var inventory_panel: PanelContainer = $InventoryPanel
 @onready var fps_label: Label = %FpsLabel
 @onready var minimap_display: Control = $BottomRight/MinimapPanel/MinimapDisplay
 
@@ -24,6 +26,8 @@ func _ready() -> void:
 	fast_button.pressed.connect(_on_fast_pressed)
 	buildings_button.gui_input.connect(_on_buildings_button_gui_input)
 	buildings_panel.building_selected.connect(_on_building_selected)
+	inventory_button.gui_input.connect(_on_inventory_button_gui_input)
+	$Hotbar.inventory_panel = inventory_panel
 
 func set_camera(cam: Camera2D) -> void:
 	minimap_display.set_camera(cam)
@@ -58,6 +62,15 @@ func close_buildings_panel() -> void:
 func toggle_buildings_panel() -> void:
 	buildings_panel.visible = not buildings_panel.visible
 
+func is_inventory_panel_open() -> bool:
+	return inventory_panel.visible
+
+func close_inventory_panel() -> void:
+	inventory_panel.visible = false
+
+func toggle_inventory_panel() -> void:
+	inventory_panel.visible = not inventory_panel.visible
+
 func _on_building_selected(id: StringName) -> void:
 	building_selected.emit(id)
 
@@ -70,6 +83,14 @@ func _on_buildings_button_gui_input(event: InputEvent) -> void:
 		else:
 			# Single click: toggle visibility
 			buildings_panel.visible = not buildings_panel.visible
+
+func _on_inventory_button_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if event.double_click:
+			inventory_panel.visible = true
+			inventory_panel.move_to_center()
+		else:
+			inventory_panel.visible = not inventory_panel.visible
 
 # ── Delivery Counter ──────────────────────────────────────────────────────
 

@@ -24,6 +24,14 @@ func _physics_process(_delta: float) -> void:
 				keep_pulling = true
 				break
 
+func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
+	for i in quantity:
+		items_consumed += 1
+		var item_def = GameManager.get_item_def(item_id)
+		var export_val: int = item_def.export_value if item_def else 1
+		GameManager.record_delivery(item_id, export_val)
+	return 0
+
 # ── Pull interface ─────────────────────────────────────────────────────────────
 
 func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:

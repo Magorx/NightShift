@@ -327,6 +327,8 @@ func _restore_camera(cam_data: Dictionary) -> void:
 		# Position follows the player; only restore zoom
 		var z: float = cam_data.get("zoom", 1.0)
 		cam.zoom = Vector2(z, z)
+		if cam.has_method("set_target_zoom"):
+			cam.set_target_zoom(z)
 		# Snap camera to player position if available
 		if GameManager.player and is_instance_valid(GameManager.player):
 			cam.position = GameManager.player.position

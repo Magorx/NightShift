@@ -40,39 +40,42 @@ func run_simulation() -> void:
 	var moved_dist: float = player.position.x - start_pos.x
 	sim_assert(moved_dist > 10, "Player moved right (dist=%.1f)" % moved_dist)
 
-	# ── Test 5: Jump state machine ──────────────────────────────────────────
-	sim_assert(player.jump_state == player.JumpState.GROUNDED, "Player starts GROUNDED")
+	# ── Test 5: Vertical physics — jump from ground ────────────────────────
+	sim_assert(player._is_grounded, "Player starts grounded")
+	sim_assert(player.z_height < 0.01, "Player starts at ground level")
 
 	# Trigger jump
 	player._try_jump()
-	sim_assert(player.jump_state == player.JumpState.JUMPING, "Player now JUMPING")
+	sim_assert(not player._is_grounded, "Player now airborne")
+	sim_assert(player.z_velocity > 0, "Player has upward velocity")
 
-	# Wait for jump to complete → should become ELEVATED (standing on no building = ground level → DROPPING)
-	await sim_advance_seconds(0.5)
-	# After jump on empty ground, should have transitioned through ELEVATED→DROPPING→GROUNDED
-	sim_assert(player.jump_state == player.JumpState.GROUNDED, "Player back to GROUNDED after jumping on empty ground")
+	# Wait for jump to complete — should land back on ground
+	await sim_advance_seconds(1.0)
+	sim_assert(player._is_grounded, "Player back to grounded after jumping on empty ground")
+	sim_assert(player.z_height < 0.01, "Player at ground level after landing")
 
-	# ── Test 6: Jump state logic on buildings ────────────────────────────────
-	# Test _is_over_ground_level directly
+	# ── Test 6: Ground height on buildings ───────────────────────────────────
 	var smelter_world: Vector2 = Vector2(smelter_pos) * 32 + Vector2(16, 16)
 	player.position = smelter_world
 	player.velocity = Vector2.ZERO
-	sim_assert(not player._is_over_ground_level(), "Smelter tile is NOT ground level")
+	sim_assert(player._get_ground_height() > 0, "Smelter tile has elevated ground height")
 
-	# Test ELEVATED state stays when on a blocking building
-	player.jump_state = player.JumpState.ELEVATED
-	player._update_collision_mask()
-	sim_assert(player.z_index == 15, "ELEVATED z_index is 15")
-	sim_assert(player.collision_mask == 0, "ELEVATED collision mask is 0 (no building collision)")
+	# Simulate being elevated on a building
+	player.z_height = player.BUILDING_Z_HEIGHT
+	player._is_grounded = true
+	player._update_collision_for_height()
+	sim_assert(player.z_index == 15, "Elevated z_index is 15")
+	sim_assert(player.collision_mask == 0, "Elevated collision mask is 0 (no building collision)")
 
-	# Move off building → _is_over_ground_level should return true
+	# Move off building → ground height should be 0
 	player.position = Vector2(smelter_pos.x * 32 - 48, smelter_pos.y * 32 + 16)
-	sim_assert(player._is_over_ground_level(), "Empty tile IS ground level")
+	sim_assert(player._get_ground_height() < 0.01, "Empty tile has ground height 0")
 
-	# Reset to grounded
-	player.jump_state = player.JumpState.GROUNDED
-	player._update_collision_mask()
-	sim_assert(player.z_index == 5, "GROUNDED z_index is 5")
+	# Reset to grounded on ground
+	player.z_height = 0.0
+	player._is_grounded = true
+	player._update_collision_for_height()
+	sim_assert(player.z_index == 5, "Grounded z_index is 5")
 
 	# ── Test 7: Conveyor push ────────────────────────────────────────────────
 	# Place a conveyor and stand on it
@@ -80,8 +83,9 @@ func run_simulation() -> void:
 	sim_place_building(&"conveyor", push_conv_pos, 0)  # pointing right
 	player.position = Vector2(push_conv_pos) * 32 + Vector2(16, 16)
 	player.velocity = Vector2.ZERO
-	player.jump_state = player.JumpState.GROUNDED
-	player._update_collision_mask()
+	player.z_height = 0.0
+	player._is_grounded = true
+	player._update_collision_for_height()
 
 	var pre_push_x: float = player.position.x
 	await sim_advance_seconds(0.5)
@@ -125,7 +129,7 @@ func run_simulation() -> void:
 	sim_assert(leftover >= 0, "Overflow handled (leftover=%d)" % leftover)
 
 	# Clear inventory for next tests
-	for i in 8:
+	for i in player.INVENTORY_SLOTS:
 		player.inventory[i] = null
 
 	# ── Test 10: Ground item spawn and pickup ────────────────────────────────

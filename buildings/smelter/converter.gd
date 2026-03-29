@@ -168,6 +168,13 @@ func _try_finish_craft() -> void:
 	_active_recipe = null
 	_craft_timer = 0.0
 
+func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
+	var remaining := quantity
+	while remaining > 0 and input_inv.has_space(item_id):
+		input_inv.add(item_id)
+		remaining -= 1
+	return remaining
+
 # ── Pull interface ─────────────────────────────────────────────────────────────
 
 func has_output_toward(target_pos: Vector2i) -> bool:
@@ -311,6 +318,9 @@ func get_popup_recipe():
 	if recipes.size() > 0:
 		return recipes[0]
 	return null
+
+func get_popup_progress() -> float:
+	return get_progress()
 
 func get_inventory_items() -> Array:
 	var counts := {}
