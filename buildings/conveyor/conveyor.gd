@@ -12,6 +12,16 @@ var buffer = ItemBuffer.new(2)
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(_def, p_grid_pos, rotation)
 	direction = rotation
+	# Speed tiers based on building type
+	match _def.id:
+		&"conveyor_mk2":
+			traverse_time = 0.5
+			push_speed = 2.0
+			buffer.set_capacity(3)
+		&"conveyor_mk3":
+			traverse_time = 0.333
+			push_speed = 3.0
+			buffer.set_capacity(4)
 
 func get_direction_vector() -> Vector2i:
 	return DIRECTION_VECTORS[direction]

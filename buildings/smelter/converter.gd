@@ -38,10 +38,16 @@ var _code_anim: Node2D
 ## capacity, base_demand — set in configure based on building type.
 const ENERGY_CONFIG := {
 	"smelter": {capacity = 100.0, demand = 0.0},
-	"assembler": {capacity = 50.0, demand = 5.0},
+	"press": {capacity = 50.0, demand = 0.0},
+	"wire_drawer": {capacity = 50.0, demand = 0.0},
+	"coke_oven": {capacity = 0.0, demand = 0.0},
+	"hand_assembler": {capacity = 0.0, demand = 0.0},
+	"assembler": {capacity = 80.0, demand = 5.0},
+	"assembler_mk2": {capacity = 200.0, demand = 10.0},
+	"fuel_generator": {capacity = 300.0, demand = 0.0},
 	"chemical_plant": {capacity = 80.0, demand = 8.0},
-	"advanced_factory": {capacity = 120.0, demand = 15.0},
 	"coal_burner": {capacity = 200.0, demand = 0.0},
+	"research_lab": {capacity = 50.0, demand = 5.0},
 }
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:

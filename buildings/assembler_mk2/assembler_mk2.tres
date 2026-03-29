@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/assembler_mk2/assembler_mk2.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"assembler_mk2"
+display_name = "Assembler Mk2"
+color = Color(0.3, 0.25, 0.5, 1)
+description = "Advanced automated assembly for complex products."
+category = "converter"
+scene = ExtResource("2")
