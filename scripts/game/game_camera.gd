@@ -11,8 +11,8 @@ const ZOOM_SMOOTH_SPEED := 8.0
 
 # ── Follow ──────────────────────────────────────────────────────────────────
 const FOLLOW_SPEED := 8.0
-const CURSOR_DEADZONE := 0.85       # fraction of window — cursor inside this = no offset
-const CURSOR_WEIGHT := 0.4          # max offset strength when cursor is at window edge
+const CURSOR_DEADZONE := 0.8       # fraction of window — cursor inside this = no offset
+const CURSOR_WEIGHT := 0.2          # max offset strength when cursor is at window edge
 
 var target_node: Node2D              # the node to follow (player)
 var _target_zoom: float = 1.0

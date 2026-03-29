@@ -51,10 +51,19 @@ func _ready() -> void:
 	recipe_row_button.gui_input.connect(_on_recipe_row_input)
 
 func _process(delta: float) -> void:
-	if not visible or not _building:
+	if not _building:
 		return
 	if not is_instance_valid(_building):
 		hide_popup()
+		return
+	var logic = _building.logic
+	var has_content: bool = logic and _has_popup_content(logic)
+	if has_content and not visible:
+		visible = true
+		_update_content()
+		_update_position()
+		return
+	if not visible:
 		return
 	_update_position()
 	_update_progress_segments()
@@ -67,6 +76,10 @@ func show_building(building: Node2D, camera: Camera2D) -> void:
 	if not building:
 		hide_popup()
 		return
+	var logic = building.logic if building else null
+	if logic and not _has_popup_content(logic):
+		hide_popup()
+		return
 	_close_recipe_menu()
 	_building = building
 	_camera = camera
@@ -77,6 +90,15 @@ func show_building(building: Node2D, camera: Camera2D) -> void:
 	visible = true
 	await get_tree().process_frame
 	_update_position()
+
+func _has_popup_content(logic) -> bool:
+	if logic.get_popup_recipe():
+		return true
+	if logic.energy:
+		return true
+	if not logic.get_inventory_items().is_empty():
+		return true
+	return false
 
 func _lock_width() -> void:
 	if not _building or not _building.logic:
@@ -267,6 +289,10 @@ func _update_content() -> void:
 	var logic = _building.logic
 	if not logic:
 		return
+	if not _has_popup_content(logic):
+		visible = false
+		return
+	visible = true
 	var recipe = logic.get_popup_recipe()
 	_update_recipe_section(recipe, logic)
 	_update_energy_row(logic.energy)

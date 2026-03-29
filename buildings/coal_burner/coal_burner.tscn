@@ -5,23 +5,7 @@
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="3"]
 [ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="5"]
 [ext_resource type="Script" uid="uid://dbaj4knyfgpst" path="res://buildings/smelter/converter.gd" id="6"]
-[ext_resource type="Texture2D" path="res://buildings/coal_burner/sprites/main.png" id="7_sheet"]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_bi0"]
-atlas = ExtResource("7_sheet")
-region = Rect2(0, 0, 64, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_bi1"]
-atlas = ExtResource("7_sheet")
-region = Rect2(64, 0, 64, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_bw0"]
-atlas = ExtResource("7_sheet")
-region = Rect2(0, 64, 64, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_bw1"]
-atlas = ExtResource("7_sheet")
-region = Rect2(64, 64, 64, 32)
+[ext_resource type="Texture2D" uid="uid://cnkgo80sjcu5e" path="res://buildings/coal_burner/sprites/main.png" id="7_sheet"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba0"]
 atlas = ExtResource("7_sheet")
@@ -39,6 +23,14 @@ region = Rect2(128, 128, 64, 32)
 atlas = ExtResource("7_sheet")
 region = Rect2(192, 128, 64, 32)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_bi0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 0, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bi1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 0, 64, 32)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd0"]
 atlas = ExtResource("7_sheet")
 region = Rect2(0, 192, 64, 32)
@@ -46,6 +38,14 @@ region = Rect2(0, 192, 64, 32)
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd1"]
 atlas = ExtResource("7_sheet")
 region = Rect2(64, 192, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bw0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 64, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bw1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 64, 64, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{
@@ -100,22 +100,6 @@ animations = [{
 "speed": 6.0
 }]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ti0"]
-atlas = ExtResource("7_sheet")
-region = Rect2(0, 32, 64, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ti1"]
-atlas = ExtResource("7_sheet")
-region = Rect2(0, 32, 64, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_tw0"]
-atlas = ExtResource("7_sheet")
-region = Rect2(0, 96, 64, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_tw1"]
-atlas = ExtResource("7_sheet")
-region = Rect2(64, 96, 64, 32)
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta0"]
 atlas = ExtResource("7_sheet")
 region = Rect2(0, 96, 64, 32)
@@ -132,6 +116,14 @@ region = Rect2(0, 160, 64, 32)
 atlas = ExtResource("7_sheet")
 region = Rect2(64, 160, 64, 32)
 
+[sub_resource type="AtlasTexture" id="AtlasTexture_ti0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 32, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ti1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 32, 64, 32)
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_td0"]
 atlas = ExtResource("7_sheet")
 region = Rect2(0, 32, 64, 32)
@@ -139,6 +131,14 @@ region = Rect2(0, 32, 64, 32)
 [sub_resource type="AtlasTexture" id="AtlasTexture_td1"]
 atlas = ExtResource("7_sheet")
 region = Rect2(0, 32, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tw0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 96, 64, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tw1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 96, 64, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{
@@ -221,13 +221,6 @@ offset_bottom = 32.0
 color = Color(0.3, 0.5, 0.9, 0)
 script = ExtResource("3")
 allow_right = false
-
-[node name="In_1" type="ColorRect" parent="Rotatable/Inputs"]
-offset_left = 32.0
-offset_right = 64.0
-offset_bottom = 32.0
-color = Color(0.3, 0.5, 0.9, 0)
-script = ExtResource("3")
 
 [node name="Outputs" type="Node2D" parent="Rotatable"]
 
