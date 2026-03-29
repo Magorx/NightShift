@@ -10,3 +10,4 @@ color = Color(0.75, 0.75, 0.8, 1)
 category = "intermediate"
 export_value = 3
 research_value = 1
+icon_atlas_index = 8

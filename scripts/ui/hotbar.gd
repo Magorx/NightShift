@@ -40,16 +40,18 @@ func _create_slot(index: int) -> PanelContainer:
 	style.set_corner_radius_all(3)
 	panel.add_theme_stylebox_override("panel", style)
 
-	# Item color indicator
-	var color_rect := ColorRect.new()
-	color_rect.name = "ItemColor"
-	color_rect.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
-	color_rect.custom_minimum_size = Vector2(20, 20)
-	color_rect.position = Vector2(10, 6)
-	color_rect.size = Vector2(20, 20)
-	color_rect.visible = false
-	color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(color_rect)
+	# Item icon indicator
+	var icon_rect := TextureRect.new()
+	icon_rect.name = "ItemIcon"
+	icon_rect.custom_minimum_size = Vector2(20, 20)
+	icon_rect.position = Vector2(10, 6)
+	icon_rect.size = Vector2(20, 20)
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon_rect.visible = false
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(icon_rect)
 
 	# Quantity label
 	var label := Label.new()
@@ -88,7 +90,7 @@ func _on_slot_input(event: InputEvent, index: int) -> void:
 func _update_slot(index: int, player) -> void:
 	var panel: PanelContainer = _slots[index]
 	var style: StyleBoxFlat = panel.get_theme_stylebox("panel")
-	var color_rect: ColorRect = panel.get_node("ItemColor")
+	var icon_rect: TextureRect = panel.get_node("ItemIcon")
 	var label: Label = panel.get_node("QuantityLabel")
 	var slot_data = player.inventory[index]
 
@@ -109,12 +111,11 @@ func _update_slot(index: int, player) -> void:
 		style.border_color = EMPTY_COLOR
 
 	if slot_data != null and not is_source_empty:
-		var item_def = GameManager.get_item_def(slot_data.item_id)
-		color_rect.color = item_def.color if item_def else Color.WHITE
-		color_rect.visible = true
+		icon_rect.texture = GameManager.get_item_icon(slot_data.item_id)
+		icon_rect.visible = true
 		label.text = str(slot_data.quantity) if slot_data.quantity > 1 else ""
 	else:
-		color_rect.visible = false
+		icon_rect.visible = false
 		label.text = ""
 
 	panel.modulate = Color(0.5, 0.5, 0.5, 0.5) if is_source_empty else Color.WHITE

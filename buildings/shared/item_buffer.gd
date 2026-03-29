@@ -82,13 +82,9 @@ func cleanup() -> void:
 		free_visual(item)
 	items.clear()
 
-## Create a colored item-dot visual from the pool.
+## Create an item visual from the pool using the atlas texture.
 func create_visual(item_id: StringName):
-	var item_def = GameManager.get_item_def(item_id)
-	var color := Color.WHITE
-	if item_def:
-		color = item_def.color
-	return GameManager.acquire_visual(color)
+	return GameManager.acquire_visual(item_id)
 
 ## Count items by id. Returns Dictionary: StringName -> int.
 func get_item_counts() -> Dictionary:

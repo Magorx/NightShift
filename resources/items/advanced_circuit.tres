@@ -4,10 +4,10 @@
 
 [resource]
 script = ExtResource("1")
-id = &"coal"
-display_name = "Coal"
-color = Color(0.15, 0.15, 0.15, 1)
-category = "raw"
-export_value = 1
-research_value = 0
-icon_atlas_index = 2
+id = &"advanced_circuit"
+display_name = "Advanced Circuit"
+color = Color(0.15, 0.3, 0.6, 1)
+category = "advanced"
+export_value = 25
+research_value = 10
+icon_atlas_index = 29

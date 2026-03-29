@@ -45,17 +45,19 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	var item_def = GameManager.get_item_def(item_id)
-	var color: Color = item_def.color if item_def else Color.WHITE
-	var count := mini(quantity, MAX_ITEMS_VISIBLE_IN_STACK) # max 4 visible dots
+	var icon: AtlasTexture = GameManager.get_item_icon(item_id)
+	var count := mini(quantity, MAX_ITEMS_VISIBLE_IN_STACK)
 
 	for i in count:
 		var offset := Vector2(i * 3.0 - (count - 1) * 1.5, -i * 2.0)
-		var rect := Rect2(offset - Vector2(4, 4), Vector2(8, 8))
 		if _hovered:
-			draw_rect(Rect2(offset - Vector2(6, 6), Vector2(12, 12)), Color(1, 1, 1, 0.85), false, 1.5)
-		draw_rect(rect, color)
-		draw_rect(rect, Color(0, 0, 0, 0.3), false, 1.0)
+			draw_rect(Rect2(offset - Vector2(7, 7), Vector2(14, 14)), Color(1, 1, 1, 0.85), false, 1.5)
+		if icon:
+			draw_texture_rect(icon, Rect2(offset - Vector2(6, 6), Vector2(12, 12)), false)
+		else:
+			var item_def = GameManager.get_item_def(item_id)
+			var color: Color = item_def.color if item_def else Color.WHITE
+			draw_rect(Rect2(offset - Vector2(4, 4), Vector2(8, 8)), color)
 
 	if _hovered:
 		var camera := get_viewport().get_camera_2d()

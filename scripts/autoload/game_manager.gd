@@ -159,8 +159,16 @@ func _load_recipes() -> void:
 # ── Item visuals (MultiMesh) ──────────────────────────────────────────────────
 
 ## Acquire an item visual handle backed by the shared MultiMesh.
-func acquire_visual(color: Color):
-	return _ItemVisualHandle.new(item_visual_manager, item_visual_manager.allocate(color))
+## Accepts either an atlas_index (int) or item_id (StringName) to look up the index.
+func acquire_visual(item_id_or_index) -> RefCounted:
+	var atlas_index: int = 0
+	if item_id_or_index is int:
+		atlas_index = item_id_or_index
+	elif item_id_or_index is StringName or item_id_or_index is String:
+		var def = get_item_def(item_id_or_index)
+		if def:
+			atlas_index = def.icon_atlas_index
+	return _ItemVisualHandle.new(item_visual_manager, item_visual_manager.allocate(atlas_index))
 
 ## Release an item visual handle back to the MultiMesh free pool.
 func release_visual(handle) -> void:
@@ -177,6 +185,37 @@ func get_item_def(item_id: StringName):
 		_item_def_cache[item_id] = def
 		return def
 	return null
+
+# ── Item icon atlas ────────────────────────────────────────────────────────────
+
+var _item_atlas_texture: Texture2D
+var _item_icon_cache: Dictionary = {}  # icon_atlas_index -> AtlasTexture
+const ITEM_ATLAS_CELL := 16
+const ITEM_ATLAS_COLS := 8
+
+func get_item_atlas() -> Texture2D:
+	if not _item_atlas_texture:
+		_item_atlas_texture = load("res://resources/items/sprites/item_atlas.png")
+	return _item_atlas_texture
+
+## Get an AtlasTexture for a specific item's icon.
+func get_item_icon(item_id: StringName) -> AtlasTexture:
+	var def = get_item_def(item_id)
+	if not def:
+		return null
+	var idx: int = def.icon_atlas_index
+	if _item_icon_cache.has(idx):
+		return _item_icon_cache[idx]
+	var atlas := AtlasTexture.new()
+	atlas.atlas = get_item_atlas()
+	@warning_ignore("integer_division")
+	var col: int = idx % ITEM_ATLAS_COLS
+	@warning_ignore("integer_division")
+	var row: int = idx / ITEM_ATLAS_COLS
+	atlas.region = Rect2(col * ITEM_ATLAS_CELL, row * ITEM_ATLAS_CELL, ITEM_ATLAS_CELL, ITEM_ATLAS_CELL)
+	atlas.filter_clip = true
+	_item_icon_cache[idx] = atlas
+	return atlas
 
 func record_delivery(item_id: StringName, value: int = 0) -> void:
 	if not items_delivered.has(item_id):

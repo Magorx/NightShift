@@ -182,12 +182,16 @@ func _create_recipe_row(config, col: Dictionary) -> HBoxContainer:
 
 func _add_item_slot(row: HBoxContainer, stack, num_w: float) -> void:
 	var qty: int = stack.quantity
-	var color: Color
-	if stack is ItemStack:
-		color = stack.item.color if stack.item else Color.WHITE
-	else:
-		color = stack.color
-	_add_slot(row, str(qty), color, num_w)
+	var item_id: StringName = &""
+	if stack is ItemStack and stack.item:
+		item_id = stack.item.id
+	var num_label := Label.new()
+	num_label.text = str(qty)
+	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
+	num_label.custom_minimum_size = Vector2(num_w, 0)
+	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(num_label)
+	row.add_child(_create_item_icon(item_id))
 
 func _add_slot(row: HBoxContainer, num_text: String, color: Color, num_w: float) -> void:
 	var num_label := Label.new()
@@ -196,7 +200,7 @@ func _add_slot(row: HBoxContainer, num_text: String, color: Color, num_w: float)
 	num_label.custom_minimum_size = Vector2(num_w, 0)
 	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(num_label)
-	row.add_child(_create_outlined_icon(color))
+	row.add_child(_create_color_icon(color))
 
 func _on_move_input(event: InputEvent, idx: int, direction: int) -> void:
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
@@ -223,7 +227,20 @@ func _on_toggle_input(event: InputEvent, config, rect: ColorRect) -> void:
 
 # ── Icon helpers ──────────────────────────────────────────────────────────
 
-func _create_outlined_icon(color: Color) -> PanelContainer:
+func _create_item_icon(item_id: StringName) -> Control:
+	var icon := GameManager.get_item_icon(item_id)
+	if icon:
+		var tex_rect := TextureRect.new()
+		tex_rect.texture = icon
+		tex_rect.custom_minimum_size = ICON_SIZE
+		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return tex_rect
+	return _create_color_icon(Color.WHITE)
+
+func _create_color_icon(color: Color) -> PanelContainer:
 	var outline_color := Color.BLACK if color.get_luminance() > 0.4 else Color.WHITE
 	var style := StyleBoxFlat.new()
 	style.bg_color = color

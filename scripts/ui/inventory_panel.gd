@@ -23,7 +23,7 @@ var _last_clicked_slot: int = -1
 
 # Cursor ghost (created in code with top_level so it follows the mouse freely)
 var _cursor_ghost: Control
-var _ghost_color: ColorRect
+var _ghost_icon: TextureRect
 var _ghost_label: Label
 
 # Pickup fly animation (slot → cursor)
@@ -62,14 +62,17 @@ func _create_slot(index: int) -> PanelContainer:
 	style.set_corner_radius_all(3)
 	panel.add_theme_stylebox_override("panel", style)
 
-	var color_rect := ColorRect.new()
-	color_rect.name = "ItemColor"
-	color_rect.custom_minimum_size = Vector2(28, 28)
-	color_rect.position = Vector2(10, 10)
-	color_rect.size = Vector2(28, 28)
-	color_rect.visible = false
-	color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(color_rect)
+	var icon_rect := TextureRect.new()
+	icon_rect.name = "ItemIcon"
+	icon_rect.custom_minimum_size = Vector2(28, 28)
+	icon_rect.position = Vector2(10, 10)
+	icon_rect.size = Vector2(28, 28)
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon_rect.visible = false
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(icon_rect)
 
 	var label := Label.new()
 	label.name = "QuantityLabel"
@@ -106,11 +109,14 @@ func _create_cursor_ghost() -> void:
 	_cursor_ghost.top_level = true
 	_cursor_ghost.z_index = 100
 
-	_ghost_color = ColorRect.new()
-	_ghost_color.size = Vector2(24, 24)
-	_ghost_color.modulate.a = 0.75
-	_ghost_color.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_cursor_ghost.add_child(_ghost_color)
+	_ghost_icon = TextureRect.new()
+	_ghost_icon.size = Vector2(24, 24)
+	_ghost_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_ghost_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_ghost_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_ghost_icon.modulate.a = 0.75
+	_ghost_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cursor_ghost.add_child(_ghost_icon)
 
 	_ghost_label = Label.new()
 	_ghost_label.add_theme_font_size_override("font_size", 10)
@@ -133,7 +139,7 @@ func _update_slots() -> void:
 func _update_slot(index: int, player) -> void:
 	var panel: PanelContainer = _slots[index]
 	var style: StyleBoxFlat = panel.get_theme_stylebox("panel")
-	var color_rect: ColorRect = panel.get_node("ItemColor")
+	var icon_rect: TextureRect = panel.get_node("ItemIcon")
 	var label: Label = panel.get_node("QuantityLabel")
 	var slot_data = player.inventory[index]
 	# Source slot is dimmed only when it was fully emptied by the pick-up
@@ -151,12 +157,11 @@ func _update_slot(index: int, player) -> void:
 
 	# Content
 	if slot_data != null and not is_source_empty:
-		var item_def = GameManager.get_item_def(slot_data.item_id)
-		color_rect.color = item_def.color if item_def else Color.WHITE
-		color_rect.visible = true
+		icon_rect.texture = GameManager.get_item_icon(slot_data.item_id)
+		icon_rect.visible = true
 		label.text = str(slot_data.quantity) if slot_data.quantity > 1 else ""
 	else:
-		color_rect.visible = false
+		icon_rect.visible = false
 		label.text = ""
 
 	panel.modulate = Color(0.5, 0.5, 0.5, 0.5) if is_source_empty else Color.WHITE
@@ -177,8 +182,7 @@ func _update_cursor_ghost() -> void:
 	pos.x = clampf(pos.x, 0, vp_size.x - ghost_size.x)
 	pos.y = clampf(pos.y, 0, vp_size.y - ghost_size.y)
 	_cursor_ghost.global_position = pos
-	var item_def = GameManager.get_item_def(_held_item.item_id)
-	_ghost_color.color = item_def.color if item_def else Color.WHITE
+	_ghost_icon.texture = GameManager.get_item_icon(_held_item.item_id)
 	_ghost_label.text = str(_held_item.quantity) if _held_item.quantity > 1 else ""
 
 # ── Slot Interactions ───────────────────────────────────────────────────────
@@ -405,13 +409,15 @@ func _animate_pickup_to_cursor(slot_index: int, item_id: StringName, quantity: i
 	_fly_item.top_level = true
 	_fly_item.z_index = 101
 
-	var color_rect := ColorRect.new()
-	color_rect.size = Vector2(24, 24)
-	color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var item_def = GameManager.get_item_def(item_id)
-	color_rect.color = item_def.color if item_def else Color.WHITE
-	color_rect.modulate.a = 0.75
-	_fly_item.add_child(color_rect)
+	var icon_rect := TextureRect.new()
+	icon_rect.size = Vector2(24, 24)
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon_rect.texture = GameManager.get_item_icon(item_id)
+	icon_rect.modulate.a = 0.75
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fly_item.add_child(icon_rect)
 
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", 10)

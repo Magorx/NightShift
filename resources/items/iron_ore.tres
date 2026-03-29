@@ -10,3 +10,4 @@ color = Color(0.55, 0.55, 0.55, 1)
 category = "raw"
 export_value = 1
 research_value = 0
+icon_atlas_index = 0

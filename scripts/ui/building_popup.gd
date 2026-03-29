@@ -379,12 +379,17 @@ func _update_progress_segments() -> void:
 
 func _add_item_slot(row: HBoxContainer, stack, num_w: float = NUM_WIDTH) -> void:
 	var qty: int = stack.quantity
-	var color: Color
-	if stack is ItemStack:
-		color = stack.item.color if stack.item else Color.WHITE
-	else:
-		color = stack.color
-	_add_slot(row, str(qty), color, num_w)
+	var item_id: StringName = &""
+	if stack is ItemStack and stack.item:
+		item_id = stack.item.id
+	var num_label := Label.new()
+	num_label.text = str(qty)
+	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
+	num_label.custom_minimum_size = Vector2(num_w, 0)
+	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(num_label)
+	row.add_child(_create_item_icon(item_id))
 
 func _add_slot(row: HBoxContainer, num_text: String, color: Color, num_w: float = NUM_WIDTH) -> void:
 	var num_label := Label.new()
@@ -394,9 +399,22 @@ func _add_slot(row: HBoxContainer, num_text: String, color: Color, num_w: float 
 	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(num_label)
-	row.add_child(_create_outlined_icon(color))
+	row.add_child(_create_color_icon(color))
 
-func _create_outlined_icon(color: Color) -> PanelContainer:
+func _create_item_icon(item_id: StringName) -> Control:
+	var icon := GameManager.get_item_icon(item_id)
+	if icon:
+		var tex_rect := TextureRect.new()
+		tex_rect.texture = icon
+		tex_rect.custom_minimum_size = ICON_SIZE
+		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return tex_rect
+	return _create_color_icon(Color.WHITE)
+
+func _create_color_icon(color: Color) -> PanelContainer:
 	var outline_color := Color.BLACK if color.get_luminance() > 0.4 else Color.WHITE
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
@@ -434,6 +452,11 @@ func _update_inventory_row(items: Array) -> void:
 		var w: float = font.get_string_size(str(entry.count), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 		max_num_w = maxf(max_num_w, w)
 	for entry in items:
-		var item_def = GameManager.get_item_def(entry.id)
-		var color: Color = item_def.color if item_def else Color.WHITE
-		_add_slot(inventory_row, str(entry.count), color, max_num_w)
+		var num_label := Label.new()
+		num_label.text = str(entry.count)
+		num_label.add_theme_font_size_override("font_size", FONT_SIZE)
+		num_label.custom_minimum_size = Vector2(max_num_w, 0)
+		num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inventory_row.add_child(num_label)
+		inventory_row.add_child(_create_item_icon(entry.id))

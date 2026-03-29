@@ -7,3 +7,4 @@ extends Resource
 @export var category: String # "raw", "intermediate", "advanced"
 @export var export_value: int = 1
 @export var research_value: int = 0
+@export var icon_atlas_index: int = 0

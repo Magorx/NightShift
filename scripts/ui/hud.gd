@@ -113,11 +113,21 @@ func _update_delivery_counter() -> void:
 	for entry in entries:
 		var row := HBoxContainer.new()
 
-		var color_rect := ColorRect.new()
-		color_rect.custom_minimum_size = Vector2(12, 12)
+		var icon := GameManager.get_item_icon(entry.id)
 		var item_def = _get_item_def(entry.id)
-		color_rect.color = item_def.color if item_def else Color.WHITE
-		row.add_child(color_rect)
+		if icon:
+			var tex_rect := TextureRect.new()
+			tex_rect.texture = icon
+			tex_rect.custom_minimum_size = Vector2(12, 12)
+			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			row.add_child(tex_rect)
+		else:
+			var color_rect := ColorRect.new()
+			color_rect.custom_minimum_size = Vector2(12, 12)
+			color_rect.color = item_def.color if item_def else Color.WHITE
+			row.add_child(color_rect)
 
 		var name_label := Label.new()
 		name_label.text = " %s" % (item_def.display_name if item_def else str(entry.id))

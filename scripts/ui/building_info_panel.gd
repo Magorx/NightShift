@@ -114,10 +114,21 @@ func _populate_io_row(row: HBoxContainer, stacks: Array) -> void:
 	for child in row.get_children():
 		child.queue_free()
 	for stack in stacks:
-		var color_rect := ColorRect.new()
-		color_rect.custom_minimum_size = Vector2(12, 12)
-		color_rect.color = stack.item.color if stack.item else Color.WHITE
-		row.add_child(color_rect)
+		var item_id: StringName = stack.item.id if stack.item else &""
+		var icon := GameManager.get_item_icon(item_id)
+		if icon:
+			var tex_rect := TextureRect.new()
+			tex_rect.texture = icon
+			tex_rect.custom_minimum_size = Vector2(12, 12)
+			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			row.add_child(tex_rect)
+		else:
+			var color_rect := ColorRect.new()
+			color_rect.custom_minimum_size = Vector2(12, 12)
+			color_rect.color = stack.item.color if stack.item else Color.WHITE
+			row.add_child(color_rect)
 		var label := Label.new()
 		label.text = "%dx %s" % [stack.quantity, stack.item.display_name if stack.item else "?"]
 		label.add_theme_font_size_override("font_size", 12)
