@@ -18,6 +18,10 @@ var recipes: Array = []:
 	set(value):
 		recipes = value
 		_build_capacities()
+		_build_recipe_configs()
+
+## Per-recipe configuration (priority + enabled). One RecipeConfig per recipe.
+var recipe_configs: Array = []
 
 ## Inventories for input ingredients and craft outputs.
 var input_inv: Inventory = Inventory.new()
@@ -37,6 +41,7 @@ const ENERGY_CONFIG := {
 	"assembler": {capacity = 50.0, demand = 5.0},
 	"chemical_plant": {capacity = 80.0, demand = 8.0},
 	"advanced_factory": {capacity = 120.0, demand = 15.0},
+	"coal_burner": {capacity = 200.0, demand = 0.0},
 }
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
@@ -51,6 +56,11 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	if ENERGY_CONFIG.has(converter_type):
 		var cfg = ENERGY_CONFIG[converter_type]
 		energy = BuildingEnergy.new(cfg.capacity, cfg.demand, 0.0)
+
+func _build_recipe_configs() -> void:
+	recipe_configs.clear()
+	for i in range(recipes.size()):
+		recipe_configs.append(RecipeConfig.new(recipes[i], i + 1))
 
 func _build_capacities() -> void:
 	input_inv = Inventory.new()
@@ -73,6 +83,13 @@ func _physics_process(delta: float) -> void:
 	if energy and energy.base_energy_demand > 0.0 and not energy.is_powered:
 		return
 
+	# Pause energy-generating recipes when the grid is full to avoid wasting fuel
+	var is_generating: bool = _active_recipe != null and _active_recipe.energy_output > 0.0
+	if is_generating and energy and energy.grid_full:
+		energy.generation_rate = 0.0
+		_update_building_sprites(false, delta)
+		return
+
 	_try_pull_inputs()
 
 	if _active_recipe:
@@ -81,6 +98,13 @@ func _physics_process(delta: float) -> void:
 			_try_finish_craft()
 	else:
 		_try_start_craft()
+
+	# Set generation_rate for energy-producing recipes
+	if energy:
+		if _active_recipe and _active_recipe.energy_output > 0.0:
+			energy.generation_rate = _active_recipe.energy_output / _active_recipe.craft_time
+		else:
+			energy.generation_rate = 0.0
 
 	_update_building_sprites(_active_recipe != null, delta)
 	if _code_anim and _code_anim.has_method("set_active"):
@@ -109,29 +133,18 @@ func _update_energy_demand() -> void:
 	energy.energy_demand = get_max_affordable_recipe_cost()
 
 func _try_start_craft() -> void:
-	# Sort candidates by total output quantity (highest first) — prefer most productive recipe
-	var candidates: Array = []
-	for recipe in recipes:
-		if _can_craft(recipe):
-			candidates.append(recipe)
-	candidates.sort_custom(_compare_recipes_by_output)
-
-	for recipe in candidates:
-		if recipe.energy_cost > 0.0:
-			if not energy or energy.energy_stored < recipe.energy_cost:
+	var sorted := recipe_configs.duplicate()
+	sorted.sort_custom(func(a, b): return a.priority < b.priority)
+	for config in sorted:
+		if not config.enabled:
+			continue
+		if not _can_craft(config.recipe):
+			continue
+		if config.recipe.energy_cost > 0.0:
+			if not energy or energy.energy_stored < config.recipe.energy_cost:
 				continue
-		_start_craft(recipe)
+		_start_craft(config.recipe)
 		return
-
-## Compare recipes by total output quantity (descending).
-static func _compare_recipes_by_output(a, b) -> bool:
-	var a_total := 0
-	for out in a.outputs:
-		a_total += out.quantity
-	var b_total := 0
-	for out in b.outputs:
-		b_total += out.quantity
-	return a_total > b_total
 
 func _can_craft(recipe) -> bool:
 	for inp in recipe.inputs:
@@ -144,9 +157,11 @@ func _can_craft(recipe) -> bool:
 
 func get_max_affordable_recipe_cost() -> float:
 	var max_cost := 0.0
-	for recipe in recipes:
-		if recipe.energy_cost > max_cost and _can_craft(recipe):
-			max_cost = recipe.energy_cost
+	for config in recipe_configs:
+		if not config.enabled:
+			continue
+		if config.recipe.energy_cost > max_cost and _can_craft(config.recipe):
+			max_cost = config.recipe.energy_cost
 	return max_cost
 
 func _start_craft(recipe) -> void:
@@ -238,6 +253,10 @@ func serialize_state() -> Dictionary:
 	state["output_inv"] = _serialize_inventory(output_inv)
 	if energy:
 		state["energy"] = energy.serialize()
+	var configs_data: Array = []
+	for config in recipe_configs:
+		configs_data.append(config.serialize())
+	state["recipe_configs"] = configs_data
 	return state
 
 func deserialize_state(state: Dictionary) -> void:
@@ -261,6 +280,8 @@ func deserialize_state(state: Dictionary) -> void:
 				break
 	if state.has("energy") and energy:
 		energy.deserialize(state["energy"])
+	if state.has("recipe_configs"):
+		RecipeConfig.deserialize_into(recipe_configs, state["recipe_configs"])
 
 func _serialize_inventory(inv: Inventory) -> Dictionary:
 	var result := {}
@@ -309,6 +330,9 @@ func get_info_stats() -> Array:
 		stats.append({type = "inventory", label = "Output", items = output_items})
 
 	return stats
+
+func get_recipe_configs() -> Array:
+	return recipe_configs
 
 func get_popup_recipe():
 	if _active_recipe:

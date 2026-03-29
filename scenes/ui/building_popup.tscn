@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://building_popup"]
+[gd_scene load_steps=6 format=3 uid="uid://building_popup"]
 
 [ext_resource type="Script" path="res://scripts/ui/building_popup.gd" id="1"]
 
@@ -28,6 +28,22 @@ corner_radius_top_right = 2
 corner_radius_bottom_left = 2
 corner_radius_bottom_right = 2
 
+[sub_resource type="StyleBoxFlat" id="recipe_row_style"]
+bg_color = Color(0.15, 0.15, 0.15, 0.3)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.6, 0.6, 0.6, 0.5)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_left = 2
+corner_radius_bottom_right = 2
+content_margin_left = 3.0
+content_margin_top = 2.0
+content_margin_right = 3.0
+content_margin_bottom = 2.0
+
 [node name="BuildingPopup" type="PanelContainer"]
 visible = false
 z_index = 100
@@ -51,9 +67,16 @@ visible = false
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="RecipeRow" type="HBoxContainer" parent="MarginContainer/VBox/RecipeSection"]
+[node name="RecipeRowButton" type="PanelContainer" parent="MarginContainer/VBox/RecipeSection"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_filter = 0
+theme_override_styles/panel = SubResource("recipe_row_style")
+
+[node name="RecipeRow" type="HBoxContainer" parent="MarginContainer/VBox/RecipeSection/RecipeRowButton"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
 theme_override_constants/separation = 3
 
 [node name="CraftBarRow" type="HBoxContainer" parent="MarginContainer/VBox/RecipeSection"]

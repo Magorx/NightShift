@@ -25,10 +25,7 @@ func _init() -> void:
 	multimesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_2D
 	multimesh.use_custom_data = true
-
-	var mesh := QuadMesh.new()
-	mesh.size = Vector2(TILE_SIZE, TILE_SIZE)
-	multimesh.mesh = mesh
+	multimesh.mesh = _create_quad_mesh()
 
 	_material = _create_material()
 
@@ -161,6 +158,25 @@ func _grow(new_capacity: int) -> void:
 		multimesh.set_instance_transform_2d(i, Transform2D(0, HIDDEN_POS))
 		_free_list.append(i)
 
+func _create_quad_mesh() -> Mesh:
+	var arr_mesh := ArrayMesh.new()
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	var h := TILE_SIZE * 0.5
+	# Vertices centered at origin; in 2D (Y-down) (-h,-h) is top-left
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
+		Vector3(-h, -h, 0), Vector3(h, -h, 0),
+		Vector3(h, h, 0), Vector3(-h, h, 0),
+	])
+	# UVs: (0,0) at top-left, (1,1) at bottom-right — no ambiguity
+	arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array([
+		Vector2(0, 0), Vector2(1, 0),
+		Vector2(1, 1), Vector2(0, 1),
+	])
+	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
+	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return arr_mesh
+
 func _create_material() -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = "shader_type canvas_item;
@@ -185,9 +201,7 @@ void vertex() {
 void fragment() {
 	float u = UV.x;
 	float v = UV.y;
-	if (v_flip < 0.5) {
-		v = 1.0 - v;
-	}
+	if (v_flip > 0.5) v = 1.0 - v;
 	float col = floor(frame_idx);
 	float row = v_row;
 	vec2 atlas_uv = vec2((col + u) / COLS, (row + v) / ROWS);

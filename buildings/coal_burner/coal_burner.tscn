@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="3"]
 [ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="5"]
-[ext_resource type="Script" uid="uid://b3j5yw3ptf61h" path="res://buildings/coal_burner/coal_burner_logic.gd" id="6"]
+[ext_resource type="Script" uid="uid://dbaj4knyfgpst" path="res://buildings/smelter/converter.gd" id="6"]
 [ext_resource type="Texture2D" path="res://buildings/coal_burner/sprites/main.png" id="7_sheet"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bi0"]
@@ -251,5 +251,5 @@ sprite_frames = SubResource("SpriteFrames_top")
 animation = &"idle"
 autoplay = "idle"
 
-[node name="CoalBurnerLogic" type="Node" parent="."]
+[node name="ConverterLogic" type="Node" parent="."]
 script = ExtResource("6")

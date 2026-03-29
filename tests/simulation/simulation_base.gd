@@ -28,9 +28,16 @@ var _screenshot_index: int = 0
 var _screenshot_dir: String = ""
 var _last_capture_tick: int = -SCREENSHOT_INTERVAL  # ensure first eligible capture fires
 
+const TIMEOUT_SECONDS := 60.0
+
 func _ready():
 	# Prevent simulations from overwriting real save files
 	SaveManager.autosave_enabled = false
+
+	# Auto-kill non-playable simulations after TIMEOUT_SECONDS to prevent hangs
+	if sim_mode != "visual":
+		var timer := get_tree().create_timer(TIMEOUT_SECONDS, true, false, true)
+		timer.timeout.connect(_on_timeout)
 
 	# Ensure deterministic terrain for reproducible screenshots.
 	# game_world._ready() replaces world_seed=0 with randi(), so set a
@@ -270,6 +277,10 @@ func sim_assert(condition: bool, msg: String) -> void:
 		_failed = true
 	else:
 		print("[SIM OK] " + msg)
+
+func _on_timeout() -> void:
+	printerr("[SIM FAIL] Simulation timed out after %d seconds" % int(TIMEOUT_SECONDS))
+	get_tree().quit(1)
 
 func sim_finish() -> void:
 	# Run screenshot comparison if in compare mode
