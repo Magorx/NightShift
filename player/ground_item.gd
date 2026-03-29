@@ -7,6 +7,7 @@ const Z_NORMAL := 10
 const Z_HOVERED := 20
 const MERGE_RANGE := 24.0
 const MERGE_INTERVAL := 2.0
+const FEED_INTERVAL := 0.5
 const MAX_ITEMS_VISIBLE_IN_STACK := 3
 const STACK_COUNT_FONT_SIZE := 15
 
@@ -16,11 +17,13 @@ var despawn_timer: float = 120.0  # seconds until auto-despawn
 var _pickup_immunity: float = 0.0  # seconds of pickup immunity (after death drop)
 var _hovered: bool = false
 var _merge_timer: float = 0.0
+var _feed_timer: float = 0.0
 
 func _ready() -> void:
 	add_to_group("ground_items")
 	z_index = Z_NORMAL
 	_merge_timer = randf() * MERGE_INTERVAL # stagger merge checks
+	_feed_timer = randf() * FEED_INTERVAL
 
 func _process(delta: float) -> void:
 	despawn_timer -= delta
@@ -35,6 +38,10 @@ func _process(delta: float) -> void:
 	if _merge_timer >= MERGE_INTERVAL:
 		_merge_timer = 0.0
 		_try_merge_nearby()
+	_feed_timer += delta
+	if _feed_timer >= FEED_INTERVAL:
+		_feed_timer = 0.0
+		_try_feed_building()
 	queue_redraw()
 
 func _draw() -> void:
@@ -97,6 +104,19 @@ func _try_merge_nearby() -> void:
 				quantity += other.quantity
 				other.queue_free()
 				return
+
+# ── Building feed ────────────────────────────────────────────────────────────
+
+func _try_feed_building() -> void:
+	var grid_pos := Vector2i(floori(position.x / 32.0), floori(position.y / 32.0))
+	var building = GameManager.get_building_at(grid_pos)
+	if not building or not building.logic:
+		return
+	var leftover = building.logic.try_insert_item(item_id, quantity)
+	if leftover < quantity:
+		quantity = leftover
+		if quantity <= 0:
+			queue_free()
 
 func set_pickup_immunity(time: float) -> void:
 	_pickup_immunity = time

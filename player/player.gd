@@ -62,6 +62,12 @@ var stamina: float = STAMINA_MAX
 const PLAYER_COLLISION_LAYER := 1
 const BUILDING_COLLISION_LAYER := 2
 
+# ── Conveyor item hover ─────────────────────────────────────────────────────
+const CONV_HOVER_RADIUS := 12.0
+var _hovered_conv = null  # ConveyorBelt or null
+var _hovered_conv_item_idx: int = -1
+var _conv_highlight: Node2D = null
+
 # ── References ───────────────────────────────────────────────────────────────
 @onready var sprite: Node2D = $PlayerSprite
 @onready var shadow: Node2D = $Shadow
@@ -74,6 +80,7 @@ func _ready() -> void:
 		inventory[i] = null
 	spawn_position = position
 	z_index = 5  # GROUNDED z-index: above conveyors, below buildings
+	_create_conv_highlight()
 
 func _physics_process(delta: float) -> void:
 	if _is_dead:
@@ -91,10 +98,17 @@ func _physics_process(delta: float) -> void:
 
 	# Update visuals
 	_update_visuals(delta)
+	_update_conv_item_hover()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _is_dead:
 		return
+	# Click on hovered conveyor item to pick up
+	if _hovered_conv and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if _conv_highlight and position.distance_to(_conv_highlight.position) <= PICKUP_RANGE:
+			_pickup_hovered_conv_item()
+			get_viewport().set_input_as_handled()
+			return
 	if event.is_action_pressed(&"player_jump"):
 		_try_jump()
 	elif event.is_action_pressed(&"player_interact"):
@@ -369,24 +383,9 @@ func _try_pickup() -> void:
 	if picked_up:
 		return
 
-	# Check conveyor items
-	var grid_pos := _get_grid_pos()
-	# Check the player's tile and adjacent tiles
-	var offsets: Array[Vector2i] = [Vector2i.ZERO, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
-	for offset_v: Vector2i in offsets:
-		var check_pos: Vector2i = grid_pos + offset_v
-		var tile_center: Vector2 = Vector2(check_pos) * TILE_SIZE + Vector2(TILE_SIZE, TILE_SIZE) * 0.5
-		if position.distance_to(tile_center) > PICKUP_RANGE:
-			continue
-		var conv = GameManager.get_conveyor_at(check_pos)
-		if conv and conv.has_item():
-			var front: Dictionary = conv.get_front_item()
-			if front.progress >= 0.5:  # Only pick up items that are at least halfway through
-				var item_id: StringName = front.id
-				var leftover: int = add_item(item_id, 1)
-				if leftover == 0:
-					conv.pop_front_item()
-					return
+	# Check hovered conveyor item
+	if _hovered_conv and _conv_highlight and position.distance_to(_conv_highlight.position) <= PICKUP_RANGE:
+		_pickup_hovered_conv_item()
 
 func _try_drop(drop_stack: bool) -> void:
 	if inventory[selected_slot] == null:
@@ -409,7 +408,11 @@ func _try_drop(drop_stack: bool) -> void:
 		# Drop the remainder that didn't fit
 		dropped.quantity = leftover
 
-	_spawn_ground_item(dropped.item_id, dropped.quantity, drop_pos if not building else position)
+	# Drop on top of the building so it can consume from the stack later
+	var ground_pos := drop_pos
+	if building:
+		ground_pos = Vector2(drop_grid) * TILE_SIZE + Vector2(TILE_SIZE, TILE_SIZE) * 0.5
+	_spawn_ground_item(dropped.item_id, dropped.quantity, ground_pos)
 
 func _spawn_ground_item(item_id: StringName, quantity: int, pos: Vector2) -> void:
 	# Merge with nearby existing ground item of same type
@@ -425,6 +428,60 @@ func _spawn_ground_item(item_id: StringName, quantity: int, pos: Vector2) -> voi
 	var game_world = get_parent()
 	if game_world:
 		game_world.add_child(item)
+
+# ── Conveyor item hover ─────────────────────────────────────────────────────
+
+func _create_conv_highlight() -> void:
+	_conv_highlight = Node2D.new()
+	_conv_highlight.z_index = 15
+	_conv_highlight.visible = false
+	_conv_highlight.draw.connect(_draw_conv_highlight)
+	get_parent().add_child.call_deferred(_conv_highlight)
+
+func _draw_conv_highlight() -> void:
+	_conv_highlight.draw_rect(Rect2(-8, -8, 16, 16), Color(1, 1, 1, 0.85), false, 1.5)
+
+func _update_conv_item_hover() -> void:
+	_hovered_conv = null
+	_hovered_conv_item_idx = -1
+	if _is_dead or not _conv_highlight:
+		if _conv_highlight:
+			_conv_highlight.visible = false
+		return
+
+	var mouse_world := get_global_mouse_position()
+	var mouse_grid := Vector2i(floori(mouse_world.x / TILE_SIZE), floori(mouse_world.y / TILE_SIZE))
+
+	for offset in [Vector2i.ZERO, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]:
+		var check: Vector2i = mouse_grid + offset
+		var conv = GameManager.get_conveyor_at(check)
+		if not conv or conv.buffer.is_empty():
+			continue
+		for i in conv.buffer.items.size():
+			var item = conv.buffer.items[i]
+			if item.visual and mouse_world.distance_to(item.visual.position) < CONV_HOVER_RADIUS:
+				_hovered_conv = conv
+				_hovered_conv_item_idx = i
+				_conv_highlight.visible = true
+				_conv_highlight.position = item.visual.position
+				_conv_highlight.queue_redraw()
+				return
+
+	_conv_highlight.visible = false
+
+func _pickup_hovered_conv_item() -> void:
+	if not _hovered_conv or _hovered_conv_item_idx < 0:
+		return
+	if _hovered_conv_item_idx >= _hovered_conv.buffer.items.size():
+		return
+	var item = _hovered_conv.buffer.items[_hovered_conv_item_idx]
+	var item_id: StringName = item.id
+	var leftover: int = add_item(item_id, 1)
+	if leftover == 0:
+		_hovered_conv.buffer.free_visual(item)
+		_hovered_conv.buffer.items.remove_at(_hovered_conv_item_idx)
+		_hovered_conv = null
+		_hovered_conv_item_idx = -1
 
 # ── Visuals ──────────────────────────────────────────────────────────────────
 

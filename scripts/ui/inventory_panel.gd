@@ -342,8 +342,11 @@ func _drop_held_item_at_cursor() -> void:
 			_clear_held()
 			return
 		_held_item.quantity = leftover
-	# Drop remainder as ground item (at player's feet if building blocks the spot)
-	player._spawn_ground_item(_held_item.item_id, _held_item.quantity, player.position if building else world_pos)
+	# Drop on top of the building so it can consume from the stack later
+	var ground_pos := world_pos
+	if building:
+		ground_pos = Vector2(drop_grid) * Player.TILE_SIZE + Vector2(Player.TILE_SIZE, Player.TILE_SIZE) * 0.5
+	player._spawn_ground_item(_held_item.item_id, _held_item.quantity, ground_pos)
 	_clear_held()
 
 func _return_held_item() -> void:

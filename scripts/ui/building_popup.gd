@@ -8,61 +8,29 @@ const UPDATE_INTERVAL := 0.25
 const SCREEN_MARGIN := 4.0
 const GAP_ABOVE := 4.0
 
-const SEGMENT_COUNT := 4
-const SEGMENT_GAP := 2
 const SEGMENT_COLOR_OFF := Color(0.15, 0.15, 0.15, 0.6)
 const SEGMENT_COLOR_ON := Color(0.9, 0.75, 0.2, 0.95)
 const SEGMENT_THRESHOLDS := [0.2, 0.4, 0.6, 0.8]
 
 const ICON_SIZE := Vector2(12, 12)
+const ICON_BORDER := 1
 const FONT_SIZE := 11
 
 var _building: Node2D
 var _update_timer: float = 0.0
 var _camera: Camera2D
-var _segments: Array = [] # 4 ColorRects inside CraftBar
 
 @onready var recipe_section: VBoxContainer = %RecipeSection
 @onready var craft_bar_row: HBoxContainer = %CraftBarRow
-@onready var craft_bar: HBoxContainer = %CraftBar
 @onready var recipe_row: HBoxContainer = %RecipeRow
 @onready var energy_row: HBoxContainer = %EnergyRow
 @onready var energy_bar: ProgressBar = %EnergyBar
 @onready var energy_label: Label = %EnergyLabel
 @onready var inventory_row: HBoxContainer = %InventoryRow
+@onready var _segments: Array = [%Seg0, %Seg1, %Seg2, %Seg3]
 
 func _ready() -> void:
 	visible = false
-	_setup_energy_bar_style()
-	_setup_craft_segments()
-
-func _setup_energy_bar_style() -> void:
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color(0.2, 0.45, 0.85, 0.9)
-	fill.corner_radius_top_left = 2
-	fill.corner_radius_top_right = 2
-	fill.corner_radius_bottom_left = 2
-	fill.corner_radius_bottom_right = 2
-	energy_bar.add_theme_stylebox_override("fill", fill)
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.12, 0.14, 0.18, 0.7)
-	bg.corner_radius_top_left = 2
-	bg.corner_radius_top_right = 2
-	bg.corner_radius_bottom_left = 2
-	bg.corner_radius_bottom_right = 2
-	energy_bar.add_theme_stylebox_override("background", bg)
-
-func _setup_craft_segments() -> void:
-	_segments.clear()
-	for child in craft_bar.get_children():
-		child.queue_free()
-	for i in SEGMENT_COUNT:
-		var seg := ColorRect.new()
-		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		seg.custom_minimum_size = Vector2(0, 12)
-		seg.color = SEGMENT_COLOR_OFF
-		craft_bar.add_child(seg)
-		_segments.append(seg)
 
 func _process(delta: float) -> void:
 	if not visible or not _building:
@@ -141,13 +109,14 @@ func _update_content() -> void:
 	_update_energy_row(logic.energy)
 	var items: Array = logic.get_inventory_items()
 	_update_inventory_row(items)
+	# Force PanelContainer to recalculate size when rows hide
+	size = Vector2.ZERO
 
 func _update_recipe_section(recipe, logic) -> void:
 	if not recipe:
 		recipe_section.visible = false
 		return
 	recipe_section.visible = true
-	# Show/hide craft bar based on whether building has progress
 	var progress: float = logic.get_popup_progress()
 	craft_bar_row.visible = progress >= 0.0
 	# Rebuild recipe items row
@@ -167,7 +136,7 @@ func _update_recipe_section(recipe, logic) -> void:
 		_add_item_display(recipe_row, recipe.outputs[i])
 
 func _update_progress_segments() -> void:
-	if _segments.is_empty() or not _building or not is_instance_valid(_building):
+	if not _building or not is_instance_valid(_building):
 		return
 	var logic = _building.logic
 	if not logic:
@@ -175,7 +144,7 @@ func _update_progress_segments() -> void:
 	var progress: float = logic.get_popup_progress()
 	if progress < 0.0:
 		return
-	for i in SEGMENT_COUNT:
+	for i in _segments.size():
 		_segments[i].color = SEGMENT_COLOR_ON if progress >= SEGMENT_THRESHOLDS[i] else SEGMENT_COLOR_OFF
 
 func _add_item_display(row: HBoxContainer, stack) -> void:
@@ -184,16 +153,27 @@ func _add_item_display(row: HBoxContainer, stack) -> void:
 	if stack is ItemStack:
 		color = stack.item.color if stack.item else Color.WHITE
 	else:
-		color = stack.color # dict with {quantity, color}
+		color = stack.color
 	if qty > 1:
 		var qty_label := Label.new()
 		qty_label.text = str(qty)
 		qty_label.add_theme_font_size_override("font_size", FONT_SIZE)
 		row.add_child(qty_label)
-	var color_rect := ColorRect.new()
-	color_rect.custom_minimum_size = ICON_SIZE
-	color_rect.color = color
-	row.add_child(color_rect)
+	row.add_child(_create_outlined_icon(color))
+
+func _create_outlined_icon(color: Color) -> PanelContainer:
+	var outline_color := Color.BLACK if color.get_luminance() > 0.4 else Color.WHITE
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.border_color = outline_color
+	style.border_width_left = ICON_BORDER
+	style.border_width_top = ICON_BORDER
+	style.border_width_right = ICON_BORDER
+	style.border_width_bottom = ICON_BORDER
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = ICON_SIZE
+	panel.add_theme_stylebox_override("panel", style)
+	return panel
 
 func _add_separator(row: HBoxContainer) -> void:
 	var sep := Label.new()
@@ -219,10 +199,8 @@ func _update_inventory_row(items: Array) -> void:
 		child.queue_free()
 	for entry in items:
 		var item_def = GameManager.get_item_def(entry.id)
-		var color_rect := ColorRect.new()
-		color_rect.custom_minimum_size = ICON_SIZE
-		color_rect.color = item_def.color if item_def else Color.WHITE
-		inventory_row.add_child(color_rect)
+		var color: Color = item_def.color if item_def else Color.WHITE
+		inventory_row.add_child(_create_outlined_icon(color))
 		var label := Label.new()
 		label.text = str(entry.count)
 		label.add_theme_font_size_override("font_size", FONT_SIZE)

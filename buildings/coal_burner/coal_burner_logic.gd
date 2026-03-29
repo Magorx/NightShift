@@ -74,6 +74,15 @@ func _try_pull_fuel() -> void:
 					GameManager.pull_item(world_cell, dir_idx)
 					fuel_inv.add(FUEL_ID)
 
+func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
+	if item_id != FUEL_ID:
+		return quantity
+	var remaining := quantity
+	while remaining > 0 and fuel_inv.has_space(FUEL_ID):
+		fuel_inv.add(FUEL_ID)
+		remaining -= 1
+	return remaining
+
 # ── Pull interface (no item output) ─────────────────────────────────────────
 
 func has_output_toward(_target_pos: Vector2i) -> bool:
