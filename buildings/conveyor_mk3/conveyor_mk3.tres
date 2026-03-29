@@ -11,5 +11,6 @@ color = Color(0.45, 0.55, 0.7, 1)
 description = "High-speed conveyor belt. 3x speed."
 category = "conveyor"
 scene = ExtResource("2")
+unlock_tech = &"tech_conveyor_mk3"
 replaceable_by = Array[StringName]([&"conveyor", &"conveyor_mk2", &"conveyor_mk3", &"splitter", &"junction", &"tunnel_input"])
 is_ground_level = true

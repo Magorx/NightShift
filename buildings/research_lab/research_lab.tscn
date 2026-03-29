@@ -1,0 +1,76 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
+[ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
+[ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="3"]
+[ext_resource type="Script" path="res://buildings/shared/energy_node.gd" id="7"]
+[ext_resource type="Script" path="res://buildings/research_lab/research_lab_logic.gd" id="8"]
+
+[node name="ResearchLab" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Rotatable" type="Node2D" parent="."]
+
+[node name="Shape" type="Node2D" parent="Rotatable"]
+
+[node name="Cell_0_0" type="ColorRect" parent="Rotatable/Shape"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.2, 0.5, 0.55, 1)
+script = ExtResource("2")
+
+[node name="Cell_1_0" type="ColorRect" parent="Rotatable/Shape"]
+offset_left = 32.0
+offset_right = 64.0
+offset_bottom = 32.0
+color = Color(0.2, 0.5, 0.55, 1)
+script = ExtResource("2")
+
+[node name="Cell_0_1" type="ColorRect" parent="Rotatable/Shape"]
+offset_top = 32.0
+offset_right = 32.0
+offset_bottom = 64.0
+color = Color(0.2, 0.5, 0.55, 1)
+script = ExtResource("2")
+
+[node name="Cell_1_1" type="ColorRect" parent="Rotatable/Shape"]
+offset_left = 32.0
+offset_top = 32.0
+offset_right = 64.0
+offset_bottom = 64.0
+color = Color(0.2, 0.5, 0.55, 1)
+script = ExtResource("2")
+
+[node name="Inputs" type="Node2D" parent="Rotatable"]
+
+[node name="In_0" type="ColorRect" parent="Rotatable/Inputs"]
+offset_right = 32.0
+offset_bottom = 32.0
+color = Color(0.3, 0.5, 0.9, 0)
+script = ExtResource("3")
+allow_right = false
+allow_down = false
+
+[node name="In_1" type="ColorRect" parent="Rotatable/Inputs"]
+offset_top = 32.0
+offset_right = 32.0
+offset_bottom = 64.0
+color = Color(0.3, 0.5, 0.9, 0)
+script = ExtResource("3")
+allow_right = false
+allow_up = false
+
+[node name="Outputs" type="Node2D" parent="Rotatable"]
+
+[node name="BuildAnchor" type="Node2D" parent="Rotatable"]
+
+[node name="EnergyNode" type="Node2D" parent="Rotatable"]
+position = Vector2(32, 32)
+script = ExtResource("7")
+max_connections = 2
+throughput = 100.0
+inner_capacity = 50.0
+connection_range = 5.0
+
+[node name="ResearchLabLogic" type="Node" parent="."]
+script = ExtResource("8")

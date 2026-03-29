@@ -11,3 +11,4 @@ color = Color(0.3, 0.25, 0.5, 1)
 description = "Advanced automated assembly for complex products."
 category = "converter"
 scene = ExtResource("2")
+unlock_tech = &"tech_assembler_mk2"

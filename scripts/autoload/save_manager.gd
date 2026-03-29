@@ -102,6 +102,7 @@ func _serialize_run() -> Dictionary:
 		"buildings": _serialize_buildings(),
 		"items_delivered": _serialize_items_delivered(),
 		"time_speed": _serialize_time_speed(),
+		"research": ResearchManager.serialize(),
 	}
 	var gw := _get_game_world()
 	if gw:
@@ -218,6 +219,11 @@ func _deserialize_run(data: Dictionary) -> void:
 		if not meta.has("building_hotkeys"):
 			meta["building_hotkeys"] = data["building_hotkeys"]
 			AccountManager.save_meta(AccountManager.active_slot, meta)
+
+	# Restore research state
+	var research_data: Dictionary = data.get("research", {})
+	if not research_data.is_empty():
+		ResearchManager.deserialize(research_data)
 
 	# Load hotkeys from account meta (not from run save)
 	AccountManager.load_hotkeys()

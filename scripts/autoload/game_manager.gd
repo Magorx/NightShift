@@ -269,6 +269,9 @@ func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotat
 	var def = get_building_def(id)
 	if not def:
 		return false
+	# Check tech unlock requirement
+	if not ResearchManager.is_building_unlocked(id):
+		return false
 	var rotated_shape: Array = def.get_rotated_shape(rotation)
 	for cell in rotated_shape:
 		var check_pos: Vector2i = grid_pos + Vector2i(cell)

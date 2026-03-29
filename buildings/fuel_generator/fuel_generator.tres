@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/fuel_generator/fuel_generator.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"fuel_generator"
+display_name = "Fuel Generator"
+color = Color(0.5, 0.35, 0.25, 1)
+description = "Burns coke to generate high-output power."
+category = "generator"
+scene = ExtResource("2")

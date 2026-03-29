@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/research_lab/research_lab.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"research_lab"
+display_name = "Research Lab"
+color = Color(0.2, 0.5, 0.55, 1)
+description = "Consumes science packs to unlock new technologies."
+category = "research"
+scene = ExtResource("2")
+unlock_tech = &"tech_research_lab"

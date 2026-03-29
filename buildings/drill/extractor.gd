@@ -17,6 +17,10 @@ func configure(_def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(_def, p_grid_pos, rotation)
 	direction = rotation
 	item_id = GameManager.deposits.get(grid_pos, &"iron_ore")
+	# Speed tiers
+	if str(_def.id) == "drill_mk2":
+		produce_interval = 1.0  # 2x faster
+		inventory.set_capacity(item_id, 10)  # larger buffer
 
 func _physics_process(delta: float) -> void:
 	_timer += delta

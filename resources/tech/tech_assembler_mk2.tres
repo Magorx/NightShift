@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="TechDef" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/tech_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/items/science_pack_1.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/items/science_pack_2.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/items/science_pack_3.tres" id="5"]
+
+[sub_resource type="Resource" id="cost_0"]
+script = ExtResource("2")
+item = ExtResource("3")
+quantity = 50
+
+[sub_resource type="Resource" id="cost_1"]
+script = ExtResource("2")
+item = ExtResource("4")
+quantity = 50
+
+[sub_resource type="Resource" id="cost_2"]
+script = ExtResource("2")
+item = ExtResource("5")
+quantity = 50
+
+[resource]
+script = ExtResource("1")
+id = &"tech_assembler_mk2"
+display_name = "Assembler Mk2"
+description = "Unlocks the Assembler Mk2 for advanced products."
+ring = 3
+cost = [SubResource("cost_0"), SubResource("cost_1"), SubResource("cost_2")]
+unlocks = Array[StringName]([&"assembler_mk2"])

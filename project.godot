@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 GameManager="*res://scripts/autoload/game_manager.gd"
 AccountManager="*res://scripts/autoload/account_manager.gd"
 SaveManager="*res://scripts/autoload/save_manager.gd"
+ResearchManager="*res://scripts/autoload/research_manager.gd"
 
 [display]
 
