@@ -27,6 +27,8 @@ var _recipe_menu = null
 var _click_blocker: Control = null
 var _recipe_menu_scene: PackedScene = preload("res://scenes/ui/recipe_menu.tscn")
 var _col_widths: Dictionary = {} # {in_widths: Array, out_widths: Array, max_in: int, max_arrow_w: float}
+var _recipe_row_normal_style: StyleBox
+var _recipe_row_pressed_style: StyleBox
 
 @onready var recipe_section: VBoxContainer = %RecipeSection
 @onready var recipe_row_button: PanelContainer = %RecipeRowButton
@@ -40,6 +42,12 @@ var _col_widths: Dictionary = {} # {in_widths: Array, out_widths: Array, max_in:
 
 func _ready() -> void:
 	visible = false
+	_recipe_row_normal_style = recipe_row_button.get_theme_stylebox("panel").duplicate()
+	_recipe_row_pressed_style = _recipe_row_normal_style.duplicate()
+	_recipe_row_pressed_style.bg_color = Color(0.1, 0.1, 0.1, 0.5)
+	_recipe_row_pressed_style.border_color = Color(0.4, 0.4, 0.4, 0.6)
+	_recipe_row_pressed_style.content_margin_top = 3.0
+	_recipe_row_pressed_style.content_margin_bottom = 1.0
 	recipe_row_button.gui_input.connect(_on_recipe_row_input)
 
 func _process(delta: float) -> void:
@@ -147,12 +155,16 @@ func hide_popup() -> void:
 # ── Recipe menu ────────────────────────────────────────────────────────────
 
 func _on_recipe_row_input(event: InputEvent) -> void:
-	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
+	if not (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT):
 		return
 	if not _building or not _building.logic or not _building.logic.has_method("get_recipe_configs"):
 		return
-	_toggle_recipe_menu()
 	recipe_row_button.accept_event()
+	if event.pressed:
+		recipe_row_button.add_theme_stylebox_override("panel", _recipe_row_pressed_style)
+	else:
+		recipe_row_button.add_theme_stylebox_override("panel", _recipe_row_normal_style)
+		_toggle_recipe_menu()
 
 func _toggle_recipe_menu() -> void:
 	if _recipe_menu:
@@ -189,7 +201,15 @@ func _position_recipe_menu() -> void:
 	_recipe_menu.position = Vector2(menu_x, menu_y)
 
 func _on_blocker_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed:
+	if not (event is InputEventMouseButton and event.pressed):
+		return
+	var click_pos: Vector2 = event.global_position
+	var in_popup := get_global_rect().has_point(click_pos)
+	var in_menu: bool = _recipe_menu and _recipe_menu.get_global_rect().has_point(click_pos)
+	if not in_popup and not in_menu:
+		_close_recipe_menu()
+		hide_popup()
+	elif not in_menu:
 		_close_recipe_menu()
 
 func _close_recipe_menu() -> void:

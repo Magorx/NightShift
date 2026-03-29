@@ -395,8 +395,8 @@ func _try_drop(drop_stack: bool) -> void:
 	if dropped.is_empty():
 		return
 
-	# Calculate drop position in front of player
-	var drop_pos := position + facing_direction.normalized() * DROP_RANGE
+	# Calculate drop position in front of player (slightly closer so it stays within pickup range)
+	var drop_pos := position + facing_direction.normalized() * (DROP_RANGE - 4.0)
 	var drop_grid := Vector2i(floori(drop_pos.x / TILE_SIZE), floori(drop_pos.y / TILE_SIZE))
 
 	# Try to insert into building at drop position

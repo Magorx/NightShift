@@ -100,6 +100,7 @@ All building logic nodes extend `BuildingLogic` and override virtual methods as 
 - **Configuration**: `configure(def, grid_pos, rotation)` — each building self-configures from its BuildingDef
 - **Serialization**: `serialize_state()` / `deserialize_state()` — each building handles its own save/load
 - **Info panel**: `get_info_stats()` — returns structured `[{type, ...}]` entries (types: "stat", "progress", "recipe", "inventory")
+- **Popup interface**: `get_popup_recipe()` (current/last/first recipe), `get_popup_progress()` (craft progress 0.0–1.0, -1.0 = none), `get_inventory_items()` (items as `[{id, count}]`)
 - **Lifecycle**: `on_removing()` (cleanup on deletion), `cleanup_visuals()`, `get_linked_positions()`
 
 To add a new building type: create a script extending `BuildingLogic`, override the relevant methods, and place it as a child node in the building's `.tscn` scene. No changes to GameManager or other systems needed.
@@ -139,7 +140,7 @@ Energy flows through a graph of buildings connected by adjacency edges and Energ
 
 **Tuning constants** (in EnergyNetwork): `DEMAND_BUFFER_SECONDS = 5.0`, `RELAXATION_PASSES = 3`.
 
-**Converter energy behavior:** converters try the most productive recipe first. If a powered recipe can't be afforded locally, they immediately fall back to a cheaper/free recipe — no waiting. `energy_demand` is signaled every tick (even mid-craft) so redistribution proactively delivers energy.
+**Converter energy behavior:** converters use priority-based recipe selection via `RecipeConfig` (lower priority number = tried first). Disabled recipes are skipped. If a powered recipe can't be afforded locally, they immediately fall back to a cheaper/free recipe — no waiting. `energy_demand` is signaled every tick (even mid-craft) so redistribution proactively delivers energy.
 
 ### Game Systems
 
@@ -149,6 +150,28 @@ Energy flows through a graph of buildings connected by adjacency edges and Energ
 - **GridOverlay** (`scripts/game/grid_overlay.gd`) — visual grid rendering
 - **Inventory** (`scripts/inventory.gd`) — per-item storage with capacity limits (used by extractors/converters)
 - **RoundRobin** (`scripts/round_robin.gd`) — fair round-robin iterator for multi-directional pulling
+
+### Building Popup & Recipe Menu
+
+Contextual popup appears above clicked buildings. Click-through design: all containers use `MOUSE_FILTER_PASS` so clicks pass to the game world; only `RecipeRowButton` uses `MOUSE_FILTER_STOP`.
+
+**BuildingPopup** (`scripts/ui/building_popup.gd`, `scenes/ui/building_popup.tscn`):
+- **Recipe row**: `[qty][icon] [qty][icon] —Xs→ [qty][icon]` with per-column aligned widths
+- **Craft progress bar**: 4 segments filling at 20/40/60/80% thresholds (defined in scene as Seg0–Seg3)
+- **Energy bar**: blue fill with cur/max label, right-aligned
+- **Inventory row**: `[qty][icon]` slots with aligned number widths
+- **Width locking**: on `show_building()`, populates recipe_row with each recipe, reads `get_combined_minimum_size()`, sets `recipe_row.custom_minimum_size.x` to widest. Uses `remove_child()` before `queue_free()` for immediate layout updates.
+- **Recipe menu toggle**: clicking recipe row opens `RecipeMenu` to the right of popup
+
+**RecipeMenu** (`scripts/ui/recipe_menu.gd`, `scenes/ui/recipe_menu.tscn`):
+- Shows all recipes with per-column aligned numbers, arrow with craft time, energy cost as yellow slot
+- Priority (click to select, click another to swap) and enabled toggle (green/red square) per recipe
+- Full-screen click blocker: clicks outside both popups dismiss everything
+
+**RecipeConfig** (`scripts/resources/recipe_config.gd`):
+- Per-building, per-recipe state: `priority` (int, lower = first) and `enabled` (bool)
+- Stored on `ConverterLogic.recipe_configs`, serialized/deserialized with building state
+- Priority fully replaces old productivity-based sorting
 
 ### Scene Tree (Gameplay)
 
@@ -160,7 +183,7 @@ GameWorld (Node2D)                    # scripts/game/game_world.gd
   ItemLayer                           # conveyor item visuals
   UI (CanvasLayer)
 	HUD                               # scripts/ui/hud.gd — speed controls, currency, buildings panel, minimap
-	BuildingInfoPanel                  # scripts/ui/building_info_panel.gd — click-on-building info
+	BuildingPopup                     # scripts/ui/building_popup.gd — contextual popup above clicked building
 	PauseMenu                         # scripts/ui/pause_menu.gd
 ```
 

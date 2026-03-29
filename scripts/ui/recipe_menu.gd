@@ -11,16 +11,16 @@ const SLOT_SEP := 2
 const ENERGY_COLOR := Color(0.95, 0.85, 0.2)
 const ENABLED_COLOR := Color(0.2, 0.8, 0.3)
 const DISABLED_COLOR := Color(0.8, 0.2, 0.2)
-const SELECTED_COLOR := Color(0.2, 0.8, 0.8, 0.5)
+const ARROW_COLOR := Color(0.7, 0.7, 0.7)
+const ARROW_HOVER_COLOR := Color(1.0, 1.0, 1.0)
 
 @onready var vbox: VBoxContainer = %VBox
 
 var _configs: Array = []
-var _selected_config = null # first click for priority swap
-var _selected_label: Label = null
 
 func populate(configs: Array) -> void:
 	_configs = configs
+	_configs.sort_custom(func(a, b): return a.priority < b.priority)
 	_rebuild()
 
 # ── Layout computation ────────────────────────────────────────────────────
@@ -39,6 +39,8 @@ func _get_output_texts(recipe) -> Array:
 	var texts: Array = []
 	for stack in recipe.outputs:
 		texts.append(str(stack.quantity))
+	if recipe is RecipeDef and recipe.energy_output > 0.0:
+		texts.append(str(int(recipe.energy_output)))
 	return texts
 
 ## Compute per-column max number widths using the theme font.
@@ -117,9 +119,14 @@ func _create_recipe_row(config, col: Dictionary) -> HBoxContainer:
 	row.add_child(arrow)
 
 	# Outputs
+	var out_slot_idx: int = 0
 	for i in range(recipe.outputs.size()):
 		var w: float = out_widths[i] if i < out_widths.size() else 12.0
 		_add_item_slot(row, recipe.outputs[i], w)
+		out_slot_idx = i + 1
+	if recipe is RecipeDef and recipe.energy_output > 0.0:
+		var w: float = out_widths[out_slot_idx] if out_slot_idx < out_widths.size() else 12.0
+		_add_slot(row, str(int(recipe.energy_output)), ENERGY_COLOR, w)
 
 	# Spacer
 	var spacer := Control.new()
@@ -132,15 +139,34 @@ func _create_recipe_row(config, col: Dictionary) -> HBoxContainer:
 	sep.custom_minimum_size = Vector2(2, 0)
 	row.add_child(sep)
 
-	# Priority label (clickable)
-	var pri_label := Label.new()
-	pri_label.text = str(config.priority)
-	pri_label.add_theme_font_size_override("font_size", FONT_SIZE)
-	pri_label.custom_minimum_size = Vector2(12, 0)
-	pri_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pri_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	pri_label.gui_input.connect(_on_priority_input.bind(config, pri_label))
-	row.add_child(pri_label)
+	# Priority arrows (up/down to reorder, horizontal layout)
+	var config_idx := _configs.find(config)
+
+	var up_btn := Label.new()
+	up_btn.text = "▲"
+	up_btn.add_theme_font_size_override("font_size", 8)
+	up_btn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if config_idx > 0:
+		up_btn.add_theme_color_override("font_color", ARROW_COLOR)
+		up_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		up_btn.gui_input.connect(_on_move_input.bind(config_idx, -1))
+	else:
+		up_btn.add_theme_color_override("font_color", Color(0.3, 0.3, 0.3))
+		up_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(up_btn)
+
+	var down_btn := Label.new()
+	down_btn.text = "▼"
+	down_btn.add_theme_font_size_override("font_size", 8)
+	down_btn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if config_idx < _configs.size() - 1:
+		down_btn.add_theme_color_override("font_color", ARROW_COLOR)
+		down_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+		down_btn.gui_input.connect(_on_move_input.bind(config_idx, 1))
+	else:
+		down_btn.add_theme_color_override("font_color", Color(0.3, 0.3, 0.3))
+		down_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(down_btn)
 
 	# Enabled toggle (clickable)
 	var toggle := ColorRect.new()
@@ -172,28 +198,21 @@ func _add_slot(row: HBoxContainer, num_text: String, color: Color, num_w: float)
 	row.add_child(num_label)
 	row.add_child(_create_outlined_icon(color))
 
-func _on_priority_input(event: InputEvent, config, label: Label) -> void:
+func _on_move_input(event: InputEvent, idx: int, direction: int) -> void:
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
 		return
-	label.accept_event()
-	if _selected_config == null:
-		# First click: select this priority
-		_selected_config = config
-		_selected_label = label
-		label.add_theme_color_override("font_color", SELECTED_COLOR)
-	elif _selected_config == config:
-		# Clicked same one: deselect
-		_selected_config = null
-		_selected_label.remove_theme_color_override("font_color")
-		_selected_label = null
-	else:
-		# Second click: swap priorities
-		var tmp: int = _selected_config.priority
-		_selected_config.priority = config.priority
-		config.priority = tmp
-		_selected_config = null
-		_selected_label = null
-		_rebuild()
+	get_viewport().set_input_as_handled()
+	var new_idx := idx + direction
+	if new_idx < 0 or new_idx >= _configs.size():
+		return
+	# Swap configs in array
+	var tmp = _configs[idx]
+	_configs[idx] = _configs[new_idx]
+	_configs[new_idx] = tmp
+	# Update priorities to match new order (1-based)
+	for i in range(_configs.size()):
+		_configs[i].priority = i + 1
+	_rebuild()
 
 func _on_toggle_input(event: InputEvent, config, rect: ColorRect) -> void:
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):

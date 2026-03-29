@@ -9,6 +9,7 @@ const HOVER_BORDER_COLOR := Color(0.6, 0.6, 0.6, 0.9)
 const HOTBAR_BORDER_COLOR := Color(0.9, 0.85, 0.3, 0.8)
 const SELECTED_BORDER_COLOR := Color(0.4, 0.8, 1.0, 0.9)
 const DROP_RANGE := 48.0 # 1.5 tiles
+const FLY_DURATION := 0.18
 
 @onready var hotbar_grid: GridContainer = %HotbarGrid
 @onready var expansion_grid: GridContainer = %ExpansionGrid
@@ -25,6 +26,14 @@ var _cursor_ghost: Control
 var _ghost_color: ColorRect
 var _ghost_label: Label
 
+# Fly animation (pickup: slot→cursor, place: cursor→slot)
+var _fly_item: Control = null
+var _fly_start: Vector2 = Vector2.ZERO
+var _fly_end: Vector2 = Vector2.ZERO
+var _fly_progress: float = 0.0
+var _fly_to_cursor: bool = true # true = pickup, false = place
+var _fly_on_complete: Callable = Callable() # deferred inventory update for place animations
+
 func _ready() -> void:
 	super()
 	_create_slots()
@@ -32,6 +41,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
+	_update_fly_animation(delta)
 	_update_cursor_ghost()
 	if visible:
 		_update_slots()
@@ -159,6 +169,10 @@ func _update_cursor_ghost() -> void:
 		if _cursor_ghost:
 			_cursor_ghost.visible = false
 		return
+	# Hide ghost while fly animation is active
+	if _fly_item and is_instance_valid(_fly_item):
+		_cursor_ghost.visible = false
+		return
 	_cursor_ghost.visible = true
 	var ghost_size := Vector2(24, 24)
 	var vp_size := get_viewport_rect().size
@@ -197,6 +211,7 @@ func _handle_left_click(index: int, player) -> void:
 		# Pick up item from slot
 		var slot_data = player.inventory[index]
 		if slot_data != null:
+			_animate_pickup_to_cursor(index, slot_data.item_id, slot_data.quantity)
 			_held_item = {item_id = slot_data.item_id, quantity = slot_data.quantity}
 			_held_source_slot = index
 			player.inventory[index] = null
@@ -206,21 +221,29 @@ func _handle_left_click(index: int, player) -> void:
 func _place_held_item(index: int, player) -> void:
 	var slot_data = player.inventory[index]
 	if slot_data == null:
-		# Place into empty slot
-		player.inventory[index] = {item_id = _held_item.item_id, quantity = _held_item.quantity}
+		# Place into empty slot — defer inventory update
+		var item_data := {item_id = _held_item.item_id, quantity = _held_item.quantity}
+		_animate_place_to_slot(index, _held_item.item_id, _held_item.quantity, func():
+			player.inventory[index] = item_data)
 		_clear_held()
 	elif slot_data.item_id == _held_item.item_id:
 		# Merge stacks up to stack limit; overflow stays in hand
 		var space: int = Player.STACK_SIZE - slot_data.quantity
 		var to_add: int = mini(_held_item.quantity, space)
-		slot_data.quantity += to_add
+		if to_add > 0:
+			_animate_place_to_slot(index, _held_item.item_id, to_add, func():
+				if player.inventory[index] != null:
+					player.inventory[index].quantity += to_add)
 		_held_item.quantity -= to_add
 		if _held_item.quantity <= 0:
 			_clear_held()
 	else:
-		# Swap
-		var temp = {item_id = slot_data.item_id, quantity = slot_data.quantity}
-		player.inventory[index] = {item_id = _held_item.item_id, quantity = _held_item.quantity}
+		# Swap — clear slot immediately, defer placing new item
+		var placed_data := {item_id = _held_item.item_id, quantity = _held_item.quantity}
+		var temp := {item_id = slot_data.item_id, quantity = slot_data.quantity}
+		player.inventory[index] = null
+		_animate_place_to_slot(index, placed_data.item_id, placed_data.quantity, func():
+			player.inventory[index] = placed_data)
 		_held_item = temp
 		_held_source_slot = index
 
@@ -230,6 +253,7 @@ func _handle_right_click(index: int, player) -> void:
 		var slot_data = player.inventory[index]
 		if slot_data != null and slot_data.quantity > 0:
 			var half: int = ceili(float(slot_data.quantity) / 2.0)
+			_animate_pickup_to_cursor(index, slot_data.item_id, half)
 			_held_item = {item_id = slot_data.item_id, quantity = half}
 			_held_source_slot = index
 			slot_data.quantity -= half
@@ -238,13 +262,17 @@ func _handle_right_click(index: int, player) -> void:
 	else:
 		# Deposit one item into this slot
 		var slot_data = player.inventory[index]
+		var dep_id: StringName = _held_item.item_id
 		if slot_data == null:
-			player.inventory[index] = {item_id = _held_item.item_id, quantity = 1}
+			_animate_place_to_slot(index, dep_id, 1, func():
+				player.inventory[index] = {item_id = dep_id, quantity = 1})
 			_held_item.quantity -= 1
 			if _held_item.quantity <= 0:
 				_clear_held()
-		elif slot_data.item_id == _held_item.item_id and slot_data.quantity < Player.STACK_SIZE:
-			slot_data.quantity += 1
+		elif slot_data.item_id == dep_id and slot_data.quantity < Player.STACK_SIZE:
+			_animate_place_to_slot(index, dep_id, 1, func():
+				if player.inventory[index] != null:
+					player.inventory[index].quantity += 1)
 			_held_item.quantity -= 1
 			if _held_item.quantity <= 0:
 				_clear_held()
@@ -354,12 +382,115 @@ func _return_held_item() -> void:
 	if player and is_instance_valid(player):
 		# Try to return to original slot first
 		if _held_source_slot >= 0 and _held_source_slot < Player.INVENTORY_SLOTS and player.inventory[_held_source_slot] == null:
-			player.inventory[_held_source_slot] = {item_id = _held_item.item_id, quantity = _held_item.quantity}
+			var item_data := {item_id = _held_item.item_id, quantity = _held_item.quantity}
+			var target_slot := _held_source_slot
+			_animate_place_to_slot(target_slot, _held_item.item_id, _held_item.quantity, func():
+				player.inventory[target_slot] = item_data)
 		else:
 			var leftover = player.add_item(_held_item.item_id, _held_item.quantity)
 			if leftover > 0:
 				player._spawn_ground_item(_held_item.item_id, leftover, player.position)
 	_clear_held()
+
+# ── Fly Animation (pickup & place) ─────────────────────────────────────────
+
+func _get_cursor_ghost_pos() -> Vector2:
+	var ghost_size := Vector2(24, 24)
+	var vp_size := get_viewport_rect().size
+	var pos := get_global_mouse_position() + Vector2(8, 8)
+	pos.x = clampf(pos.x, 0, vp_size.x - ghost_size.x)
+	pos.y = clampf(pos.y, 0, vp_size.y - ghost_size.y)
+	return pos
+
+func _get_slot_screen_center(index: int) -> Vector2:
+	if visible and index < _slots.size():
+		return _slots[index].get_global_rect().get_center()
+	if index < 8:
+		var hotbar = get_parent().get_node_or_null("Hotbar")
+		if hotbar and index < hotbar._slots.size():
+			return hotbar._slots[index].get_global_rect().get_center()
+	return get_global_mouse_position()
+
+func _spawn_fly_item(item_id: StringName, quantity: int, from: Vector2, to: Vector2, to_cursor: bool, on_complete: Callable = Callable()) -> void:
+	# Flush pending callback from interrupted animation
+	if _fly_item and is_instance_valid(_fly_item):
+		_fly_item.queue_free()
+		if _fly_on_complete.is_valid():
+			_fly_on_complete.call()
+
+	_fly_start = from
+	_fly_end = to
+	_fly_progress = 0.0
+	_fly_to_cursor = to_cursor
+	_fly_on_complete = on_complete
+
+	_fly_item = Control.new()
+	_fly_item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fly_item.top_level = true
+	_fly_item.z_index = 101
+
+	var color_rect := ColorRect.new()
+	color_rect.size = Vector2(24, 24)
+	color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var item_def = GameManager.get_item_def(item_id)
+	color_rect.color = item_def.color if item_def else Color.WHITE
+	color_rect.modulate.a = 0.75
+	_fly_item.add_child(color_rect)
+
+	var label := Label.new()
+	label.add_theme_font_size_override("font_size", 10)
+	label.position = Vector2(14, 14)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = str(quantity) if quantity > 1 else ""
+	_fly_item.add_child(label)
+
+	_fly_item.global_position = from
+	get_parent().add_child(_fly_item)
+
+func _animate_pickup_to_cursor(slot_index: int, item_id: StringName, quantity: int) -> void:
+	var slot_pos := _get_slot_screen_center(slot_index)
+	var cursor_pos := _get_cursor_ghost_pos()
+	_spawn_fly_item(item_id, quantity, slot_pos, cursor_pos, true)
+
+func _animate_place_to_slot(slot_index: int, item_id: StringName, quantity: int, on_complete: Callable = Callable()) -> void:
+	var cursor_pos := _get_cursor_ghost_pos()
+	var slot_pos := _get_slot_screen_center(slot_index)
+	_spawn_fly_item(item_id, quantity, cursor_pos, slot_pos, false, on_complete)
+
+func _update_fly_animation(delta: float) -> void:
+	if not _fly_item or not is_instance_valid(_fly_item):
+		return
+
+	_fly_progress += delta / FLY_DURATION
+	if _fly_progress >= 1.0:
+		_fly_item.queue_free()
+		_fly_item = null
+		if _fly_on_complete.is_valid():
+			_fly_on_complete.call()
+			_fly_on_complete = Callable()
+		return
+
+	var t := 1.0 - pow(1.0 - _fly_progress, 3.0)
+	# Track live cursor/slot position for the moving endpoint
+	var start := _fly_start
+	var end := _fly_end
+	if _fly_to_cursor:
+		end = _get_cursor_ghost_pos()
+	_fly_item.global_position = start.lerp(end, t)
+	# Opacity: opaque near cursor/hand, transparent near slot
+	var alpha: float
+	if _fly_to_cursor:
+		alpha = lerpf(0.0, 0.75, t)
+	else:
+		alpha = lerpf(0.75, 0.0, t)
+	_fly_item.modulate.a = alpha
+	# Scale: pickup starts bigger, place ends smaller
+	var s: float
+	if _fly_to_cursor:
+		s = lerpf(1.3, 1.0, t)
+	else:
+		s = lerpf(1.0, 0.8, t)
+	_fly_item.scale = Vector2(s, s)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED and not visible:
