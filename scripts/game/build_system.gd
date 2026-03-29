@@ -309,8 +309,10 @@ func _commit_drag() -> void:
 	if _phase_index >= 0:
 		_commit_phase_drag()
 		return
-	# Place only non-overlapping blueprints that pass validation and are in range
+	# Place only non-overlapping blueprints that pass validation, are in range, and are affordable
 	for pos in _placeable_blueprints:
+		if not GameManager.can_afford_building(selected_building):
+			break
 		if GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation):
 			GameManager.place_building(selected_building, pos, _drag_rotation)
 	_dragging = false
@@ -329,6 +331,8 @@ func _commit_phase_drag() -> void:
 	var placed: Array = []
 
 	for pos in _placeable_blueprints:
+		if not GameManager.can_afford_building(bid):
+			break
 		if _can_place_phase(pos, _drag_rotation, placed.size()):
 			GameManager.place_building(bid, pos, _drag_rotation)
 			placed.append({pos = pos, rotation = _drag_rotation})
@@ -527,6 +531,8 @@ func _update_ghosts() -> void:
 		_ghost_building_id = selected_building
 		_ghost_rotation = rotation
 
+	var can_afford := GameManager.can_afford_building(selected_building)
+
 	if _dragging:
 		var count := _placeable_blueprints.size()
 		# Grow pool as needed (capped)
@@ -544,6 +550,7 @@ func _update_ghosts() -> void:
 				can_place = _can_place_phase(pos, _drag_rotation, i)
 			else:
 				can_place = GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation)
+			can_place = can_place and can_afford
 			_ghost_nodes[i].position = Vector2(pos - def.anchor_cell) * TILE_SIZE
 			_ghost_nodes[i].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
 			_ghost_nodes[i].visible = true
@@ -563,6 +570,7 @@ func _update_ghosts() -> void:
 				can_place = _can_place_phase(cursor_grid_pos, current_rotation, 0)
 			else:
 				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, GameManager.map_size, current_rotation)
+			can_place = can_place and can_afford
 			_ghost_nodes[0].position = Vector2(cursor_grid_pos - def.anchor_cell) * TILE_SIZE
 			_ghost_nodes[0].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
 			_ghost_nodes[0].visible = true

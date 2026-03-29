@@ -14,6 +14,8 @@ const TILE_SIZE := 32
 @export var replaceable_by: Array[StringName] = []
 ## Ground-level buildings (conveyors, junctions, etc.) don't block the player.
 @export var is_ground_level: bool = false
+## Items required to place this building. Empty = free placement.
+@export var build_cost: Array[ItemStack] = []
 
 ## Anchor cell offset, read from BuildAnchor node position at load time.
 ## The cursor/grid_pos aligns to this cell when placing.

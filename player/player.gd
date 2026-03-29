@@ -358,6 +358,28 @@ func has_items() -> bool:
 			return true
 	return false
 
+## Count total quantity of an item across all inventory slots.
+func count_item(item_id: StringName) -> int:
+	var total := 0
+	for slot in inventory:
+		if slot != null and slot.item_id == item_id:
+			total += slot.quantity
+	return total
+
+## Remove up to quantity of an item from inventory (any slots). Returns amount actually removed.
+func remove_item(item_id: StringName, quantity: int = 1) -> int:
+	var remaining := quantity
+	for i in INVENTORY_SLOTS:
+		if remaining <= 0:
+			break
+		if inventory[i] != null and inventory[i].item_id == item_id:
+			var to_remove: int = mini(remaining, inventory[i].quantity)
+			inventory[i].quantity -= to_remove
+			remaining -= to_remove
+			if inventory[i].quantity <= 0:
+				inventory[i] = null
+	return quantity - remaining
+
 func _try_pickup() -> void:
 	# Try to pick up the nearest ground item or conveyor item within range
 	var picked_up := false

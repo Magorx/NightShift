@@ -18,11 +18,28 @@ const TILE_COAL := 3
 const TILE_WALL := 4
 const TILE_GROUND_DARK := 5
 const TILE_GROUND_LIGHT := 6
+# New deposit tile IDs — requires matching constants, DEPOSIT_COLORS entries,
+# DEPOSIT_ITEMS entries, and _create_tile_source calls in game_world.gd:
+#   TILE_STONE   = 7  -> Color(0.55, 0.54, 0.50)  gray-beige stone
+#   TILE_TIN     = 8  -> Color(0.60, 0.62, 0.65)  silvery-blue tin
+#   TILE_GOLD    = 9  -> Color(0.78, 0.68, 0.20)  golden yellow
+#   TILE_QUARTZ  = 10 -> Color(0.80, 0.75, 0.85)  pale lavender quartz
+#   TILE_SULFUR  = 11 -> Color(0.75, 0.72, 0.15)  yellow-green sulfur
+const TILE_STONE := 7
+const TILE_TIN := 8
+const TILE_GOLD := 9
+const TILE_QUARTZ := 10
+const TILE_SULFUR := 11
 
 const DEPOSIT_ITEMS := {
 	TILE_IRON: &"iron_ore",
 	TILE_COPPER: &"copper_ore",
 	TILE_COAL: &"coal",
+	TILE_STONE: &"stone",
+	TILE_TIN: &"tin_ore",
+	TILE_GOLD: &"gold_ore",
+	TILE_QUARTZ: &"quartz",
+	TILE_SULFUR: &"sulfur",
 }
 
 # Generation parameters
@@ -110,14 +127,23 @@ func _generate_all_deposits(deposits: Dictionary, walls: Dictionary, map_size: i
 		# Starter deposits — close to spawn, small
 		[TILE_IRON, 6, 14, 2, 3, 5],
 		[TILE_COPPER, 8, 16, 1, 3, 4],
+		[TILE_STONE, 6, 14, 2, 3, 5],       # common, close (like iron)
 		# Mid-range deposits
 		[TILE_IRON, 16, 26, 2, 5, 8],
 		[TILE_COPPER, 16, 26, 2, 4, 7],
 		[TILE_COAL, 14, 24, 2, 4, 6],
+		[TILE_STONE, 16, 24, 2, 5, 7],      # common, mid-range
+		[TILE_TIN, 16, 26, 2, 4, 6],        # medium rarity, mid-range
+		[TILE_QUARTZ, 18, 28, 1, 3, 6],     # medium rarity, mid-range
 		# Far deposits — large and rich
 		[TILE_IRON, 22, 30, 1, 7, 10],
 		[TILE_COPPER, 22, 30, 1, 6, 9],
 		[TILE_COAL, 20, 28, 1, 5, 8],
+		[TILE_STONE, 22, 30, 1, 6, 9],      # common, far — large deposit
+		[TILE_TIN, 22, 30, 1, 5, 8],        # medium rarity, far
+		[TILE_QUARTZ, 24, 32, 1, 4, 7],     # medium rarity, far
+		[TILE_GOLD, 26, 34, 1, 3, 5],       # rare, far from spawn
+		[TILE_SULFUR, 26, 34, 1, 3, 5],     # rare, far from spawn
 	]
 
 	var placed_centers: Array[Vector2i] = []

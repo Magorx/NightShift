@@ -226,6 +226,43 @@ func record_delivery(item_id: StringName, value: int = 0) -> void:
 func get_building_def(id: StringName):
 	return building_defs.get(id)
 
+# ── Building cost ────────────────────────────────────────────────────────────
+
+## Refund ratio when removing buildings (50%).
+const BUILD_COST_REFUND_RATIO := 0.5
+
+## Check if the player has enough items to build this building.
+## Returns true if build_cost is empty (free placement) or player has all required items.
+func can_afford_building(id: StringName) -> bool:
+	var def = get_building_def(id)
+	if not def or def.build_cost.is_empty():
+		return true
+	if not player:
+		return true
+	for stack in def.build_cost:
+		if player.count_item(stack.item.id) < stack.quantity:
+			return false
+	return true
+
+## Deduct building cost from the player's inventory.
+## Should only be called after can_afford_building() returns true.
+func deduct_building_cost(id: StringName) -> void:
+	var def = get_building_def(id)
+	if not def or def.build_cost.is_empty() or not player:
+		return
+	for stack in def.build_cost:
+		player.remove_item(stack.item.id, stack.quantity)
+
+## Refund a percentage of building cost to the player's inventory on removal.
+func refund_building_cost(id: StringName) -> void:
+	var def = get_building_def(id)
+	if not def or def.build_cost.is_empty() or not player:
+		return
+	for stack in def.build_cost:
+		var refund_qty: int = int(stack.quantity * BUILD_COST_REFUND_RATIO)
+		if refund_qty > 0:
+			player.add_item(stack.item.id, refund_qty)
+
 # ── Building placement ───────────────────────────────────────────────────────
 
 func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotation: int = 0) -> bool:
@@ -280,6 +317,9 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	building.position = Vector2(grid_pos - def.anchor_cell) * TILE_SIZE
 
 	building_layer.add_child(building)
+
+	# Deduct build cost from player inventory
+	deduct_building_cost(id)
 
 	# Apply all visual rotation (ColorRects, sprites, arrow) after add_child
 	# so _ready defaults are overridden
@@ -353,6 +393,9 @@ func remove_building(grid_pos: Vector2i) -> void:
 		return
 	var def = get_building_def(building.building_id)
 	var removed_pos: Vector2i = building.grid_pos
+
+	# Refund partial build cost to player
+	refund_building_cost(building.building_id)
 
 	# Unregister from EnergySystem before cleanup
 	if building.logic and energy_system:

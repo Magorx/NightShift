@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="RecipeDef" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/recipe_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/items/copper_wire.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/items/glass.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/items/circuit_board.tres" id="5"]
+
+[sub_resource type="Resource" id="input_0"]
+script = ExtResource("2")
+item = ExtResource("3")
+quantity = 2
+
+[sub_resource type="Resource" id="input_1"]
+script = ExtResource("2")
+item = ExtResource("4")
+quantity = 1
+
+[sub_resource type="Resource" id="output_0"]
+script = ExtResource("2")
+item = ExtResource("5")
+quantity = 1
+
+[resource]
+script = ExtResource("1")
+id = &"assemble_circuit_board"
+display_name = "Assemble Circuit Board"
+converter_type = "assembler"
+inputs = [SubResource("input_0"), SubResource("input_1")]
+outputs = [SubResource("output_0")]
+craft_time = 4.0
+energy_cost = 30.0
