@@ -402,18 +402,28 @@ func _draw() -> void:
 	var local_target := tile_center - position
 	var progress := _mine_timer / HAND_MINE_TIME
 
-	# Beam line from player to tile center
+	# Beam line from player to mouse cursor
+	var camera := get_viewport().get_camera_2d()
+	var cursor_world := Vector2.ZERO
+	if camera:
+		var screen_pos := get_viewport().get_mouse_position()
+		var viewport_size := get_viewport_rect().size
+		var offset := screen_pos - viewport_size / 2.0
+		cursor_world = camera.global_position + offset / camera.zoom.x
+	else:
+		cursor_world = tile_center
+	var local_cursor := cursor_world - position
 	var beam_color := Color(0.9, 0.7, 0.2, 0.4 + progress * 0.4)
 	var beam_width := 1.0 + progress * 1.5
-	draw_line(Vector2.ZERO, local_target, beam_color, beam_width)
+	draw_line(Vector2.ZERO, local_cursor, beam_color, beam_width)
 
-	# Sparkle particles at target
+	# Sparkle particles at cursor
 	var spark_count := 3
 	var time := Time.get_ticks_msec() / 1000.0
 	for i in spark_count:
 		var angle := time * (3.0 + i * 1.7) + i * TAU / spark_count
 		var dist := 4.0 + sin(time * 5.0 + i) * 2.0
-		var spark_pos := local_target + Vector2(cos(angle), sin(angle)) * dist
+		var spark_pos := local_cursor + Vector2(cos(angle), sin(angle)) * dist
 		var spark_alpha := 0.5 + sin(time * 8.0 + i * 2.0) * 0.3
 		draw_circle(spark_pos, 1.0, Color(1.0, 0.9, 0.4, spark_alpha))
 
