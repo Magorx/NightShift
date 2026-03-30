@@ -198,9 +198,23 @@ func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
 
 # ── Pull interface ─────────────────────────────────────────────────────────────
 
+func _output_reaches(outp: Dictionary, target_pos: Vector2i) -> bool:
+	## Check if an output point can reach target_pos.
+	## Two modes:
+	## 1. Output cell IS target_pos (gap-style, like smelter) — always matches
+	## 2. Output cell is adjacent to target_pos AND mask allows that direction
+	var out_world: Vector2i = grid_pos + outp.cell
+	if out_world == target_pos:
+		return true
+	var diff: Vector2i = target_pos - out_world
+	for dir_idx in 4:
+		if DIRECTION_VECTORS[dir_idx] == diff and outp.mask[dir_idx]:
+			return true
+	return false
+
 func has_output_toward(target_pos: Vector2i) -> bool:
 	for outp in output_points:
-		if grid_pos + outp.cell == target_pos:
+		if _output_reaches(outp, target_pos):
 			return true
 	return false
 
@@ -214,7 +228,7 @@ func can_provide_to(target_pos: Vector2i) -> bool:
 	if output_inv.is_empty():
 		return false
 	for outp in output_points:
-		if grid_pos + outp.cell == target_pos:
+		if _output_reaches(outp, target_pos):
 			return true
 	return false
 
@@ -222,7 +236,7 @@ func peek_output_for(target_pos: Vector2i) -> StringName:
 	if output_inv.is_empty():
 		return &""
 	for outp in output_points:
-		if grid_pos + outp.cell == target_pos:
+		if _output_reaches(outp, target_pos):
 			for iid in output_inv.get_item_ids():
 				if output_inv.has(iid):
 					return iid
@@ -230,7 +244,7 @@ func peek_output_for(target_pos: Vector2i) -> StringName:
 
 func take_item_for(target_pos: Vector2i) -> StringName:
 	for outp in output_points:
-		if grid_pos + outp.cell == target_pos:
+		if _output_reaches(outp, target_pos):
 			for iid in output_inv.get_item_ids():
 				if output_inv.has(iid):
 					output_inv.remove(iid)
