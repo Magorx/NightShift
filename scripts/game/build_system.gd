@@ -2,6 +2,7 @@ class_name BuildSystem
 extends Node2D
 
 signal building_clicked(building: Node2D)
+signal ground_inspected(grid_pos: Vector2i)
 
 const TILE_SIZE := 32
 const GHOST_MODULATE := Color(0.8, 0.9, 1.0, 0.55)
@@ -120,6 +121,9 @@ func _unhandled_input(event: InputEvent) -> void:
 					_destroy_dragging = false
 				else:
 					exit_destroy_mode()
+			else:
+				# Inspect mode RMB: show ground info
+				_try_ground_info(cursor_grid_pos)
 	elif event.is_action_pressed(&"rotate_building"):
 		if building_mode:
 			current_rotation = (current_rotation + 1) % 4
@@ -204,6 +208,12 @@ func _try_inspect(pos: Vector2i) -> void:
 		# Clicked empty space — dismiss info panel
 		clear_select_highlight()
 		building_clicked.emit(null)
+
+func _try_ground_info(pos: Vector2i) -> void:
+	var building = GameManager.get_building_at(pos)
+	if building and is_instance_valid(building):
+		return  # Building here — RMB doesn't show ground info
+	ground_inspected.emit(pos)
 
 # ── Energy link mode ─────────────────────────────────────────────────────────
 

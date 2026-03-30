@@ -24,6 +24,8 @@ var _conv_visual_mgr_script = preload("res://scripts/game/conveyor_visual_manage
 var _player_scene: PackedScene = preload("res://player/player.tscn")
 var _building_collision_script = preload("res://scripts/game/building_collision.gd")
 var _popup: PanelContainer
+var _ground_tooltip: PanelContainer
+var _ground_tooltip_timer: float = 0.0
 var _last_time_usec: int = 0
 
 func _ready() -> void:
@@ -80,10 +82,15 @@ func _ready() -> void:
 
 	# Wire build system signals
 	build_system.building_clicked.connect(_on_building_clicked)
+	build_system.ground_inspected.connect(_on_ground_inspected)
 
 	# Add building popup to UI layer
 	_popup = _popup_scene.instantiate()
 	$UI.add_child(_popup)
+
+	# Create ground tooltip (hidden by default)
+	_ground_tooltip = _create_ground_tooltip()
+	$UI.add_child(_ground_tooltip)
 
 	# Create player before loading save so deserialize can restore position/inventory
 	_spawn_player()
@@ -102,13 +109,111 @@ func _on_building_selected(id: StringName) -> void:
 		build_system.clear_select_highlight()
 
 func _on_building_clicked(building: Node2D) -> void:
+	_hide_ground_tooltip()
 	if _popup:
 		if building:
 			_popup.show_building(building, camera)
 		else:
 			_popup.hide_popup()
 
+func _on_ground_inspected(grid_pos: Vector2i) -> void:
+	if _popup:
+		_popup.hide_popup()
+		build_system.clear_select_highlight()
+	_show_ground_tooltip(grid_pos)
+
+func _create_ground_tooltip() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.visible = false
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.12, 0.85)
+	style.border_color = Color(0.4, 0.4, 0.45, 0.8)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(3)
+	style.set_content_margin_all(6)
+	panel.add_theme_stylebox_override("panel", style)
+	var vbox := VBoxContainer.new()
+	vbox.name = "Content"
+	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(vbox)
+	return panel
+
+func _show_ground_tooltip(grid_pos: Vector2i) -> void:
+	var vbox: VBoxContainer = _ground_tooltip.get_node("Content")
+	for child in vbox.get_children():
+		vbox.remove_child(child)
+		child.queue_free()
+
+	# Tile name
+	var tile_name := "Ground"
+	if GameManager.walls.has(grid_pos):
+		tile_name = "Rock Wall"
+
+	# Deposit info
+	var deposit_id: StringName = GameManager.deposits.get(grid_pos, &"")
+	if deposit_id != &"":
+		var item_def = GameManager.get_item_def(deposit_id)
+		tile_name = "%s Deposit" % (item_def.display_name if item_def else str(deposit_id))
+
+		# Title with icon
+		var title_row := HBoxContainer.new()
+		title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var icon := GameManager.get_item_icon(deposit_id)
+		if icon:
+			var tex := TextureRect.new()
+			tex.texture = icon
+			tex.custom_minimum_size = Vector2(16, 16)
+			tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			title_row.add_child(tex)
+		var title_label := Label.new()
+		title_label.text = "  " + tile_name
+		title_label.add_theme_font_size_override("font_size", 12)
+		title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		title_row.add_child(title_label)
+		vbox.add_child(title_row)
+
+		# Hint
+		var hint := Label.new()
+		hint.text = "LMB hold to hand-mine"
+		hint.add_theme_font_size_override("font_size", 10)
+		hint.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(hint)
+	else:
+		var title_label := Label.new()
+		title_label.text = tile_name
+		title_label.add_theme_font_size_override("font_size", 12)
+		title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vbox.add_child(title_label)
+
+	# Position above the tile
+	_ground_tooltip.visible = true
+	_ground_tooltip_timer = 3.0
+	await get_tree().process_frame
+	var canvas_xform := get_viewport().get_canvas_transform()
+	var tile_center := Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, 0)
+	var screen_pos: Vector2 = canvas_xform * tile_center
+	var popup_size := _ground_tooltip.size
+	_ground_tooltip.position = Vector2(
+		clampf(screen_pos.x - popup_size.x * 0.5, 4, get_viewport_rect().size.x - popup_size.x - 4),
+		screen_pos.y - popup_size.y - 4
+	)
+
+func _hide_ground_tooltip() -> void:
+	if _ground_tooltip:
+		_ground_tooltip.visible = false
+
 func _process(delta: float) -> void:
+	# Auto-hide ground tooltip
+	if _ground_tooltip and _ground_tooltip.visible:
+		_ground_tooltip_timer -= delta
+		if _ground_tooltip_timer <= 0:
+			_hide_ground_tooltip()
+
 	var now := Time.get_ticks_usec()
 	var real_delta := (now - _last_time_usec) / 1_000_000.0 if _last_time_usec > 0 else delta
 	_last_time_usec = now

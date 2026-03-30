@@ -62,6 +62,14 @@ var stamina: float = STAMINA_MAX
 const PLAYER_COLLISION_LAYER := 1
 const BUILDING_COLLISION_LAYER := 2
 
+# ── Hand mining ─────────────────────────────────────────────────────────────
+const HAND_MINE_TIME := 3.0      # seconds per ore mined by hand
+const HAND_MINE_RANGE := 48.0    # max distance from player to deposit (1.5 tiles)
+var _mining: bool = false
+var _mine_timer: float = 0.0
+var _mine_target: Vector2i = Vector2i(-999, -999)
+var _mine_item_id: StringName = &""
+
 # ── Conveyor item hover ─────────────────────────────────────────────────────
 const CONV_HOVER_RADIUS := 12.0
 var _hovered_conv = null  # ConveyorBelt or null
@@ -92,6 +100,7 @@ func _physics_process(delta: float) -> void:
 	_handle_movement(delta)
 	_handle_conveyor_push()
 	_handle_health_regen(delta)
+	_handle_hand_mining(delta)
 
 	# Apply velocity and move
 	move_and_slide()
@@ -315,6 +324,65 @@ func _drop_all_inventory() -> void:
 		if inventory[i] != null:
 			_spawn_ground_item(inventory[i].item_id, inventory[i].quantity, position)
 			inventory[i] = null
+
+# ── Hand Mining ─────────────────────────────────────────────────────────────
+
+func _handle_hand_mining(delta: float) -> void:
+	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_stop_mining()
+		return
+
+	# Don't mine while in build/destroy mode
+	var build_system = get_parent().get_node_or_null("BuildSystem")
+	if build_system and (build_system.building_mode or build_system.destroy_mode or build_system.energy_link_mode):
+		_stop_mining()
+		return
+
+	# Get the grid cell under the mouse
+	var camera := get_viewport().get_camera_2d()
+	if not camera:
+		_stop_mining()
+		return
+	var screen_pos := get_viewport().get_mouse_position()
+	var viewport_size := get_viewport_rect().size
+	var offset := screen_pos - viewport_size / 2.0
+	var world_pos: Vector2 = camera.global_position + offset / camera.zoom.x
+	var grid_pos := Vector2i(floori(world_pos.x / TILE_SIZE), floori(world_pos.y / TILE_SIZE))
+
+	# Must be a deposit with no building on it
+	if not GameManager.deposits.has(grid_pos) or GameManager.buildings.has(grid_pos):
+		_stop_mining()
+		return
+
+	# Must be in range
+	var tile_center := Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
+	if position.distance_to(tile_center) > HAND_MINE_RANGE:
+		_stop_mining()
+		return
+
+	# Start or continue mining
+	var deposit_item: StringName = GameManager.deposits[grid_pos]
+	if not _mining or _mine_target != grid_pos:
+		_mining = true
+		_mine_timer = 0.0
+		_mine_target = grid_pos
+		_mine_item_id = deposit_item
+
+	_mine_timer += delta
+	if _mine_timer >= HAND_MINE_TIME:
+		_mine_timer -= HAND_MINE_TIME
+		var leftover := add_item(_mine_item_id, 1)
+		if leftover > 0:
+			_stop_mining()  # inventory full
+
+func _stop_mining() -> void:
+	_mining = false
+	_mine_timer = 0.0
+
+func get_mine_progress() -> float:
+	if not _mining:
+		return -1.0
+	return _mine_timer / HAND_MINE_TIME
 
 # ── Inventory ────────────────────────────────────────────────────────────────
 
