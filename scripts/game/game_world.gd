@@ -26,6 +26,7 @@ var _building_collision_script = preload("res://scripts/game/building_collision.
 var _popup: PanelContainer
 var _ground_tooltip: PanelContainer
 var _ground_tooltip_timer: float = 0.0
+var _ground_tooltip_grid: Vector2i = Vector2i.ZERO  # world grid pos for repositioning
 var _last_time_usec: int = 0
 
 func _ready() -> void:
@@ -193,26 +194,27 @@ func _show_ground_tooltip(grid_pos: Vector2i) -> void:
 	# Position above the tile
 	_ground_tooltip.visible = true
 	_ground_tooltip_timer = 3.0
-	await get_tree().process_frame
-	var canvas_xform := get_viewport().get_canvas_transform()
-	var tile_center := Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, 0)
-	var screen_pos: Vector2 = canvas_xform * tile_center
-	var popup_size := _ground_tooltip.size
-	_ground_tooltip.position = Vector2(
-		clampf(screen_pos.x - popup_size.x * 0.5, 4, get_viewport_rect().size.x - popup_size.x - 4),
-		screen_pos.y - popup_size.y - 4
-	)
+	_ground_tooltip_grid = grid_pos
 
 func _hide_ground_tooltip() -> void:
 	if _ground_tooltip:
 		_ground_tooltip.visible = false
 
 func _process(delta: float) -> void:
-	# Auto-hide ground tooltip
+	# Ground tooltip: auto-hide + reposition to stick to tile
 	if _ground_tooltip and _ground_tooltip.visible:
 		_ground_tooltip_timer -= delta
 		if _ground_tooltip_timer <= 0:
 			_hide_ground_tooltip()
+		else:
+			var canvas_xform := get_viewport().get_canvas_transform()
+			var tile_top := Vector2(_ground_tooltip_grid) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, 0)
+			var screen_pos: Vector2 = canvas_xform * tile_top
+			var popup_size := _ground_tooltip.size
+			_ground_tooltip.position = Vector2(
+				clampf(screen_pos.x - popup_size.x * 0.5, 4, get_viewport_rect().size.x - popup_size.x - 4),
+				screen_pos.y - popup_size.y - 4
+			)
 
 	var now := Time.get_ticks_usec()
 	var real_delta := (now - _last_time_usec) / 1_000_000.0 if _last_time_usec > 0 else delta

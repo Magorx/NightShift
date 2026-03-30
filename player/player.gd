@@ -327,6 +327,9 @@ func _drop_all_inventory() -> void:
 
 # ── Hand Mining ─────────────────────────────────────────────────────────────
 
+## Only these ores can be hand-mined (early game bootstrap).
+const HAND_MINEABLE := [&"iron_ore"]
+
 func _handle_hand_mining(delta: float) -> void:
 	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_stop_mining()
@@ -354,6 +357,12 @@ func _handle_hand_mining(delta: float) -> void:
 		_stop_mining()
 		return
 
+	# Only hand-mineable ores
+	var deposit_item: StringName = GameManager.deposits[grid_pos]
+	if deposit_item not in HAND_MINEABLE:
+		_stop_mining()
+		return
+
 	# Must be in range
 	var tile_center := Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
 	if position.distance_to(tile_center) > HAND_MINE_RANGE:
@@ -361,7 +370,6 @@ func _handle_hand_mining(delta: float) -> void:
 		return
 
 	# Start or continue mining
-	var deposit_item: StringName = GameManager.deposits[grid_pos]
 	if not _mining or _mine_target != grid_pos:
 		_mining = true
 		_mine_timer = 0.0
@@ -374,15 +382,61 @@ func _handle_hand_mining(delta: float) -> void:
 		var leftover := add_item(_mine_item_id, 1)
 		if leftover > 0:
 			_stop_mining()  # inventory full
+	queue_redraw()
 
 func _stop_mining() -> void:
-	_mining = false
-	_mine_timer = 0.0
+	if _mining:
+		_mining = false
+		_mine_timer = 0.0
+		queue_redraw()
 
 func get_mine_progress() -> float:
 	if not _mining:
 		return -1.0
 	return _mine_timer / HAND_MINE_TIME
+
+func _draw() -> void:
+	if not _mining:
+		return
+	var tile_center := Vector2(_mine_target) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
+	var local_target := tile_center - position
+	var progress := _mine_timer / HAND_MINE_TIME
+
+	# Beam line from player to tile center
+	var beam_color := Color(0.9, 0.7, 0.2, 0.4 + progress * 0.4)
+	var beam_width := 1.0 + progress * 1.5
+	draw_line(Vector2.ZERO, local_target, beam_color, beam_width)
+
+	# Sparkle particles at target
+	var spark_count := 3
+	var time := Time.get_ticks_msec() / 1000.0
+	for i in spark_count:
+		var angle := time * (3.0 + i * 1.7) + i * TAU / spark_count
+		var dist := 4.0 + sin(time * 5.0 + i) * 2.0
+		var spark_pos := local_target + Vector2(cos(angle), sin(angle)) * dist
+		var spark_alpha := 0.5 + sin(time * 8.0 + i * 2.0) * 0.3
+		draw_circle(spark_pos, 1.0, Color(1.0, 0.9, 0.4, spark_alpha))
+
+	# Progress arc around tile center
+	var arc_radius := 10.0
+	var arc_segments := 24
+	var arc_angle := progress * TAU
+	if arc_angle > 0.01:
+		var arc_color := Color(0.2, 0.85, 0.3, 0.8)
+		var points := PackedVector2Array()
+		for j in arc_segments + 1:
+			var a := -PI / 2.0 + float(j) / arc_segments * arc_angle
+			points.append(local_target + Vector2(cos(a), sin(a)) * arc_radius)
+		for j in range(points.size() - 1):
+			draw_line(points[j], points[j + 1], arc_color, 2.0)
+
+		# Background arc (full circle, dim)
+		var bg_points := PackedVector2Array()
+		for j in arc_segments + 1:
+			var a := -PI / 2.0 + float(j) / arc_segments * TAU
+			bg_points.append(local_target + Vector2(cos(a), sin(a)) * arc_radius)
+		for j in range(bg_points.size() - 1):
+			draw_line(bg_points[j], bg_points[j + 1], Color(0.3, 0.3, 0.3, 0.3), 1.5)
 
 # ── Inventory ────────────────────────────────────────────────────────────────
 
