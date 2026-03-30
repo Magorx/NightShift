@@ -320,11 +320,18 @@ func _commit_drag() -> void:
 		_commit_phase_drag()
 		return
 	# Place only non-overlapping blueprints that pass validation, are in range, and are affordable
+	var placed_any := false
 	for pos in _placeable_blueprints:
 		if not GameManager.can_afford_building(selected_building):
 			break
 		if GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation):
 			GameManager.place_building(selected_building, pos, _drag_rotation)
+			placed_any = true
+	# Show failure reason on single-click (not drag) when nothing was placed
+	if not placed_any and _blueprints.size() == 1:
+		var reason := _get_placement_fail_reason(selected_building, _blueprints[0], _drag_rotation)
+		if not reason.is_empty():
+			_show_floating_text(reason)
 	_dragging = false
 	_drag_axis = -1
 	_blueprints.clear()
@@ -355,6 +362,12 @@ func _commit_phase_drag() -> void:
 	current_rotation = _drag_rotation
 
 	if placed.is_empty():
+		# Show failure reason on single-click when nothing was placed
+		if _blueprints.size() == 1:
+			var phase_bid: StringName = _phase_config.phases[_phase_index].building_id
+			var reason := _get_placement_fail_reason(phase_bid, _blueprints[0], _drag_rotation)
+			if not reason.is_empty():
+				_show_floating_text(reason)
 		return
 
 	_phase_placements.append(placed)
@@ -960,4 +973,54 @@ func _debug_spawn_item(pos: Vector2i) -> void:
 	var conv = GameManager.get_conveyor_at(pos)
 	if conv and conv.can_accept():
 		conv.place_item(&"iron_ore")
+
+# ── Placement fail reason ───────────────────────────────────────────────────
+
+func _get_placement_fail_reason(id: StringName, grid_pos: Vector2i, rotation: int) -> String:
+	if not GameManager.can_afford_building(id):
+		return "Not enough resources"
+	var def = GameManager.get_building_def(id)
+	if not def:
+		return ""
+	if not GameManager.creative_mode and not ResearchManager.is_building_unlocked(id):
+		return "Research required"
+	var rotated_shape: Array = def.get_rotated_shape(rotation)
+	for cell in rotated_shape:
+		var check_pos: Vector2i = grid_pos + Vector2i(cell)
+		if check_pos.x < 0 or check_pos.y < 0 or check_pos.x >= GameManager.map_size or check_pos.y >= GameManager.map_size:
+			return "Out of bounds"
+		if GameManager.walls.has(check_pos):
+			return "Blocked by terrain"
+		if GameManager.buildings.has(check_pos):
+			return "Space is occupied"
+	if def.category == "extractor" and not GameManager.deposits.has(grid_pos):
+		return "No resource deposit"
+	return ""
+
+# ── Floating text ───────────────────────────────────────────────────────────
+
+func _show_floating_text(text: String) -> void:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.custom_minimum_size.x = 250
+	label.size.x = 250
+	label.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35))
+	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
+	label.add_theme_constant_override("shadow_offset_x", 1)
+	label.add_theme_constant_override("shadow_offset_y", 1)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var ui_layer: CanvasLayer = get_parent().get_node("UI")
+	ui_layer.add_child(label)
+
+	var screen_pos: Vector2 = get_viewport().get_mouse_position()
+	var start_y: float = screen_pos.y - 30
+	label.position = Vector2(screen_pos.x - 125, start_y)
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", start_y - 40, 2.0).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, 2.0).set_ease(Tween.EASE_IN).set_delay(0.5)
+	tween.chain().tween_callback(label.queue_free)
 

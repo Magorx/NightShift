@@ -118,15 +118,7 @@ func _update_delivery_counter() -> void:
 		# Requirements
 		for req in contract.requirements:
 			var row := HBoxContainer.new()
-			var icon := GameManager.get_item_icon(req.item_id)
-			if icon:
-				var tex_rect := TextureRect.new()
-				tex_rect.texture = icon
-				tex_rect.custom_minimum_size = Vector2(12, 12)
-				tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-				row.add_child(tex_rect)
+			row.add_child(ItemIcon.create(req.item_id, Vector2(12, 12)))
 			var item_def = _get_item_def(req.item_id)
 			var name_label := Label.new()
 			name_label.text = " %s" % (item_def.display_name if item_def else str(req.item_id))

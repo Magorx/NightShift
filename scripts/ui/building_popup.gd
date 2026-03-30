@@ -4,6 +4,8 @@ extends PanelContainer
 ## Shows recipe + segmented craft bar, energy bar, and inventory rows.
 ## Recipe row is clickable to open a recipe selector menu.
 
+signal dismissed
+
 const TILE_SIZE := 32
 const UPDATE_INTERVAL := 0.25
 const SCREEN_MARGIN := 4.0
@@ -15,10 +17,8 @@ const SEGMENT_COLOR_ON := Color(0.9, 0.75, 0.2, 0.95)
 const SEGMENT_THRESHOLDS := [0.2, 0.4, 0.6, 0.8]
 
 const ICON_SIZE := Vector2(12, 12)
-const ICON_BORDER := 1
 const FONT_SIZE := 11
 const NUM_WIDTH := 14.0 # fixed width for quantity numbers
-const ENERGY_COLOR := Color(0.95, 0.85, 0.2)
 
 var _building: Node2D
 var _update_timer: float = 0.0
@@ -29,6 +29,8 @@ var _recipe_menu_scene: PackedScene = preload("res://scenes/ui/recipe_menu.tscn"
 var _col_widths: Dictionary = {} # {in_widths: Array, out_widths: Array, max_in: int, max_arrow_w: float}
 var _recipe_row_normal_style: StyleBox
 var _recipe_row_pressed_style: StyleBox
+var _current_recipe = null # cached recipe to avoid rebuilding every update
+var _current_inventory_key: String = "" # cached inventory fingerprint
 
 @onready var recipe_section: VBoxContainer = %RecipeSection
 @onready var recipe_row_button: PanelContainer = %RecipeRowButton
@@ -83,6 +85,8 @@ func show_building(building: Node2D, camera: Camera2D) -> void:
 	_close_recipe_menu()
 	_building = building
 	_camera = camera
+	_current_recipe = null
+	_current_inventory_key = ""
 	recipe_row.custom_minimum_size.x = 0
 	custom_minimum_size.x = 0
 	_lock_width()
@@ -128,11 +132,11 @@ func _compute_column_widths(recipes: Array) -> Dictionary:
 	var font: Font = get_theme_font("font")
 	var max_in: int = 0
 	var max_out: int = 0
+	var has_energy_cost: bool = false
 	for recipe in recipes:
-		var in_count: int = recipe.inputs.size()
+		max_in = maxi(max_in, recipe.inputs.size())
 		if recipe is RecipeDef and recipe.energy_cost > 0.0:
-			in_count += 1
-		max_in = maxi(max_in, in_count)
+			has_energy_cost = true
 		var out_count: int = recipe.outputs.size()
 		if recipe is RecipeDef and recipe.energy_output > 0.0:
 			out_count += 1
@@ -143,16 +147,15 @@ func _compute_column_widths(recipes: Array) -> Dictionary:
 	var out_widths: Array = []
 	out_widths.resize(max_out)
 	out_widths.fill(0.0)
+	var energy_cost_w: float = 0.0
 	var max_arrow_w: float = 0.0
 	for recipe in recipes:
-		var idx: int = 0
-		for stack in recipe.inputs:
-			var w: float = font.get_string_size(str(stack.quantity), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
+		for idx in range(recipe.inputs.size()):
+			var w: float = font.get_string_size(str(recipe.inputs[idx].quantity), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 			in_widths[idx] = maxf(in_widths[idx], w)
-			idx += 1
 		if recipe is RecipeDef and recipe.energy_cost > 0.0:
 			var w: float = font.get_string_size(str(int(recipe.energy_cost)), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
-			in_widths[idx] = maxf(in_widths[idx], w)
+			energy_cost_w = maxf(energy_cost_w, w)
 		var out_idx: int = 0
 		for i in range(recipe.outputs.size()):
 			var w: float = font.get_string_size(str(recipe.outputs[i].quantity), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
@@ -167,12 +170,14 @@ func _compute_column_widths(recipes: Array) -> Dictionary:
 		else:
 			var aw: float = font.get_string_size("→", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 			max_arrow_w = maxf(max_arrow_w, aw)
-	return {in_widths = in_widths, out_widths = out_widths, max_in = max_in, max_arrow_w = max_arrow_w}
+	return {in_widths = in_widths, out_widths = out_widths, max_in = max_in, max_arrow_w = max_arrow_w, has_energy_cost = has_energy_cost, energy_cost_w = energy_cost_w}
 
 func hide_popup() -> void:
 	_close_recipe_menu()
 	visible = false
 	_building = null
+	_current_recipe = null
+	_current_inventory_key = ""
 
 # ── Recipe menu ────────────────────────────────────────────────────────────
 
@@ -231,6 +236,7 @@ func _on_blocker_input(event: InputEvent) -> void:
 	if not in_popup and not in_menu:
 		_close_recipe_menu()
 		hide_popup()
+		dismissed.emit()
 	elif not in_menu:
 		_close_recipe_menu()
 
@@ -276,6 +282,7 @@ func _update_position() -> void:
 	var target_x := top_screen.x - popup_size.x * 0.5
 	var target_y := top_screen.y - popup_size.y - GAP_ABOVE
 	target_x = clampf(target_x, SCREEN_MARGIN, viewport_size.x - popup_size.x - SCREEN_MARGIN)
+	target_y = clampf(target_y, SCREEN_MARGIN, viewport_size.y - popup_size.y - SCREEN_MARGIN)
 	position = Vector2(target_x, target_y)
 	# Reposition menu if open
 	if _recipe_menu:
@@ -305,11 +312,14 @@ func _update_content() -> void:
 func _update_recipe_section(recipe, logic) -> void:
 	if not recipe:
 		recipe_section.visible = false
+		_current_recipe = null
 		return
 	recipe_section.visible = true
 	var progress: float = logic.get_popup_progress()
 	craft_bar_row.visible = progress >= 0.0
-	_populate_recipe_row(recipe)
+	if recipe != _current_recipe:
+		_current_recipe = recipe
+		_populate_recipe_row(recipe)
 
 func _populate_recipe_row(recipe) -> void:
 	for child in recipe_row.get_children():
@@ -320,27 +330,27 @@ func _populate_recipe_row(recipe) -> void:
 	var out_widths: Array = _col_widths.get("out_widths", [])
 	var max_in: int = _col_widths.get("max_in", 0)
 	var max_arrow_w: float = _col_widths.get("max_arrow_w", 0.0)
+	var has_energy_cost: bool = _col_widths.get("has_energy_cost", false)
+	var energy_cost_w: float = _col_widths.get("energy_cost_w", 0.0)
 	var sep: float = recipe_row.get_theme_constant("separation")
 
-	# Inputs
+	# Item inputs
 	var slot_idx: int = 0
 	for stack in recipe.inputs:
 		var w: float = in_widths[slot_idx] if slot_idx < in_widths.size() else NUM_WIDTH
 		_add_item_slot(recipe_row, stack, w)
 		slot_idx += 1
-	# Energy cost
-	if recipe is RecipeDef and recipe.energy_cost > 0.0:
-		var w: float = in_widths[slot_idx] if slot_idx < in_widths.size() else NUM_WIDTH
-		_add_slot(recipe_row, str(int(recipe.energy_cost)), ENERGY_COLOR, w)
-		slot_idx += 1
-	# Pad empty input columns
+	# Pad empty item input columns
 	while slot_idx < max_in:
 		var w: float = in_widths[slot_idx] if slot_idx < in_widths.size() else NUM_WIDTH
-		var pad := Control.new()
-		pad.custom_minimum_size = Vector2(w + ICON_SIZE.x + sep, 0)
-		pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		recipe_row.add_child(pad)
+		recipe_row.add_child(_create_empty_billet(w))
 		slot_idx += 1
+	# Energy cost (dedicated last input columns)
+	if has_energy_cost:
+		if recipe is RecipeDef and recipe.energy_cost > 0.0:
+			_add_energy_slot(recipe_row, str(int(recipe.energy_cost)), energy_cost_w)
+		else:
+			recipe_row.add_child(_create_empty_billet(energy_cost_w))
 
 	# Arrow with craft time (fixed width for alignment)
 	var arrow := Label.new()
@@ -363,7 +373,7 @@ func _populate_recipe_row(recipe) -> void:
 	# Energy output
 	if recipe is RecipeDef and recipe.energy_output > 0.0:
 		var w: float = out_widths[out_slot_idx] if out_slot_idx < out_widths.size() else NUM_WIDTH
-		_add_slot(recipe_row, str(int(recipe.energy_output)), ENERGY_COLOR, w)
+		_add_energy_slot(recipe_row, str(int(recipe.energy_output)), w)
 
 func _update_progress_segments() -> void:
 	if not _building or not is_instance_valid(_building):
@@ -382,51 +392,59 @@ func _add_item_slot(row: HBoxContainer, stack, num_w: float = NUM_WIDTH) -> void
 	var item_id: StringName = &""
 	if stack is ItemStack and stack.item:
 		item_id = stack.item.id
-	var num_label := Label.new()
-	num_label.text = str(qty)
-	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
-	num_label.custom_minimum_size = Vector2(num_w, 0)
-	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(num_label)
-	row.add_child(_create_item_icon(item_id))
+	row.add_child(_create_slot_billet(str(qty), num_w, ItemIcon.create(item_id, ICON_SIZE)))
 
-func _add_slot(row: HBoxContainer, num_text: String, color: Color, num_w: float = NUM_WIDTH) -> void:
+func _add_energy_slot(row: HBoxContainer, num_text: String, num_w: float = NUM_WIDTH) -> void:
+	row.add_child(_create_slot_billet(num_text, num_w, ItemIcon.create(&"energy", ICON_SIZE)))
+
+func _create_slot_billet(num_text: String, num_w: float, icon: Control) -> PanelContainer:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.08, 0.08, 0.6)
+	style.set_corner_radius_all(3)
+	style.content_margin_left = 2
+	style.content_margin_right = 2
+	style.content_margin_top = 1
+	style.content_margin_bottom = 1
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", style)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 1)
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var num_label := Label.new()
 	num_label.text = num_text
 	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
 	num_label.custom_minimum_size = Vector2(num_w, 0)
 	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(num_label)
-	row.add_child(_create_color_icon(color))
+	hbox.add_child(num_label)
+	hbox.add_child(icon)
+	panel.add_child(hbox)
+	return panel
 
-func _create_item_icon(item_id: StringName) -> Control:
-	var icon := GameManager.get_item_icon(item_id)
-	if icon:
-		var tex_rect := TextureRect.new()
-		tex_rect.texture = icon
-		tex_rect.custom_minimum_size = ICON_SIZE
-		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		return tex_rect
-	return _create_color_icon(Color.WHITE)
-
-func _create_color_icon(color: Color) -> PanelContainer:
-	var outline_color := Color.BLACK if color.get_luminance() > 0.4 else Color.WHITE
+func _create_empty_billet(num_w: float) -> PanelContainer:
 	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.border_color = outline_color
-	style.border_width_left = ICON_BORDER
-	style.border_width_top = ICON_BORDER
-	style.border_width_right = ICON_BORDER
-	style.border_width_bottom = ICON_BORDER
+	style.bg_color = Color.TRANSPARENT
+	style.content_margin_left = 2
+	style.content_margin_right = 2
+	style.content_margin_top = 1
+	style.content_margin_bottom = 1
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = ICON_SIZE
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", style)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 1)
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var num_label := Label.new()
+	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
+	num_label.custom_minimum_size = Vector2(num_w, 0)
+	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(num_label)
+	var icon_pad := Control.new()
+	icon_pad.custom_minimum_size = ICON_SIZE
+	icon_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(icon_pad)
+	panel.add_child(hbox)
 	return panel
 
 func _update_energy_row(e) -> void:
@@ -440,8 +458,16 @@ func _update_energy_row(e) -> void:
 func _update_inventory_row(items: Array) -> void:
 	if items.is_empty():
 		inventory_row.visible = false
+		_current_inventory_key = ""
 		return
 	inventory_row.visible = true
+	# Build a fingerprint to detect changes
+	var key := ""
+	for entry in items:
+		key += "%s:%d," % [entry.id, entry.count]
+	if key == _current_inventory_key:
+		return
+	_current_inventory_key = key
 	for child in inventory_row.get_children():
 		inventory_row.remove_child(child)
 		child.queue_free()
@@ -459,4 +485,4 @@ func _update_inventory_row(items: Array) -> void:
 		num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		inventory_row.add_child(num_label)
-		inventory_row.add_child(_create_item_icon(entry.id))
+		inventory_row.add_child(ItemIcon.create(entry.id, ICON_SIZE))

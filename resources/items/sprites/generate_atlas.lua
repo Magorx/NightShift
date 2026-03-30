@@ -228,6 +228,12 @@ local ROBO_SH      = H.hex("#606878")
 local ROBO_EYE     = H.hex("#40D0F0")
 local ROBO_JOINT   = H.hex("#707880")
 
+-- Energy (lightning bolt)
+local NRG_BASE     = H.hex("#F0D030")
+local NRG_HI       = H.hex("#FFE870")
+local NRG_SH       = H.hex("#C8A020")
+local NRG_DARK     = H.hex("#987818")
+
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- HELPERS
@@ -1003,6 +1009,58 @@ local function draw_all(img)
   cpx(img, 12, 12, 4, 3, OL)
   cpx(img, 12, 13, 4, 3, OL)
   cpx(img, 12, 14, 4, 3, OL)
+
+  -- (4,4) energy - lightning bolt
+  -- Main bolt shape
+  crect(img, 7, 2, 10, 3, 4, 4, NRG_BASE)   -- top
+  crect(img, 6, 4, 9, 5, 4, 4, NRG_BASE)
+  crect(img, 5, 6, 10, 7, 4, 4, NRG_BASE)   -- wide middle bar
+  crect(img, 7, 8, 9, 9, 4, 4, NRG_BASE)
+  crect(img, 6, 10, 8, 11, 4, 4, NRG_BASE)
+  crect(img, 5, 12, 7, 13, 4, 4, NRG_BASE)  -- bottom
+  -- Highlight left/top edge
+  cpx(img, 7, 2, 4, 4, NRG_HI)
+  cpx(img, 8, 2, 4, 4, NRG_HI)
+  cpx(img, 6, 4, 4, 4, NRG_HI)
+  cpx(img, 7, 4, 4, 4, NRG_HI)
+  cpx(img, 5, 6, 4, 4, NRG_HI)
+  cpx(img, 6, 6, 4, 4, NRG_HI)
+  -- Shadow right/bottom edge
+  cpx(img, 10, 3, 4, 4, NRG_SH)
+  cpx(img, 9, 5, 4, 4, NRG_SH)
+  cpx(img, 10, 7, 4, 4, NRG_SH)
+  cpx(img, 9, 9, 4, 4, NRG_SH)
+  cpx(img, 8, 11, 4, 4, NRG_SH)
+  cpx(img, 7, 13, 4, 4, NRG_SH)
+  -- Dark accent
+  cpx(img, 6, 13, 4, 4, NRG_DARK)
+  cpx(img, 5, 13, 4, 4, NRG_DARK)
+  -- Outline
+  cline(img, 7, 1, 10, 1, 4, 4, OL)
+  cpx(img, 11, 2, 4, 4, OL)
+  cpx(img, 11, 3, 4, 4, OL)
+  cpx(img, 6, 2, 4, 4, OL)
+  cpx(img, 6, 3, 4, 4, OL)
+  cpx(img, 5, 4, 4, 4, OL)
+  cpx(img, 5, 5, 4, 4, OL)
+  cpx(img, 10, 4, 4, 4, OL)
+  cpx(img, 10, 5, 4, 4, OL)
+  cpx(img, 4, 6, 4, 4, OL)
+  cpx(img, 4, 7, 4, 4, OL)
+  cpx(img, 11, 6, 4, 4, OL)
+  cpx(img, 11, 7, 4, 4, OL)
+  cpx(img, 6, 8, 4, 4, OL)
+  cpx(img, 10, 8, 4, 4, OL)
+  cpx(img, 10, 9, 4, 4, OL)
+  cpx(img, 6, 9, 4, 4, OL)
+  cpx(img, 5, 10, 4, 4, OL)
+  cpx(img, 9, 10, 4, 4, OL)
+  cpx(img, 9, 11, 4, 4, OL)
+  cpx(img, 4, 12, 4, 4, OL)
+  cpx(img, 4, 13, 4, 4, OL)
+  cpx(img, 8, 12, 4, 4, OL)
+  cline(img, 5, 14, 7, 14, 4, 4, OL)
+  cpx(img, 5, 11, 4, 4, OL)
 end
 
 
@@ -1039,5 +1097,5 @@ app.command.ExportSpriteSheet {
 }
 
 spr:close()
-print("[item_atlas] Generated 128x80 atlas with 36 items")
+print("[item_atlas] Generated 128x80 atlas with 37 items")
 print("[item_atlas] done")

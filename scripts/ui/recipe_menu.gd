@@ -5,10 +5,8 @@ extends PanelContainer
 ## Columns are aligned across rows by computing per-column number widths.
 
 const ICON_SIZE := Vector2(12, 12)
-const ICON_BORDER := 1
 const FONT_SIZE := 11
 const SLOT_SEP := 2
-const ENERGY_COLOR := Color(0.95, 0.85, 0.2)
 const ENABLED_COLOR := Color(0.2, 0.8, 0.3)
 const DISABLED_COLOR := Color(0.8, 0.2, 0.2)
 const ARROW_COLOR := Color(0.7, 0.7, 0.7)
@@ -25,13 +23,11 @@ func populate(configs: Array) -> void:
 
 # ── Layout computation ────────────────────────────────────────────────────
 
-## Get all input slot texts for a recipe (inputs + energy cost).
+## Get all item input slot texts for a recipe (excluding energy cost).
 func _get_input_texts(recipe) -> Array:
 	var texts: Array = []
 	for stack in recipe.inputs:
 		texts.append(str(stack.quantity))
-	if recipe.energy_cost > 0.0:
-		texts.append(str(int(recipe.energy_cost)))
 	return texts
 
 ## Get all output slot texts for a recipe.
@@ -48,11 +44,14 @@ func _compute_column_widths() -> Dictionary:
 	var font: Font = get_theme_font("font")
 	var max_in: int = 0
 	var max_out: int = 0
+	var has_energy_cost: bool = false
 	for config in _configs:
 		var in_texts := _get_input_texts(config.recipe)
 		var out_texts := _get_output_texts(config.recipe)
 		max_in = maxi(max_in, in_texts.size())
 		max_out = maxi(max_out, out_texts.size())
+		if config.recipe.energy_cost > 0.0:
+			has_energy_cost = true
 	# Per-column widths
 	var in_widths: Array = []
 	in_widths.resize(max_in)
@@ -60,16 +59,24 @@ func _compute_column_widths() -> Dictionary:
 	var out_widths: Array = []
 	out_widths.resize(max_out)
 	out_widths.fill(0.0)
+	var energy_cost_w: float = 0.0
+	var max_arrow_w: float = 0.0
 	for config in _configs:
 		var in_texts := _get_input_texts(config.recipe)
 		for i in range(in_texts.size()):
 			var w: float = font.get_string_size(in_texts[i], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 			in_widths[i] = maxf(in_widths[i], w)
+		if config.recipe.energy_cost > 0.0:
+			var w: float = font.get_string_size(str(int(config.recipe.energy_cost)), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
+			energy_cost_w = maxf(energy_cost_w, w)
 		var out_texts := _get_output_texts(config.recipe)
 		for i in range(out_texts.size()):
 			var w: float = font.get_string_size(out_texts[i], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 			out_widths[i] = maxf(out_widths[i], w)
-	return {in_widths = in_widths, out_widths = out_widths, max_in = max_in}
+		var arrow_text := "—%.0fs→" % config.recipe.craft_time
+		var aw: float = font.get_string_size(arrow_text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
+		max_arrow_w = maxf(max_arrow_w, aw)
+	return {in_widths = in_widths, out_widths = out_widths, max_in = max_in, has_energy_cost = has_energy_cost, energy_cost_w = energy_cost_w, max_arrow_w = max_arrow_w}
 
 # ── Build ─────────────────────────────────────────────────────────────────
 
@@ -89,33 +96,36 @@ func _create_recipe_row(config, col: Dictionary) -> HBoxContainer:
 	var in_widths: Array = col.in_widths
 	var out_widths: Array = col.out_widths
 	var max_in: int = col.max_in
+	var has_energy_cost: bool = col.has_energy_cost
+	var energy_cost_w: float = col.energy_cost_w
 
-	# Inputs
+	# Item inputs
 	var slot_idx: int = 0
 	for stack in recipe.inputs:
 		var w: float = in_widths[slot_idx] if slot_idx < in_widths.size() else 12.0
 		_add_item_slot(row, stack, w)
 		slot_idx += 1
 
-	# Energy cost
-	if recipe.energy_cost > 0.0:
-		var w: float = in_widths[slot_idx] if slot_idx < in_widths.size() else 12.0
-		_add_slot(row, str(int(recipe.energy_cost)), ENERGY_COLOR, w)
-		slot_idx += 1
-
-	# Pad empty input columns to align arrow
+	# Pad empty item input columns
 	while slot_idx < max_in:
 		var w: float = in_widths[slot_idx] if slot_idx < in_widths.size() else 12.0
-		var pad := Control.new()
-		pad.custom_minimum_size = Vector2(w + ICON_SIZE.x + SLOT_SEP, 0)
-		pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(pad)
+		row.add_child(_create_empty_billet(w))
 		slot_idx += 1
 
-	# Arrow with craft time
+	# Energy cost (dedicated last input columns)
+	if has_energy_cost:
+		if recipe.energy_cost > 0.0:
+			_add_energy_slot(row, str(int(recipe.energy_cost)), energy_cost_w)
+		else:
+			row.add_child(_create_empty_billet(energy_cost_w))
+
+	# Arrow with craft time (fixed width for alignment)
+	var max_arrow_w: float = col.get("max_arrow_w", 0.0)
 	var arrow := Label.new()
 	arrow.text = "—%.0fs→" % recipe.craft_time
 	arrow.add_theme_font_size_override("font_size", FONT_SIZE)
+	if max_arrow_w > 0.0:
+		arrow.custom_minimum_size = Vector2(max_arrow_w, 0)
 	row.add_child(arrow)
 
 	# Outputs
@@ -126,7 +136,7 @@ func _create_recipe_row(config, col: Dictionary) -> HBoxContainer:
 		out_slot_idx = i + 1
 	if recipe is RecipeDef and recipe.energy_output > 0.0:
 		var w: float = out_widths[out_slot_idx] if out_slot_idx < out_widths.size() else 12.0
-		_add_slot(row, str(int(recipe.energy_output)), ENERGY_COLOR, w)
+		_add_energy_slot(row, str(int(recipe.energy_output)), w)
 
 	# Spacer
 	var spacer := Control.new()
@@ -185,22 +195,60 @@ func _add_item_slot(row: HBoxContainer, stack, num_w: float) -> void:
 	var item_id: StringName = &""
 	if stack is ItemStack and stack.item:
 		item_id = stack.item.id
-	var num_label := Label.new()
-	num_label.text = str(qty)
-	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
-	num_label.custom_minimum_size = Vector2(num_w, 0)
-	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(num_label)
-	row.add_child(_create_item_icon(item_id))
+	row.add_child(_create_slot_billet(str(qty), num_w, ItemIcon.create(item_id, ICON_SIZE)))
 
-func _add_slot(row: HBoxContainer, num_text: String, color: Color, num_w: float) -> void:
+func _add_energy_slot(row: HBoxContainer, num_text: String, num_w: float) -> void:
+	row.add_child(_create_slot_billet(num_text, num_w, ItemIcon.create(&"energy", ICON_SIZE)))
+
+func _create_slot_billet(num_text: String, num_w: float, icon: Control) -> PanelContainer:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.08, 0.08, 0.6)
+	style.set_corner_radius_all(3)
+	style.content_margin_left = 2
+	style.content_margin_right = 2
+	style.content_margin_top = 1
+	style.content_margin_bottom = 1
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", style)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 1)
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var num_label := Label.new()
 	num_label.text = num_text
 	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
 	num_label.custom_minimum_size = Vector2(num_w, 0)
 	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(num_label)
-	row.add_child(_create_color_icon(color))
+	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(num_label)
+	hbox.add_child(icon)
+	panel.add_child(hbox)
+	return panel
+
+func _create_empty_billet(num_w: float) -> PanelContainer:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color.TRANSPARENT
+	style.content_margin_left = 2
+	style.content_margin_right = 2
+	style.content_margin_top = 1
+	style.content_margin_bottom = 1
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", style)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 1)
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var num_label := Label.new()
+	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
+	num_label.custom_minimum_size = Vector2(num_w, 0)
+	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(num_label)
+	var icon_pad := Control.new()
+	icon_pad.custom_minimum_size = ICON_SIZE
+	icon_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(icon_pad)
+	panel.add_child(hbox)
+	return panel
 
 func _on_move_input(event: InputEvent, idx: int, direction: int) -> void:
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
@@ -224,32 +272,3 @@ func _on_toggle_input(event: InputEvent, config, rect: ColorRect) -> void:
 	rect.accept_event()
 	config.enabled = not config.enabled
 	rect.color = ENABLED_COLOR if config.enabled else DISABLED_COLOR
-
-# ── Icon helpers ──────────────────────────────────────────────────────────
-
-func _create_item_icon(item_id: StringName) -> Control:
-	var icon := GameManager.get_item_icon(item_id)
-	if icon:
-		var tex_rect := TextureRect.new()
-		tex_rect.texture = icon
-		tex_rect.custom_minimum_size = ICON_SIZE
-		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		return tex_rect
-	return _create_color_icon(Color.WHITE)
-
-func _create_color_icon(color: Color) -> PanelContainer:
-	var outline_color := Color.BLACK if color.get_luminance() > 0.4 else Color.WHITE
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.border_color = outline_color
-	style.border_width_left = ICON_BORDER
-	style.border_width_top = ICON_BORDER
-	style.border_width_right = ICON_BORDER
-	style.border_width_bottom = ICON_BORDER
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = ICON_SIZE
-	panel.add_theme_stylebox_override("panel", style)
-	return panel

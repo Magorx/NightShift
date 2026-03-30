@@ -62,7 +62,7 @@ func _create_slot(index: int) -> PanelContainer:
 	style.set_corner_radius_all(3)
 	panel.add_theme_stylebox_override("panel", style)
 
-	var icon_rect := TextureRect.new()
+	var icon_rect := ItemIcon.new()
 	icon_rect.name = "ItemIcon"
 	icon_rect.custom_minimum_size = Vector2(28, 28)
 	icon_rect.position = Vector2(10, 10)
@@ -139,7 +139,7 @@ func _update_slots() -> void:
 func _update_slot(index: int, player) -> void:
 	var panel: PanelContainer = _slots[index]
 	var style: StyleBoxFlat = panel.get_theme_stylebox("panel")
-	var icon_rect: TextureRect = panel.get_node("ItemIcon")
+	var icon_rect: ItemIcon = panel.get_node("ItemIcon")
 	var label: Label = panel.get_node("QuantityLabel")
 	var slot_data = player.inventory[index]
 	# Source slot is dimmed only when it was fully emptied by the pick-up
@@ -157,7 +157,7 @@ func _update_slot(index: int, player) -> void:
 
 	# Content
 	if slot_data != null and not is_source_empty:
-		icon_rect.texture = GameManager.get_item_icon(slot_data.item_id)
+		icon_rect.set_item(slot_data.item_id)
 		icon_rect.visible = true
 		label.text = str(slot_data.quantity) if slot_data.quantity > 1 else ""
 	else:

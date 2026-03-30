@@ -87,6 +87,7 @@ func _ready() -> void:
 
 	# Add building popup to UI layer
 	_popup = _popup_scene.instantiate()
+	_popup.dismissed.connect(_on_popup_dismissed)
 	$UI.add_child(_popup)
 
 	# Create ground tooltip (hidden by default)
@@ -108,6 +109,9 @@ func _on_building_selected(id: StringName) -> void:
 	if _popup:
 		_popup.hide_popup()
 		build_system.clear_select_highlight()
+
+func _on_popup_dismissed() -> void:
+	build_system.clear_select_highlight()
 
 func _on_building_clicked(building: Node2D) -> void:
 	_hide_ground_tooltip()
@@ -160,16 +164,7 @@ func _show_ground_tooltip(grid_pos: Vector2i) -> void:
 		# Title with icon
 		var title_row := HBoxContainer.new()
 		title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var icon := GameManager.get_item_icon(deposit_id)
-		if icon:
-			var tex := TextureRect.new()
-			tex.texture = icon
-			tex.custom_minimum_size = Vector2(16, 16)
-			tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tex.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			title_row.add_child(tex)
+		title_row.add_child(ItemIcon.create(deposit_id, Vector2(16, 16)))
 		var title_label := Label.new()
 		title_label.text = "  " + tile_name
 		title_label.add_theme_font_size_override("font_size", 12)
