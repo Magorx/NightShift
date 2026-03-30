@@ -104,6 +104,7 @@ func _serialize_run() -> Dictionary:
 		"time_speed": _serialize_time_speed(),
 		"research": ResearchManager.serialize(),
 		"contracts": ContractManager.serialize(),
+		"creative_mode": GameManager.creative_mode,
 	}
 	var gw := _get_game_world()
 	if gw:
@@ -170,6 +171,7 @@ func _deserialize_run(data: Dictionary) -> void:
 	# Restore map size and currency
 	GameManager.map_size = int(data.get("map_size", 64))
 	GameManager.total_currency = data.get("currency", 0)
+	GameManager.creative_mode = data.get("creative_mode", false)
 
 	# Restore terrain (deposits, walls, grass variants) from packed data
 	var terrain_data: String = data.get("terrain", "")

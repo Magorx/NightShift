@@ -47,6 +47,9 @@ var _ItemVisualHandle = preload("res://scripts/game/item_visual_handle.gd")
 # Currency earned from sinks
 var total_currency: int = 0
 
+# Creative mode: all buildings are free to place
+var creative_mode: bool = false
+
 # Items delivered to sinks: item_id (StringName) -> count (int)
 var items_delivered: Dictionary = {}
 
@@ -235,6 +238,8 @@ const BUILD_COST_REFUND_RATIO := 0.5
 ## Check if the player has enough items to build this building.
 ## Returns true if build_cost is empty (free placement) or player has all required items.
 func can_afford_building(id: StringName) -> bool:
+	if creative_mode:
+		return true
 	var def = get_building_def(id)
 	if not def or def.build_cost.is_empty():
 		return true
@@ -248,6 +253,8 @@ func can_afford_building(id: StringName) -> bool:
 ## Deduct building cost from the player's inventory.
 ## Should only be called after can_afford_building() returns true.
 func deduct_building_cost(id: StringName) -> void:
+	if creative_mode:
+		return
 	var def = get_building_def(id)
 	if not def or def.build_cost.is_empty() or not player:
 		return
