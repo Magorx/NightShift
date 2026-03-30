@@ -222,6 +222,7 @@ func record_delivery(item_id: StringName, value: int = 0) -> void:
 		items_delivered[item_id] = 0
 	items_delivered[item_id] += 1
 	total_currency += value
+	ContractManager.on_item_delivered(item_id)
 
 func get_building_def(id: StringName):
 	return building_defs.get(id)

@@ -103,6 +103,7 @@ func _serialize_run() -> Dictionary:
 		"items_delivered": _serialize_items_delivered(),
 		"time_speed": _serialize_time_speed(),
 		"research": ResearchManager.serialize(),
+		"contracts": ContractManager.serialize(),
 	}
 	var gw := _get_game_world()
 	if gw:
@@ -224,6 +225,11 @@ func _deserialize_run(data: Dictionary) -> void:
 	var research_data: Dictionary = data.get("research", {})
 	if not research_data.is_empty():
 		ResearchManager.deserialize(research_data)
+
+	# Restore contract state
+	var contract_data: Dictionary = data.get("contracts", {})
+	if not contract_data.is_empty():
+		ContractManager.deserialize(contract_data)
 
 	# Load hotkeys from account meta (not from run save)
 	AccountManager.load_hotkeys()

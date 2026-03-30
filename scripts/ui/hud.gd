@@ -92,7 +92,7 @@ func _on_inventory_button_gui_input(event: InputEvent) -> void:
 		else:
 			inventory_panel.visible = not inventory_panel.visible
 
-# ── Delivery Counter ──────────────────────────────────────────────────────
+# ── Delivery Counter / Contracts ──────────────────────────────────────────
 
 func _update_delivery_counter() -> void:
 	currency_value.text = str(GameManager.total_currency)
@@ -101,47 +101,57 @@ func _update_delivery_counter() -> void:
 	for child in item_list.get_children():
 		child.queue_free()
 
-	if GameManager.items_delivered.is_empty():
-		return
-
-	# Sort by count descending
-	var entries: Array = []
-	for item_id in GameManager.items_delivered:
-		entries.append({id = item_id, count = GameManager.items_delivered[item_id]})
-	entries.sort_custom(func(a, b): return a.count > b.count)
-
-	for entry in entries:
-		var row := HBoxContainer.new()
-
-		var icon := GameManager.get_item_icon(entry.id)
-		var item_def = _get_item_def(entry.id)
-		if icon:
-			var tex_rect := TextureRect.new()
-			tex_rect.texture = icon
-			tex_rect.custom_minimum_size = Vector2(12, 12)
-			tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			row.add_child(tex_rect)
+	# Show active contracts
+	for contract in ContractManager.active_contracts:
+		if contract.completed:
+			continue
+		# Contract title
+		var title_label := Label.new()
+		title_label.text = contract.title
+		title_label.add_theme_font_size_override("font_size", 11)
+		if contract.is_gate:
+			title_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
 		else:
-			var color_rect := ColorRect.new()
-			color_rect.custom_minimum_size = Vector2(12, 12)
-			color_rect.color = item_def.color if item_def else Color.WHITE
-			row.add_child(color_rect)
+			title_label.add_theme_color_override("font_color", Color(0.7, 0.8, 0.9))
+		item_list.add_child(title_label)
 
-		var name_label := Label.new()
-		name_label.text = " %s" % (item_def.display_name if item_def else str(entry.id))
-		name_label.add_theme_font_size_override("font_size", 12)
-		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(name_label)
+		# Requirements
+		for req in contract.requirements:
+			var row := HBoxContainer.new()
+			var icon := GameManager.get_item_icon(req.item_id)
+			if icon:
+				var tex_rect := TextureRect.new()
+				tex_rect.texture = icon
+				tex_rect.custom_minimum_size = Vector2(12, 12)
+				tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+				row.add_child(tex_rect)
+			var item_def = _get_item_def(req.item_id)
+			var name_label := Label.new()
+			name_label.text = " %s" % (item_def.display_name if item_def else str(req.item_id))
+			name_label.add_theme_font_size_override("font_size", 11)
+			name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(name_label)
+			var progress_label := Label.new()
+			progress_label.text = "%d/%d" % [req.delivered, req.quantity]
+			progress_label.add_theme_font_size_override("font_size", 11)
+			if req.delivered >= req.quantity:
+				progress_label.add_theme_color_override("font_color", Color(0.3, 0.9, 0.3))
+			row.add_child(progress_label)
+			item_list.add_child(row)
 
-		var count_label := Label.new()
-		count_label.text = str(entry.count)
-		count_label.add_theme_font_size_override("font_size", 12)
-		count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		row.add_child(count_label)
+		# Reward line
+		var reward_label := Label.new()
+		reward_label.text = "  +$%d" % contract.reward_currency
+		reward_label.add_theme_font_size_override("font_size", 10)
+		reward_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.5))
+		item_list.add_child(reward_label)
 
-		item_list.add_child(row)
+		# Separator between contracts
+		var sep := HSeparator.new()
+		sep.custom_minimum_size = Vector2(0, 4)
+		item_list.add_child(sep)
 
 # ── Time Speed ────────────────────────────────────────────────────────────
 
