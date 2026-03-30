@@ -382,6 +382,8 @@ func _handle_hand_mining(delta: float) -> void:
 		var leftover := add_item(_mine_item_id, 1)
 		if leftover > 0:
 			_stop_mining()  # inventory full
+		else:
+			_spawn_pickup_float(tile_center, _mine_item_id)
 	queue_redraw()
 
 func _stop_mining() -> void:
@@ -394,6 +396,35 @@ func get_mine_progress() -> float:
 	if not _mining:
 		return -1.0
 	return _mine_timer / HAND_MINE_TIME
+
+func _spawn_pickup_float(world_pos: Vector2, item_id: StringName) -> void:
+	var floater := _PickupFloat.new(item_id)
+	floater.position = world_pos
+	floater.z_index = 20
+	get_parent().add_child(floater)
+
+class _PickupFloat extends Node2D:
+	const FLOAT_SPEED := 20.0
+	const LIFETIME := 0.8
+	var _timer: float = 0.0
+	var _icon: AtlasTexture
+	func _init(item_id: StringName) -> void:
+		_icon = GameManager.get_item_icon(item_id)
+	func _process(delta: float) -> void:
+		_timer += delta
+		position.y -= FLOAT_SPEED * delta
+		if _timer >= LIFETIME:
+			queue_free()
+			return
+		queue_redraw()
+	func _draw() -> void:
+		var alpha := 1.0 - (_timer / LIFETIME)
+		var s := 10.0
+		if _icon:
+			draw_texture_rect(_icon, Rect2(-s * 0.5, -s * 0.5, s, s), false, Color(1, 1, 1, alpha))
+		# "+1" text
+		var font := ThemeDB.fallback_font
+		draw_string(font, Vector2(s * 0.5 + 1, 2), "+1", HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(0.9, 0.9, 0.7, alpha))
 
 func _draw() -> void:
 	if not _mining:
