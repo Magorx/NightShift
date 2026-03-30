@@ -37,11 +37,13 @@ Exit code 0 = pass, 1 = failure. All output goes to stdout/stderr.
 
 ### Autoload Singletons
 
-Three singletons registered in Project Settings > Autoload:
+Five singletons registered in Project Settings > Autoload:
 
-- **GameManager** (`scripts/autoload/game_manager.gd`) — building registry, placement/removal API, unified pull system (delegates to BuildingLogic interface), currency/delivery tracking, building hotkeys, conveyor sprite updates
+- **GameManager** (`scripts/autoload/game_manager.gd`) — building registry, placement/removal API, unified pull system, currency/delivery tracking, building costs, item icon atlas, building hotkeys, conveyor sprite updates
 - **SaveManager** (`scripts/autoload/save_manager.gd`) — JSON-based save/load with autosave rotation
 - **AccountManager** (`scripts/autoload/account_manager.gd`) — 3-slot account management under `user://saves/`
+- **ResearchManager** (`scripts/autoload/research_manager.gd`) — tech tree with ring-based progression, science pack delivery, building unlock gating
+- **ContractManager** (`scripts/autoload/contract_manager.gd`) — dynamic gate + side contracts, delivery integration, progression milestones
 
 ### Unified Pull System
 
@@ -57,12 +59,13 @@ Direction system: `DIRECTION_VECTORS = [RIGHT, DOWN, LEFT, UP]` (indices 0–3).
 
 Game content is defined as `.tres` resource files — adding new items, recipes, or buildings requires no code changes:
 
-- **ItemDef** (`scripts/resources/item_def.gd`) — id, display_name, color, category, export_value, research_value
-- **RecipeDef** (`scripts/resources/recipe_def.gd`) — converter_type, inputs/outputs as ItemStack arrays, craft_time
-- **ItemStack** (`scripts/resources/item_stack.gd`) — item + quantity pair used in recipes
-- **BuildingDef** (`buildings/shared/building_def.gd`) — scene reference, display_name, color, category, description, unlock_tech, replaceable_by; auto-extracts shape/inputs/outputs/anchor from the scene's marker nodes; owns all rotation/shape math (`get_rotated_shape()`, `rotate_cell()`, `rotate_node_children()`, `rotate_building_sprites()`)
+- **ItemDef** (`scripts/resources/item_def.gd`) — id, display_name, color, category, export_value, research_value, icon_atlas_index
+- **RecipeDef** (`scripts/resources/recipe_def.gd`) — converter_type, inputs/outputs as ItemStack arrays, craft_time, energy_cost, energy_output
+- **ItemStack** (`scripts/resources/item_stack.gd`) — item + quantity pair used in recipes and building costs
+- **BuildingDef** (`buildings/shared/building_def.gd`) — scene reference, display_name, color, category, description, unlock_tech, build_cost, replaceable_by; auto-extracts shape/inputs/outputs/anchor from the scene's marker nodes; owns all rotation/shape math
+- **TechDef** (`scripts/resources/tech_def.gd`) — id, display_name, ring, cost (science packs), unlocks (building IDs)
 
-Current content: 4 items (iron_ore, copper_ore, coal, iron_plate), 1 recipe (smelt_iron). Resources live under `resources/items/` and `resources/recipes/`.
+Current content: 36 items across 6 categories (8 raw, 7 smelted, 8 components, 6 assembly, 4 advanced, 3 science packs), 31 recipes. Resources live under `resources/items/` and `resources/recipes/`. Item sprites rendered via 16x16 atlas (`resources/items/sprites/item_atlas.png`).
 
 ### Building Organization
 
@@ -81,9 +84,24 @@ buildings/
 	shape_cell.gd      # ColorRect shape marker
 	building_arrow.gd  # direction arrow overlay
 	destroy_highlight.gdshader
-  conveyor/            # belt transport (ConveyorBelt extends BuildingLogic)
-  drill/               # resource extractor (ExtractorLogic extends BuildingLogic)
-  smelter/             # converter (ConverterLogic extends BuildingLogic)
+  conveyor/            # belt transport (ConveyorBelt extends BuildingLogic), supports mk1/mk2/mk3 speed tiers
+  conveyor_mk2/        # faster belt (2x speed, 3 capacity), reuses ConveyorBelt
+  conveyor_mk3/        # fastest belt (3x speed, 4 capacity), reuses ConveyorBelt
+  drill/               # resource extractor (ExtractorLogic extends BuildingLogic), supports mk1/mk2 tiers
+  drill_mk2/           # faster extractor (2x speed), reuses ExtractorLogic
+  smelter/             # converter (ConverterLogic extends BuildingLogic) — base class for all converters
+  press/               # 2x1 converter — stamps plates into gears, tubes, beams, lenses
+  wire_drawer/         # 1x2 converter — draws plates into wire
+  coke_oven/           # 1x2 converter — bakes coal into coke
+  hand_assembler/      # 1x1 manual crafter (HandAssemblerLogic) — recipes disabled by default, craft queue
+  assembler/           # 2x2 automated assembler with energy, ConverterLogic
+  assembler_mk2/       # 3x2 advanced assembler (the 3-part building!), ConverterLogic
+  fuel_generator/      # 2x2 energy generator — burns coke, ConverterLogic
+  research_lab/        # 2x2 science consumer (ResearchLabLogic) — delivers packs to ResearchManager
+  coal_burner/         # 2x1 energy generator (CoalBurnerLogic)
+  solar_panel/         # 1x1 passive energy generator
+  energy_pole/         # 1x1 energy relay with EnergyNode
+  battery/             # 1x1 energy storage with EnergyNode
   sink/                # infinite item consumer (ItemSink extends BuildingLogic)
   source/              # simple timer-based item producer (ItemSource extends BuildingLogic)
   splitter/            # distributes items across multiple outputs (SplitterLogic extends BuildingLogic)
@@ -207,7 +225,7 @@ Custom lightweight test framework (no plugin dependencies) for headless executio
 - Unit tests in `tests/unit/`, integration tests in `tests/integration/`
 - Simulations in `tests/simulation/` extend `SimulationBase` — scripted play-throughs with time advancement and input synthesis
 
-Available simulations: `sim_conveyor_transport`, `sim_unified_pull`, `sim_drill_extractor`, `sim_smelter_converter`, `sim_merge_and_source_sink`, `sim_junction`, `sim_splitter`, `sim_energy`.
+Available simulations: `sim_conveyor_transport`, `sim_unified_pull`, `sim_drill_extractor`, `sim_smelter_converter`, `sim_merge_and_source_sink`, `sim_junction`, `sim_splitter`, `sim_energy`, `sim_new_buildings`.
 
 ### Workflow for New Buildings
 
