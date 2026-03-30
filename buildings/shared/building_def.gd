@@ -31,12 +31,16 @@ var shape: Array = []
 var inputs: Array = []
 var outputs: Array = []
 
+## Logic script cached for placement validation (extracted from scene).
+var _logic_script: GDScript = null
+
 # ── Scene extraction (called once at load time) ────────────────────────────
 
-## Extract anchor, shape, and IO data from the scene.
+## Extract anchor, shape, IO data, and logic script from the scene.
 func extract_from_scene() -> void:
 	_extract_shape()
 	_extract_io()
+	_extract_logic_script()
 
 ## Find the Rotatable container inside a building (or fall back to the node itself).
 static func get_rotatable(building: Node) -> Node:
@@ -90,6 +94,30 @@ func _extract_io() -> void:
 	inputs = _read_io_group(container, "Inputs")
 	outputs = _read_io_group(container, "Outputs")
 	instance.free()
+
+func _extract_logic_script() -> void:
+	if not scene:
+		return
+	var instance = scene.instantiate()
+	for child in instance.get_children():
+		if child is BuildingLogic:
+			_logic_script = child.get_script() as GDScript
+			break
+	instance.free()
+
+## Check if this building can be placed at the given position.
+## Delegates to the building's logic script for custom checks.
+func get_placement_error(grid_pos: Vector2i, rotation: int) -> String:
+	if not _logic_script:
+		return ""
+	var tmp := Node.new()
+	tmp.set_script(_logic_script)
+	if not tmp.has_method("get_placement_error"):
+		tmp.free()
+		return ""
+	var error: String = tmp.get_placement_error(grid_pos, rotation)
+	tmp.free()
+	return error
 
 func _read_io_group(container: Node, group_name: String) -> Array:
 	var result: Array = []

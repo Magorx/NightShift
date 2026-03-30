@@ -35,7 +35,6 @@ const DEPOSIT_ITEMS := {
 	TILE_IRON: &"iron_ore",
 	TILE_COPPER: &"copper_ore",
 	TILE_COAL: &"coal",
-	TILE_STONE: &"stone",
 	TILE_TIN: &"tin_ore",
 	TILE_GOLD: &"gold_ore",
 	TILE_QUARTZ: &"quartz",
@@ -53,7 +52,10 @@ var _rng: RandomNumberGenerator
 var _seed: int
 
 
-func generate(tile_map: TileMapLayer, map_size: int, world_seed: int) -> void:
+## Returns [tile_types: PackedByteArray, variants: PackedByteArray]
+## tile_types: flat row-major array of tile type IDs per cell
+## variants:   flat row-major array, low nibble = fg variant, high nibble = misc variant
+func generate(tile_map: TileMapLayer, map_size: int, world_seed: int) -> Array:
 	_seed = world_seed
 	_rng = RandomNumberGenerator.new()
 	_rng.seed = world_seed
@@ -64,19 +66,29 @@ func generate(tile_map: TileMapLayer, map_size: int, world_seed: int) -> void:
 	var walls: Dictionary = {}
 	_generate_walls(walls, map_size, spawn)
 
-	# Step 2: Generate deposit positions
+	# Step 2: Generate stone wall veins
+	_generate_stone_walls(walls, map_size, spawn)
+
+	# Step 3: Generate deposit positions
 	var deposits: Dictionary = {}  # Vector2i -> tile_id (int)
 	_generate_all_deposits(deposits, walls, map_size, spawn)
 
-	# Step 3: Ensure all deposits are reachable from spawn
+	# Step 4: Ensure all deposits are reachable from spawn
 	_ensure_connectivity(walls, deposits, map_size, spawn)
 
-	# Step 4: Generate ground tile variation
+	# Step 5: Generate ground tile variation
 	var ground_variant: Dictionary = {}  # Vector2i -> 0 or 1 (variant index)
 	_generate_ground_variation(ground_variant, map_size)
 
-	# Step 5: Apply to tilemap and register with GameManager
-	_apply(tile_map, map_size, walls, deposits, ground_variant)
+	# Step 6: Apply to tilemap and register with GameManager, build tile_types array
+	var tile_types := PackedByteArray()
+	tile_types.resize(map_size * map_size)
+	_apply(tile_map, map_size, walls, deposits, ground_variant, tile_types)
+
+	# Step 7: Generate terrain visual variants (fg + misc per cell)
+	var variants := _generate_visual_variants(map_size, tile_types)
+
+	return [tile_types, variants]
 
 
 # ── Wall Generation ─────────────────────────────────────────────────────────
@@ -102,7 +114,7 @@ func _generate_walls(walls: Dictionary, map_size: int, spawn: Vector2i) -> void:
 		for y in range(map_size):
 			# Border walls
 			if x < BORDER_WIDTH or y < BORDER_WIDTH or x >= map_size - BORDER_WIDTH or y >= map_size - BORDER_WIDTH:
-				walls[Vector2i(x, y)] = true
+				walls[Vector2i(x, y)] = TILE_WALL
 				continue
 
 			# Spawn area is always clear
@@ -116,7 +128,80 @@ func _generate_walls(walls: Dictionary, map_size: int, spawn: Vector2i) -> void:
 			var combined: float = n1 * 0.7 + n2 * 0.3
 
 			if combined > WALL_THRESHOLD:
-				walls[Vector2i(x, y)] = true
+				walls[Vector2i(x, y)] = TILE_WALL
+
+
+# ── Stone Wall Generation ──────────────────────────────────────────────────
+
+func _generate_stone_walls(walls: Dictionary, map_size: int, spawn: Vector2i) -> void:
+	# Stone wall veins: elongated, narrow formations scattered across the map
+	# [min_dist, max_dist, count, length_min, length_max]
+	var plan := [
+		[10, 20, 2, 6, 10],    # near spawn
+		[18, 30, 3, 8, 14],    # mid-range
+		[26, 38, 2, 10, 18],   # far
+	]
+
+	for entry in plan:
+		var min_dist: float = entry[0]
+		var max_dist: float = entry[1]
+		var count: int = entry[2]
+		var length_min: int = entry[3]
+		var length_max: int = entry[4]
+
+		for _i in range(count):
+			var center := _find_stone_wall_center(map_size, spawn, min_dist, max_dist, walls)
+			if center == Vector2i(-1, -1):
+				continue
+			var length: int = _rng.randi_range(length_min, length_max)
+			_carve_stone_vein(walls, center, length, map_size)
+
+
+func _find_stone_wall_center(map_size: int, spawn: Vector2i, min_dist: float, max_dist: float, walls: Dictionary) -> Vector2i:
+	for _attempt in range(60):
+		var angle := _rng.randf() * TAU
+		var dist := _rng.randf_range(min_dist, max_dist)
+		var cx := int(spawn.x + cos(angle) * dist)
+		var cy := int(spawn.y + sin(angle) * dist)
+		var pos := Vector2i(cx, cy)
+		if _out_of_bounds(pos, map_size):
+			continue
+		# Don't overlap existing walls
+		if walls.has(pos):
+			continue
+		# Don't block spawn area
+		if Vector2(pos - spawn).length() < SPAWN_CLEAR_RADIUS + 2:
+			continue
+		return pos
+	return Vector2i(-1, -1)
+
+
+## Carve an elongated stone wall vein — narrow (1-2 tiles wide), winding path.
+func _carve_stone_vein(walls: Dictionary, center: Vector2i, length: int, map_size: int) -> void:
+	var angle := _rng.randf() * PI
+	var dir := Vector2(cos(angle), sin(angle))
+
+	var noise := FastNoiseLite.new()
+	noise.seed = _rng.randi()
+	noise.frequency = 0.3
+
+	# Walk along the vein direction, placing 1-2 wide stone tiles
+	for step in range(length):
+		var t := float(step) - float(length) / 2.0
+		var wobble := noise.get_noise_1d(t * 2.0) * 1.5
+		var perp := Vector2(-dir.y, dir.x)
+		var world_pos := Vector2(center) + dir * t + perp * wobble
+		var pos := Vector2i(int(round(world_pos.x)), int(round(world_pos.y)))
+
+		if _out_of_bounds(pos, map_size):
+			continue
+		walls[pos] = TILE_STONE
+
+		# Occasionally widen to 2 tiles
+		if _rng.randf() < 0.4:
+			var side := pos + Vector2i(int(round(perp.x)), int(round(perp.y)))
+			if not _out_of_bounds(side, map_size):
+				walls[side] = TILE_STONE
 
 
 # ── Deposit Generation ──────────────────────────────────────────────────────
@@ -125,25 +210,22 @@ func _generate_all_deposits(deposits: Dictionary, walls: Dictionary, map_size: i
 	# Deposit plan: [tile_id, min_dist, max_dist, count, size_min, size_max]
 	var plan := [
 		# Starter deposits — close to spawn, small
-		[TILE_IRON, 6, 14, 2, 3, 5],
-		[TILE_COPPER, 8, 16, 1, 3, 4],
-		[TILE_STONE, 6, 14, 2, 3, 5],       # common, close (like iron)
+		[TILE_IRON, 6, 14, 1, 3, 4],
+		[TILE_COPPER, 8, 16, 1, 2, 4],
 		# Mid-range deposits
-		[TILE_IRON, 16, 26, 2, 5, 8],
-		[TILE_COPPER, 16, 26, 2, 4, 7],
-		[TILE_COAL, 14, 24, 2, 4, 6],
-		[TILE_STONE, 16, 24, 2, 5, 7],      # common, mid-range
-		[TILE_TIN, 16, 26, 2, 4, 6],        # medium rarity, mid-range
-		[TILE_QUARTZ, 18, 28, 1, 3, 6],     # medium rarity, mid-range
-		# Far deposits — large and rich
-		[TILE_IRON, 22, 30, 1, 7, 10],
-		[TILE_COPPER, 22, 30, 1, 6, 9],
-		[TILE_COAL, 20, 28, 1, 5, 8],
-		[TILE_STONE, 22, 30, 1, 6, 9],      # common, far — large deposit
-		[TILE_TIN, 22, 30, 1, 5, 8],        # medium rarity, far
-		[TILE_QUARTZ, 24, 32, 1, 4, 7],     # medium rarity, far
-		[TILE_GOLD, 26, 34, 1, 3, 5],       # rare, far from spawn
-		[TILE_SULFUR, 26, 34, 1, 3, 5],     # rare, far from spawn
+		[TILE_IRON, 16, 26, 1, 4, 6],
+		[TILE_COPPER, 16, 26, 1, 3, 5],
+		[TILE_COAL, 14, 24, 1, 3, 5],
+		[TILE_TIN, 18, 28, 1, 3, 5],
+		[TILE_QUARTZ, 20, 30, 1, 3, 5],
+		# Far deposits — larger but still scarce
+		[TILE_IRON, 24, 34, 1, 5, 7],
+		[TILE_COPPER, 24, 34, 1, 4, 6],
+		[TILE_COAL, 22, 32, 1, 4, 6],
+		[TILE_TIN, 24, 34, 1, 4, 6],
+		[TILE_QUARTZ, 26, 36, 1, 3, 5],
+		[TILE_GOLD, 28, 38, 1, 2, 4],
+		[TILE_SULFUR, 28, 38, 1, 2, 4],
 	]
 
 	var placed_centers: Array[Vector2i] = []
@@ -421,25 +503,59 @@ func _carve_line(walls: Dictionary, from: Vector2i, to: Vector2i, reachable: Dic
 
 # ── Apply to World ──────────────────────────────────────────────────────────
 
-func _apply(tile_map: TileMapLayer, map_size: int, walls: Dictionary, deposits: Dictionary, ground_variant: Dictionary) -> void:
+func _apply(tile_map: TileMapLayer, map_size: int, walls: Dictionary, deposits: Dictionary, ground_variant: Dictionary, tile_types: PackedByteArray) -> void:
 	for x in range(map_size):
 		for y in range(map_size):
 			var pos := Vector2i(x, y)
+			var idx := y * map_size + x
 			if walls.has(pos):
-				tile_map.set_cell(pos, TILE_WALL, Vector2i(0, 0))
-				GameManager.walls[pos] = true
+				var wall_tile: int = walls[pos]
+				tile_map.set_cell(pos, wall_tile, Vector2i(0, 0))
+				GameManager.walls[pos] = wall_tile
+				tile_types[idx] = wall_tile
 			elif deposits.has(pos):
 				var tile_id: int = deposits[pos]
 				tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
 				GameManager.deposits[pos] = DEPOSIT_ITEMS[tile_id]
+				tile_types[idx] = tile_id
 			elif ground_variant.has(pos):
 				var variant: int = ground_variant[pos]
 				if variant == 1:
 					tile_map.set_cell(pos, TILE_GROUND_DARK, Vector2i(0, 0))
+					tile_types[idx] = TILE_GROUND_DARK
 				else:
 					tile_map.set_cell(pos, TILE_GROUND_LIGHT, Vector2i(0, 0))
+					tile_types[idx] = TILE_GROUND_LIGHT
 			else:
 				tile_map.set_cell(pos, TILE_GROUND, Vector2i(0, 0))
+				tile_types[idx] = TILE_GROUND
+
+
+## Generate per-cell visual variants. Returns PackedByteArray where each byte
+## encodes fg_variant in low nibble, misc_variant in high nibble.
+## Grass tiles get 0-5, others get 0-2.
+func _generate_visual_variants(map_size: int, tile_types: PackedByteArray) -> PackedByteArray:
+	var variants := PackedByteArray()
+	variants.resize(map_size * map_size)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _seed + 777
+
+	for i in range(map_size * map_size):
+		var tile_type: int = tile_types[i]
+		var fg_count: int
+		var misc_count: int
+		# Grass types get 6 variants, everything else gets 3
+		if tile_type == TILE_GROUND or tile_type == TILE_GROUND_DARK or tile_type == TILE_GROUND_LIGHT:
+			fg_count = 6
+			misc_count = 6
+		else:
+			fg_count = 3
+			misc_count = 3
+		var fg_var: int = rng.randi() % fg_count
+		var misc_var: int = rng.randi() % misc_count
+		variants[i] = fg_var | (misc_var << 4)
+
+	return variants
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────

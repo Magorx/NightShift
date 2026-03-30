@@ -109,6 +109,9 @@ func _serialize_run() -> Dictionary:
 	var gw := _get_game_world()
 	if gw:
 		data["terrain"] = gw.serialize_terrain()
+		# Save terrain visual variants (fg + misc per cell)
+		if GameManager.terrain_variants.size() > 0:
+			data["terrain_variants"] = Marshalls.raw_to_base64(GameManager.terrain_variants)
 	if GameManager.player and is_instance_valid(GameManager.player):
 		data["player"] = GameManager.player.serialize()
 	data["ground_items"] = _serialize_ground_items()
@@ -179,6 +182,13 @@ func _deserialize_run(data: Dictionary) -> void:
 		var gw := _get_game_world()
 		if gw:
 			gw.deserialize_terrain(terrain_data)
+			# Restore terrain visual variants
+			var variant_data: String = data.get("terrain_variants", "")
+			if not variant_data.is_empty():
+				GameManager.terrain_variants = Marshalls.base64_to_raw(variant_data)
+			else:
+				# Legacy save without variants: generate them fresh
+				_regenerate_terrain_variants()
 
 	# Suppress energy auto-linking while placing saved buildings
 	if GameManager.energy_system:
@@ -374,6 +384,21 @@ func _restore_time_speed(data: Dictionary) -> void:
 			Engine.time_scale = hud.SPEED_STEPS[hud.speed_index]
 			hud.speed_label.text = hud.SPEED_LABELS[hud.speed_index]
 			hud._update_speed_buttons()
+
+## Generate terrain variants for legacy saves that don't have them.
+func _regenerate_terrain_variants() -> void:
+	var map_size := GameManager.map_size
+	var count := map_size * map_size
+	var variants := PackedByteArray()
+	variants.resize(count)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = GameManager.world_seed + 777
+	for i in range(count):
+		var tile_type: int = GameManager.terrain_tile_types[i] if i < GameManager.terrain_tile_types.size() else 0
+		var fg_count := 6 if tile_type <= 6 and tile_type != 4 else 3  # grass types = 0,5,6
+		var misc_count := fg_count
+		variants[i] = (rng.randi() % fg_count) | ((rng.randi() % misc_count) << 4)
+	GameManager.terrain_variants = variants
 
 func _get_game_world() -> Node:
 	var root := get_tree().root

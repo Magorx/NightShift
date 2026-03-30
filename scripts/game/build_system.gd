@@ -993,8 +993,9 @@ func _get_placement_fail_reason(id: StringName, grid_pos: Vector2i, rotation: in
 			return "Blocked by terrain"
 		if GameManager.buildings.has(check_pos):
 			return "Space is occupied"
-	if def.category == "extractor" and not GameManager.deposits.has(grid_pos):
-		return "No resource deposit"
+	var building_error: String = def.get_placement_error(grid_pos, rotation)
+	if building_error != "":
+		return building_error
 	return ""
 
 # ── Floating text ───────────────────────────────────────────────────────────

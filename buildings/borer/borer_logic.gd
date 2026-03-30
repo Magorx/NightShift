@@ -1,42 +1,43 @@
-class_name ExtractorLogic
+class_name BorerLogic
 extends BuildingLogic
 
-
-func get_placement_error(p_grid_pos: Vector2i, _rotation: int) -> String:
-	if not GameManager.deposits.has(p_grid_pos):
-		return "No resource deposit"
-	return ""
+## Extracts resources from adjacent wall terrain.
+## Faces a wall tile and produces items based on the wall type.
+## Output goes in the opposite direction from the bore face.
 
 var direction: int = 0
-var item_id: StringName = &"iron_ore":
-	set(value):
-		item_id = value
-		inventory = Inventory.new()
-		inventory.set_capacity(item_id, 5)
-var produce_interval: float = 2.0  # 1 item every 2 seconds
+var item_id: StringName = &""
+var produce_interval: float = 3.0
 var _timer: float = 0.0
 var inventory: Inventory = Inventory.new()
 
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(_def, p_grid_pos, rotation)
 	direction = rotation
-	item_id = GameManager.deposits.get(grid_pos, &"iron_ore")
-	# Speed tiers
-	if str(_def.id) == "drill_mk2":
-		produce_interval = 1.0  # 2x faster
-		inventory.set_capacity(item_id, 10)  # larger buffer
+	# Check the wall tile we're facing
+	var bore_pos: Vector2i = grid_pos + DIRECTION_VECTORS[direction]
+	var wall_tile: int = int(GameManager.walls.get(bore_pos, -1))
+	# Look up what item this wall produces (TILE_STONE = 7)
+	var wall_items: Dictionary = {7: &"stone"}
+	item_id = StringName(wall_items.get(wall_tile, &""))
+	if item_id != &"":
+		inventory.set_capacity(item_id, 5)
 
 func _physics_process(delta: float) -> void:
+	if item_id == &"":
+		_update_building_sprites(false, delta)
+		return
 	_timer += delta
 	if _timer >= produce_interval and inventory.has_space(item_id):
 		inventory.add(item_id)
 		_timer = 0.0
 	elif _timer >= produce_interval:
-		_timer = produce_interval  # cap timer while full
+		_timer = produce_interval
 	_update_building_sprites(inventory.has_space(item_id), delta)
 
 func get_output_cell() -> Vector2i:
-	return grid_pos + DIRECTION_VECTORS[direction]
+	# Output goes opposite the bore direction
+	return grid_pos + DIRECTION_VECTORS[(direction + 2) % 4]
 
 func can_provide_to(target_pos: Vector2i) -> bool:
 	return not inventory.is_empty() and target_pos == get_output_cell()
@@ -45,8 +46,9 @@ func take_item() -> StringName:
 	inventory.remove(item_id)
 	return item_id
 
-## Returns production progress as 0.0–1.0 for the progress bar.
 func get_progress() -> float:
+	if item_id == &"":
+		return -1.0
 	return clampf(_timer / produce_interval, 0.0, 1.0)
 
 # ── Pull interface ─────────────────────────────────────────────────────────────
@@ -93,6 +95,8 @@ func deserialize_state(state: Dictionary) -> void:
 # ── Info panel ─────────────────────────────────────────────────────────────────
 
 func get_info_stats() -> Array:
+	if item_id == &"":
+		return [{type = "stat", text = "Not facing a mineable wall"}]
 	return [
 		{type = "stat", text = "Extracting: %s" % str(item_id).capitalize().replace("_", " ")},
 		{type = "progress", value = get_progress()},

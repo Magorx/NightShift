@@ -190,32 +190,24 @@ func _show_info(def) -> void:
 		details += "\n\nRMB to assign hotkey"
 	info_details.text = details
 
-	# Show recipes
+	# Show build cost
 	for child in info_recipes.get_children():
 		child.queue_free()
-	var recipes: Array = GameManager.recipes_by_type.get(str(def.id), [])
-	if recipes.size() > 0:
+	if not def.build_cost.is_empty():
 		var header := Label.new()
-		header.text = "Recipes:"
+		header.text = "Build Cost:"
 		header.add_theme_font_size_override("font_size", 12)
 		header.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 		info_recipes.add_child(header)
-		for recipe in recipes:
-			var recipe_label := Label.new()
-			var inputs_str := ""
-			for inp in recipe.inputs:
-				if inputs_str != "":
-					inputs_str += " + "
-				inputs_str += "%dx %s" % [inp.quantity, inp.item.display_name]
-			var outputs_str := ""
-			for out in recipe.outputs:
-				if outputs_str != "":
-					outputs_str += " + "
-				outputs_str += "%dx %s" % [out.quantity, out.item.display_name]
-			recipe_label.text = "  %s -> %s (%.0fs)" % [inputs_str, outputs_str, recipe.craft_time]
-			recipe_label.add_theme_font_size_override("font_size", 11)
-			recipe_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-			info_recipes.add_child(recipe_label)
+		for stack in def.build_cost:
+			var cost_row := HBoxContainer.new()
+			cost_row.add_theme_constant_override("separation", 4)
+			cost_row.add_child(ItemIcon.create(stack.item.id, Vector2(14, 14)))
+			var cost_label := Label.new()
+			cost_label.text = "%dx %s" % [stack.quantity, stack.item.display_name]
+			cost_label.add_theme_font_size_override("font_size", 11)
+			cost_row.add_child(cost_label)
+			info_recipes.add_child(cost_row)
 
 func _clear_info() -> void:
 	info_name.text = ""

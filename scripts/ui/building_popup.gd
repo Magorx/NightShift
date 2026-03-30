@@ -16,7 +16,7 @@ const SEGMENT_COLOR_OFF := Color(0.15, 0.15, 0.15, 0.6)
 const SEGMENT_COLOR_ON := Color(0.9, 0.75, 0.2, 0.95)
 const SEGMENT_THRESHOLDS := [0.2, 0.4, 0.6, 0.8]
 
-const ICON_SIZE := Vector2(12, 12)
+const ICON_SIZE := Vector2(14, 14)
 const FONT_SIZE := 11
 const NUM_WIDTH := 14.0 # fixed width for quantity numbers
 

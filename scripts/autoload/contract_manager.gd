@@ -291,3 +291,4 @@ func reset() -> void:
 	_next_id = 1
 	_contracts_completed_in_ring.clear()
 	_current_ring = 0
+	call_deferred("_generate_initial_contracts")

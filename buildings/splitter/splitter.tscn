@@ -1,7 +1,6 @@
-[gd_scene load_steps=12 format=3 uid="uid://caxs0e23nmsim"]
+[gd_scene load_steps=11 format=3 uid="uid://caxs0e23nmsim"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
-[ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="2"]
 [ext_resource type="Script" uid="uid://c4tujtdf41td0" path="res://buildings/splitter/splitter.gd" id="3"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="4"]
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="5"]
@@ -92,9 +91,6 @@ script = ExtResource("6")
 allow_down = false
 
 [node name="BuildAnchor" type="Node2D" parent="Rotatable"]
-
-[node name="Arrow" type="Node2D" parent="Rotatable"]
-script = ExtResource("2")
 
 [node name="SplitterLogic" type="Node" parent="."]
 script = ExtResource("3")

@@ -25,8 +25,13 @@ var unique_buildings: Array = []
 # Deposits: grid_pos -> item_id (what resource this deposit produces)
 var deposits: Dictionary = {}
 
-# Walls: grid_pos -> true (impassable rock, blocks building placement)
+# Walls: grid_pos -> tile_id (impassable terrain, blocks building placement)
 var walls: Dictionary = {}
+
+# Terrain visual data (for MultiMesh rendering and save/load)
+var terrain_tile_types: PackedByteArray  # flat row-major, one byte per cell
+var terrain_variants: PackedByteArray    # low nibble = fg variant, high nibble = misc variant
+var terrain_visual_manager  # TerrainVisualManager (set by game_world)
 
 # World generation seed (saved/loaded for reproducibility)
 var world_seed: int = 0
@@ -292,18 +297,17 @@ func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotat
 			var existing_def = get_building_def(existing.building_id)
 			if not existing_def or not existing_def.replaceable_by.has(id):
 				return false
-	# Extractors (drills) can only be placed on deposit tiles
-	if def.category == "extractor":
-		if not deposits.has(grid_pos):
-			return false
+	# Delegate building-specific placement checks to the logic script
+	if def.get_placement_error(grid_pos, rotation) != "":
+		return false
 	return true
 
 func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> Node2D:
 	var def = get_building_def(id)
 	if not def or not building_layer:
 		return null
-	# Extractors require a deposit
-	if def.category == "extractor" and not deposits.has(grid_pos):
+	# Delegate building-specific placement checks
+	if def.get_placement_error(grid_pos, rotation) != "":
 		return null
 
 	# Remove any existing replaceable buildings in the footprint
@@ -528,6 +532,10 @@ func clear_all() -> void:
 		item_visual_manager.clear_all()
 	if conveyor_visual_manager:
 		conveyor_visual_manager.clear_all()
+	if terrain_visual_manager:
+		terrain_visual_manager.clear()
+	terrain_tile_types = PackedByteArray()
+	terrain_variants = PackedByteArray()
 	total_currency = 0
 	items_delivered.clear()
 	if conveyor_system:
@@ -539,6 +547,8 @@ func clear_all() -> void:
 		building_tick_system.clear_all()
 	if building_collision:
 		building_collision.clear_all()
+	ResearchManager.reset()
+	ContractManager.reset()
 
 # ── Unified pull system ──────────────────────────────────────────────────────
 

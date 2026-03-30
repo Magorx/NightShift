@@ -24,6 +24,14 @@ var _anim_connected: bool = false
 var _anim_initialized: bool = false
 const ACTIVE_HOLD_TIME := 0.3
 
+# ── Placement validation ────────────────────────────────────────────────────
+
+## Return an error string if this building cannot be placed at the given position,
+## or "" if placement is allowed. Override in subclasses that have placement
+## requirements (e.g. drills require deposits). Called before instantiation.
+func get_placement_error(_grid_pos: Vector2i, _rotation: int) -> String:
+	return ""
+
 # ── Configuration (called once during placement) ────────────────────────────
 
 ## Set up building-specific state after placement.

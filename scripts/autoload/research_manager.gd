@@ -142,3 +142,12 @@ func deserialize(data: Dictionary):
 	research_progress = {}
 	for item_id_str in data.get("progress", {}):
 		research_progress[StringName(item_id_str)] = int(data["progress"][item_id_str])
+
+func reset() -> void:
+	unlocked_techs.clear()
+	current_research = null
+	research_progress = {}
+	# Ring 0 techs are free — unlock them immediately
+	for tech_id in tech_defs:
+		if tech_defs[tech_id].ring == 0:
+			unlocked_techs[tech_id] = true

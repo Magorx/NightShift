@@ -54,10 +54,6 @@ func _draw() -> void:
 			draw_rect(Rect2(offset - Vector2(7, 7), Vector2(14, 14)), Color(1, 1, 1, 0.85), false, 1.5)
 		if icon:
 			draw_texture_rect(icon, Rect2(offset - Vector2(6, 6), Vector2(12, 12)), false)
-		else:
-			var item_def = GameManager.get_item_def(item_id)
-			var color: Color = item_def.color if item_def else Color.WHITE
-			draw_rect(Rect2(offset - Vector2(4, 4), Vector2(8, 8)), color)
 
 	if _hovered:
 		var camera := get_viewport().get_camera_2d()

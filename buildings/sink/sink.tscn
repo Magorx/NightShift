@@ -1,7 +1,6 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
-[ext_resource type="Script" path="res://buildings/shared/building_arrow.gd" id="2"]
 [ext_resource type="Script" path="res://buildings/sink/sink.gd" id="3"]
 [ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="4"]
 [ext_resource type="Script" path="res://buildings/shared/input_cell.gd" id="5"]
@@ -103,9 +102,6 @@ color = Color(0.3, 0.5, 0.9, 0)
 [node name="Outputs" type="Node2D" parent="Rotatable"]
 
 [node name="BuildAnchor" type="Node2D" parent="Rotatable"]
-
-[node name="Arrow" type="Node2D" parent="Rotatable"]
-script = ExtResource("2")
 
 [node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
 texture_filter = 1

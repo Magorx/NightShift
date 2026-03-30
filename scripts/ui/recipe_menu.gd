@@ -4,7 +4,7 @@ extends PanelContainer
 ## Each row: [n1][item1] [n2][item2] →Xs [n1][item1] | priority | enabled
 ## Columns are aligned across rows by computing per-column number widths.
 
-const ICON_SIZE := Vector2(12, 12)
+const ICON_SIZE := Vector2(14, 14)
 const FONT_SIZE := 11
 const SLOT_SEP := 2
 const ENABLED_COLOR := Color(0.2, 0.8, 0.3)

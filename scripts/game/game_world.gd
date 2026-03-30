@@ -21,6 +21,7 @@ var _stress_gen_script = preload("res://scripts/game/stress_test_generator.gd")
 var _visual_mgr_script = preload("res://scripts/game/item_visual_manager.gd")
 var _tick_system_script = preload("res://scripts/game/building_tick_system.gd")
 var _conv_visual_mgr_script = preload("res://scripts/game/conveyor_visual_manager.gd")
+var _terrain_visual_mgr_script = preload("res://scripts/game/terrain_visual_manager.gd")
 var _player_scene: PackedScene = preload("res://player/player.tscn")
 var _building_collision_script = preload("res://scripts/game/building_collision.gd")
 var _popup: PanelContainer
@@ -66,10 +67,17 @@ func _ready() -> void:
 		GameManager.world_seed = randi()
 
 	_setup_tileset()
+
+	# Initialize MultiMesh terrain visual system
+	GameManager.terrain_visual_manager = _terrain_visual_mgr_script.new()
+	GameManager.terrain_visual_manager.attach_to(self, -1)  # z_index below buildings
+
 	# Skip world generation if terrain will be restored from save
 	if not has_saved_terrain:
 		var gen = _world_gen_script.new()
-		gen.generate(tile_map, GameManager.map_size, GameManager.world_seed)
+		var result: Array = gen.generate(tile_map, GameManager.map_size, GameManager.world_seed)
+		GameManager.terrain_tile_types = result[0]
+		GameManager.terrain_variants = result[1]
 
 	# Run stress test generator if requested
 	if GameManager.stress_test_pending:
@@ -101,6 +109,17 @@ func _ready() -> void:
 	if SaveManager.pending_load:
 		SaveManager.pending_load = false
 		SaveManager.load_run()
+
+	# Build terrain MultiMesh visuals (tile_types + variants are set by gen or deserialize)
+	if GameManager.terrain_tile_types.size() > 0:
+		GameManager.terrain_visual_manager.build(
+			GameManager.map_size,
+			GameManager.terrain_tile_types,
+			GameManager.terrain_variants
+		)
+		# Hide TileMapLayer visual rendering — keep for wall physics collision
+		tile_map.visible = false
+
 	camera.target_node = player
 
 func _on_building_selected(id: StringName) -> void:
@@ -153,7 +172,8 @@ func _show_ground_tooltip(grid_pos: Vector2i) -> void:
 	# Tile name
 	var tile_name := "Ground"
 	if GameManager.walls.has(grid_pos):
-		tile_name = "Rock Wall"
+		var wall_tile: int = GameManager.walls[grid_pos]
+		tile_name = WALL_NAMES.get(wall_tile, "Wall")
 
 	# Deposit info
 	var deposit_id: StringName = GameManager.deposits.get(grid_pos, &"")
@@ -172,13 +192,14 @@ func _show_ground_tooltip(grid_pos: Vector2i) -> void:
 		title_row.add_child(title_label)
 		vbox.add_child(title_row)
 
-		# Hint
-		var hint := Label.new()
-		hint.text = "LMB hold to hand-mine"
-		hint.add_theme_font_size_override("font_size", 10)
-		hint.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
-		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		vbox.add_child(hint)
+		# Hint — only for hand-mineable deposits
+		if deposit_id in Player.HAND_MINEABLE:
+			var hint := Label.new()
+			hint.text = "LMB hold to hand-mine"
+			hint.add_theme_font_size_override("font_size", 10)
+			hint.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+			hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			vbox.add_child(hint)
 	else:
 		var title_label := Label.new()
 		title_label.text = tile_name
@@ -275,12 +296,33 @@ const TILE_COAL := 3
 const TILE_WALL := 4
 const TILE_GROUND_DARK := 5
 const TILE_GROUND_LIGHT := 6
+const TILE_STONE := 7
+const TILE_TIN := 8
+const TILE_GOLD := 9
+const TILE_QUARTZ := 10
+const TILE_SULFUR := 11
 
 # Deposit colors
 const DEPOSIT_COLORS := {
-	TILE_IRON: Color(0.45, 0.42, 0.44),   # dark gray — iron deposit
-	TILE_COPPER: Color(0.72, 0.45, 0.2),   # orange-brown — copper deposit
-	TILE_COAL: Color(0.18, 0.18, 0.2),     # near-black — coal seam
+	TILE_IRON: Color(0.45, 0.42, 0.44),     # dark gray — iron deposit
+	TILE_COPPER: Color(0.72, 0.45, 0.2),    # orange-brown — copper deposit
+	TILE_COAL: Color(0.18, 0.18, 0.2),      # near-black — coal seam
+	TILE_TIN: Color(0.60, 0.62, 0.65),      # silvery-blue — tin
+	TILE_GOLD: Color(0.78, 0.68, 0.20),     # golden yellow — gold
+	TILE_QUARTZ: Color(0.80, 0.75, 0.85),   # pale lavender — quartz
+	TILE_SULFUR: Color(0.75, 0.72, 0.15),   # yellow-green — sulfur
+}
+
+# Wall colors (impassable terrain)
+const WALL_COLORS := {
+	TILE_WALL: Color(0.42, 0.32, 0.22),     # brown — mud wall
+	TILE_STONE: Color(0.55, 0.54, 0.50),    # gray-beige — stone wall
+}
+
+# Wall display names
+const WALL_NAMES := {
+	TILE_WALL: "Mud Wall",
+	TILE_STONE: "Stone Wall",
 }
 
 # Map from tile source ID to the item it produces
@@ -288,9 +330,18 @@ const DEPOSIT_ITEMS := {
 	TILE_IRON: &"iron_ore",
 	TILE_COPPER: &"copper_ore",
 	TILE_COAL: &"coal",
+	TILE_TIN: &"tin_ore",
+	TILE_GOLD: &"gold_ore",
+	TILE_QUARTZ: &"quartz",
+	TILE_SULFUR: &"sulfur",
 }
 
-func _create_tile_source(tile_set: TileSet, source_id: int, color: Color) -> void:
+# Map from wall tile ID to the item a borer can extract
+const WALL_ITEMS := {
+	TILE_STONE: &"stone",
+}
+
+func _create_tile_source(tile_set: TileSet, source_id: int, color: Color, has_collision: bool = false) -> void:
 	var img := Image.create(TILE_SIZE, TILE_SIZE, false, Image.FORMAT_RGBA8)
 	img.fill(color)
 	var tex := ImageTexture.create_from_image(img)
@@ -298,15 +349,28 @@ func _create_tile_source(tile_set: TileSet, source_id: int, color: Color) -> voi
 	source.texture = tex
 	source.texture_region_size = Vector2i(TILE_SIZE, TILE_SIZE)
 	source.create_tile(Vector2i(0, 0))
+	# Must add source to tileset before accessing TileData physics layers
 	tile_set.add_source(source, source_id)
+	if has_collision:
+		var td: TileData = source.get_tile_data(Vector2i(0, 0), 0)
+		var hs := TILE_SIZE / 2.0
+		td.set_collision_polygons_count(0, 1)
+		td.set_collision_polygon_points(0, 0, PackedVector2Array([
+			Vector2(-hs, -hs), Vector2(hs, -hs), Vector2(hs, hs), Vector2(-hs, hs)
+		]))
 
 func _setup_tileset() -> void:
 	var tile_set := TileSet.new()
 	tile_set.tile_size = Vector2i(TILE_SIZE, TILE_SIZE)
+	# Physics layer for wall collision (layer 2 = building collision layer)
+	tile_set.add_physics_layer()
+	tile_set.set_physics_layer_collision_layer(0, 1 << 1)
+	tile_set.set_physics_layer_collision_mask(0, 0)
 	_create_tile_source(tile_set, TILE_GROUND, Color(0.28, 0.36, 0.24))
 	for id in DEPOSIT_COLORS:
 		_create_tile_source(tile_set, id, DEPOSIT_COLORS[id])
-	_create_tile_source(tile_set, TILE_WALL, Color(0.38, 0.34, 0.30))
+	for id in WALL_COLORS:
+		_create_tile_source(tile_set, id, WALL_COLORS[id], true)
 	_create_tile_source(tile_set, TILE_GROUND_DARK, Color(0.24, 0.30, 0.20))
 	_create_tile_source(tile_set, TILE_GROUND_LIGHT, Color(0.32, 0.40, 0.28))
 	tile_map.tile_set = tile_set
@@ -335,11 +399,14 @@ func serialize_terrain() -> String:
 	return Marshalls.raw_to_base64(bytes)
 
 ## Restore tile map and GameManager.deposits/walls from base64 terrain data.
+## Also populates GameManager.terrain_tile_types for MultiMesh rendering.
 func deserialize_terrain(data: String) -> void:
 	var bytes := Marshalls.base64_to_raw(data)
 	var map_size := GameManager.map_size
 	GameManager.deposits.clear()
 	GameManager.walls.clear()
+	var tile_types := PackedByteArray()
+	tile_types.resize(map_size * map_size)
 	for y in range(map_size):
 		for x in range(map_size):
 			var idx := y * map_size + x
@@ -350,8 +417,10 @@ func deserialize_terrain(data: String) -> void:
 				source_id = (bytes[idx / 2] >> 4) & 0x0F
 			var pos := Vector2i(x, y)
 			tile_map.set_cell(pos, source_id, Vector2i(0, 0))
-			if source_id == TILE_WALL:
-				GameManager.walls[pos] = true
+			tile_types[idx] = source_id
+			if WALL_COLORS.has(source_id):
+				GameManager.walls[pos] = source_id
 			elif DEPOSIT_ITEMS.has(source_id):
 				GameManager.deposits[pos] = DEPOSIT_ITEMS[source_id]
+	GameManager.terrain_tile_types = tile_types
 

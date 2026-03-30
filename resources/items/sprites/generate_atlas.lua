@@ -288,69 +288,478 @@ end
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- ORE CHUNK TEMPLATE: irregular chunky shape with cracks
+-- ORE TEMPLATES: each material has a distinct silhouette
 -- ═══════════════════════════════════════════════════════════════════════════
 
-local function draw_ore_chunk(img, row, col, base, light, dark, crack)
-  -- Main body: irregular polygon approximated with overlapping rects
-  crect(img, 4, 4, 12, 12, row, col, base)
-  crect(img, 3, 5, 13, 11, row, col, base)
-  crect(img, 5, 3, 11, 13, row, col, base)
-  -- Highlight: top-left region
-  crect(img, 4, 4, 8, 6, row, col, light)
-  cpx(img, 3, 5, row, col, light)
-  cpx(img, 3, 6, row, col, light)
-  cpx(img, 5, 3, row, col, light)
-  cpx(img, 6, 3, row, col, light)
-  -- Shadow: bottom-right region
-  crect(img, 9, 11, 12, 12, row, col, dark)
-  crect(img, 11, 9, 12, 12, row, col, dark)
-  cpx(img, 13, 10, row, col, dark)
-  cpx(img, 13, 11, row, col, dark)
-  cpx(img, 10, 13, row, col, dark)
-  cpx(img, 11, 13, row, col, dark)
-  -- Cracks / detail lines
+--- Iron ore: large angular chunk with jagged edges, fills most of 16x16
+local function draw_iron_ore(img, row, col, base, light, dark, crack)
+  -- Big angular body
+  crect(img, 3, 3, 13, 13, row, col, base)
+  crect(img, 2, 4, 14, 12, row, col, base)
+  crect(img, 4, 2, 12, 14, row, col, base)
+  -- Jagged protrusions
+  cpx(img, 1, 5, row, col, base)
+  cpx(img, 1, 6, row, col, base)
+  cpx(img, 14, 8, row, col, base)
+  cpx(img, 5, 1, row, col, base)
+  cpx(img, 13, 14, row, col, base)
+  -- Highlight: top-left
+  crect(img, 3, 3, 8, 5, row, col, light)
+  crect(img, 2, 4, 3, 7, row, col, light)
+  cpx(img, 4, 2, row, col, light)
+  cpx(img, 5, 2, row, col, light)
+  cpx(img, 5, 1, row, col, light)
+  -- Shadow: bottom-right
+  crect(img, 10, 11, 13, 13, row, col, dark)
+  crect(img, 12, 9, 14, 12, row, col, dark)
+  cpx(img, 11, 14, row, col, dark)
+  cpx(img, 12, 14, row, col, dark)
+  cpx(img, 13, 14, row, col, dark)
+  -- Cracks
   cpx(img, 6, 7, row, col, crack)
   cpx(img, 7, 8, row, col, crack)
-  cpx(img, 8, 8, row, col, crack)
-  cpx(img, 9, 9, row, col, crack)
+  cpx(img, 8, 9, row, col, crack)
   cpx(img, 5, 10, row, col, crack)
   cpx(img, 6, 11, row, col, crack)
+  cpx(img, 9, 6, row, col, crack)
   -- Outline
-  -- Top edge
-  cline(img, 5, 2, 11, 2, row, col, OL)
-  cpx(img, 4, 3, row, col, OL)
-  cpx(img, 12, 3, row, col, OL)
-  -- Left edge
-  cpx(img, 2, 5, row, col, OL)
-  cpx(img, 2, 6, row, col, OL)
-  cline(img, 2, 7, 2, 10, row, col, OL)
-  cpx(img, 2, 11, row, col, OL)
-  -- Right edge
-  cpx(img, 14, 7, row, col, OL)
-  cpx(img, 14, 8, row, col, OL)
-  cline(img, 13, 5, 13, 6, row, col, OL)
-  cline(img, 14, 9, 14, 10, row, col, OL)
-  -- Bottom edge
-  cpx(img, 3, 12, row, col, OL)
-  cline(img, 4, 13, 10, 13, row, col, OL)
+  cline(img, 4, 1, 6, 1, row, col, OL)
+  cpx(img, 3, 2, row, col, OL)
+  cpx(img, 7, 1, row, col, OL)
+  cline(img, 7, 2, 12, 2, row, col, OL)
+  cpx(img, 13, 3, row, col, OL)
+  cpx(img, 1, 4, row, col, OL)
+  cpx(img, 0, 5, row, col, OL)
+  cpx(img, 0, 6, row, col, OL)
+  cpx(img, 0, 7, row, col, OL)
+  cpx(img, 1, 8, row, col, OL)
+  cline(img, 1, 9, 1, 12, row, col, OL)
+  cpx(img, 2, 13, row, col, OL)
+  cline(img, 3, 14, 10, 14, row, col, OL)
+  cpx(img, 14, 4, row, col, OL)
+  cpx(img, 15, 5, row, col, OL)
+  cline(img, 15, 6, 15, 8, row, col, OL)
+  cpx(img, 14, 9, row, col, OL)
+  cline(img, 14, 10, 14, 13, row, col, OL)
+  cpx(img, 11, 15, row, col, OL)
+  cpx(img, 12, 15, row, col, OL)
+  cpx(img, 13, 15, row, col, OL)
+end
+
+--- Copper ore: layered/banded rock with horizontal striations
+local function draw_copper_ore(img, row, col)
+  -- Rounded body
+  crect(img, 3, 2, 12, 13, row, col, CU_BASE)
+  crect(img, 2, 4, 13, 11, row, col, CU_BASE)
+  crect(img, 4, 1, 11, 14, row, col, CU_BASE)
+  cpx(img, 1, 5, row, col, CU_BASE)
+  cpx(img, 1, 6, row, col, CU_BASE)
+  cpx(img, 14, 8, row, col, CU_BASE)
+  cpx(img, 14, 9, row, col, CU_BASE)
+  -- Horizontal band striations (signature copper look)
+  for _, y in ipairs({3, 6, 9, 12}) do
+    cline(img, 3, y, 12, y, row, col, CU_LIGHT)
+  end
+  for _, y in ipairs({5, 8, 11}) do
+    cline(img, 3, y, 12, y, row, col, CU_DARK)
+  end
+  -- Green patina spots
+  cpx(img, 4, 4, row, col, H.hex("#5A9A70"))
+  cpx(img, 5, 4, row, col, H.hex("#5A9A70"))
+  cpx(img, 10, 7, row, col, H.hex("#5A9A70"))
+  cpx(img, 11, 7, row, col, H.hex("#5A9A70"))
+  cpx(img, 6, 10, row, col, H.hex("#5A9A70"))
+  -- Highlight top-left
+  crect(img, 3, 2, 7, 3, row, col, CU_LIGHT)
+  cpx(img, 4, 1, row, col, CU_LIGHT)
+  cpx(img, 5, 1, row, col, CU_LIGHT)
+  -- Shadow bottom-right
+  crect(img, 10, 12, 12, 13, row, col, CU_DARK)
+  cpx(img, 10, 14, row, col, CU_DARK)
+  cpx(img, 11, 14, row, col, CU_DARK)
+  -- Outline
+  cline(img, 4, 0, 11, 0, row, col, OL)
+  cpx(img, 3, 1, row, col, OL)
+  cpx(img, 12, 1, row, col, OL)
+  cpx(img, 1, 4, row, col, OL)
+  cpx(img, 0, 5, row, col, OL)
+  cpx(img, 0, 6, row, col, OL)
+  cpx(img, 0, 7, row, col, OL)
+  cpx(img, 1, 8, row, col, OL)
+  cpx(img, 1, 9, row, col, OL)
+  cpx(img, 2, 3, row, col, OL)
+  cpx(img, 2, 12, row, col, OL)
+  cline(img, 3, 14, 4, 14, row, col, OL)
+  cline(img, 5, 15, 10, 15, row, col, OL)
   cpx(img, 11, 14, row, col, OL)
-  cpx(img, 12, 13, row, col, OL)
+  cpx(img, 13, 4, row, col, OL)
   cpx(img, 13, 12, row, col, OL)
+  cpx(img, 14, 5, row, col, OL)
+  cline(img, 14, 6, 14, 7, row, col, OL)
+  cpx(img, 15, 8, row, col, OL)
+  cpx(img, 15, 9, row, col, OL)
+  cpx(img, 14, 10, row, col, OL)
+  cpx(img, 14, 11, row, col, OL)
+  cpx(img, 12, 13, row, col, OL)
+end
+
+--- Coal: rounded lumpy piece with glossy facets
+local function draw_coal_ore(img, row, col)
+  -- Round lumpy body
+  ccircle(img, 7, 7, 6, row, col, COAL_BASE)
+  crect(img, 2, 4, 13, 12, row, col, COAL_BASE)
+  crect(img, 4, 2, 11, 13, row, col, COAL_BASE)
+  -- Faceted highlight patches (glossy look)
+  crect(img, 3, 3, 6, 5, row, col, COAL_LIGHT)
+  cpx(img, 4, 2, row, col, COAL_LIGHT)
+  crect(img, 8, 6, 10, 8, row, col, COAL_LIGHT)
+  -- Glint spots (shiny reflections)
+  cpx(img, 4, 3, row, col, COAL_GLINT)
+  cpx(img, 5, 4, row, col, COAL_GLINT)
+  cpx(img, 9, 7, row, col, COAL_GLINT)
+  cpx(img, 7, 10, row, col, COAL_GLINT)
+  cpx(img, 3, 8, row, col, COAL_GLINT)
+  -- Dark shadow
+  crect(img, 9, 10, 12, 12, row, col, COAL_DARK)
+  cpx(img, 11, 9, row, col, COAL_DARK)
+  cpx(img, 8, 12, row, col, COAL_DARK)
+  -- Outline
+  cline(img, 4, 1, 11, 1, row, col, OL)
+  cpx(img, 3, 2, row, col, OL)
+  cpx(img, 12, 2, row, col, OL)
+  cpx(img, 2, 3, row, col, OL)
+  cpx(img, 13, 3, row, col, OL)
+  cline(img, 1, 4, 1, 11, row, col, OL)
+  cline(img, 14, 4, 14, 11, row, col, OL)
+  cpx(img, 2, 12, row, col, OL)
+  cpx(img, 13, 12, row, col, OL)
+  cpx(img, 3, 13, row, col, OL)
+  cpx(img, 12, 13, row, col, OL)
+  cline(img, 4, 14, 11, 14, row, col, OL)
+end
+
+--- Stone: smooth rounded cobblestone
+local function draw_stone_ore(img, row, col)
+  -- Wide oval body
+  crect(img, 2, 4, 13, 12, row, col, STONE_BASE)
+  crect(img, 4, 2, 11, 13, row, col, STONE_BASE)
+  crect(img, 3, 3, 12, 13, row, col, STONE_BASE)
+  cpx(img, 1, 6, row, col, STONE_BASE)
+  cpx(img, 1, 7, row, col, STONE_BASE)
+  cpx(img, 1, 8, row, col, STONE_BASE)
+  cpx(img, 1, 9, row, col, STONE_BASE)
+  cpx(img, 14, 6, row, col, STONE_BASE)
+  cpx(img, 14, 7, row, col, STONE_BASE)
+  cpx(img, 14, 8, row, col, STONE_BASE)
+  cpx(img, 14, 9, row, col, STONE_BASE)
+  -- Highlight
+  crect(img, 3, 3, 8, 5, row, col, STONE_LIGHT)
+  cpx(img, 4, 2, row, col, STONE_LIGHT)
+  cpx(img, 5, 2, row, col, STONE_LIGHT)
+  cpx(img, 2, 4, row, col, STONE_LIGHT)
+  cpx(img, 2, 5, row, col, STONE_LIGHT)
+  -- Shadow
+  crect(img, 9, 11, 12, 12, row, col, STONE_DARK)
+  cpx(img, 13, 9, row, col, STONE_DARK)
+  cpx(img, 13, 10, row, col, STONE_DARK)
+  cpx(img, 10, 13, row, col, STONE_DARK)
+  cpx(img, 11, 13, row, col, STONE_DARK)
+  -- Crack
+  cpx(img, 7, 6, row, col, STONE_CRACK)
+  cpx(img, 8, 7, row, col, STONE_CRACK)
+  cpx(img, 7, 8, row, col, STONE_CRACK)
+  cpx(img, 6, 9, row, col, STONE_CRACK)
+  -- Outline
+  cline(img, 4, 1, 11, 1, row, col, OL)
+  cpx(img, 3, 2, row, col, OL)
+  cpx(img, 12, 2, row, col, OL)
+  cpx(img, 2, 3, row, col, OL)
+  cpx(img, 13, 3, row, col, OL)
+  cpx(img, 1, 4, row, col, OL)
+  cpx(img, 1, 5, row, col, OL)
+  cpx(img, 0, 6, row, col, OL)
+  cline(img, 0, 7, 0, 8, row, col, OL)
+  cpx(img, 0, 9, row, col, OL)
+  cpx(img, 1, 10, row, col, OL)
+  cpx(img, 1, 11, row, col, OL)
+  cpx(img, 2, 12, row, col, OL)
+  cpx(img, 3, 13, row, col, OL)
+  cpx(img, 14, 4, row, col, OL)
+  cpx(img, 14, 5, row, col, OL)
+  cpx(img, 15, 6, row, col, OL)
+  cline(img, 15, 7, 15, 8, row, col, OL)
+  cpx(img, 15, 9, row, col, OL)
+  cpx(img, 14, 10, row, col, OL)
+  cpx(img, 14, 11, row, col, OL)
+  cpx(img, 13, 12, row, col, OL)
+  cpx(img, 12, 13, row, col, OL)
+  cline(img, 4, 14, 11, 14, row, col, OL)
+end
+
+--- Tin ore: cluster of small prisms/crystals
+local function draw_tin_ore(img, row, col)
+  -- Main crystal (left)
+  crect(img, 2, 3, 6, 13, row, col, TIN_BASE)
+  cpx(img, 3, 2, row, col, TIN_BASE)
+  cpx(img, 4, 2, row, col, TIN_BASE)
+  cpx(img, 5, 2, row, col, TIN_BASE)
+  crect(img, 2, 3, 4, 5, row, col, TIN_LIGHT)
+  cpx(img, 3, 2, row, col, TIN_LIGHT)
+  cpx(img, 4, 2, row, col, TIN_LIGHT)
+  crect(img, 5, 10, 6, 13, row, col, TIN_DARK)
+  -- Second crystal (right, shorter)
+  crect(img, 8, 5, 12, 14, row, col, TIN_BASE)
+  cpx(img, 9, 4, row, col, TIN_BASE)
+  cpx(img, 10, 4, row, col, TIN_BASE)
+  cpx(img, 11, 4, row, col, TIN_BASE)
+  crect(img, 8, 5, 10, 7, row, col, TIN_LIGHT)
+  cpx(img, 9, 4, row, col, TIN_LIGHT)
+  cpx(img, 10, 4, row, col, TIN_LIGHT)
+  crect(img, 11, 11, 12, 14, row, col, TIN_DARK)
+  -- Small crystal (middle)
+  crect(img, 5, 7, 8, 13, row, col, TIN_BASE)
+  crect(img, 6, 6, 7, 7, row, col, TIN_LIGHT)
+  -- Outline left crystal
+  cpx(img, 2, 1, row, col, OL)
+  cpx(img, 6, 1, row, col, OL)
+  cline(img, 3, 1, 5, 1, row, col, OL)
+  cline(img, 1, 2, 1, 13, row, col, OL)
+  cpx(img, 7, 2, row, col, OL)
+  cline(img, 7, 3, 7, 9, row, col, OL)
+  cline(img, 2, 14, 6, 14, row, col, OL)
+  -- Outline right crystal
+  cpx(img, 8, 4, row, col, OL)
+  cpx(img, 12, 4, row, col, OL)
+  cline(img, 9, 3, 11, 3, row, col, OL)
+  cline(img, 13, 5, 13, 14, row, col, OL)
+  cline(img, 8, 15, 12, 15, row, col, OL)
+  -- Outline middle crystal
+  cpx(img, 4, 7, row, col, OL)
+  cpx(img, 4, 8, row, col, OL)
+  cpx(img, 5, 6, row, col, OL)
+  cpx(img, 8, 6, row, col, OL)
+  cline(img, 6, 5, 7, 5, row, col, OL)
+  cline(img, 7, 10, 7, 13, row, col, OL)
+  cline(img, 5, 14, 7, 14, row, col, OL)
+end
+
+--- Gold ore: large irregular nugget
+local function draw_gold_ore(img, row, col)
+  -- Wide lumpy nugget body
+  crect(img, 3, 3, 12, 12, row, col, GOLD_BASE)
+  crect(img, 2, 4, 13, 11, row, col, GOLD_BASE)
+  crect(img, 4, 2, 11, 13, row, col, GOLD_BASE)
+  cpx(img, 1, 6, row, col, GOLD_BASE)
+  cpx(img, 1, 7, row, col, GOLD_BASE)
+  cpx(img, 14, 7, row, col, GOLD_BASE)
+  cpx(img, 14, 8, row, col, GOLD_BASE)
+  cpx(img, 12, 13, row, col, GOLD_BASE)
+  -- Bright highlight
+  crect(img, 3, 3, 7, 5, row, col, GOLD_LIGHT)
+  cpx(img, 4, 2, row, col, GOLD_LIGHT)
+  cpx(img, 5, 2, row, col, GOLD_LIGHT)
+  cpx(img, 2, 4, row, col, GOLD_LIGHT)
+  cpx(img, 2, 5, row, col, GOLD_LIGHT)
+  cpx(img, 5, 6, row, col, GOLD_LIGHT)
+  -- Deep shadow
+  crect(img, 10, 10, 12, 12, row, col, GOLD_DARK)
+  cpx(img, 13, 9, row, col, GOLD_DARK)
+  cpx(img, 13, 10, row, col, GOLD_DARK)
+  cpx(img, 10, 13, row, col, GOLD_DARK)
+  cpx(img, 11, 13, row, col, GOLD_DARK)
+  cpx(img, 11, 12, row, col, GOLD_DEEP)
+  cpx(img, 12, 12, row, col, GOLD_DEEP)
+  cpx(img, 12, 11, row, col, GOLD_DEEP)
+  -- Outline
+  cline(img, 4, 1, 11, 1, row, col, OL)
+  cpx(img, 3, 2, row, col, OL)
+  cpx(img, 12, 2, row, col, OL)
+  cpx(img, 1, 4, row, col, OL)
+  cpx(img, 1, 5, row, col, OL)
+  cpx(img, 0, 6, row, col, OL)
+  cpx(img, 0, 7, row, col, OL)
+  cpx(img, 1, 8, row, col, OL)
+  cline(img, 1, 9, 1, 11, row, col, OL)
+  cpx(img, 2, 12, row, col, OL)
+  cpx(img, 3, 13, row, col, OL)
+  cline(img, 4, 14, 9, 14, row, col, OL)
+  cpx(img, 2, 3, row, col, OL)
+  cpx(img, 13, 3, row, col, OL)
+  cpx(img, 14, 4, row, col, OL)
+  cline(img, 14, 5, 14, 6, row, col, OL)
+  cpx(img, 15, 7, row, col, OL)
+  cpx(img, 15, 8, row, col, OL)
+  cpx(img, 14, 9, row, col, OL)
+  cpx(img, 14, 10, row, col, OL)
+  cpx(img, 13, 11, row, col, OL)
+  cpx(img, 13, 12, row, col, OL)
+  cpx(img, 12, 14, row, col, OL)
+  cpx(img, 10, 14, row, col, OL)
+  cpx(img, 11, 14, row, col, OL)
+end
+
+--- Quartz: tall pointed crystal shard (bigger, fills space)
+local function draw_quartz_ore(img, row, col)
+  -- Tall hexagonal crystal
+  cpx(img, 7, 0, row, col, QRTZ_LIGHT)
+  cpx(img, 8, 0, row, col, QRTZ_LIGHT)
+  crect(img, 6, 1, 9, 2, row, col, QRTZ_LIGHT)
+  crect(img, 5, 3, 10, 5, row, col, QRTZ_LIGHT)
+  crect(img, 4, 4, 11, 6, row, col, QRTZ_BASE)
+  crect(img, 3, 5, 12, 9, row, col, QRTZ_BASE)
+  crect(img, 3, 10, 12, 13, row, col, QRTZ_DARK)
+  crect(img, 4, 14, 11, 14, row, col, QRTZ_DARK)
+  -- Bright facet on left
+  crect(img, 5, 3, 7, 5, row, col, QRTZ_LIGHT)
+  cpx(img, 4, 5, row, col, QRTZ_LIGHT)
+  cpx(img, 4, 6, row, col, QRTZ_LIGHT)
+  cpx(img, 3, 6, row, col, QRTZ_LIGHT)
+  cpx(img, 3, 7, row, col, QRTZ_LIGHT)
+  -- Bright gleam
+  cpx(img, 6, 3, row, col, H.hex("#E8F0FF"))
+  cpx(img, 6, 4, row, col, H.hex("#E0EEFF"))
+  -- Shadow facet right
+  crect(img, 10, 7, 12, 12, row, col, QRTZ_EDGE)
+  cpx(img, 11, 14, row, col, QRTZ_EDGE)
+  -- Outline
+  cpx(img, 6, 0, row, col, OL)
+  cpx(img, 9, 0, row, col, OL)
+  cpx(img, 5, 1, row, col, OL)
+  cpx(img, 10, 1, row, col, OL)
+  cpx(img, 4, 2, row, col, OL)
+  cpx(img, 11, 2, row, col, OL)
+  cpx(img, 3, 3, row, col, OL)
+  cpx(img, 12, 3, row, col, OL)
+  cpx(img, 2, 4, row, col, OL)
+  cpx(img, 13, 4, row, col, OL)
+  cline(img, 2, 5, 2, 13, row, col, OL)
+  cline(img, 13, 5, 13, 13, row, col, OL)
+  cpx(img, 3, 14, row, col, OL)
+  cpx(img, 12, 14, row, col, OL)
+  cline(img, 4, 15, 11, 15, row, col, OL)
+end
+
+--- Sulfur: crusty round/bubbly formation
+local function draw_sulfur_ore(img, row, col)
+  -- Main round body
+  ccircle(img, 7, 8, 6, row, col, SULF_BASE)
+  crect(img, 2, 4, 13, 12, row, col, SULF_BASE)
+  crect(img, 4, 2, 11, 14, row, col, SULF_BASE)
+  -- Bubbly surface bumps (small circles on top)
+  ccircle(img, 5, 5, 2, row, col, SULF_LIGHT)
+  ccircle(img, 10, 6, 2, row, col, SULF_LIGHT)
+  ccircle(img, 7, 10, 2, row, col, SULF_LIGHT)
+  -- Crystalline facet highlights
+  cpx(img, 4, 4, row, col, H.hex("#F0FF90"))
+  cpx(img, 5, 4, row, col, H.hex("#F0FF90"))
+  cpx(img, 9, 5, row, col, H.hex("#F0FF90"))
+  -- Dark crusty edges
+  crect(img, 10, 11, 12, 13, row, col, SULF_DARK)
+  cpx(img, 13, 9, row, col, SULF_DARK)
+  cpx(img, 13, 10, row, col, SULF_DARK)
+  cpx(img, 9, 13, row, col, SULF_DARK)
+  cpx(img, 10, 13, row, col, SULF_EDGE)
+  cpx(img, 11, 12, row, col, SULF_EDGE)
+  -- Outline
+  cline(img, 4, 1, 11, 1, row, col, OL)
+  cpx(img, 3, 2, row, col, OL)
+  cpx(img, 12, 2, row, col, OL)
+  cpx(img, 2, 3, row, col, OL)
+  cpx(img, 13, 3, row, col, OL)
+  cline(img, 1, 4, 1, 12, row, col, OL)
+  cline(img, 14, 4, 14, 12, row, col, OL)
+  cpx(img, 2, 13, row, col, OL)
+  cpx(img, 13, 13, row, col, OL)
+  cpx(img, 3, 14, row, col, OL)
+  cpx(img, 12, 14, row, col, OL)
+  cline(img, 4, 15, 11, 15, row, col, OL)
 end
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- PLATE TEMPLATE: flat rectangle with bevel
+-- PLATE / INTERMEDIATE TEMPLATES
 -- ═══════════════════════════════════════════════════════════════════════════
 
+--- Iron plate: flat rectangle with bevel (KEEP ORIGINAL)
 local function draw_plate(img, row, col, base, hi, sh)
-  cshaded(img, 3, 5, 12, 11, row, col, base, hi, sh)
-  coutline(img, 3, 5, 12, 11, row, col, OL)
-  -- Extra bevel highlight along top-left interior
-  cpx(img, 4, 6, row, col, hi)
-  cpx(img, 5, 6, row, col, hi)
-  cpx(img, 4, 7, row, col, hi)
+  cshaded(img, 2, 4, 13, 12, row, col, base, hi, sh)
+  coutline(img, 2, 4, 13, 12, row, col, OL)
+  cpx(img, 3, 5, row, col, hi)
+  cpx(img, 4, 5, row, col, hi)
+  cpx(img, 3, 6, row, col, hi)
+end
+
+--- Copper ring: washer/ring shape (circle with large hole)
+local function draw_copper_ring(img, row, col)
+  -- Outer filled circle
+  ccircle(img, 7, 7, 6, row, col, CPLATE_BASE)
+  -- Inner hole
+  ccircle(img, 7, 7, 3, row, col, H.TRANSPARENT)
+  -- Highlight on top-left arc
+  cpx(img, 4, 3, row, col, CPLATE_HI)
+  cpx(img, 5, 2, row, col, CPLATE_HI)
+  cpx(img, 6, 2, row, col, CPLATE_HI)
+  cpx(img, 7, 1, row, col, CPLATE_HI)
+  cpx(img, 8, 1, row, col, CPLATE_HI)
+  cpx(img, 3, 4, row, col, CPLATE_HI)
+  cpx(img, 2, 5, row, col, CPLATE_HI)
+  cpx(img, 2, 6, row, col, CPLATE_HI)
+  cpx(img, 1, 7, row, col, CPLATE_HI)
+  cpx(img, 3, 5, row, col, CPLATE_HI)
+  -- Shadow on bottom-right arc
+  cpx(img, 10, 11, row, col, CPLATE_SH)
+  cpx(img, 11, 10, row, col, CPLATE_SH)
+  cpx(img, 12, 8, row, col, CPLATE_SH)
+  cpx(img, 12, 9, row, col, CPLATE_SH)
+  cpx(img, 13, 7, row, col, CPLATE_SH)
+  cpx(img, 11, 11, row, col, CPLATE_SH)
+  cpx(img, 9, 12, row, col, CPLATE_SH)
+  cpx(img, 8, 12, row, col, CPLATE_SH)
+  -- Outer outline
+  ccircle_ol(img, 7, 7, 7, row, col, OL)
+  -- Inner outline
+  ccircle_ol(img, 7, 7, 2, row, col, OL)
+end
+
+--- Tin disc: thin angled coin/disc shape
+local function draw_tin_disc(img, row, col)
+  -- Elliptical disc seen at slight angle (wider than tall)
+  crect(img, 2, 5, 13, 11, row, col, TPLATE_BASE)
+  crect(img, 3, 4, 12, 12, row, col, TPLATE_BASE)
+  crect(img, 5, 3, 10, 13, row, col, TPLATE_BASE)
+  -- Highlight top
+  crect(img, 3, 4, 12, 5, row, col, TPLATE_HI)
+  crect(img, 5, 3, 10, 4, row, col, TPLATE_HI)
+  cpx(img, 2, 5, row, col, TPLATE_HI)
+  cpx(img, 2, 6, row, col, TPLATE_HI)
+  -- Shadow bottom
+  crect(img, 3, 11, 12, 12, row, col, TPLATE_SH)
+  crect(img, 5, 13, 10, 13, row, col, TPLATE_SH)
+  cpx(img, 13, 10, row, col, TPLATE_SH)
+  cpx(img, 13, 11, row, col, TPLATE_SH)
+  -- Sheen line across
+  cline(img, 4, 7, 11, 7, row, col, TPLATE_HI)
+  -- Outline
+  cline(img, 5, 2, 10, 2, row, col, OL)
+  cpx(img, 3, 3, row, col, OL)
+  cpx(img, 4, 3, row, col, OL)
+  cpx(img, 11, 3, row, col, OL)
+  cpx(img, 12, 3, row, col, OL)
+  cpx(img, 1, 5, row, col, OL)
+  cpx(img, 2, 4, row, col, OL)
+  cpx(img, 13, 4, row, col, OL)
+  cpx(img, 14, 5, row, col, OL)
+  cline(img, 1, 6, 1, 10, row, col, OL)
+  cline(img, 14, 6, 14, 10, row, col, OL)
+  cpx(img, 2, 11, row, col, OL)
+  cpx(img, 13, 11, row, col, OL)
+  cpx(img, 2, 12, row, col, OL)
+  cpx(img, 13, 12, row, col, OL)
+  cpx(img, 3, 13, row, col, OL)
+  cpx(img, 4, 13, row, col, OL)
+  cpx(img, 11, 13, row, col, OL)
+  cpx(img, 12, 13, row, col, OL)
+  cline(img, 5, 14, 10, 14, row, col, OL)
 end
 
 
@@ -440,163 +849,126 @@ local function draw_all(img)
   -- ROW 0: RAW RESOURCES
   -- ═════════════════════════════════════════════════════════════════════════
 
-  -- (0,0) iron_ore
-  draw_ore_chunk(img, 0, 0, IRON_BASE, IRON_LIGHT, IRON_DARK, IRON_CRACK)
+  -- (0,0) iron_ore — angular jagged chunk
+  draw_iron_ore(img, 0, 0, IRON_BASE, IRON_LIGHT, IRON_DARK, IRON_CRACK)
 
-  -- (0,1) copper_ore
-  draw_ore_chunk(img, 0, 1, CU_BASE, CU_LIGHT, CU_DARK, CU_CRACK)
+  -- (0,1) copper_ore — layered banded rock with patina
+  draw_copper_ore(img, 0, 1)
 
-  -- (0,2) coal
-  draw_ore_chunk(img, 0, 2, COAL_BASE, COAL_LIGHT, COAL_DARK, COAL_DARK)
-  -- Add glint pixels
-  cpx(img, 5, 5, 0, 2, COAL_GLINT)
-  cpx(img, 9, 7, 0, 2, COAL_GLINT)
-  cpx(img, 7, 10, 0, 2, COAL_GLINT)
+  -- (0,2) coal — round lumpy glossy piece
+  draw_coal_ore(img, 0, 2)
 
-  -- (0,3) stone
-  draw_ore_chunk(img, 0, 3, STONE_BASE, STONE_LIGHT, STONE_DARK, STONE_CRACK)
+  -- (0,3) stone — smooth rounded cobblestone
+  draw_stone_ore(img, 0, 3)
 
-  -- (0,4) tin_ore
-  draw_ore_chunk(img, 0, 4, TIN_BASE, TIN_LIGHT, TIN_DARK, TIN_CRACK)
+  -- (0,4) tin_ore — cluster of prismatic crystals
+  draw_tin_ore(img, 0, 4)
 
-  -- (0,5) gold_ore - slightly smaller, nugget-like
-  crect(img, 5, 5, 11, 11, 0, 5, GOLD_BASE)
-  crect(img, 4, 6, 12, 10, 0, 5, GOLD_BASE)
-  crect(img, 6, 4, 10, 12, 0, 5, GOLD_BASE)
-  -- Highlight
-  crect(img, 5, 5, 8, 7, 0, 5, GOLD_LIGHT)
-  cpx(img, 4, 6, 0, 5, GOLD_LIGHT)
-  cpx(img, 6, 4, 0, 5, GOLD_LIGHT)
-  -- Shadow
-  crect(img, 10, 10, 11, 11, 0, 5, GOLD_DARK)
-  cpx(img, 12, 9, 0, 5, GOLD_DARK)
-  cpx(img, 12, 10, 0, 5, GOLD_DARK)
-  cpx(img, 10, 12, 0, 5, GOLD_DARK)
-  -- Deep shadow
-  cpx(img, 11, 11, 0, 5, GOLD_DEEP)
-  -- Outline
-  cline(img, 6, 3, 10, 3, 0, 5, OL)
-  cpx(img, 5, 4, 0, 5, OL)
-  cpx(img, 11, 4, 0, 5, OL)
-  cpx(img, 3, 6, 0, 5, OL)
-  cline(img, 3, 7, 3, 9, 0, 5, OL)
-  cpx(img, 4, 5, 0, 5, OL)
-  cpx(img, 4, 10, 0, 5, OL)
-  cpx(img, 3, 10, 0, 5, OL)
-  cpx(img, 13, 6, 0, 5, OL)
-  cline(img, 13, 7, 13, 9, 0, 5, OL)
-  cpx(img, 12, 5, 0, 5, OL)
-  cpx(img, 11, 4, 0, 5, OL)
-  cpx(img, 12, 11, 0, 5, OL)
-  cpx(img, 11, 12, 0, 5, OL)
-  cline(img, 6, 13, 10, 13, 0, 5, OL)
-  cpx(img, 5, 12, 0, 5, OL)
-  cpx(img, 4, 11, 0, 5, OL)
-  cpx(img, 11, 13, 0, 5, OL)
+  -- (0,5) gold_ore — large irregular nugget
+  draw_gold_ore(img, 0, 5)
 
-  -- (0,6) quartz - crystal shard, angular shape
-  -- Tall pointed crystal
-  cpx(img, 7, 2, 0, 6, QRTZ_LIGHT)
-  cpx(img, 8, 2, 0, 6, QRTZ_LIGHT)
-  crect(img, 6, 3, 9, 4, 0, 6, QRTZ_LIGHT)
-  crect(img, 5, 5, 10, 7, 0, 6, QRTZ_BASE)
-  crect(img, 5, 8, 10, 10, 0, 6, QRTZ_BASE)
-  crect(img, 4, 6, 4, 9, 0, 6, QRTZ_BASE)
-  cpx(img, 11, 7, 0, 6, QRTZ_BASE)
-  cpx(img, 11, 8, 0, 6, QRTZ_BASE)
-  crect(img, 5, 11, 10, 13, 0, 6, QRTZ_DARK)
-  cpx(img, 4, 10, 0, 6, QRTZ_DARK)
-  cpx(img, 11, 10, 0, 6, QRTZ_DARK)
-  -- Highlight facet
-  cpx(img, 6, 3, 0, 6, QRTZ_LIGHT)
-  cpx(img, 7, 3, 0, 6, QRTZ_LIGHT)
-  cpx(img, 5, 5, 0, 6, QRTZ_LIGHT)
-  cpx(img, 6, 5, 0, 6, QRTZ_LIGHT)
-  cpx(img, 6, 6, 0, 6, H.hex("#E0EEFF"))
-  -- Outline
-  cpx(img, 6, 1, 0, 6, OL)
-  cpx(img, 9, 1, 0, 6, OL)
-  cpx(img, 5, 2, 0, 6, OL)
-  cpx(img, 10, 2, 0, 6, OL)
-  cpx(img, 4, 4, 0, 6, OL)
-  cpx(img, 11, 4, 0, 6, OL)
-  cpx(img, 3, 5, 0, 6, OL)
-  cline(img, 3, 6, 3, 10, 0, 6, OL)
-  cpx(img, 12, 6, 0, 6, OL)
-  cpx(img, 12, 7, 0, 6, OL)
-  cpx(img, 12, 8, 0, 6, OL)
-  cpx(img, 12, 9, 0, 6, OL)
-  cpx(img, 11, 5, 0, 6, OL)
-  cpx(img, 11, 11, 0, 6, OL)
-  cpx(img, 4, 11, 0, 6, OL)
-  cline(img, 4, 14, 11, 14, 0, 6, OL)
-  cpx(img, 4, 12, 0, 6, OL)
-  cpx(img, 4, 13, 0, 6, OL)
-  cpx(img, 11, 12, 0, 6, OL)
-  cpx(img, 11, 13, 0, 6, OL)
+  -- (0,6) quartz — tall pointed crystal shard
+  draw_quartz_ore(img, 0, 6)
 
-  -- (0,7) sulfur - crystalline chunk, yellow-green
-  draw_ore_chunk(img, 0, 7, SULF_BASE, SULF_LIGHT, SULF_DARK, SULF_EDGE)
-  -- Add crystalline facet highlights
-  cpx(img, 5, 5, 0, 7, SULF_LIGHT)
-  cpx(img, 6, 4, 0, 7, SULF_LIGHT)
-  cpx(img, 8, 6, 0, 7, H.hex("#F0FF90"))
+  -- (0,7) sulfur — crusty bubbly round formation
+  draw_sulfur_ore(img, 0, 7)
 
 
   -- ═════════════════════════════════════════════════════════════════════════
   -- ROW 1: SMELTED / BASIC MATERIALS
   -- ═════════════════════════════════════════════════════════════════════════
 
-  -- (1,0) iron_plate
+  -- (1,0) iron_plate — flat rectangle with bevel (KEEP AS IS)
   draw_plate(img, 1, 0, IPLATE_BASE, IPLATE_HI, IPLATE_SH)
 
-  -- (1,1) copper_plate
-  draw_plate(img, 1, 1, CPLATE_BASE, CPLATE_HI, CPLATE_SH)
+  -- (1,1) copper_plate — ring/washer shape
+  draw_copper_ring(img, 1, 1)
 
-  -- (1,2) tin_plate
-  draw_plate(img, 1, 2, TPLATE_BASE, TPLATE_HI, TPLATE_SH)
+  -- (1,2) tin_plate — wide disc/coin shape
+  draw_tin_disc(img, 1, 2)
 
-  -- (1,3) gold_ingot - small bar shape, taller than plates
-  cshaded(img, 4, 4, 11, 12, 1, 3, GBAR_BASE, GBAR_HI, GBAR_SH)
-  coutline(img, 4, 4, 11, 12, 1, 3, OL)
+  -- (1,3) gold_ingot — trapezoidal bar, fills more space
+  cshaded(img, 3, 3, 12, 13, 1, 3, GBAR_BASE, GBAR_HI, GBAR_SH)
+  coutline(img, 3, 3, 12, 13, 1, 3, OL)
   -- Trapezoidal top bevel
-  cpx(img, 5, 5, 1, 3, GBAR_HI)
-  cpx(img, 6, 5, 1, 3, GBAR_HI)
-  cpx(img, 7, 5, 1, 3, GBAR_HI)
-  cpx(img, 5, 6, 1, 3, GBAR_HI)
+  crect(img, 4, 4, 8, 5, 1, 3, GBAR_HI)
+  cpx(img, 4, 6, 1, 3, GBAR_HI)
+  -- Stamped mark
+  cpx(img, 7, 8, 1, 3, GBAR_SH)
+  cpx(img, 8, 8, 1, 3, GBAR_SH)
+  cpx(img, 7, 9, 1, 3, GBAR_SH)
 
-  -- (1,4) steel - dark blue-gray bar, thicker
-  cshaded(img, 3, 4, 12, 12, 1, 4, STEEL_BASE, STEEL_HI, STEEL_SH)
-  coutline(img, 3, 4, 12, 12, 1, 4, OL)
+  -- (1,4) steel — heavy thick bar, fills space
+  cshaded(img, 2, 3, 13, 13, 1, 4, STEEL_BASE, STEEL_HI, STEEL_SH)
+  coutline(img, 2, 3, 13, 13, 1, 4, OL)
   -- Subtle center line
-  cline(img, 4, 8, 11, 8, 1, 4, STEEL_HI)
+  cline(img, 3, 8, 12, 8, 1, 4, STEEL_HI)
+  -- Stamped marks
+  cpx(img, 5, 6, 1, 4, STEEL_SH)
+  cpx(img, 10, 10, 1, 4, STEEL_SH)
 
-  -- (1,5) glass - transparent-looking sheet
-  cshaded(img, 3, 5, 12, 11, 1, 5, GLASS_BASE, GLASS_HI, GLASS_SH)
-  coutline(img, 3, 5, 12, 11, 1, 5, OL)
+  -- (1,5) glass — tall pane with shine
+  cshaded(img, 2, 2, 13, 13, 1, 5, GLASS_BASE, GLASS_HI, GLASS_SH)
+  coutline(img, 2, 2, 13, 13, 1, 5, OL)
   -- Sheen diagonal
-  cpx(img, 5, 6, 1, 5, GLASS_SHEEN)
-  cpx(img, 6, 7, 1, 5, GLASS_SHEEN)
-  cpx(img, 4, 7, 1, 5, H.with_alpha(GLASS_SHEEN, 140))
-  cpx(img, 7, 8, 1, 5, H.with_alpha(GLASS_SHEEN, 140))
+  cpx(img, 4, 4, 1, 5, GLASS_SHEEN)
+  cpx(img, 5, 5, 1, 5, GLASS_SHEEN)
+  cpx(img, 6, 6, 1, 5, GLASS_SHEEN)
+  cpx(img, 3, 5, 1, 5, H.with_alpha(GLASS_SHEEN, 140))
+  cpx(img, 4, 6, 1, 5, H.with_alpha(GLASS_SHEEN, 140))
+  cpx(img, 7, 7, 1, 5, H.with_alpha(GLASS_SHEEN, 140))
 
-  -- (1,6) brick - reddish rectangle with mortar line
-  cshaded(img, 3, 5, 12, 11, 1, 6, BRICK_BASE, BRICK_HI, BRICK_SH)
-  coutline(img, 3, 5, 12, 11, 1, 6, OL)
+  -- (1,6) brick — reddish rectangle with mortar, bigger
+  cshaded(img, 2, 4, 13, 12, 1, 6, BRICK_BASE, BRICK_HI, BRICK_SH)
+  coutline(img, 2, 4, 13, 12, 1, 6, OL)
   -- Mortar line across middle
-  cline(img, 4, 8, 11, 8, 1, 6, BRICK_MORT)
+  cline(img, 3, 8, 12, 8, 1, 6, BRICK_MORT)
   -- Vertical mortar
+  cpx(img, 7, 5, 1, 6, BRICK_MORT)
   cpx(img, 7, 6, 1, 6, BRICK_MORT)
   cpx(img, 7, 7, 1, 6, BRICK_MORT)
-  cpx(img, 9, 9, 1, 6, BRICK_MORT)
-  cpx(img, 9, 10, 1, 6, BRICK_MORT)
+  cpx(img, 10, 9, 1, 6, BRICK_MORT)
+  cpx(img, 10, 10, 1, 6, BRICK_MORT)
+  cpx(img, 10, 11, 1, 6, BRICK_MORT)
 
-  -- (1,7) coke - dark lumpy piece, reddish tint vs coal
-  draw_ore_chunk(img, 1, 7, COKE_BASE, COKE_LIGHT, COKE_DARK, COKE_DARK)
+  -- (1,7) coke — porous dark lumpy piece
+  -- Round porous body
+  ccircle(img, 7, 7, 6, 1, 7, COKE_BASE)
+  crect(img, 2, 4, 13, 12, 1, 7, COKE_BASE)
+  crect(img, 4, 2, 11, 13, 1, 7, COKE_BASE)
+  -- Porous holes
+  cpx(img, 5, 5, 1, 7, COKE_DARK)
+  cpx(img, 6, 5, 1, 7, COKE_DARK)
+  cpx(img, 9, 4, 1, 7, COKE_DARK)
+  cpx(img, 4, 8, 1, 7, COKE_DARK)
+  cpx(img, 5, 8, 1, 7, COKE_DARK)
+  cpx(img, 10, 7, 1, 7, COKE_DARK)
+  cpx(img, 7, 10, 1, 7, COKE_DARK)
+  cpx(img, 8, 10, 1, 7, COKE_DARK)
+  cpx(img, 11, 9, 1, 7, COKE_DARK)
+  -- Light facets
+  crect(img, 3, 3, 5, 4, 1, 7, COKE_LIGHT)
+  cpx(img, 4, 2, 1, 7, COKE_LIGHT)
   -- Reddish tint pixels
   cpx(img, 6, 6, 1, 7, H.hex("#503030"))
   cpx(img, 8, 9, 1, 7, H.hex("#503030"))
-  cpx(img, 10, 7, 1, 7, H.hex("#503030"))
+  cpx(img, 10, 6, 1, 7, H.hex("#503030"))
+  -- Shadow
+  crect(img, 9, 10, 12, 12, 1, 7, COKE_DARK)
+  cpx(img, 11, 9, 1, 7, COKE_DARK)
+  -- Outline
+  cline(img, 4, 1, 11, 1, 1, 7, OL)
+  cpx(img, 3, 2, 1, 7, OL)
+  cpx(img, 12, 2, 1, 7, OL)
+  cpx(img, 2, 3, 1, 7, OL)
+  cpx(img, 13, 3, 1, 7, OL)
+  cline(img, 1, 4, 1, 11, 1, 7, OL)
+  cline(img, 14, 4, 14, 11, 1, 7, OL)
+  cpx(img, 2, 12, 1, 7, OL)
+  cpx(img, 13, 12, 1, 7, OL)
+  cpx(img, 3, 13, 1, 7, OL)
+  cpx(img, 12, 13, 1, 7, OL)
+  cline(img, 4, 14, 11, 14, 1, 7, OL)
 
 
   -- ═════════════════════════════════════════════════════════════════════════

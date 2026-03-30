@@ -1,9 +1,7 @@
-[gd_scene load_steps=30 format=3]
+[gd_scene load_steps=29 format=3]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
-[ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="2"]
 [ext_resource type="Script" uid="uid://6mvwwob8xwe" path="res://buildings/drill/extractor.gd" id="3"]
-[ext_resource type="Script" uid="uid://bskpekvve1ai8" path="res://buildings/drill/drill_progress.gd" id="4"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="5"]
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="6"]
 [ext_resource type="Texture2D" path="res://buildings/drill_mk2/sprites/main.png" id="7_sheet"]
@@ -220,12 +218,6 @@ script = ExtResource("6")
 allow_left = false
 
 [node name="BuildAnchor" type="Node2D" parent="Rotatable"]
-
-[node name="Arrow" type="Node2D" parent="Rotatable"]
-script = ExtResource("2")
-
-[node name="ProgressBar" type="Node2D" parent="Rotatable"]
-script = ExtResource("4")
 
 [node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
 texture_filter = 1

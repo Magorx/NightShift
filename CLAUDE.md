@@ -65,7 +65,7 @@ Game content is defined as `.tres` resource files — adding new items, recipes,
 - **BuildingDef** (`buildings/shared/building_def.gd`) — scene reference, display_name, color, category, description, unlock_tech, build_cost, replaceable_by; auto-extracts shape/inputs/outputs/anchor from the scene's marker nodes; owns all rotation/shape math
 - **TechDef** (`scripts/resources/tech_def.gd`) — id, display_name, ring, cost (science packs), unlocks (building IDs)
 
-Current content: 36 items across 6 categories (8 raw, 7 smelted, 8 components, 6 assembly, 4 advanced, 3 science packs), 31 recipes. Resources live under `resources/items/` and `resources/recipes/`. Item sprites rendered via 16x16 atlas (`resources/items/sprites/item_atlas.png`).
+Current content: 37 items across 6 categories (8 raw, 8 intermediate, 8 component, 9 advanced, 3 science, 1 special/energy), 31 recipes, 11 tech nodes. Resources live under `resources/items/`, `resources/recipes/`, and `resources/tech/`. Item sprites rendered via 16x16 atlas (`resources/items/sprites/item_atlas.png`, 8x5 grid).
 
 ### Building Organization
 
@@ -160,11 +160,27 @@ Energy flows through a graph of buildings connected by adjacency edges and Energ
 
 **Converter energy behavior:** converters use priority-based recipe selection via `RecipeConfig` (lower priority number = tried first). Disabled recipes are skipped. If a powered recipe can't be afforded locally, they immediately fall back to a cheaper/free recipe — no waiting. `energy_demand` is signaled every tick (even mid-craft) so redistribution proactively delivers energy.
 
+### Player System
+
+Player entity lives in `player/` with movement, conveyor interaction, mining, inventory, and ground items.
+
+- **Player** (`player/player.gd`, `player/player.tscn`) — walking (3 tiles/s), sprinting (5 tiles/s), jump/elevated states, conveyor push, building collision, health (100 HP, 2 HP/s regen), inventory (24 slots, 16 stack), 1.5-tile pickup range
+- **PlayerSprite** (`player/player_sprite.gd`) — directional sprite animation
+- **PlayerShadow** (`player/player_shadow.gd`) — shadow effect for jump states
+- **GroundItem** (`player/ground_item.gd`, `player/ground_item.tscn`) — dropped items that auto-feed into adjacent buildings every 0.5s via `logic.try_insert_item()`
+
 ### Game Systems
 
 - **BuildSystem** (`scripts/game/build_system.gd`) — grid-based placement with rotation, drag multi-placement, destroy mode with shader highlights, multi-phase building support (tunnels)
-- **ConveyorSystem** (`scripts/game/conveyor_system.gd`) — per-physics-frame processing: item advancement, pull-based transfers, progress clamping
+- **BuildingTickSystem** (`scripts/game/building_tick_system.gd`) — per-frame building update processing
+- **BuildingCollision** (`scripts/game/building_collision.gd`) — player-building collision handling (16 tile-based, multi-tile blocks)
+- **ConveyorSystem** (`scripts/game/conveyor_system.gd`) — per-physics-frame processing: item advancement, pull-based transfers, progress clamping, ground item pickup
+- **ConveyorVisualManager** (`scripts/game/conveyor_visual_manager.gd`) — MultiMesh-based conveyor sprite rendering
+- **ItemVisualManager** (`scripts/game/item_visual_manager.gd`) — MultiMesh-based item rendering via atlas texture (replaces individual Node2D instances)
 - **EnergySystem** (`scripts/energy/energy_system.gd`) — energy network management, edge graph rebuild, per-tick distribution
+- **EnergyOverlay** (`scripts/energy/energy_overlay.gd`) — visual debug overlay for energy networks
+- **WorldGenerator** (`scripts/game/world_generator.gd`) — procedural/template map generation
+- **GameCamera** (`scripts/game/game_camera.gd`) — camera control (pan, zoom)
 - **GridOverlay** (`scripts/game/grid_overlay.gd`) — visual grid rendering
 - **Inventory** (`scripts/inventory.gd`) — per-item storage with capacity limits (used by extractors/converters)
 - **RoundRobin** (`scripts/round_robin.gd`) — fair round-robin iterator for multi-directional pulling
@@ -195,14 +211,22 @@ Contextual popup appears above clicked buildings. Click-through design: all cont
 
 ```
 GameWorld (Node2D)                    # scripts/game/game_world.gd
-  Camera2D
+  Camera2D                            # scripts/game/game_camera.gd
   TileMapLayer                        # terrain + source locations
+  GridOverlay                         # scripts/game/grid_overlay.gd
+  BuildSystem                         # scripts/game/build_system.gd
   BuildingLayer                       # placed buildings
   ItemLayer                           # conveyor item visuals
+  ConveyorSystem                      # scripts/game/conveyor_system.gd
+  EnergySystem                        # scripts/energy/energy_system.gd
+  BuildingTickSystem                  # scripts/game/building_tick_system.gd
+  BuildingCollision                   # scripts/game/building_collision.gd
+  ConveyorVisualManager               # scripts/game/conveyor_visual_manager.gd
+  Player                              # player/player.gd — character with inventory
   UI (CanvasLayer)
-	HUD                               # scripts/ui/hud.gd — speed controls, currency, buildings panel, minimap
-	BuildingPopup                     # scripts/ui/building_popup.gd — contextual popup above clicked building
-	PauseMenu                         # scripts/ui/pause_menu.gd
+    HUD                               # scripts/ui/hud.gd — speed controls, currency, buildings panel, minimap
+    BuildingPopup                     # scripts/ui/building_popup.gd — contextual popup above clicked building
+    PauseMenu                         # scripts/ui/pause_menu.gd
 ```
 
 Key scenes: `scenes/game/game_world.tscn` (gameplay), `scenes/game/test_world.tscn` (dev testing), `scenes/ui/main_menu.tscn` (entry point).
@@ -225,7 +249,7 @@ Custom lightweight test framework (no plugin dependencies) for headless executio
 - Unit tests in `tests/unit/`, integration tests in `tests/integration/`
 - Simulations in `tests/simulation/` extend `SimulationBase` — scripted play-throughs with time advancement and input synthesis
 
-Available simulations: `sim_conveyor_transport`, `sim_unified_pull`, `sim_drill_extractor`, `sim_smelter_converter`, `sim_merge_and_source_sink`, `sim_junction`, `sim_splitter`, `sim_energy`, `sim_new_buildings`.
+Available simulations: `sim_conveyor_transport`, `sim_conveyor_visuals`, `sim_unified_pull`, `sim_drill_extractor`, `sim_smelter_converter`, `sim_merge_and_source_sink`, `sim_junction`, `sim_splitter`, `sim_energy`, `sim_new_buildings`, `sim_player`, `sim_stress_test`.
 
 ### Workflow for New Buildings
 
@@ -244,6 +268,11 @@ Available simulations: `sim_conveyor_transport`, `sim_unified_pull`, `sim_drill_
 ## Documentation
 
 - `docs/design.md` — full game design (items, recipes, converters, research, campaigns)
+- `docs/energy.md` — energy system design (generators, distribution algorithm, node connections)
+- `docs/gameplay_plan.md` — gameplay progression, resource tree, building costs, research tree, contracts
 - `docs/implementation_details.md` — detailed architecture and save format
+- `docs/inventory_ui.md` — inventory UI design (hotbar, drag & drop, stack splitting)
+- `docs/player_entity.md` — player movement, health, conveyor interaction, collision
 - `docs/state.md` — implementation progress tracking
 - `docs/step13_ui_design.md` — UI layout specifications
+- `docs/to_fix.md` — known issues and technical debt (14 priority items)

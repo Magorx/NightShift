@@ -1,9 +1,8 @@
-[gd_scene load_steps=29 format=3 uid="uid://c63p8mesdlobv"]
+[gd_scene load_steps=28 format=3 uid="uid://c63p8mesdlobv"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="3"]
-[ext_resource type="Script" uid="uid://brkoaxdxul3a0" path="res://buildings/shared/building_arrow.gd" id="5"]
 [ext_resource type="Script" uid="uid://dbaj4knyfgpst" path="res://buildings/smelter/converter.gd" id="6"]
 [ext_resource type="Texture2D" uid="uid://cnkgo80sjcu5e" path="res://buildings/coal_burner/sprites/main.png" id="7_sheet"]
 
@@ -225,9 +224,6 @@ allow_right = false
 [node name="Outputs" type="Node2D" parent="Rotatable"]
 
 [node name="BuildAnchor" type="Node2D" parent="Rotatable"]
-
-[node name="Arrow" type="Node2D" parent="Rotatable"]
-script = ExtResource("5")
 
 [node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
 texture_filter = 1
