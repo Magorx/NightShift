@@ -1,7 +1,14 @@
-[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
 [ext_resource type="PackedScene" path="res://buildings/tunnel/tunnel_input.tscn" id="2"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="3"]
+[ext_resource type="Resource" path="res://resources/items/iron_plate.tres" id="4"]
+
+[sub_resource type="Resource" id="cost_0"]
+script = ExtResource("3")
+item = ExtResource("4")
+quantity = 4
 
 [resource]
 script = ExtResource("1")
@@ -12,3 +19,4 @@ category = "tunnel"
 description = "Underground transport. Place input, then output. Max 4 cells apart."
 scene = ExtResource("2")
 is_ground_level = true
+build_cost = [SubResource("cost_0")]
