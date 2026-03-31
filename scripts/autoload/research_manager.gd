@@ -19,13 +19,47 @@ signal research_completed(tech_id: StringName)
 signal research_started(tech_id: StringName)
 
 func _ready():
-	_load_tech_defs()
+	_load_from_json()
 	# Ring 0 techs are free — unlock them immediately
 	for tech_id in tech_defs:
 		if tech_defs[tech_id].ring == 0:
 			unlocked_techs[tech_id] = true
 
-func _load_tech_defs():
+func _load_from_json():
+	## Load all tech definitions from research_tree.json (single source of truth).
+	var file := FileAccess.open("res://resources/tech/research_tree.json", FileAccess.READ)
+	if not file:
+		push_warning("ResearchManager: research_tree.json not found, falling back to .tres files")
+		_load_tech_defs_tres()
+		return
+	var json := JSON.new()
+	if json.parse(file.get_as_text()) != OK:
+		push_warning("ResearchManager: failed to parse research_tree.json")
+		_load_tech_defs_tres()
+		return
+	var data: Dictionary = json.data
+	tech_defs.clear()
+	for node_data in data.get("nodes", []):
+		var def := TechDef.new()
+		def.id = StringName(node_data.get("id", ""))
+		def.display_name = node_data.get("display_name", "")
+		def.description = node_data.get("description", "")
+		def.ring = int(node_data.get("ring", 0))
+		def.unlocks = []
+		for unlock_id in node_data.get("unlocks", []):
+			def.unlocks.append(StringName(unlock_id))
+		def.cost = []
+		for cost_data in node_data.get("cost", []):
+			var stack := ItemStack.new()
+			stack.item = GameManager.get_item_def(StringName(cost_data.get("item", "")))
+			stack.quantity = int(cost_data.get("quantity", 1))
+			if stack.item:
+				def.cost.append(stack)
+		if def.id != &"":
+			tech_defs[def.id] = def
+
+func _load_tech_defs_tres():
+	## Fallback: load from .tres files if JSON is unavailable.
 	var dir = DirAccess.open("res://resources/tech/")
 	if not dir:
 		return

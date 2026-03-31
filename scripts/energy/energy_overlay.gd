@@ -20,6 +20,8 @@ var _delta: float = 0.0
 var _smoothed_flow: Dictionary = {}  # int pair key -> smoothed direction (-1..1)
 var _wire_emitters: Dictionary = {}  # int pair_key -> GPUParticles2D
 var _active_pairs: Dictionary = {}   # int pair_key -> true, built each frame
+var _had_unpowered: bool = false      # track previous frame to trigger final redraw
+var _was_energy_mode: bool = false     # track previous frame to clear wires on exit
 
 func _is_energy_mode() -> bool:
 	var bs = get_node_or_null("../BuildSystem")
@@ -32,23 +34,23 @@ func _process(delta: float) -> void:
 	var in_energy_mode := _is_energy_mode()
 	var has_unpowered := _has_unpowered_buildings()
 
-	# Tell the energy system whether to compute per-edge flow data
+	# Always compute edge flows — particles need them even outside energy mode
 	if GameManager.energy_system:
-		GameManager.energy_system.needs_edge_flows = in_energy_mode
+		GameManager.energy_system.needs_edge_flows = true
 
-	if in_energy_mode:
-		_active_pairs.clear()
-		_update_emitters()
-		_cleanup_stale_emitters()
+	# Always update particle emitters (visible at all times)
+	_active_pairs.clear()
+	_update_emitters()
+	_cleanup_stale_emitters()
 
-	# Only redraw when there's something to show
+	# Redraw for wires (energy mode) or no-power icons
 	if in_energy_mode or has_unpowered:
 		queue_redraw()
-	elif not _wire_emitters.is_empty():
-		# Clean up emitters when leaving energy mode
-		_stop_all_emitters()
-		_cleanup_stale_emitters()
+	elif _was_energy_mode or _had_unpowered:
+		# One final redraw to clear wires / no-power icons
 		queue_redraw()
+	_was_energy_mode = in_energy_mode
+	_had_unpowered = has_unpowered
 
 func _has_unpowered_buildings() -> bool:
 	if not GameManager.energy_system:

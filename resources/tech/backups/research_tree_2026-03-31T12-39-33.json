@@ -8,12 +8,8 @@
       "ring": 0,
       "cost": [
         {
-          "item": "iron_ore",
-          "quantity": 10
-        },
-        {
-          "item": "copper_ore",
-          "quantity": 10
+          "item": "science_pack_1",
+          "quantity": 5
         }
       ],
       "unlocks": [
@@ -40,7 +36,7 @@
       ],
       "position": {
         "x": -3,
-        "y": -1.5
+        "y": -3
       }
     },
     {
@@ -58,7 +54,7 @@
         "wire_drawer"
       ],
       "position": {
-        "x": -3,
+        "x": 1.5,
         "y": -0.5
       }
     },
@@ -66,7 +62,7 @@
       "id": "tech_solar",
       "display_name": "Solar Panel",
       "description": "Solar Panel for passive energy generation.",
-      "ring": 2,
+      "ring": 1,
       "cost": [
         {
           "item": "science_pack_1",
@@ -77,7 +73,7 @@
         "solar_panel"
       ],
       "position": {
-        "x": 0,
+        "x": -3.5,
         "y": 2.5
       }
     },
@@ -96,8 +92,8 @@
         "coke_oven"
       ],
       "position": {
-        "x": -3,
-        "y": 1.5
+        "x": 1.5,
+        "y": 0.5
       }
     },
     {
@@ -115,8 +111,8 @@
         "conveyor_mk2"
       ],
       "position": {
-        "x": -3,
-        "y": 0.5
+        "x": 0,
+        "y": 1
       }
     },
     {
@@ -139,7 +135,7 @@
       ],
       "position": {
         "x": 0,
-        "y": -1.5
+        "y": -1
       }
     },
     {
@@ -161,8 +157,8 @@
         "fuel_generator"
       ],
       "position": {
-        "x": 0,
-        "y": 1.5
+        "x": 2,
+        "y": -2
       }
     },
     {
@@ -184,15 +180,15 @@
         "drill_mk2"
       ],
       "position": {
-        "x": 0,
-        "y": -0.5
+        "x": -1,
+        "y": 1
       }
     },
     {
       "id": "tech_conveyor_mk3",
       "display_name": "Conveyor Mk3",
       "description": "Fastest conveyors with 3x speed.",
-      "ring": 3,
+      "ring": 2,
       "cost": [
         {
           "item": "science_pack_1",
@@ -207,8 +203,8 @@
         "conveyor_mk3"
       ],
       "position": {
-        "x": 4,
-        "y": 0.5
+        "x": 1,
+        "y": 1
       }
     },
     {
@@ -234,8 +230,8 @@
         "assembler_mk2"
       ],
       "position": {
-        "x": 4,
-        "y": -0.5
+        "x": 0,
+        "y": 0
       }
     }
   ],
@@ -270,20 +266,8 @@
       "to": "tech_assembler_mk2"
     },
     {
-      "from": "tech_research_lab",
-      "to": "tech_conveyor_mk2"
-    },
-    {
-      "from": "tech_research_lab",
-      "to": "tech_coke_oven"
-    },
-    {
-      "from": "tech_coke_oven",
-      "to": "tech_solar"
-    },
-    {
-      "from": "tech_drill_mk2",
-      "to": "tech_conveyor_mk3"
+      "from": "tech_fuel_generator",
+      "to": "tech_assembler_mk2"
     }
   ],
   "rings": {

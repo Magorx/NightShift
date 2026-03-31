@@ -122,8 +122,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				else:
 					exit_destroy_mode()
 			else:
-				# Inspect mode RMB: show ground info
-				_try_ground_info(cursor_grid_pos)
+				# Inspect mode RMB: pick building under cursor
+				_try_pick_building(cursor_grid_pos)
 	elif event.is_action_pressed(&"rotate_building"):
 		if building_mode:
 			current_rotation = (current_rotation + 1) % 4
@@ -208,6 +208,16 @@ func _try_inspect(pos: Vector2i) -> void:
 		# Clicked empty space — dismiss info panel
 		clear_select_highlight()
 		building_clicked.emit(null)
+
+func _try_pick_building(pos: Vector2i) -> void:
+	var building = GameManager.get_building_at(pos)
+	if building and is_instance_valid(building):
+		var bid: StringName = building.building_id
+		if bid != &"" and GameManager.building_defs.has(bid):
+			enter_building_mode(bid)
+			return
+	# No building — show ground info instead
+	ground_inspected.emit(pos)
 
 func _try_ground_info(pos: Vector2i) -> void:
 	var building = GameManager.get_building_at(pos)

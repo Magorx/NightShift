@@ -81,7 +81,8 @@ func _gui_input(event: InputEvent) -> void:
 				_snapping_back = false
 				accept_event()
 			else:
-				# Start drag
+				# Start drag — works from any non-interactive area (title bar, margins, separators).
+				# Buttons and other MOUSE_FILTER_STOP children consume clicks before reaching here.
 				_dragging = true
 				_snapping_back = false
 				_drag_offset = global_position - get_global_mouse_position()

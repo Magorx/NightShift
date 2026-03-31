@@ -109,6 +109,10 @@
         {
           "item": "science_pack_1",
           "quantity": 15
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 10
         }
       ],
       "unlocks": [

@@ -22,6 +22,7 @@ var _update_timer: float = 0.0
 # Layout data
 var _ring_techs: Dictionary = {}  # ring -> Array[StringName]
 var _tech_positions: Dictionary = {}  # tech_id -> Vector2 (world coords, center of node)
+var _json_positions: Dictionary = {}  # tech_id -> Vector2 (from JSON)
 var _edges: Array = []  # Array of {from: StringName, to: StringName}
 
 # Canvas pan/zoom
@@ -37,11 +38,11 @@ const RING_COLORS := [
 	Color(0.3, 0.8, 0.3),   # Ring 2 (green)
 	Color(0.3, 0.5, 0.9),   # Ring 3 (blue)
 ]
-const RING_NAMES := ["Free", "Ring 1", "Ring 2", "Ring 3"]
+const RING_NAMES := ["Ring 0", "Ring 1", "Ring 2", "Ring 3"]
 
-const NODE_SIZE := Vector2(110, 44)
-const NODE_HGAP := 140.0  # horizontal gap between columns (rings)
-const NODE_VGAP := 60.0   # vertical gap between nodes in same ring
+const NODE_SIZE := Vector2(130, 48)
+const NODE_HGAP := 160.0  # horizontal gap between columns (rings)
+const NODE_VGAP := 64.0   # vertical gap between nodes in same ring
 
 func _ready() -> void:
 	super._ready()
@@ -71,6 +72,14 @@ func _load_tree_json() -> void:
 			from = StringName(edge_data.get("from", "")),
 			to = StringName(edge_data.get("to", "")),
 		})
+	_json_positions.clear()
+	for node_data in data.get("nodes", []):
+		var id := StringName(node_data.get("id", ""))
+		var pos_data: Dictionary = node_data.get("position", {})
+		_json_positions[id] = Vector2(
+			float(pos_data.get("x", 0.0)),
+			float(pos_data.get("y", 0.0))
+		)
 
 func _process(delta: float) -> void:
 	super._process(delta)
@@ -81,6 +90,8 @@ func _process(delta: float) -> void:
 		_update_timer = 0.0
 		_refresh_progress_display()
 		tree_display.queue_redraw()
+
+const GRID_SCALE := 80.0  # matches GRID in the HTML editor
 
 func _layout_nodes() -> void:
 	_ring_techs.clear()
@@ -93,22 +104,24 @@ func _layout_nodes() -> void:
 			_ring_techs[tech.ring] = []
 		_ring_techs[tech.ring].append(tech_id)
 
-	# Sort each ring alphabetically for stable layout
+	# Sort each ring alphabetically for stable fallback
 	for ring in _ring_techs:
 		_ring_techs[ring].sort()
 
-	# Layout: rings as columns from left to right, nodes vertically within each ring
-	var rings_sorted: Array = _ring_techs.keys()
-	rings_sorted.sort()
-
-	for ring in rings_sorted:
-		var techs: Array = _ring_techs[ring]
-		var col_x: float = ring * NODE_HGAP
-		var count: int = techs.size()
-		var total_height: float = (count - 1) * NODE_VGAP
-		var start_y: float = -total_height * 0.5
-		for i in count:
-			_tech_positions[techs[i]] = Vector2(col_x, start_y + i * NODE_VGAP)
+	# Use JSON positions if available, fallback to computed grid
+	for tech_id in ResearchManager.tech_defs:
+		if _json_positions.has(tech_id):
+			var jp: Vector2 = _json_positions[tech_id]
+			_tech_positions[tech_id] = jp * GRID_SCALE
+		else:
+			# Fallback: place by ring column
+			var tech: TechDef = ResearchManager.tech_defs[tech_id]
+			var ring_list: Array = _ring_techs.get(tech.ring, [])
+			var idx: int = ring_list.find(tech_id)
+			var count: int = ring_list.size()
+			var col_x: float = tech.ring * NODE_HGAP
+			var total_height: float = (count - 1) * NODE_VGAP
+			_tech_positions[tech_id] = Vector2(col_x, -total_height * 0.5 + idx * NODE_VGAP)
 
 func _center_view() -> void:
 	# Center pan on the middle of all nodes
@@ -135,10 +148,32 @@ func _screen_to_world(screen_pos: Vector2) -> Vector2:
 # ── Drawing ──────────────────────────────────────────────────────────────────
 
 func _on_tree_draw() -> void:
-	# Clip to tree_display bounds
-	tree_display.draw_rect(Rect2(Vector2.ZERO, tree_display.size), Color(0.08, 0.08, 0.1), true)
+	# Dark blue background
+	tree_display.draw_rect(Rect2(Vector2.ZERO, tree_display.size), Color(0.11, 0.12, 0.26), true)
 
-	# Draw ring column backgrounds
+	# Grid lines
+	var grid_spacing := GRID_SCALE * _zoom
+	if grid_spacing > 8.0:  # don't draw grid if too zoomed out
+		var grid_color := Color(1.0, 1.0, 1.0, 0.1)
+		var display_size := tree_display.size
+		# Compute grid offset from pan
+		var origin_screen := _world_to_screen(Vector2.ZERO)
+		var start_x := fmod(origin_screen.x, grid_spacing)
+		if start_x < 0:
+			start_x += grid_spacing
+		var start_y := fmod(origin_screen.y, grid_spacing)
+		if start_y < 0:
+			start_y += grid_spacing
+		var x := start_x
+		while x < display_size.x:
+			tree_display.draw_line(Vector2(x, 0), Vector2(x, display_size.y), grid_color)
+			x += grid_spacing
+		var y := start_y
+		while y < display_size.y:
+			tree_display.draw_line(Vector2(0, y), Vector2(display_size.x, y), grid_color)
+			y += grid_spacing
+
+	# Draw ring column labels — positioned based on average x of nodes in each ring
 	var rings_sorted: Array = _ring_techs.keys()
 	rings_sorted.sort()
 	for ring in rings_sorted:
@@ -147,16 +182,22 @@ func _on_tree_draw() -> void:
 		var techs: Array = _ring_techs[ring]
 		if techs.is_empty():
 			continue
-		var col_x: float = ring * NODE_HGAP
-		# Column stripe
-		var stripe_left := _world_to_screen(Vector2(col_x - NODE_SIZE.x * 0.5 - 10, -400))
-		var stripe_right := _world_to_screen(Vector2(col_x + NODE_SIZE.x * 0.5 + 10, 400))
-		var stripe_rect := Rect2(stripe_left, stripe_right - stripe_left)
-		tree_display.draw_rect(stripe_rect, Color(RING_COLORS[ring], 0.05))
-		# Ring label at top
-		var label_pos := _world_to_screen(Vector2(col_x, -200))
+		# Compute average X and min Y from actual node positions
+		var avg_x := 0.0
+		var min_y := INF
+		for tid in techs:
+			var pos: Vector2 = _tech_positions.get(tid, Vector2.ZERO)
+			avg_x += pos.x
+			min_y = minf(min_y, pos.y)
+		avg_x /= techs.size()
+		# Ring label above topmost node
+		var label_world := Vector2(avg_x, min_y - NODE_SIZE.y * 0.5 - 16)
+		var label_screen := _world_to_screen(label_world)
 		var ring_name: String = RING_NAMES[ring] if ring < RING_NAMES.size() else "Ring %d" % ring
-		tree_display.draw_string(ThemeDB.fallback_font, label_pos, ring_name, HORIZONTAL_ALIGNMENT_CENTER, int(NODE_SIZE.x * _zoom), int(12 * _zoom), Color(RING_COLORS[ring], 0.6))
+		var label_font := int(14 * _zoom)
+		if label_font >= 6:
+			var label_width := _estimate_text_width(ring_name, label_font)
+			tree_display.draw_string(ThemeDB.fallback_font, Vector2(label_screen.x - label_width * 0.5, label_screen.y), ring_name, HORIZONTAL_ALIGNMENT_LEFT, -1, label_font, Color(RING_COLORS[ring], 0.6))
 
 	# Draw edges
 	for edge in _edges:
@@ -215,19 +256,24 @@ func _draw_tech_node(tech_id: StringName) -> void:
 	var is_available: bool = _is_tech_available(tech_id)
 	var is_selected: bool = tech_id == _selected_tech_id
 
+	# Shadow
+	var shadow_rect := Rect2(rect.position + Vector2(2, 2) * _zoom, rect.size)
+	tree_display.draw_rect(shadow_rect, Color(0, 0, 0, 0.3))
+
 	# Background
-	var bg_color := Color(0.12, 0.12, 0.16, 0.95)
+	var bg_alpha := 0.15 if not is_selected else 0.35
 	if is_unlocked:
-		bg_color = Color(ring_color.r * 0.3, ring_color.g * 0.3, ring_color.b * 0.3, 0.9)
+		bg_alpha = 0.3 if not is_selected else 0.45
 	elif is_current:
-		bg_color = Color(ring_color.r * 0.4, ring_color.g * 0.4, ring_color.b * 0.4, 0.95)
+		bg_alpha = 0.25 if not is_selected else 0.4
 	elif not is_available:
-		bg_color = Color(0.08, 0.08, 0.1, 0.8)
+		bg_alpha = 0.08
+	var bg_color := Color(ring_color.r, ring_color.g, ring_color.b, bg_alpha)
 	tree_display.draw_rect(rect, bg_color)
 
 	# Border
 	var border_width := 1.5 * _zoom
-	var border_color := Color(ring_color, 0.5)
+	var border_color := Color(ring_color, 0.6)
 	if is_selected:
 		border_color = Color(1.0, 0.9, 0.3, 1.0)
 		border_width = 2.5 * _zoom
@@ -241,32 +287,51 @@ func _draw_tech_node(tech_id: StringName) -> void:
 	# Progress bar for current research
 	if is_current:
 		var progress := ResearchManager.get_progress_fraction()
-		var bar_h := 4.0 * _zoom
+		var bar_h := 3.0 * _zoom
 		var bar_rect := Rect2(rect.position.x + 2 * _zoom, rect.position.y + rect.size.y - bar_h - 2 * _zoom, (rect.size.x - 4 * _zoom) * progress, bar_h)
 		tree_display.draw_rect(bar_rect, Color(0.3, 0.9, 0.3, 0.9))
 		var bar_bg := Rect2(rect.position.x + 2 * _zoom, rect.position.y + rect.size.y - bar_h - 2 * _zoom, rect.size.x - 4 * _zoom, bar_h)
 		tree_display.draw_rect(bar_bg, Color(0.2, 0.2, 0.2, 0.5), false, 1.0)
 
-	# Checkmark for unlocked
-	if is_unlocked:
-		var check_pos: Vector2 = rect.position + Vector2(rect.size.x - 14 * _zoom, 12 * _zoom)
-		tree_display.draw_string(ThemeDB.fallback_font, check_pos, "✓", HORIZONTAL_ALIGNMENT_LEFT, -1, int(12 * _zoom), Color(0.3, 0.95, 0.3))
-
-	# Tech name (centered)
 	var font_size := int(11 * _zoom)
 	if font_size < 6:
 		return
-	var text_color := Color.WHITE if (is_available or is_unlocked or is_current) else Color(0.45, 0.45, 0.5)
-	var display := tech.display_name
-	var text_y: float = rect.position.y + rect.size.y * 0.4
-	tree_display.draw_string(ThemeDB.fallback_font, Vector2(rect.position.x + 6 * _zoom, text_y), display, HORIZONTAL_ALIGNMENT_LEFT, int(rect.size.x - 12 * _zoom), font_size, text_color)
 
-	# Ring label (smaller, below name)
-	var ring_font := int(9 * _zoom)
-	if ring_font >= 5:
-		var ring_y: float = rect.position.y + rect.size.y * 0.75
-		var ring_name: String = RING_NAMES[ring] if ring < RING_NAMES.size() else "Ring %d" % ring
-		tree_display.draw_string(ThemeDB.fallback_font, Vector2(rect.position.x + 6 * _zoom, ring_y), ring_name, HORIZONTAL_ALIGNMENT_LEFT, -1, ring_font, Color(ring_color, 0.6))
+	# Ring indicator dot
+	var dot_radius := 4.0 * _zoom
+	var dot_center := Vector2(rect.position.x + 10.0 * _zoom, rect.position.y + 14.0 * _zoom)
+	tree_display.draw_circle(dot_center, dot_radius, ring_color)
+
+	# Checkmark for unlocked (next to dot)
+	if is_unlocked:
+		var check_pos := Vector2(rect.position.x + rect.size.x - 14 * _zoom, rect.position.y + 14 * _zoom)
+		tree_display.draw_string(ThemeDB.fallback_font, check_pos, "✓", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(0.3, 0.95, 0.3))
+
+	# Tech name — bold, after the dot
+	var text_color := Color.WHITE if (is_available or is_unlocked or is_current) else Color(0.45, 0.45, 0.5)
+	var name_x: float = rect.position.x + 20.0 * _zoom
+	var name_y: float = rect.position.y + 14.0 * _zoom + font_size * 0.35
+	var name_width := int(rect.size.x - 26.0 * _zoom)
+	tree_display.draw_string(ThemeDB.fallback_font, Vector2(name_x, name_y), tech.display_name, HORIZONTAL_ALIGNMENT_LEFT, name_width, font_size, text_color)
+
+	# Cost row — icons + quantities at the bottom
+	var cost_font_size := int(9 * _zoom)
+	if cost_font_size < 5:
+		return
+	var icon_size := 12.0 * _zoom
+	var cost_x: float = rect.position.x + 6.0 * _zoom
+	var cost_y: float = rect.position.y + rect.size.y - 6.0 * _zoom
+	for stack in tech.cost:
+		# Draw item icon from atlas
+		var icon_tex: Texture2D = GameManager.get_item_icon(stack.item.id)
+		if icon_tex:
+			var icon_rect := Rect2(cost_x, cost_y - icon_size, icon_size, icon_size)
+			tree_display.draw_texture_rect(icon_tex, icon_rect, false)
+			cost_x += icon_size + 1.0 * _zoom
+		# Draw quantity
+		var qty_str := str(stack.quantity)
+		tree_display.draw_string(ThemeDB.fallback_font, Vector2(cost_x, cost_y - 1.0 * _zoom), qty_str, HORIZONTAL_ALIGNMENT_LEFT, -1, cost_font_size, Color(0.8, 0.8, 0.8))
+		cost_x += _estimate_text_width(qty_str, cost_font_size) + 6.0 * _zoom
 
 # ── Input ────────────────────────────────────────────────────────────────────
 
@@ -309,6 +374,9 @@ func _zoom_at(screen_pos: Vector2, factor: float) -> void:
 	var new_world := _screen_to_world(screen_pos)
 	_pan += new_world - old_world
 	tree_display.queue_redraw()
+
+func _estimate_text_width(text: String, font_size: int) -> float:
+	return ThemeDB.fallback_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 
 func _is_tech_available(tech_id: StringName) -> bool:
 	if ResearchManager.unlocked_techs.has(tech_id):

@@ -21,7 +21,7 @@
       ],
       "position": {
         "x": -6.5,
-        "y": 0
+        "y": 0.5
       }
     },
     {
@@ -66,7 +66,7 @@
       "id": "tech_solar",
       "display_name": "Solar Panel",
       "description": "Solar Panel for passive energy generation.",
-      "ring": 2,
+      "ring": 1,
       "cost": [
         {
           "item": "science_pack_1",
@@ -271,19 +271,11 @@
     },
     {
       "from": "tech_research_lab",
-      "to": "tech_conveyor_mk2"
-    },
-    {
-      "from": "tech_research_lab",
       "to": "tech_coke_oven"
     },
     {
-      "from": "tech_coke_oven",
-      "to": "tech_solar"
-    },
-    {
-      "from": "tech_drill_mk2",
-      "to": "tech_conveyor_mk3"
+      "from": "tech_research_lab",
+      "to": "tech_conveyor_mk2"
     }
   ],
   "rings": {

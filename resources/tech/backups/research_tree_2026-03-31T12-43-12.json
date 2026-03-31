@@ -21,7 +21,7 @@
       ],
       "position": {
         "x": -6.5,
-        "y": 0
+        "y": 0.5
       }
     },
     {
@@ -271,19 +271,11 @@
     },
     {
       "from": "tech_research_lab",
-      "to": "tech_conveyor_mk2"
-    },
-    {
-      "from": "tech_research_lab",
       "to": "tech_coke_oven"
     },
     {
-      "from": "tech_coke_oven",
-      "to": "tech_solar"
-    },
-    {
-      "from": "tech_drill_mk2",
-      "to": "tech_conveyor_mk3"
+      "from": "tech_research_lab",
+      "to": "tech_conveyor_mk2"
     }
   ],
   "rings": {

@@ -29,8 +29,18 @@ button.primary:hover { background: #2c8b2c; }
 .cost-row { display: flex; gap: 4px; align-items: center; margin: 2px 0; }
 .cost-row input { flex: 1; }
 .cost-row button { padding: 2px 6px; flex: none; }
+.cost-row .icon-btn { width: 28px; height: 28px; padding: 0; flex: none; background: #0a0a1a; border: 1px solid #444; border-radius: 3px; cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; }
+.cost-row .icon-btn:hover { border-color: #7ec8e3; }
+.cost-row .icon-btn canvas { image-rendering: pixelated; pointer-events: none; }
+.item-picker { position: fixed; z-index: 100; background: #16213e; border: 1px solid #555; border-radius: 4px; padding: 6px; display: grid; grid-template-columns: repeat(8, 32px); gap: 2px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+.item-picker .pick-item { width: 32px; height: 32px; padding: 0; margin: 0; background: #0a0a1a; border: 1px solid #333; border-radius: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
+.item-picker .pick-item:hover { border-color: #7ec8e3; background: #1a3a5c; }
+.item-picker .pick-item canvas { image-rendering: pixelated; pointer-events: none; }
+.item-picker .pick-item .pick-tooltip { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #000; color: #ccc; font-size: 10px; padding: 2px 5px; border-radius: 2px; white-space: nowrap; pointer-events: none; margin-bottom: 4px; }
+.item-picker .pick-item:hover .pick-tooltip { display: block; }
 .toolbar { padding: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
-#status { position: absolute; bottom: 8px; left: 8px; font-size: 11px; color: #7ec8e3; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 3px; }
+#status { position: absolute; bottom: 8px; left: 8px; font-size: 11px; color: #7ec8e3; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 3px; pointer-events: none; }
+#save-indicator { position: absolute; top: 8px; right: 8px; font-size: 11px; padding: 4px 8px; border-radius: 3px; pointer-events: none; transition: opacity 0.3s; }
 .edge-item { padding: 3px 6px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; margin: 1px 0; background: #0f3460; border-radius: 3px; }
 </style>
 </head>
@@ -39,8 +49,9 @@ button.primary:hover { background: #2c8b2c; }
 <div id="sidebar">
   <h2>Research Tree Editor</h2>
   <div class="toolbar">
-    <button class="primary" onclick="saveJSON()">Save JSON</button>
-    <button onclick="loadJSON()">Load JSON</button>
+    <button class="primary" onclick="saveToServer()">Save</button>
+    <button onclick="exportJSON()">Export JSON</button>
+    <button onclick="loadJSONFile()">Import JSON</button>
     <button onclick="addNode()">+ Node</button>
     <button onclick="addEdge()">+ Edge</button>
   </div>
@@ -60,7 +71,8 @@ button.primary:hover { background: #2c8b2c; }
     <h3 style="margin-top:8px;">Cost</h3>
     <div id="ne-cost"></div>
     <button onclick="addCostRow()" style="margin-top:4px;">+ Cost Item</button>
-    <div style="margin-top:8px; display:flex; gap:4px;">
+    <div style="margin-top:8px; display:flex; gap:4px; align-items:center;">
+      <label style="display:flex; align-items:center; gap:3px; margin:0; cursor:pointer;"><input type="checkbox" id="ne-autoapply" checked style="width:auto; margin:0;"> Auto</label>
       <button class="primary" onclick="applyNodeEdit()">Apply</button>
       <button class="danger" onclick="deleteSelectedNode()">Delete</button>
     </div>
@@ -73,44 +85,97 @@ button.primary:hover { background: #2c8b2c; }
 <div id="canvas-area">
   <canvas id="canvas"></canvas>
   <div id="status">Drag nodes to reposition. Scroll to zoom.</div>
+  <div id="save-indicator" style="opacity: 0;"></div>
 </div>
 
 <input type="file" id="file-input" accept=".json" style="display:none">
 
 <script>
 const RING_COLORS = ['#808080', '#E64D4D', '#4DCC4D', '#4D80E6'];
-const NODE_W = 120, NODE_H = 40;
-const GRID = 60;
+const NODE_W = 160, NODE_H = 48;
+const GRID = 80;
+const ATLAS_COLS = 8, ATLAS_ROWS = 5, SPRITE_SIZE = 16;
+
+// Item atlas index lookup
+const ITEM_ATLAS = {
+  science_pack_1: 32, science_pack_2: 33, science_pack_3: 34,
+  iron_ore: 0, copper_ore: 1, coal: 2, stone: 3, tin_ore: 4, gold_ore: 5, quartz: 6, sulfur: 7,
+  iron_plate: 8, copper_plate: 9, tin_plate: 10, gold_ingot: 11, steel: 12, glass: 13, brick: 14, coke: 15,
+  copper_wire: 16, gold_wire: 17, gear: 18, tube: 19, tin_can: 20, steel_beam: 21, glass_lens: 22, pipe: 23,
+  circuit_board: 24, motor: 25, battery_cell: 26, steel_frame: 27, concrete: 28, advanced_circuit: 29,
+  processor: 30, engine: 31, robo_frame: 35, energy: 36
+};
+
+let atlasImg = null;
+let atlasLoaded = false;
+
+// Preload atlas
+function loadAtlas() {
+  atlasImg = new Image();
+  atlasImg.onload = () => { atlasLoaded = true; draw(); };
+  // Try server endpoint first, then relative path
+  atlasImg.onerror = () => {
+    atlasImg.onerror = null;
+    atlasImg.src = '../resources/items/sprites/item_atlas.png';
+  };
+  atlasImg.src = '/api/atlas';
+}
+
+function drawAtlasIcon(cx, cy, atlasIndex, size) {
+  if (!atlasLoaded || !atlasImg) return;
+  const sx = (atlasIndex % ATLAS_COLS) * SPRITE_SIZE;
+  const sy = Math.floor(atlasIndex / ATLAS_COLS) * SPRITE_SIZE;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(atlasImg, sx, sy, SPRITE_SIZE, SPRITE_SIZE, cx, cy, size, size);
+}
 
 let data = { nodes: [], edges: [], rings: {}, description: '' };
 let selectedId = null;
 let dragNode = null;
 let dragOffset = { x: 0, y: 0 };
-let pan = { x: 400, y: 300 };
+let pan = { x: 0, y: 0 };
 let zoom = 1.0;
 let isPanning = false;
 let panStart = { x: 0, y: 0 };
 let edgeMode = false;
 let edgeFrom = null;
+let hasUnsavedChanges = false;
+let hoveredEdgeIdx = -1;
+let mouseWorld = { x: 0, y: 0 };
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 function resize() {
   const area = document.getElementById('canvas-area');
-  canvas.width = area.clientWidth;
-  canvas.height = area.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = area.clientWidth * dpr;
+  canvas.height = area.clientHeight * dpr;
+  canvas.style.width = area.clientWidth + 'px';
+  canvas.style.height = area.clientHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   draw();
 }
 window.addEventListener('resize', resize);
 
-// Default data
-const DEFAULT_JSON = `{
-  "description": "Research tree definition.",
-  "nodes": [],
-  "edges": [],
-  "rings": {"0":{"name":"Starting","color":"#808080"},"1":{"name":"Ring 1","color":"#E64D4D"},"2":{"name":"Ring 2","color":"#4DCC4D"},"3":{"name":"Ring 3","color":"#4D80E6"}}
-}`;
+function markDirty() {
+  hasUnsavedChanges = true;
+  document.title = 'Research Tree Editor *';
+}
+
+function markClean() {
+  hasUnsavedChanges = false;
+  document.title = 'Research Tree Editor';
+}
+
+function showSaveStatus(msg, color) {
+  const el = document.getElementById('save-indicator');
+  el.textContent = msg;
+  el.style.background = color;
+  el.style.color = '#fff';
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 2000);
+}
 
 function worldToScreen(wx, wy) {
   return { x: wx * zoom + pan.x, y: wy * zoom + pan.y };
@@ -125,52 +190,142 @@ function getNodeRect(n) {
   return { x: cx - NODE_W/2, y: cy - NODE_H/2, w: NODE_W, h: NODE_H };
 }
 
+// Compute connection point on the edge of a rect toward a target point
+function edgePoint(rect, tx, ty) {
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  const dx = tx - cx;
+  const dy = ty - cy;
+  if (dx === 0 && dy === 0) return { x: cx, y: cy };
+  const hw = rect.w / 2;
+  const hh = rect.h / 2;
+  // Scale to hit edge
+  const sx = dx !== 0 ? hw / Math.abs(dx) : Infinity;
+  const sy = dy !== 0 ? hh / Math.abs(dy) : Infinity;
+  const s = Math.min(sx, sy);
+  return { x: cx + dx * s, y: cy + dy * s };
+}
+
+function centerView() {
+  if (data.nodes.length === 0) {
+    pan.x = canvas.width / 2;
+    pan.y = canvas.height / 2;
+    return;
+  }
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const n of data.nodes) {
+    const r = getNodeRect(n);
+    minX = Math.min(minX, r.x);
+    maxX = Math.max(maxX, r.x + r.w);
+    minY = Math.min(minY, r.y);
+    maxY = Math.max(maxY, r.y + r.h);
+  }
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const spanX = maxX - minX + 200;
+  const spanY = maxY - minY + 200;
+  zoom = Math.min(canvas.width / spanX, canvas.height / spanY, 2.0);
+  zoom = Math.max(zoom, 0.3);
+  pan.x = canvas.width / 2 - cx * zoom;
+  pan.y = canvas.height / 2 - cy * zoom;
+}
+
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const dpr = window.devicePixelRatio || 1;
   ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
   ctx.translate(pan.x, pan.y);
   ctx.scale(zoom, zoom);
 
   // Grid
   ctx.strokeStyle = 'rgba(255,255,255,0.03)';
   ctx.lineWidth = 1/zoom;
-  for (let x = -20; x <= 20; x++) {
-    ctx.beginPath(); ctx.moveTo(x*GRID, -20*GRID); ctx.lineTo(x*GRID, 20*GRID); ctx.stroke();
+  for (let x = -30; x <= 30; x++) {
+    ctx.beginPath(); ctx.moveTo(x*GRID, -30*GRID); ctx.lineTo(x*GRID, 30*GRID); ctx.stroke();
   }
-  for (let y = -20; y <= 20; y++) {
-    ctx.beginPath(); ctx.moveTo(-20*GRID, y*GRID); ctx.lineTo(20*GRID, y*GRID); ctx.stroke();
+  for (let y = -30; y <= 30; y++) {
+    ctx.beginPath(); ctx.moveTo(-30*GRID, y*GRID); ctx.lineTo(30*GRID, y*GRID); ctx.stroke();
   }
 
-  // Origin cross
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-  ctx.lineWidth = 2/zoom;
-  ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 10); ctx.stroke();
+  // Ring column labels
+  const ringPositions = {};
+  for (const n of data.nodes) {
+    const ring = n.ring || 0;
+    if (!ringPositions[ring]) ringPositions[ring] = [];
+    ringPositions[ring].push((n.position?.x || 0) * GRID);
+  }
+  for (const [ring, xs] of Object.entries(ringPositions)) {
+    const avgX = xs.reduce((a, b) => a + b, 0) / xs.length;
+    const rc = RING_COLORS[parseInt(ring)] || '#888';
+    const ringName = data.rings?.[ring]?.name || `Ring ${ring}`;
+    ctx.fillStyle = rc + '60';
+    ctx.font = `bold ${16}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const allY = data.nodes.filter(n => (n.ring || 0) == ring).map(n => (n.position?.y || 0) * GRID);
+    const topY = Math.min(...allY) - NODE_H - 20;
+    ctx.fillText(ringName, avgX, topY);
+  }
 
-  // Edges
-  for (const edge of data.edges) {
-    const fromNode = data.nodes.find(n => n.id === edge.from);
-    const toNode = data.nodes.find(n => n.id === edge.to);
-    if (!fromNode || !toNode) continue;
-    const fx = (fromNode.position?.x || 0) * GRID;
-    const fy = (fromNode.position?.y || 0) * GRID;
-    const tx = (toNode.position?.x || 0) * GRID;
-    const ty = (toNode.position?.y || 0) * GRID;
-    const rc = RING_COLORS[fromNode.ring] || '#888';
-    ctx.strokeStyle = rc + '80';
-    ctx.lineWidth = 2/zoom;
-    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(tx, ty); ctx.stroke();
-    // Arrow
-    const dx = tx - fx, dy = ty - fy;
-    const len = Math.sqrt(dx*dx + dy*dy);
-    if (len > 0) {
-      const ux = dx/len, uy = dy/len;
-      const ax = tx - ux * NODE_W/2, ay = ty - uy * NODE_H/2;
+  // Edges — from right edge to left edge
+  for (let i = 0; i < data.edges.length; i++) {
+    const ep = getEdgeEndpoints(data.edges[i]);
+    if (!ep) continue;
+    const { fp, tp, cpOffset } = ep;
+    const fromNode = data.nodes.find(n => n.id === data.edges[i].from);
+    const rc = RING_COLORS[fromNode?.ring] || '#888';
+    const isHovered = i === hoveredEdgeIdx;
+
+    ctx.strokeStyle = isHovered ? '#FF6666' : rc + '90';
+    ctx.lineWidth = isHovered ? 3 : 2;
+
+    ctx.beginPath();
+    ctx.moveTo(fp.x, fp.y);
+    ctx.bezierCurveTo(fp.x + cpOffset, fp.y, tp.x - cpOffset, tp.y, tp.x, tp.y);
+    ctx.stroke();
+
+    // Arrowhead
+    const near = bezierPoint(fp, tp, cpOffset, 0.96);
+    const angle = Math.atan2(tp.y - near.y, tp.x - near.x);
+    const aLen = 10;
+    ctx.beginPath();
+    ctx.moveTo(tp.x, tp.y);
+    ctx.lineTo(tp.x - aLen * Math.cos(angle - 0.35), tp.y - aLen * Math.sin(angle - 0.35));
+    ctx.moveTo(tp.x, tp.y);
+    ctx.lineTo(tp.x - aLen * Math.cos(angle + 0.35), tp.y - aLen * Math.sin(angle + 0.35));
+    ctx.stroke();
+  }
+
+  // Edge preview while in edge-drawing mode
+  if (edgeMode && edgeFrom) {
+    const fromNode = data.nodes.find(n => n.id === edgeFrom);
+    if (fromNode) {
+      const fromRect = getNodeRect(fromNode);
+      const fp = { x: fromRect.x + fromRect.w, y: fromRect.y + fromRect.h / 2 };
+      const tp = mouseWorld;
+      const dx = tp.x - fp.x;
+      const cpOffset = Math.max(Math.abs(dx) * 0.35, 20);
+      ctx.strokeStyle = '#FFE06680';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
       ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.lineTo(ax - ux*8 + uy*5, ay - uy*8 - ux*5);
-      ctx.moveTo(ax, ay);
-      ctx.lineTo(ax - ux*8 - uy*5, ay - uy*8 + ux*5);
+      ctx.moveTo(fp.x, fp.y);
+      ctx.bezierCurveTo(fp.x + cpOffset, fp.y, tp.x - cpOffset, tp.y, tp.x, tp.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Arrow at mouse
+      const near = bezierPoint(fp, tp, cpOffset, 0.92);
+      const angle = Math.atan2(tp.y - near.y, tp.x - near.x);
+      const aLen = 10;
+      ctx.beginPath();
+      ctx.moveTo(tp.x, tp.y);
+      ctx.lineTo(tp.x - aLen * Math.cos(angle - 0.35), tp.y - aLen * Math.sin(angle - 0.35));
+      ctx.moveTo(tp.x, tp.y);
+      ctx.lineTo(tp.x - aLen * Math.cos(angle + 0.35), tp.y - aLen * Math.sin(angle + 0.35));
       ctx.stroke();
     }
   }
@@ -180,26 +335,100 @@ function draw() {
     const r = getNodeRect(n);
     const rc = RING_COLORS[n.ring] || '#888';
     const isSel = n.id === selectedId;
-    // BG
-    ctx.fillStyle = isSel ? rc + '60' : rc + '30';
-    ctx.fillRect(r.x, r.y, r.w, r.h);
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.roundRect(r.x + 2, r.y + 2, r.w, r.h, 4);
+    ctx.fill();
+
+    // Background
+    ctx.fillStyle = isSel ? rc + '60' : rc + '25';
+    ctx.beginPath();
+    ctx.roundRect(r.x, r.y, r.w, r.h, 4);
+    ctx.fill();
+
     // Border
     ctx.strokeStyle = isSel ? '#FFE066' : rc;
-    ctx.lineWidth = (isSel ? 2 : 1) / zoom;
-    ctx.strokeRect(r.x, r.y, r.w, r.h);
-    // Text
+    ctx.lineWidth = isSel ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.roundRect(r.x, r.y, r.w, r.h, 4);
+    ctx.stroke();
+
+    // Ring indicator dot
+    ctx.fillStyle = rc;
+    ctx.beginPath();
+    ctx.arc(r.x + 10, r.y + 14, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Name text
     ctx.fillStyle = '#e0e0e0';
-    ctx.font = `${11/zoom < 8 ? 8 : 11}px sans-serif`;
-    ctx.textAlign = 'center';
+    ctx.font = `bold 12px sans-serif`;
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     const name = n.display_name || n.id;
-    ctx.fillText(name.length > 16 ? name.substr(0,14)+'..' : name, r.x + r.w/2, r.y + r.h/2 - 5);
-    ctx.fillStyle = rc + 'AA';
-    ctx.font = `${9/zoom < 7 ? 7 : 9}px sans-serif`;
-    ctx.fillText(`Ring ${n.ring}`, r.x + r.w/2, r.y + r.h/2 + 10);
+    const maxChars = 17;
+    ctx.fillText(name.length > maxChars ? name.substr(0, maxChars - 1) + '..' : name, r.x + 20, r.y + 14);
+
+    // Cost with icons
+    const costs = n.cost || [];
+    let costX = r.x + 6;
+    const costY = r.y + r.h - 14;
+    const iconSize = 14;
+    for (const c of costs) {
+      const idx = ITEM_ATLAS[c.item];
+      if (idx !== undefined) {
+        drawAtlasIcon(costX, costY - iconSize/2, idx, iconSize);
+        costX += iconSize + 1;
+      }
+      ctx.fillStyle = '#ccc';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${c.quantity}`, costX, costY);
+      costX += ctx.measureText(`${c.quantity}`).width + 6;
+    }
   }
 
   ctx.restore();
+}
+
+function getEdgeEndpoints(edge) {
+  const fromNode = data.nodes.find(n => n.id === edge.from);
+  const toNode = data.nodes.find(n => n.id === edge.to);
+  if (!fromNode || !toNode) return null;
+  const fromRect = getNodeRect(fromNode);
+  const toRect = getNodeRect(toNode);
+  const fp = { x: fromRect.x + fromRect.w, y: fromRect.y + fromRect.h / 2 };
+  const tp = { x: toRect.x, y: toRect.y + toRect.h / 2 };
+  const dx = tp.x - fp.x;
+  const cpOffset = Math.max(Math.abs(dx) * 0.35, 20);
+  return { fp, tp, cpOffset };
+}
+
+function bezierPoint(fp, tp, cpOffset, t) {
+  const it = 1 - t;
+  const cpx1 = fp.x + cpOffset, cpy1 = fp.y;
+  const cpx2 = tp.x - cpOffset, cpy2 = tp.y;
+  return {
+    x: it*it*it*fp.x + 3*it*it*t*cpx1 + 3*it*t*t*cpx2 + t*t*t*tp.x,
+    y: it*it*it*fp.y + 3*it*it*t*cpy1 + 3*it*t*t*cpy2 + t*t*t*tp.y
+  };
+}
+
+function findEdgeAt(wx, wy) {
+  const threshold = 8;
+  for (let i = data.edges.length - 1; i >= 0; i--) {
+    const ep = getEdgeEndpoints(data.edges[i]);
+    if (!ep) continue;
+    // Sample bezier at intervals and check distance
+    for (let t = 0; t <= 1; t += 0.02) {
+      const p = bezierPoint(ep.fp, ep.tp, ep.cpOffset, t);
+      const dx = wx - p.x, dy = wy - p.y;
+      if (dx * dx + dy * dy < threshold * threshold) return i;
+    }
+  }
+  return -1;
 }
 
 function findNodeAt(sx, sy) {
@@ -214,11 +443,37 @@ function findNodeAt(sx, sy) {
 
 canvas.addEventListener('mousedown', e => {
   const node = findNodeAt(e.offsetX, e.offsetY);
-  if (edgeMode && node) {
-    if (!edgeFrom) { edgeFrom = node.id; document.getElementById('status').textContent = `Edge from: ${node.id} — click target node`; return; }
-    data.edges.push({ from: edgeFrom, to: node.id });
+  // In edge-drawing mode without source yet, click a node to set source
+  if (edgeMode && !edgeFrom && node) {
+    edgeFrom = node.id;
+    document.getElementById('status').textContent = `Drawing edge from ${node.display_name || node.id} — click target node (Esc to cancel)`;
+    draw(); return;
+  }
+  // In edge-drawing mode with source, click a node to complete the edge
+  if (edgeMode && edgeFrom && node) {
+    if (edgeFrom !== node.id) {
+      data.edges.push({ from: edgeFrom, to: node.id });
+      markDirty();
+      document.getElementById('status').textContent = 'Edge added.';
+      refreshEdgeList();
+    }
     edgeFrom = null; edgeMode = false;
-    document.getElementById('status').textContent = 'Edge added.';
+    canvas.style.cursor = 'grab';
+    draw(); return;
+  }
+  // In edge-drawing mode, click empty space to cancel
+  if (edgeMode && edgeFrom && !node) {
+    edgeFrom = null; edgeMode = false;
+    canvas.style.cursor = 'grab';
+    document.getElementById('status').textContent = 'Edge cancelled.';
+    draw(); return;
+  }
+  // Click on hovered edge to delete it
+  if (hoveredEdgeIdx >= 0 && !node) {
+    const removed = data.edges.splice(hoveredEdgeIdx, 1)[0];
+    hoveredEdgeIdx = -1;
+    markDirty();
+    document.getElementById('status').textContent = `Deleted edge ${removed.from} → ${removed.to}`;
     refreshEdgeList(); draw(); return;
   }
   if (e.button === 0 && node) {
@@ -233,14 +488,31 @@ canvas.addEventListener('mousedown', e => {
   }
 });
 
+// Double-click a node to start edge drawing from it
+canvas.addEventListener('dblclick', e => {
+  const node = findNodeAt(e.offsetX, e.offsetY);
+  if (node) {
+    edgeMode = true;
+    edgeFrom = node.id;
+    canvas.style.cursor = 'crosshair';
+    document.getElementById('status').textContent = `Drawing edge from ${node.display_name || node.id} — click target node (Esc to cancel)`;
+    draw();
+  }
+});
+
 canvas.addEventListener('mousemove', e => {
+  const w = screenToWorld(e.offsetX, e.offsetY);
+  mouseWorld = w;
+
   if (dragNode) {
-    const w = screenToWorld(e.offsetX, e.offsetY);
     const nx = Math.round(((w.x + dragOffset.x) / GRID) * 2) / 2;
     const ny = Math.round(((w.y + dragOffset.y) / GRID) * 2) / 2;
     if (!dragNode.position) dragNode.position = {};
-    dragNode.position.x = nx;
-    dragNode.position.y = ny;
+    if (dragNode.position.x !== nx || dragNode.position.y !== ny) {
+      dragNode.position.x = nx;
+      dragNode.position.y = ny;
+      markDirty();
+    }
     if (selectedId === dragNode.id) {
       document.getElementById('ne-px').value = nx;
       document.getElementById('ne-py').value = ny;
@@ -250,6 +522,20 @@ canvas.addEventListener('mousemove', e => {
     pan.x = e.offsetX - panStart.x;
     pan.y = e.offsetY - panStart.y;
     draw();
+  } else {
+    // Edge hover detection & edge preview redraw
+    const prevHovered = hoveredEdgeIdx;
+    const node = findNodeAt(e.offsetX, e.offsetY);
+    hoveredEdgeIdx = node ? -1 : findEdgeAt(w.x, w.y);
+    // Update cursor
+    if (edgeMode) {
+      canvas.style.cursor = 'crosshair';
+    } else if (hoveredEdgeIdx >= 0) {
+      canvas.style.cursor = 'pointer';
+    } else {
+      canvas.style.cursor = 'grab';
+    }
+    if (hoveredEdgeIdx !== prevHovered || edgeMode) draw();
   }
 });
 
@@ -283,23 +569,109 @@ function selectNode(id) {
   draw();
 }
 
+function makeIconCanvas(itemId, size) {
+  const cvs = document.createElement('canvas');
+  cvs.width = size; cvs.height = size;
+  const idx = ITEM_ATLAS[itemId];
+  if (atlasLoaded && idx !== undefined) {
+    const c = cvs.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    const sx = (idx % ATLAS_COLS) * SPRITE_SIZE;
+    const sy = Math.floor(idx / ATLAS_COLS) * SPRITE_SIZE;
+    c.drawImage(atlasImg, sx, sy, SPRITE_SIZE, SPRITE_SIZE, 0, 0, size, size);
+  }
+  return cvs;
+}
+
+function closeItemPicker() {
+  const existing = document.querySelector('.item-picker');
+  if (existing) existing.remove();
+}
+
+function openItemPicker(iconBtn, onSelect) {
+  closeItemPicker();
+  const picker = document.createElement('div');
+  picker.className = 'item-picker';
+  for (const [id, idx] of Object.entries(ITEM_ATLAS)) {
+    const item = document.createElement('div');
+    item.className = 'pick-item';
+    item.appendChild(makeIconCanvas(id, 24));
+    const tooltip = document.createElement('span');
+    tooltip.className = 'pick-tooltip';
+    tooltip.textContent = id;
+    item.appendChild(tooltip);
+    item.onclick = (e) => {
+      e.stopPropagation();
+      onSelect(id);
+      closeItemPicker();
+    };
+    picker.appendChild(item);
+  }
+  document.body.appendChild(picker);
+  // Position next to the icon button, clamped to viewport
+  const btnRect = iconBtn.getBoundingClientRect();
+  let left = btnRect.right + 4;
+  let top = btnRect.top;
+  // Picker size: 8 cols * 34px + 12px padding ~ 284px wide, rows * 34px tall
+  const pw = 8 * 34 + 12, ph = Math.ceil(Object.keys(ITEM_ATLAS).length / 8) * 34 + 12;
+  if (left + pw > window.innerWidth) left = btnRect.left - pw - 4;
+  if (top + ph > window.innerHeight) top = window.innerHeight - ph - 4;
+  if (top < 4) top = 4;
+  picker.style.left = left + 'px';
+  picker.style.top = top + 'px';
+  // Close on outside click
+  setTimeout(() => {
+    const handler = (e) => {
+      if (!picker.contains(e.target) && !iconBtn.contains(e.target)) { closeItemPicker(); document.removeEventListener('mousedown', handler); }
+    };
+    document.addEventListener('mousedown', handler);
+  }, 0);
+}
+
+function makeCostRow(itemId, quantity) {
+  const row = document.createElement('div');
+  row.className = 'cost-row';
+  row.dataset.item = itemId;
+
+  const iconBtn = document.createElement('div');
+  iconBtn.className = 'icon-btn';
+  iconBtn.appendChild(makeIconCanvas(itemId, 22));
+  iconBtn.onclick = (e) => {
+    e.stopPropagation();
+    openItemPicker(iconBtn, (newId) => {
+      row.dataset.item = newId;
+      iconBtn.querySelector('canvas').remove();
+      iconBtn.insertBefore(makeIconCanvas(newId, 22), iconBtn.firstChild);
+      if (typeof autoApply === 'function') autoApply();
+    });
+  };
+  row.appendChild(iconBtn);
+
+  const qtyInput = document.createElement('input');
+  qtyInput.type = 'number'; qtyInput.value = quantity; qtyInput.min = '1'; qtyInput.style.width = '60px';
+  qtyInput.addEventListener('input', () => { if (typeof autoApply === 'function') autoApply(); });
+  row.appendChild(qtyInput);
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'danger'; delBtn.textContent = 'x';
+  delBtn.onclick = () => { row.remove(); if (typeof autoApply === 'function') autoApply(); };
+  row.appendChild(delBtn);
+
+  return row;
+}
+
 function refreshCostEditor(n) {
   const div = document.getElementById('ne-cost');
   div.innerHTML = '';
   for (const c of (n.cost || [])) {
-    const row = document.createElement('div');
-    row.className = 'cost-row';
-    row.innerHTML = `<input value="${c.item}" placeholder="item_id"><input type="number" value="${c.quantity}" min="1" style="width:60px"><button class="danger" onclick="this.parentElement.remove()">x</button>`;
-    div.appendChild(row);
+    div.appendChild(makeCostRow(c.item, c.quantity));
   }
 }
 
 function addCostRow() {
   const div = document.getElementById('ne-cost');
-  const row = document.createElement('div');
-  row.className = 'cost-row';
-  row.innerHTML = `<input placeholder="science_pack_1"><input type="number" value="10" min="1" style="width:60px"><button class="danger" onclick="this.parentElement.remove()">x</button>`;
-  div.appendChild(row);
+  div.appendChild(makeCostRow('science_pack_1', 10));
+  if (typeof autoApply === 'function') autoApply();
 }
 
 function applyNodeEdit() {
@@ -307,7 +679,6 @@ function applyNodeEdit() {
   if (!n) return;
   const newId = document.getElementById('ne-id').value.trim();
   if (newId !== n.id) {
-    // Update edges
     for (const e of data.edges) {
       if (e.from === n.id) e.from = newId;
       if (e.to === n.id) e.to = newId;
@@ -322,12 +693,13 @@ function applyNodeEdit() {
   n.position.x = parseFloat(document.getElementById('ne-px').value);
   n.position.y = parseFloat(document.getElementById('ne-py').value);
   n.unlocks = document.getElementById('ne-unlocks').value.split(',').map(s => s.trim()).filter(s => s);
-  // Read cost
   n.cost = [];
   for (const row of document.getElementById('ne-cost').children) {
-    const inputs = row.querySelectorAll('input');
-    if (inputs[0].value.trim()) n.cost.push({ item: inputs[0].value.trim(), quantity: parseInt(inputs[1].value) || 1 });
+    const itemId = row.dataset.item;
+    const qty = parseInt(row.querySelector('input[type="number"]').value) || 1;
+    if (itemId) n.cost.push({ item: itemId, quantity: qty });
   }
+  markDirty();
   refreshNodeList(); refreshEdgeList(); draw();
 }
 
@@ -337,6 +709,7 @@ function deleteSelectedNode() {
   data.edges = data.edges.filter(e => e.from !== selectedId && e.to !== selectedId);
   selectedId = null;
   document.getElementById('node-editor').style.display = 'none';
+  markDirty();
   refreshNodeList(); refreshEdgeList(); draw();
 }
 
@@ -344,19 +717,22 @@ function addNode() {
   const id = `tech_new_${Date.now() % 10000}`;
   data.nodes.push({ id, display_name: 'New Tech', description: '', ring: 1, cost: [], unlocks: [], position: { x: 0, y: 0 } });
   selectNode(id);
+  markDirty();
   refreshNodeList(); draw();
 }
 
 function addEdge() {
   edgeMode = true;
   edgeFrom = null;
+  canvas.style.cursor = 'crosshair';
   document.getElementById('status').textContent = 'Click a source node for the edge...';
 }
 
 function refreshNodeList() {
   const div = document.getElementById('node-list');
   div.innerHTML = '';
-  for (const n of data.nodes) {
+  const sorted = [...data.nodes].sort((a, b) => (a.ring || 0) - (b.ring || 0) || (a.display_name || a.id).localeCompare(b.display_name || b.id));
+  for (const n of sorted) {
     const el = document.createElement('div');
     el.className = 'node-item' + (n.id === selectedId ? ' selected' : '');
     const rc = RING_COLORS[n.ring] || '#888';
@@ -373,22 +749,48 @@ function refreshEdgeList() {
     const e = data.edges[i];
     const el = document.createElement('div');
     el.className = 'edge-item';
-    el.innerHTML = `<span>${e.from} → ${e.to}</span><button class="danger" onclick="data.edges.splice(${i},1);refreshEdgeList();draw();" style="padding:1px 4px;font-size:10px;">x</button>`;
+    const fromName = data.nodes.find(n => n.id === e.from)?.display_name || e.from;
+    const toName = data.nodes.find(n => n.id === e.to)?.display_name || e.to;
+    el.innerHTML = `<span>${fromName} → ${toName}</span><button class="danger" onclick="data.edges.splice(${i},1);markDirty();refreshEdgeList();draw();" style="padding:1px 4px;font-size:10px;">x</button>`;
     div.appendChild(el);
   }
 }
 
-function saveJSON() {
-  const json = JSON.stringify(data, null, 2);
+// Server API: save directly to research_tree.json (with backup)
+async function saveToServer() {
+  const json = JSON.stringify(data, null, 2) + '\n';
+  try {
+    const resp = await fetch('/api/tree', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: json
+    });
+    if (resp.ok) {
+      markClean();
+      showSaveStatus('Saved!', '#2c8b2c');
+      document.getElementById('status').textContent = 'Saved to research_tree.json (backup created).';
+    } else {
+      const err = await resp.json();
+      showSaveStatus('Save failed!', '#8b2c2c');
+      document.getElementById('status').textContent = `Save error: ${err.error}`;
+    }
+  } catch (err) {
+    showSaveStatus('Server unavailable — downloading', '#8b6c2c');
+    exportJSON();
+  }
+}
+
+function exportJSON() {
+  const json = JSON.stringify(data, null, 2) + '\n';
   const blob = new Blob([json], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'research_tree.json';
   a.click();
-  document.getElementById('status').textContent = 'JSON saved!';
+  document.getElementById('status').textContent = 'JSON exported as download.';
 }
 
-function loadJSON() {
+function loadJSONFile() {
   document.getElementById('file-input').click();
 }
 
@@ -401,19 +803,66 @@ document.getElementById('file-input').addEventListener('change', e => {
       data = JSON.parse(ev.target.result);
       selectedId = null;
       document.getElementById('node-editor').style.display = 'none';
-      refreshNodeList(); refreshEdgeList(); draw();
-      document.getElementById('status').textContent = `Loaded ${data.nodes.length} nodes, ${data.edges.length} edges.`;
+      markDirty();
+      refreshNodeList(); refreshEdgeList(); centerView(); draw();
+      document.getElementById('status').textContent = `Imported ${data.nodes.length} nodes, ${data.edges.length} edges.`;
     } catch (err) { alert('Invalid JSON: ' + err.message); }
   };
   reader.readAsText(file);
   e.target.value = '';
 });
 
-// Init: try to load default
-fetch('../../resources/tech/research_tree.json')
-  .then(r => r.ok ? r.json() : JSON.parse(DEFAULT_JSON))
-  .then(d => { data = d; refreshNodeList(); refreshEdgeList(); resize(); })
-  .catch(() => { data = JSON.parse(DEFAULT_JSON); refreshNodeList(); refreshEdgeList(); resize(); });
+// Ctrl+S to save
+window.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveToServer();
+  }
+  if (e.key === 'Escape') {
+    if (edgeMode) { edgeMode = false; edgeFrom = null; canvas.style.cursor = 'grab'; document.getElementById('status').textContent = 'Edge mode cancelled.'; draw(); }
+  }
+});
+
+// Warn on unsaved changes
+window.addEventListener('beforeunload', e => {
+  if (hasUnsavedChanges) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// Load from server API on startup
+async function init() {
+  loadAtlas();
+  try {
+    const resp = await fetch('/api/tree');
+    if (resp.ok) {
+      data = await resp.json();
+      document.getElementById('status').textContent = `Loaded ${data.nodes.length} nodes, ${data.edges.length} edges from research_tree.json`;
+    } else {
+      document.getElementById('status').textContent = 'Failed to load from server — using defaults.';
+    }
+  } catch {
+    try {
+      const resp = await fetch('../resources/tech/research_tree.json');
+      if (resp.ok) {
+        data = await resp.json();
+        document.getElementById('status').textContent = `Loaded ${data.nodes.length} nodes (read-only — run serve_research_editor.py to save).`;
+      }
+    } catch {
+      document.getElementById('status').textContent = 'No data loaded. Run: python3 tools/serve_research_editor.py';
+    }
+  }
+  refreshNodeList(); refreshEdgeList(); resize(); centerView(); draw();
+}
+
+// Auto-apply: wire up all editor fields
+function autoApply() {
+  if (document.getElementById('ne-autoapply').checked && selectedId) applyNodeEdit();
+}
+for (const id of ['ne-id', 'ne-name', 'ne-desc', 'ne-px', 'ne-py', 'ne-unlocks']) {
+  document.getElementById(id).addEventListener('input', autoApply);
+}
+document.getElementById('ne-ring').addEventListener('change', autoApply);
+
+init();
 </script>
 </body>
 </html>
