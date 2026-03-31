@@ -45,9 +45,15 @@ H.render_frames(spr, layers, tags, function(img, layer, fi, tag, phase)
     H.bordered_rect(img, 2, 4, 12, 28, panel, panel_dk)
     H.bordered_rect(img, 2, 36, 12, 60, panel, panel_dk)
 
-    -- Input slot openings
+    -- Input slot openings (left side)
     H.rect(img, 0, 10, 3, 18, chamber)
     H.rect(img, 0, 42, 3, 50, chamber)
+
+    -- Input gate opening (top of In_0 — accepts UP, centered on cell x:16)
+    H.rect(img, 10, 0, 22, 3, chamber)
+
+    -- Input gate opening (bottom of In_1 — accepts DOWN, centered on cell x:16)
+    H.rect(img, 10, 60, 22, 63, chamber)
 
     -- Central processing chamber
     H.bordered_rect(img, 16, 8, 48, 56, panel_dk, dark)
@@ -76,51 +82,77 @@ H.render_frames(spr, layers, tags, function(img, layer, fi, tag, phase)
     H.px(img, 49, 32, metal_dk)
 
   elseif layer == "top" then
-    -- Robotic arm assembly (animated)
-    local arm_y = 32  -- center
-    local arm_x_base = 24
+    -- Full-width casing that covers the entire building including input/output panels
+    -- Frame borders (full perimeter)
+    H.rect(img, 0, 0, 63, 1, metal_dk)
+    H.rect(img, 0, 62, 63, 63, metal_dk)
+    H.rect(img, 0, 0, 1, 63, metal_dk)
+    H.rect(img, 62, 0, 63, 63, metal_dk)
 
+    -- Top gate entrance canopy (32px wide, 16px tall — covers In_0 UP)
+    H.bordered_rect(img, 2, 2, 31, 15, body, metal_dk)
+
+    -- Bottom gate entrance canopy (32px wide, 16px tall — covers In_1 DOWN)
+    H.bordered_rect(img, 2, 48, 31, 61, body, metal_dk)
+
+    -- Left input casing (continuous, covers full height, overlaps canopies)
+    H.bordered_rect(img, 2, 2, 14, 61, body, metal_dk)
+    -- Divider between top and bottom input slots
+    H.rect(img, 2, 30, 14, 33, metal_dk)
+    -- Input recesses (dark slots showing items can enter)
+    H.rect(img, 4, 6, 12, 28, panel_dk)
+    H.rect(img, 4, 35, 12, 59, panel_dk)
+
+    -- Right output casing (continuous, covers full height)
+    H.bordered_rect(img, 49, 2, 62, 61, body, metal_dk)
+    -- Divider between top and bottom output slots
+    H.rect(img, 49, 30, 62, 33, metal_dk)
+    -- Output recesses
+    H.rect(img, 51, 6, 60, 28, panel_dk)
+    H.rect(img, 51, 35, 60, 59, panel_dk)
+
+    -- Gate openings (cut through casing borders to show item flow)
+    -- Left gates (In_0 left, In_1 left) — 3px deep for resource peek
+    H.rect(img, 0, 10, 2, 18, chamber)
+    H.rect(img, 0, 42, 2, 50, chamber)
+    -- Top gate for In_0 (accepts UP, centered on cell x:16)
+    H.rect(img, 10, 0, 22, 2, chamber)
+    -- Bottom gate for In_1 (accepts DOWN, centered on cell x:16)
+    H.rect(img, 10, 61, 22, 63, chamber)
+    -- Right gates (Out_0, Out_1)
+    H.rect(img, 62, 10, 63, 18, intake)
+    H.rect(img, 62, 42, 63, 50, intake)
+
+    -- Robotic arm assembly (animated)
     if tag == "idle" then
-      -- Arm resting, slight bob
       local bob = phase == 0 and 0 or 1
-      -- Arm housing
       H.bordered_rect(img, 22, 20 + bob, 42, 44 + bob, arm_base, metal_dk)
-      -- Arm beam
       H.rect(img, 28, 26 + bob, 36, 38 + bob, metal)
-      -- Gripper (idle, open)
       H.rect(img, 34, 28 + bob, 38, 30 + bob, arm_tip)
       H.rect(img, 34, 34 + bob, 38, 36 + bob, arm_tip)
-      -- Status light (off)
       H.px(img, 24, 22 + bob, glow_off)
 
     elseif tag == "windup" then
-      -- Arm extending right
       local ext = phase * 4
       H.bordered_rect(img, 22, 20, 42 + ext, 44, arm_base, metal_dk)
       H.rect(img, 28, 26, 36 + ext, 38, metal)
       H.rect(img, 36 + ext, 28, 40 + ext, 36, arm_tip)
-      -- Status light warming up
       H.px(img, 24, 22, H.lerp_color(glow_off, glow_on, phase * 0.5))
 
     elseif tag == "active" then
-      -- Arm working, oscillating
       local offsets = {3, 0, -3, 0}
       local ox = offsets[phase + 1]
       local oy = phase % 2 == 0 and -1 or 1
       H.bordered_rect(img, 22, 20, 46, 44, arm_base, metal_dk)
       H.rect(img, 28, 26, 40 + ox, 38, metal)
-      -- Gripper closed, working
       H.rect(img, 38 + ox, 30 + oy, 44 + ox, 34 + oy, arm_tip)
-      -- Sparks/activity indicator
       if phase == 0 or phase == 2 then
         H.px(img, 42 + ox, 28 + oy, glow_hot)
         H.px(img, 40 + ox, 32 + oy, glow_on)
       end
-      -- Status light on
       H.px(img, 24, 22, glow_on)
 
     elseif tag == "winddown" then
-      -- Arm retracting
       local ext = (1 - phase) * 4
       H.bordered_rect(img, 22, 20, 42 + ext, 44, arm_base, metal_dk)
       H.rect(img, 28, 26, 36 + ext, 38, metal)
@@ -128,9 +160,11 @@ H.render_frames(spr, layers, tags, function(img, layer, fi, tag, phase)
       H.px(img, 24, 22, H.lerp_color(glow_on, glow_off, phase * 0.5))
     end
 
-    -- Top frame border (always visible)
-    H.rect(img, 14, 0, 50, 1, metal_dk)
-    H.rect(img, 14, 62, 50, 63, metal_dk)
+    -- Rivets on casing
+    H.px(img, 3, 2, rivet)
+    H.px(img, 60, 2, rivet)
+    H.px(img, 3, 61, rivet)
+    H.px(img, 60, 61, rivet)
   end
 end)
 

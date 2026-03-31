@@ -25,7 +25,7 @@ var _current_ring: int = 0  # Highest ring unlocked (0 = starting)
 ## Items available at each ring tier for side contract generation.
 const RING_ITEMS: Dictionary = {
 	0: [&"iron_ore", &"copper_ore", &"coal", &"stone", &"iron_plate"],
-	1: [&"copper_plate", &"tin_plate", &"copper_wire", &"iron_gear", &"iron_tube", &"glass", &"brick"],
+	1: [&"copper_plate", &"tin_plate", &"copper_wire", &"gear", &"tube", &"glass", &"brick"],
 	2: [&"circuit_board", &"motor", &"battery_cell", &"steel_frame", &"steel", &"steel_beam"],
 	3: [&"advanced_circuit", &"processor", &"engine", &"robo_frame"],
 }

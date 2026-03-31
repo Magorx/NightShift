@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://buildings/conveyor_mk2/conveyor_mk2.tscn" id="2"]
 [ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="3"]
 [ext_resource type="Resource" path="res://resources/items/iron_plate.tres" id="4"]
-[ext_resource type="Resource" path="res://resources/items/iron_gear.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/items/gear.tres" id="5"]
 
 [sub_resource type="Resource" id="cost_0"]
 script = ExtResource("3")

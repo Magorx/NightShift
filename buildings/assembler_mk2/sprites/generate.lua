@@ -49,6 +49,12 @@ H.render_frames(spr, layers, tags, function(img, layer, fi, tag, phase)
     H.rect(img, 0, 10, 3, 18, chamber)
     H.rect(img, 0, 42, 3, 50, chamber)
 
+    -- Input gate opening (top of In_0 — accepts UP, centered on cell x:16)
+    H.rect(img, 10, 0, 22, 3, chamber)
+
+    -- Input gate opening (bottom of In_1 — accepts DOWN, centered on cell x:16)
+    H.rect(img, 10, 60, 22, 63, chamber)
+
     -- Top center input slot (In_2 - from top only)
     H.rect(img, 38, 0, 56, 3, chamber)
     H.bordered_rect(img, 34, 4, 58, 14, panel, panel_dk)
@@ -94,6 +100,54 @@ H.render_frames(spr, layers, tags, function(img, layer, fi, tag, phase)
     H.px(img, 62, 3, rivet)
 
   elseif layer == "top" then
+    -- Full-width casing that covers the entire building including input panels
+    -- Top and bottom frame borders (full width)
+    H.rect(img, 0, 0, 95, 1, metal_dk)
+    H.rect(img, 0, 62, 95, 63, metal_dk)
+    -- Left and right side borders
+    H.rect(img, 0, 0, 1, 63, metal_dk)
+    H.rect(img, 94, 0, 95, 63, metal_dk)
+
+    -- Top gate entrance canopy (32px wide, 16px tall — covers In_0 UP)
+    H.bordered_rect(img, 2, 2, 31, 15, body, metal_dk)
+
+    -- Bottom gate entrance canopy (32px wide, 16px tall — covers In_1 DOWN)
+    H.bordered_rect(img, 2, 48, 31, 61, body, metal_dk)
+
+    -- Left input casing (continuous, covers full height, overlaps canopies)
+    H.bordered_rect(img, 2, 2, 14, 61, body, metal_dk)
+    -- Divider between top and bottom input slots
+    H.rect(img, 2, 30, 14, 33, metal_dk)
+    -- Input recesses (dark slots showing items can enter)
+    H.rect(img, 4, 6, 12, 28, panel_dk)
+    H.rect(img, 4, 35, 12, 59, panel_dk)
+
+    -- Top center input casing (In_2)
+    H.bordered_rect(img, 34, 2, 58, 12, body, metal_dk)
+    H.rect(img, 38, 5, 54, 10, panel_dk)
+
+    -- Right output casing (continuous, covers full height)
+    H.bordered_rect(img, 82, 2, 94, 61, body, metal_dk)
+    -- Divider between top and bottom output slots
+    H.rect(img, 82, 30, 94, 33, metal_dk)
+    -- Output recesses
+    H.rect(img, 84, 6, 92, 28, panel_dk)
+    H.rect(img, 84, 35, 92, 59, panel_dk)
+
+    -- Gate openings (cut through casing borders to show item flow)
+    -- Left gates (In_0 left, In_1 left) — 3px deep for resource peek
+    H.rect(img, 0, 10, 2, 18, chamber)
+    H.rect(img, 0, 42, 2, 50, chamber)
+    -- Top gate for In_0 (accepts UP, centered on cell x:16, wider)
+    H.rect(img, 10, 0, 22, 2, chamber)
+    -- Bottom gate for In_1 (accepts DOWN, centered on cell x:16, wider)
+    H.rect(img, 10, 61, 22, 63, chamber)
+    -- Top gate for In_2 (accepts UP, centered on cell x:48)
+    H.rect(img, 38, 0, 56, 2, chamber)
+    -- Right gates (Out_0, Out_1)
+    H.rect(img, 94, 10, 95, 18, intake)
+    H.rect(img, 94, 42, 95, 50, intake)
+
     -- Multi-stage processing arms (animated)
     if tag == "idle" then
       local bob = phase == 0 and 0 or 1
@@ -167,9 +221,13 @@ H.render_frames(spr, layers, tags, function(img, layer, fi, tag, phase)
       H.px(img, 68, 20, g)
     end
 
-    -- Top frame borders
-    H.rect(img, 14, 0, 82, 1, metal_dk)
-    H.rect(img, 14, 62, 82, 63, metal_dk)
+    -- Rivets on casing
+    H.px(img, 3, 2, rivet)
+    H.px(img, 92, 2, rivet)
+    H.px(img, 3, 61, rivet)
+    H.px(img, 92, 61, rivet)
+    H.px(img, 32, 2, rivet)
+    H.px(img, 62, 2, rivet)
   end
 end)
 

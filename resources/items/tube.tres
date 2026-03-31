@@ -4,10 +4,10 @@
 
 [resource]
 script = ExtResource("1")
-id = &"iron_gear"
-display_name = "Iron Gear"
-color = Color(0.6, 0.6, 0.65, 1)
+id = &"tube"
+display_name = "Tube"
+color = Color(0.65, 0.65, 0.7, 1)
 category = "component"
-export_value = 5
-research_value = 2
-icon_atlas_index = 18
+export_value = 4
+research_value = 1
+icon_atlas_index = 19

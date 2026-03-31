@@ -4,7 +4,7 @@ extends "simulation_base.gd"
 ## conveyor mk2/mk3, assembler mk1, and the research + contract systems.
 
 func run_simulation() -> void:
-	# ── Test 1: Press (iron_ore -> smelter -> iron_plate -> press -> iron_gear) ──
+	# ── Test 1: Press (iron_ore -> smelter -> iron_plate -> press -> gear) ──
 	sim_add_deposit(Vector2i(5, 5), &"iron_ore")
 	sim_place_building(&"drill", Vector2i(5, 5), 0)
 	sim_place_building(&"conveyor", Vector2i(6, 5), 0)

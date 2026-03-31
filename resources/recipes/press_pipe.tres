@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/resources/recipe_def.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="2"]
-[ext_resource type="Resource" path="res://resources/items/iron_tube.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/items/tube.tres" id="3"]
 [ext_resource type="Resource" path="res://resources/items/copper_plate.tres" id="4"]
 [ext_resource type="Resource" path="res://resources/items/pipe.tres" id="5"]
 

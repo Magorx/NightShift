@@ -9,18 +9,24 @@ var _hover_time: float = 0.0
 var _tooltip_label: Label
 const HOVER_DELAY := 1.0
 
-static func create(item_id: StringName, icon_size: Vector2 = Vector2(12, 12)) -> Control:
+## If true, this icon will respond to RMB-hold to open the recipe browser.
+var rmb_browsable: bool = false
+var _rmb_hold_time: float = 0.0
+const RMB_HOLD_THRESHOLD := 0.3
+
+static func create(item_id: StringName, icon_size: Vector2 = Vector2(12, 12), browsable: bool = false) -> Control:
 	var icon_tex := GameManager.get_item_icon(item_id)
 	if not icon_tex:
 		return _create_color_fallback(item_id, icon_size)
 	var icon := ItemIcon.new()
 	icon._item_id = item_id
+	icon.rmb_browsable = browsable
 	icon.texture = icon_tex
 	icon.custom_minimum_size = icon_size
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.mouse_filter = Control.MOUSE_FILTER_STOP if browsable else Control.MOUSE_FILTER_IGNORE
 	return icon
 
 static func _create_color_fallback(_item_id: StringName, icon_size: Vector2) -> PanelContainer:
@@ -54,6 +60,7 @@ func _process(delta: float) -> void:
 		if _tooltip_label:
 			_hide_tooltip()
 		_hover_time = 0.0
+		_rmb_hold_time = 0.0
 		return
 	_hover_time += delta
 	if _hover_time >= HOVER_DELAY and not _tooltip_label:
@@ -61,11 +68,76 @@ func _process(delta: float) -> void:
 	if _tooltip_label and is_instance_valid(_tooltip_label):
 		_update_tooltip_position()
 
+	# RMB hold to open recipe browser
+	if rmb_browsable and hovered and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		_rmb_hold_time += delta
+		if _rmb_hold_time >= RMB_HOLD_THRESHOLD:
+			_rmb_hold_time = 0.0
+			_open_recipe_browser()
+	else:
+		_rmb_hold_time = 0.0
+
+func _open_recipe_browser() -> void:
+	# Walk up the tree to find the HUD and open recipe browser
+	var node := get_parent()
+	while node:
+		if node.has_method("open_recipe_browser_for_item"):
+			node.open_recipe_browser_for_item(_item_id)
+			return
+		node = node.get_parent()
+
 func _is_hovered() -> bool:
 	if not is_visible_in_tree():
 		return false
 	var mouse_pos := get_viewport().get_mouse_position()
-	return get_global_rect().has_point(mouse_pos)
+	if not get_global_rect().has_point(mouse_pos):
+		return false
+	# Don't show tooltip if a GameWindow is visible on top of us
+	if _is_covered_by_window(mouse_pos):
+		return false
+	return true
+
+## Cached list of GameWindows in the scene. Rebuilt lazily.
+static var _cached_windows: Array = []
+static var _cache_valid: bool = false
+
+func _is_covered_by_window(mouse_pos: Vector2) -> bool:
+	## Returns true if a visible GameWindow covers this mouse position,
+	## and this icon is NOT inside that window.
+	if not _cache_valid:
+		_cached_windows.clear()
+		var root := get_tree().root
+		if root:
+			_collect_game_windows(root, _cached_windows)
+		_cache_valid = true
+		# Invalidate cache next frame so new windows are picked up
+		get_tree().process_frame.connect(func(): _cache_valid = false, CONNECT_ONE_SHOT)
+
+	# Walk ancestors to see if we're inside a GameWindow
+	var our_window: Control = null
+	var node := get_parent()
+	while node:
+		if node is GameWindow:
+			our_window = node
+			break
+		node = node.get_parent()
+
+	for win in _cached_windows:
+		if not is_instance_valid(win):
+			continue
+		if win == our_window:
+			continue
+		if not win.visible:
+			continue
+		if win.get_global_rect().has_point(mouse_pos):
+			return true
+	return false
+
+static func _collect_game_windows(node: Node, result: Array) -> void:
+	if node is GameWindow:
+		result.append(node)
+	for child in node.get_children():
+		_collect_game_windows(child, result)
 
 func _show_tooltip() -> void:
 	var item_def = GameManager.get_item_def(_item_id)

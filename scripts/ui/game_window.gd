@@ -1,6 +1,7 @@
 class_name GameWindow
 extends PanelContainer
 ## Base class for draggable, resizable in-game windows.
+## Windows consume all mouse input that lands on them (scroll, click, hover).
 
 # ── Drag state ──────────────────────────────────────────────────────────────
 var _dragging: bool = false
@@ -21,6 +22,8 @@ var _snap_target: Vector2 = Vector2.ZERO
 const SNAP_SPEED := 12.0
 
 func _ready() -> void:
+	# Windows consume all mouse input — nothing passes through to the game world
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	var close_btn = get_node_or_null("%CloseButton")
 	if close_btn:
 		close_btn.pressed.connect(func(): visible = false)
@@ -60,6 +63,10 @@ func _get_resize_edge(local_pos: Vector2) -> int:
 	return edge
 
 func _gui_input(event: InputEvent) -> void:
+	# Consume scroll wheel events so they don't reach the game camera
+	if event is InputEventMouseButton and (event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		accept_event()
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			var local_pos: Vector2 = event.position

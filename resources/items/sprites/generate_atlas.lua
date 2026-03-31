@@ -1025,41 +1025,117 @@ local function draw_all(img)
   cpx(img, 6, 5, 2, 1, GWIRE_HI)
   cpx(img, 7, 5, 2, 1, GWIRE_HI)
 
-  -- (2,2) iron_gear - classic gear with teeth
-  -- Center hub
-  ccircle(img, 7, 7, 3, 2, 2, GEAR_BASE)
+  -- (2,2) gear — pointy gear with sharp triangular teeth, fills space
+  -- Outer ring body
+  ccircle(img, 7, 7, 5, 2, 2, GEAR_BASE)
+  -- Center hole
   ccircle(img, 7, 7, 1, 2, 2, GEAR_HOLE)
-  -- Ring
-  ccircle_ol(img, 7, 7, 5, 2, 2, GEAR_BASE)
-  ccircle_ol(img, 7, 7, 4, 2, 2, GEAR_HI)
-  -- Teeth (8 positions around the gear)
-  local teeth = {
-    {7,1}, {11,3}, {13,7}, {11,11},
-    {7,13}, {3,11}, {1,7}, {3,3}
-  }
-  for _, t in ipairs(teeth) do
-    cpx(img, t[1], t[2], 2, 2, GEAR_BASE)
-  end
-  -- Outline
-  ccircle_ol(img, 7, 7, 6, 2, 2, OL)
-  -- Shadow on bottom-right
-  cpx(img, 10, 10, 2, 2, GEAR_SH)
-  cpx(img, 11, 9, 2, 2, GEAR_SH)
-  cpx(img, 9, 11, 2, 2, GEAR_SH)
-  -- Highlight on top-left
+  -- Inner ring highlight
+  ccircle_ol(img, 7, 7, 3, 2, 2, GEAR_HI)
+  -- 8 sharp pointy teeth (triangular, protruding 2-3px)
+  -- Top tooth
+  cpx(img, 7, 0, 2, 2, GEAR_BASE)
+  cpx(img, 6, 1, 2, 2, GEAR_BASE)
+  cpx(img, 7, 1, 2, 2, GEAR_HI)
+  cpx(img, 8, 1, 2, 2, GEAR_BASE)
+  -- Top-right tooth
+  cpx(img, 12, 2, 2, 2, GEAR_BASE)
+  cpx(img, 11, 2, 2, 2, GEAR_BASE)
+  cpx(img, 11, 3, 2, 2, GEAR_HI)
+  cpx(img, 12, 3, 2, 2, GEAR_BASE)
+  -- Right tooth
+  cpx(img, 14, 7, 2, 2, GEAR_BASE)
+  cpx(img, 13, 6, 2, 2, GEAR_BASE)
+  cpx(img, 13, 7, 2, 2, GEAR_BASE)
+  cpx(img, 13, 8, 2, 2, GEAR_BASE)
+  -- Bottom-right tooth
+  cpx(img, 12, 12, 2, 2, GEAR_SH)
+  cpx(img, 11, 11, 2, 2, GEAR_SH)
+  cpx(img, 12, 11, 2, 2, GEAR_SH)
+  cpx(img, 11, 12, 2, 2, GEAR_SH)
+  -- Bottom tooth
+  cpx(img, 7, 14, 2, 2, GEAR_SH)
+  cpx(img, 6, 13, 2, 2, GEAR_SH)
+  cpx(img, 7, 13, 2, 2, GEAR_SH)
+  cpx(img, 8, 13, 2, 2, GEAR_SH)
+  -- Bottom-left tooth
+  cpx(img, 2, 12, 2, 2, GEAR_SH)
+  cpx(img, 3, 11, 2, 2, GEAR_SH)
+  cpx(img, 2, 11, 2, 2, GEAR_SH)
+  cpx(img, 3, 12, 2, 2, GEAR_SH)
+  -- Left tooth
+  cpx(img, 0, 7, 2, 2, GEAR_BASE)
+  cpx(img, 1, 6, 2, 2, GEAR_HI)
+  cpx(img, 1, 7, 2, 2, GEAR_BASE)
+  cpx(img, 1, 8, 2, 2, GEAR_BASE)
+  -- Top-left tooth
+  cpx(img, 2, 2, 2, 2, GEAR_HI)
+  cpx(img, 3, 2, 2, 2, GEAR_HI)
+  cpx(img, 2, 3, 2, 2, GEAR_HI)
+  cpx(img, 3, 3, 2, 2, GEAR_HI)
+  -- Highlight top-left body
   cpx(img, 5, 4, 2, 2, GEAR_HI)
   cpx(img, 4, 5, 2, 2, GEAR_HI)
+  cpx(img, 5, 5, 2, 2, GEAR_HI)
+  -- Shadow bottom-right body
+  cpx(img, 9, 10, 2, 2, GEAR_SH)
+  cpx(img, 10, 9, 2, 2, GEAR_SH)
+  cpx(img, 10, 10, 2, 2, GEAR_SH)
+  -- Outline (tooth tips)
+  cpx(img, 7, -1, 2, 2, OL)  -- won't draw (clipped), but tooth outline below:
+  -- Outline around the full shape
+  cpx(img, 5, 0, 2, 2, OL)
+  cpx(img, 9, 0, 2, 2, OL)
+  cpx(img, 6, 0, 2, 2, OL)
+  cpx(img, 8, 0, 2, 2, OL)
+  cpx(img, 10, 1, 2, 2, OL)
+  cpx(img, 13, 2, 2, 2, OL)
+  cpx(img, 13, 4, 2, 2, OL)
+  cpx(img, 4, 1, 2, 2, OL)
+  cpx(img, 1, 2, 2, 2, OL)
+  cpx(img, 1, 4, 2, 2, OL)
+  cpx(img, 15, 7, 2, 2, OL)
+  cpx(img, 14, 5, 2, 2, OL)
+  cpx(img, 14, 9, 2, 2, OL)
+  cpx(img, -1, 7, 2, 2, OL)
+  cpx(img, 0, 5, 2, 2, OL)
+  cpx(img, 0, 9, 2, 2, OL)
+  cpx(img, 13, 10, 2, 2, OL)
+  cpx(img, 13, 13, 2, 2, OL)
+  cpx(img, 10, 13, 2, 2, OL)
+  cpx(img, 1, 10, 2, 2, OL)
+  cpx(img, 1, 13, 2, 2, OL)
+  cpx(img, 4, 13, 2, 2, OL)
+  cpx(img, 6, 15, 2, 2, OL)
+  cpx(img, 8, 15, 2, 2, OL)
+  cpx(img, 5, 14, 2, 2, OL)
+  cpx(img, 9, 14, 2, 2, OL)
 
-  -- (2,3) iron_tube - hollow cylinder
-  cshaded(img, 4, 3, 11, 13, 2, 3, TUBE_BASE, TUBE_HI, TUBE_SH)
-  coutline(img, 4, 3, 11, 13, 2, 3, OL)
-  -- Hollow center
-  crect(img, 6, 4, 9, 12, 2, 3, TUBE_HOLE)
-  -- Highlight stripe along left
-  cline(img, 5, 4, 5, 12, 2, 3, TUBE_HI)
-  -- Rim lines top and bottom
-  cline(img, 4, 4, 11, 4, 2, 3, TUBE_HI)
-  cline(img, 4, 12, 11, 12, 2, 3, TUBE_SH)
+  -- (2,3) tube — vertical cylinder with hollow opening, straight walls
+  -- Main body (straight sides, no rounding)
+  crect(img, 3, 3, 12, 13, 2, 3, TUBE_BASE)
+  -- Highlight on left wall
+  cline(img, 4, 4, 4, 12, 2, 3, TUBE_HI)
+  cpx(img, 5, 4, 2, 3, TUBE_HI)
+  cpx(img, 5, 5, 2, 3, TUBE_HI)
+  -- Shadow on right wall
+  cline(img, 11, 4, 11, 12, 2, 3, TUBE_SH)
+  cpx(img, 10, 12, 2, 3, TUBE_SH)
+  -- Top opening: elliptical rim showing hollow inside
+  crect(img, 4, 2, 11, 4, 2, 3, TUBE_HI)  -- bright rim
+  crect(img, 5, 3, 10, 4, 2, 3, TUBE_HOLE)  -- dark hole
+  -- Rim outline
+  cline(img, 4, 1, 11, 1, 2, 3, OL)
+  cpx(img, 3, 2, 2, 3, OL)
+  cpx(img, 12, 2, 2, 3, OL)
+  -- Bottom rim
+  cline(img, 3, 13, 12, 13, 2, 3, TUBE_SH)
+  -- Outline (straight sides)
+  cline(img, 2, 3, 2, 13, 2, 3, OL)
+  cline(img, 13, 3, 13, 13, 2, 3, OL)
+  cpx(img, 3, 3, 2, 3, OL)
+  cpx(img, 12, 3, 2, 3, OL)
+  cline(img, 3, 14, 12, 14, 2, 3, OL)
 
   -- (2,4) tin_can - silver cylinder with rim
   cshaded(img, 4, 3, 11, 13, 2, 4, CAN_BASE, CAN_HI, CAN_SH)
@@ -1159,41 +1235,84 @@ local function draw_all(img)
   cpx(img, 4, 10, 3, 0, H.hex("#404040"))
   cpx(img, 9, 12, 3, 0, H.hex("#FF4040"))
 
-  -- (3,1) motor - cylindrical with copper coils
-  cshaded(img, 3, 3, 12, 13, 3, 1, MOT_BODY, MOT_HI, MOT_SH)
-  coutline(img, 3, 3, 12, 13, 3, 1, OL)
-  -- Copper coil wrappings
-  cline(img, 4, 5, 11, 5, 3, 1, MOT_COIL)
-  cline(img, 4, 7, 11, 7, 3, 1, MOT_COIL)
-  cline(img, 4, 9, 11, 9, 3, 1, MOT_COIL)
-  cline(img, 4, 11, 11, 11, 3, 1, MOT_COIL)
-  -- Coil highlights
-  cpx(img, 5, 5, 3, 1, MOT_COIL_HI)
-  cpx(img, 5, 7, 3, 1, MOT_COIL_HI)
-  cpx(img, 5, 9, 3, 1, MOT_COIL_HI)
-  cpx(img, 5, 11, 3, 1, MOT_COIL_HI)
-  -- Shaft at top
-  crect(img, 7, 1, 8, 3, 3, 1, MOT_HI)
-  coutline(img, 7, 1, 8, 3, 3, 1, OL)
+  -- (3,1) motor — cylindrical body with visible copper coils and shaft, bigger
+  -- Main cylindrical body (rounded rect)
+  crect(img, 2, 4, 13, 14, 3, 1, MOT_BODY)
+  crect(img, 3, 3, 12, 14, 3, 1, MOT_BODY)
+  -- Highlight on left wall
+  cline(img, 3, 4, 3, 13, 3, 1, MOT_HI)
+  cpx(img, 2, 5, 3, 1, MOT_HI)
+  cpx(img, 2, 6, 3, 1, MOT_HI)
+  -- Shadow on right wall
+  cline(img, 12, 4, 12, 13, 3, 1, MOT_SH)
+  cpx(img, 13, 8, 3, 1, MOT_SH)
+  cpx(img, 13, 9, 3, 1, MOT_SH)
+  -- Copper coil wrappings (wide, with highlights)
+  for _, cy in ipairs({5, 7, 9, 11, 13}) do
+    cline(img, 3, cy, 12, cy, 3, 1, MOT_COIL)
+    cpx(img, 4, cy, 3, 1, MOT_COIL_HI)
+    cpx(img, 5, cy, 3, 1, MOT_COIL_HI)
+  end
+  -- Shaft protruding from top
+  crect(img, 6, 0, 9, 3, 3, 1, MOT_HI)
+  cline(img, 7, 0, 8, 0, 3, 1, H.hex("#9098A8"))
+  coutline(img, 6, 0, 9, 3, 3, 1, OL)
+  -- End cap (bottom)
+  cline(img, 3, 14, 12, 14, 3, 1, MOT_SH)
+  -- Outline
+  cline(img, 3, 2, 12, 2, 3, 1, OL)
+  cpx(img, 1, 5, 3, 1, OL)
+  cpx(img, 1, 6, 3, 1, OL)
+  cpx(img, 2, 4, 3, 1, OL)
+  cpx(img, 2, 3, 3, 1, OL)
+  cline(img, 1, 7, 1, 12, 3, 1, OL)
+  cpx(img, 2, 13, 3, 1, OL)
+  cpx(img, 14, 5, 3, 1, OL)
+  cpx(img, 14, 6, 3, 1, OL)
+  cpx(img, 13, 4, 3, 1, OL)
+  cpx(img, 13, 3, 3, 1, OL)
+  cline(img, 14, 7, 14, 12, 3, 1, OL)
+  cpx(img, 13, 13, 3, 1, OL)
+  cline(img, 3, 15, 12, 15, 3, 1, OL)
+  cpx(img, 2, 14, 3, 1, OL)
+  cpx(img, 13, 14, 3, 1, OL)
 
-  -- (3,2) battery_cell - rectangular with terminals
-  cshaded(img, 4, 4, 11, 13, 3, 2, BAT_BASE, BAT_HI, BAT_SH)
-  coutline(img, 4, 4, 11, 13, 3, 2, OL)
-  -- Top terminal strip
-  crect(img, 5, 2, 10, 4, 3, 2, BAT_TOP)
-  coutline(img, 5, 2, 10, 4, 3, 2, OL)
-  -- Plus terminal
-  cpx(img, 6, 2, 3, 2, BAT_PLUS)
-  cpx(img, 7, 2, 3, 2, BAT_PLUS)
-  cpx(img, 6, 3, 3, 2, BAT_PLUS)
-  -- Minus terminal
-  cpx(img, 9, 2, 3, 2, BAT_MINUS)
-  cpx(img, 10, 2, 3, 2, BAT_MINUS)
-  -- Label
-  cpx(img, 6, 8, 3, 2, H.hex("#FFFF40"))
-  cpx(img, 7, 8, 3, 2, H.hex("#FFFF40"))
-  cpx(img, 8, 8, 3, 2, H.hex("#FFFF40"))
-  cpx(img, 9, 8, 3, 2, H.hex("#FFFF40"))
+  -- (3,2) battery_cell — tall cylinder with + terminal on top, colored bands
+  -- Main body
+  crect(img, 3, 3, 12, 14, 3, 2, BAT_BASE)
+  crect(img, 4, 2, 11, 14, 3, 2, BAT_BASE)
+  -- Highlight left
+  cline(img, 4, 3, 4, 13, 3, 2, BAT_HI)
+  cpx(img, 3, 4, 3, 2, BAT_HI)
+  cpx(img, 3, 5, 3, 2, BAT_HI)
+  -- Shadow right
+  cline(img, 11, 3, 11, 13, 3, 2, BAT_SH)
+  cpx(img, 12, 8, 3, 2, BAT_SH)
+  cpx(img, 12, 9, 3, 2, BAT_SH)
+  -- Top terminal (positive nub)
+  crect(img, 6, 0, 9, 2, 3, 2, BAT_TOP)
+  cpx(img, 7, 0, 3, 2, BAT_PLUS)
+  cpx(img, 8, 0, 3, 2, BAT_PLUS)
+  coutline(img, 6, 0, 9, 2, 3, 2, OL)
+  -- Plus symbol on body
+  cline(img, 7, 5, 8, 5, 3, 2, BAT_PLUS)
+  cpx(img, 7, 4, 3, 2, BAT_PLUS)
+  cpx(img, 8, 6, 3, 2, BAT_PLUS)
+  -- Minus stripe near bottom
+  cline(img, 5, 11, 10, 11, 3, 2, BAT_MINUS)
+  cline(img, 5, 12, 10, 12, 3, 2, BAT_MINUS)
+  -- Yellow energy label band
+  cline(img, 5, 8, 10, 8, 3, 2, H.hex("#FFFF40"))
+  cline(img, 5, 9, 10, 9, 3, 2, H.hex("#E8D830"))
+  -- Outline
+  cline(img, 4, 1, 11, 1, 3, 2, OL)
+  cpx(img, 3, 2, 3, 2, OL)
+  cpx(img, 12, 2, 3, 2, OL)
+  cline(img, 2, 3, 2, 13, 3, 2, OL)
+  cline(img, 13, 3, 13, 13, 3, 2, OL)
+  cpx(img, 3, 14, 3, 2, OL)
+  cpx(img, 12, 14, 3, 2, OL)
+  cline(img, 4, 15, 11, 15, 3, 2, OL)
 
   -- (3,3) steel_frame - square frame outline
   -- Outer frame
@@ -1231,23 +1350,35 @@ local function draw_all(img)
   cpx(img, 9, 11, 3, 4, CONC_SPECK1)
   cpx(img, 7, 7, 3, 4, CONC_SPECK2)
 
-  -- (3,5) advanced_circuit - blue board with gold traces
-  cshaded(img, 2, 3, 13, 13, 3, 5, ADV_BASE, ADV_LIGHT, ADV_DARK)
-  coutline(img, 2, 3, 13, 13, 3, 5, OL)
-  -- Gold traces
-  cline(img, 4, 5, 11, 5, 3, 5, ADV_TRACE)
-  cline(img, 5, 5, 5, 9, 3, 5, ADV_TRACE)
-  cline(img, 5, 9, 10, 9, 3, 5, ADV_TRACE)
-  cline(img, 10, 6, 10, 9, 3, 5, ADV_TRACE)
-  cline(img, 7, 7, 7, 11, 3, 5, ADV_TRACE)
-  cline(img, 4, 11, 7, 11, 3, 5, ADV_TRACE)
-  -- IC chip in center
-  crect(img, 6, 7, 9, 9, 3, 5, H.hex("#1A1A20"))
-  -- Gold pins on chip
-  cpx(img, 6, 6, 3, 5, ADV_TRACE)
-  cpx(img, 9, 6, 3, 5, ADV_TRACE)
-  cpx(img, 6, 10, 3, 5, ADV_TRACE)
-  cpx(img, 9, 10, 3, 5, ADV_TRACE)
+  -- (3,5) advanced_circuit — blue board with prominent gold IC chip and traces
+  -- Board body (fills space)
+  cshaded(img, 1, 2, 14, 14, 3, 5, ADV_BASE, ADV_LIGHT, ADV_DARK)
+  coutline(img, 1, 2, 14, 14, 3, 5, OL)
+  -- Central IC chip (bigger, more visible)
+  crect(img, 5, 6, 10, 10, 3, 5, H.hex("#1A1A20"))
+  coutline(img, 5, 6, 10, 10, 3, 5, H.hex("#303040"))
+  -- Gold pins radiating from chip (top, bottom, left, right)
+  for i = 0, 2 do
+    cpx(img, 6 + i * 2, 5, 3, 5, ADV_TRACE)  -- top pins
+    cpx(img, 6 + i * 2, 11, 3, 5, ADV_TRACE)  -- bottom pins
+    cpx(img, 4, 7 + i, 3, 5, ADV_TRACE)      -- left pins
+    cpx(img, 11, 7 + i, 3, 5, ADV_TRACE)     -- right pins
+  end
+  -- Gold traces from pins to board edges
+  cline(img, 3, 4, 6, 4, 3, 5, ADV_TRACE)
+  cline(img, 3, 4, 3, 7, 3, 5, ADV_TRACE)
+  cline(img, 10, 4, 12, 4, 3, 5, ADV_TRACE)
+  cline(img, 12, 4, 12, 7, 3, 5, ADV_TRACE)
+  cline(img, 3, 12, 6, 12, 3, 5, ADV_TRACE)
+  cline(img, 3, 10, 3, 12, 3, 5, ADV_TRACE)
+  cline(img, 10, 12, 12, 12, 3, 5, ADV_TRACE)
+  cline(img, 12, 10, 12, 12, 3, 5, ADV_TRACE)
+  -- Chip die marking
+  cpx(img, 7, 7, 3, 5, H.hex("#404050"))
+  cpx(img, 8, 8, 3, 5, H.hex("#404050"))
+  cpx(img, 7, 9, 3, 5, H.hex("#404050"))
+  -- Orientation dot
+  cpx(img, 6, 7, 3, 5, ADV_TRACE)
 
   -- (3,6) processor - black chip with gold pins
   crect(img, 4, 4, 11, 12, 3, 6, PROC_BASE)

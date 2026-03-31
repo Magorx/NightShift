@@ -102,6 +102,7 @@ func _serialize_run() -> Dictionary:
 		"buildings": _serialize_buildings(),
 		"items_delivered": _serialize_items_delivered(),
 		"time_speed": _serialize_time_speed(),
+		"hud_state": _serialize_hud_state(),
 		"research": ResearchManager.serialize(),
 		"contracts": ContractManager.serialize(),
 		"creative_mode": GameManager.creative_mode,
@@ -138,6 +139,15 @@ func _serialize_time_speed() -> Dictionary:
 	if hud:
 		return {"speed_index": hud.speed_index, "paused": hud.paused}
 	return {"speed_index": 2, "paused": false}
+
+func _serialize_hud_state() -> Dictionary:
+	var hud = _get_hud()
+	if hud:
+		return {
+			"contracts_collapsed": hud._contracts_collapsed,
+			"menu_expanded": hud._menu_expanded,
+		}
+	return {}
 
 func _serialize_camera() -> Dictionary:
 	var gw := _get_game_world()
@@ -257,6 +267,11 @@ func _deserialize_run(data: Dictionary) -> void:
 	var time_data: Dictionary = data.get("time_speed", {})
 	if not time_data.is_empty():
 		call_deferred("_restore_time_speed", time_data)
+
+	# Restore HUD collapse states (deferred so HUD is ready)
+	var hud_state: Dictionary = data.get("hud_state", {})
+	if not hud_state.is_empty():
+		call_deferred("_restore_hud_state", hud_state)
 
 	# Restore player state
 	var player_data: Dictionary = data.get("player", {})
@@ -384,6 +399,15 @@ func _restore_time_speed(data: Dictionary) -> void:
 			Engine.time_scale = hud.SPEED_STEPS[hud.speed_index]
 			hud.speed_label.text = hud.SPEED_LABELS[hud.speed_index]
 			hud._update_speed_buttons()
+
+func _restore_hud_state(data: Dictionary) -> void:
+	var hud = _get_hud()
+	if not hud:
+		return
+	if data.get("contracts_collapsed", false) and not hud._contracts_collapsed:
+		hud._on_collapse_pressed()
+	if data.get("menu_expanded", false) and not hud._menu_expanded:
+		hud._on_menu_toggle_pressed()
 
 ## Generate terrain variants for legacy saves that don't have them.
 func _regenerate_terrain_variants() -> void:

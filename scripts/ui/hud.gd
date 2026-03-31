@@ -14,19 +14,33 @@ const SPEED_LABELS := ["x0.25", "x0.5", "x1", "x1.5", "x2", "x3"]
 @onready var buildings_panel: PanelContainer = $BuildingsPanel
 @onready var inventory_button: Button = %InventoryButton
 @onready var inventory_panel: PanelContainer = $InventoryPanel
+@onready var research_button: Button = %ResearchButton
+@onready var research_panel: PanelContainer = $ResearchPanel
+@onready var recipes_button: Button = %RecipesButton
+@onready var recipe_browser: PanelContainer = $RecipeBrowser
 @onready var fps_label: Label = %FpsLabel
-@onready var minimap_display: Control = $BottomRight/MinimapPanel/MinimapDisplay
+@onready var minimap_display: Control = $BottomRight/RightColumn/MinimapPanel/MinimapDisplay
+@onready var collapse_button: Button = %CollapseButton
+@onready var contract_content: VBoxContainer = $DeliveryPanel/MarginContainer/VBox/ContractContent
+@onready var menu_toggle: Button = %MenuToggle
+@onready var button_row: VBoxContainer = $BottomRight/ButtonRow
 
 var speed_index: int = 2 # default x1
 var paused: bool = false
 var _delivery_timer: float = 0.0
+var _contracts_collapsed: bool = false
+var _menu_expanded: bool = false
 
 func _ready() -> void:
 	slow_button.pressed.connect(_on_slow_pressed)
 	fast_button.pressed.connect(_on_fast_pressed)
+	collapse_button.pressed.connect(_on_collapse_pressed)
+	menu_toggle.pressed.connect(_on_menu_toggle_pressed)
 	buildings_button.gui_input.connect(_on_buildings_button_gui_input)
 	buildings_panel.building_selected.connect(_on_building_selected)
 	inventory_button.gui_input.connect(_on_inventory_button_gui_input)
+	research_button.gui_input.connect(_on_research_button_gui_input)
+	recipes_button.gui_input.connect(_on_recipes_button_gui_input)
 	$Hotbar.inventory_panel = inventory_panel
 
 func set_camera(cam: Camera2D) -> void:
@@ -91,6 +105,25 @@ func _on_inventory_button_gui_input(event: InputEvent) -> void:
 			inventory_panel.move_to_center()
 		else:
 			inventory_panel.visible = not inventory_panel.visible
+
+func _on_research_button_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if event.double_click:
+			research_panel.visible = true
+			research_panel.move_to_center()
+		else:
+			research_panel.visible = not research_panel.visible
+
+func _on_recipes_button_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if event.double_click:
+			recipe_browser.visible = true
+			recipe_browser.move_to_center()
+		else:
+			recipe_browser.visible = not recipe_browser.visible
+
+func open_recipe_browser_for_item(item_id: StringName) -> void:
+	recipe_browser.show_centered_on_item(item_id)
 
 # ── Delivery Counter / Contracts ──────────────────────────────────────────
 
@@ -184,6 +217,18 @@ func _on_fast_pressed() -> void:
 func _update_speed_buttons() -> void:
 	slow_button.disabled = speed_index <= 0
 	fast_button.disabled = speed_index >= SPEED_STEPS.size() - 1
+
+# ── Contracts Collapse ────────────────────────────────────────────────────
+
+func _on_collapse_pressed() -> void:
+	_contracts_collapsed = not _contracts_collapsed
+	contract_content.visible = not _contracts_collapsed
+	collapse_button.text = "▶" if _contracts_collapsed else "▼"
+
+func _on_menu_toggle_pressed() -> void:
+	_menu_expanded = not _menu_expanded
+	button_row.visible = _menu_expanded
+	menu_toggle.text = "▶" if _menu_expanded else "◀"
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Research Tree Editor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; display: flex; height: 100vh; }
+#sidebar { width: 320px; background: #16213e; padding: 12px; overflow-y: auto; border-right: 1px solid #333; }
+#canvas-area { flex: 1; position: relative; overflow: hidden; }
+canvas { display: block; cursor: grab; }
+canvas.dragging { cursor: grabbing; }
+h2 { font-size: 14px; color: #7ec8e3; margin: 8px 0 4px; }
+h3 { font-size: 12px; color: #aaa; margin: 4px 0; }
+label { display: block; font-size: 11px; color: #999; margin-top: 6px; }
+input, select, textarea { width: 100%; background: #0f3460; border: 1px solid #444; color: #e0e0e0; padding: 4px 6px; font-size: 12px; border-radius: 3px; margin-top: 2px; }
+textarea { resize: vertical; min-height: 40px; }
+button { background: #0f3460; border: 1px solid #555; color: #e0e0e0; padding: 6px 12px; cursor: pointer; border-radius: 3px; font-size: 12px; margin: 2px; }
+button:hover { background: #1a5276; }
+button.danger { background: #5c1a1a; }
+button.danger:hover { background: #8b2c2c; }
+button.primary { background: #1a5c1a; }
+button.primary:hover { background: #2c8b2c; }
+.node-list { margin: 4px 0; }
+.node-item { padding: 4px 8px; cursor: pointer; border-radius: 3px; font-size: 12px; margin: 1px 0; }
+.node-item:hover { background: #1a3a5c; }
+.node-item.selected { background: #0f3460; border: 1px solid #7ec8e3; }
+.ring-badge { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.cost-row { display: flex; gap: 4px; align-items: center; margin: 2px 0; }
+.cost-row input { flex: 1; }
+.cost-row button { padding: 2px 6px; flex: none; }
+.toolbar { padding: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+#status { position: absolute; bottom: 8px; left: 8px; font-size: 11px; color: #7ec8e3; background: rgba(0,0,0,0.7); padding: 4px 8px; border-radius: 3px; }
+.edge-item { padding: 3px 6px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; margin: 1px 0; background: #0f3460; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2>Research Tree Editor</h2>
+  <div class="toolbar">
+    <button class="primary" onclick="saveJSON()">Save JSON</button>
+    <button onclick="loadJSON()">Load JSON</button>
+    <button onclick="addNode()">+ Node</button>
+    <button onclick="addEdge()">+ Edge</button>
+  </div>
+
+  <h3>Nodes</h3>
+  <div id="node-list" class="node-list"></div>
+
+  <div id="node-editor" style="display:none; margin-top: 8px; border-top: 1px solid #333; padding-top: 8px;">
+    <h3>Edit Node</h3>
+    <label>ID <input id="ne-id"></label>
+    <label>Display Name <input id="ne-name"></label>
+    <label>Description <textarea id="ne-desc"></textarea></label>
+    <label>Ring <select id="ne-ring"><option value="0">0 (Free)</option><option value="1">1 (Red)</option><option value="2">2 (Green)</option><option value="3">3 (Blue)</option></select></label>
+    <label>Position X <input id="ne-px" type="number" step="0.5"></label>
+    <label>Position Y <input id="ne-py" type="number" step="0.5"></label>
+    <label>Unlocks (comma-separated) <input id="ne-unlocks"></label>
+    <h3 style="margin-top:8px;">Cost</h3>
+    <div id="ne-cost"></div>
+    <button onclick="addCostRow()" style="margin-top:4px;">+ Cost Item</button>
+    <div style="margin-top:8px; display:flex; gap:4px;">
+      <button class="primary" onclick="applyNodeEdit()">Apply</button>
+      <button class="danger" onclick="deleteSelectedNode()">Delete</button>
+    </div>
+  </div>
+
+  <h3 style="margin-top:12px;">Edges</h3>
+  <div id="edge-list"></div>
+</div>
+
+<div id="canvas-area">
+  <canvas id="canvas"></canvas>
+  <div id="status">Drag nodes to reposition. Scroll to zoom.</div>
+</div>
+
+<input type="file" id="file-input" accept=".json" style="display:none">
+
+<script>
+const RING_COLORS = ['#808080', '#E64D4D', '#4DCC4D', '#4D80E6'];
+const NODE_W = 120, NODE_H = 40;
+const GRID = 60;
+
+let data = { nodes: [], edges: [], rings: {}, description: '' };
+let selectedId = null;
+let dragNode = null;
+let dragOffset = { x: 0, y: 0 };
+let pan = { x: 400, y: 300 };
+let zoom = 1.0;
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+let edgeMode = false;
+let edgeFrom = null;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  const area = document.getElementById('canvas-area');
+  canvas.width = area.clientWidth;
+  canvas.height = area.clientHeight;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// Default data
+const DEFAULT_JSON = `{
+  "description": "Research tree definition.",
+  "nodes": [],
+  "edges": [],
+  "rings": {"0":{"name":"Starting","color":"#808080"},"1":{"name":"Ring 1","color":"#E64D4D"},"2":{"name":"Ring 2","color":"#4DCC4D"},"3":{"name":"Ring 3","color":"#4D80E6"}}
+}`;
+
+function worldToScreen(wx, wy) {
+  return { x: wx * zoom + pan.x, y: wy * zoom + pan.y };
+}
+function screenToWorld(sx, sy) {
+  return { x: (sx - pan.x) / zoom, y: (sy - pan.y) / zoom };
+}
+
+function getNodeRect(n) {
+  const cx = (n.position?.x || 0) * GRID;
+  const cy = (n.position?.y || 0) * GRID;
+  return { x: cx - NODE_W/2, y: cy - NODE_H/2, w: NODE_W, h: NODE_H };
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(pan.x, pan.y);
+  ctx.scale(zoom, zoom);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1/zoom;
+  for (let x = -20; x <= 20; x++) {
+    ctx.beginPath(); ctx.moveTo(x*GRID, -20*GRID); ctx.lineTo(x*GRID, 20*GRID); ctx.stroke();
+  }
+  for (let y = -20; y <= 20; y++) {
+    ctx.beginPath(); ctx.moveTo(-20*GRID, y*GRID); ctx.lineTo(20*GRID, y*GRID); ctx.stroke();
+  }
+
+  // Origin cross
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 2/zoom;
+  ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 10); ctx.stroke();
+
+  // Edges
+  for (const edge of data.edges) {
+    const fromNode = data.nodes.find(n => n.id === edge.from);
+    const toNode = data.nodes.find(n => n.id === edge.to);
+    if (!fromNode || !toNode) continue;
+    const fx = (fromNode.position?.x || 0) * GRID;
+    const fy = (fromNode.position?.y || 0) * GRID;
+    const tx = (toNode.position?.x || 0) * GRID;
+    const ty = (toNode.position?.y || 0) * GRID;
+    const rc = RING_COLORS[fromNode.ring] || '#888';
+    ctx.strokeStyle = rc + '80';
+    ctx.lineWidth = 2/zoom;
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(tx, ty); ctx.stroke();
+    // Arrow
+    const dx = tx - fx, dy = ty - fy;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    if (len > 0) {
+      const ux = dx/len, uy = dy/len;
+      const ax = tx - ux * NODE_W/2, ay = ty - uy * NODE_H/2;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax - ux*8 + uy*5, ay - uy*8 - ux*5);
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax - ux*8 - uy*5, ay - uy*8 + ux*5);
+      ctx.stroke();
+    }
+  }
+
+  // Nodes
+  for (const n of data.nodes) {
+    const r = getNodeRect(n);
+    const rc = RING_COLORS[n.ring] || '#888';
+    const isSel = n.id === selectedId;
+    // BG
+    ctx.fillStyle = isSel ? rc + '60' : rc + '30';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    // Border
+    ctx.strokeStyle = isSel ? '#FFE066' : rc;
+    ctx.lineWidth = (isSel ? 2 : 1) / zoom;
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+    // Text
+    ctx.fillStyle = '#e0e0e0';
+    ctx.font = `${11/zoom < 8 ? 8 : 11}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const name = n.display_name || n.id;
+    ctx.fillText(name.length > 16 ? name.substr(0,14)+'..' : name, r.x + r.w/2, r.y + r.h/2 - 5);
+    ctx.fillStyle = rc + 'AA';
+    ctx.font = `${9/zoom < 7 ? 7 : 9}px sans-serif`;
+    ctx.fillText(`Ring ${n.ring}`, r.x + r.w/2, r.y + r.h/2 + 10);
+  }
+
+  ctx.restore();
+}
+
+function findNodeAt(sx, sy) {
+  const w = screenToWorld(sx, sy);
+  for (let i = data.nodes.length - 1; i >= 0; i--) {
+    const r = getNodeRect(data.nodes[i]);
+    if (w.x >= r.x && w.x <= r.x + r.w && w.y >= r.y && w.y <= r.y + r.h)
+      return data.nodes[i];
+  }
+  return null;
+}
+
+canvas.addEventListener('mousedown', e => {
+  const node = findNodeAt(e.offsetX, e.offsetY);
+  if (edgeMode && node) {
+    if (!edgeFrom) { edgeFrom = node.id; document.getElementById('status').textContent = `Edge from: ${node.id} — click target node`; return; }
+    data.edges.push({ from: edgeFrom, to: node.id });
+    edgeFrom = null; edgeMode = false;
+    document.getElementById('status').textContent = 'Edge added.';
+    refreshEdgeList(); draw(); return;
+  }
+  if (e.button === 0 && node) {
+    dragNode = node;
+    const w = screenToWorld(e.offsetX, e.offsetY);
+    dragOffset.x = (node.position?.x || 0) * GRID - w.x;
+    dragOffset.y = (node.position?.y || 0) * GRID - w.y;
+    selectNode(node.id);
+  } else if (e.button === 1 || (e.button === 0 && !node)) {
+    isPanning = true; panStart.x = e.offsetX - pan.x; panStart.y = e.offsetY - pan.y;
+    canvas.classList.add('dragging');
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (dragNode) {
+    const w = screenToWorld(e.offsetX, e.offsetY);
+    const nx = Math.round(((w.x + dragOffset.x) / GRID) * 2) / 2;
+    const ny = Math.round(((w.y + dragOffset.y) / GRID) * 2) / 2;
+    if (!dragNode.position) dragNode.position = {};
+    dragNode.position.x = nx;
+    dragNode.position.y = ny;
+    if (selectedId === dragNode.id) {
+      document.getElementById('ne-px').value = nx;
+      document.getElementById('ne-py').value = ny;
+    }
+    draw();
+  } else if (isPanning) {
+    pan.x = e.offsetX - panStart.x;
+    pan.y = e.offsetY - panStart.y;
+    draw();
+  }
+});
+
+canvas.addEventListener('mouseup', () => { dragNode = null; isPanning = false; canvas.classList.remove('dragging'); });
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const oldZoom = zoom;
+  zoom *= e.deltaY > 0 ? 0.9 : 1.1;
+  zoom = Math.max(0.2, Math.min(3, zoom));
+  pan.x = e.offsetX - (e.offsetX - pan.x) * zoom / oldZoom;
+  pan.y = e.offsetY - (e.offsetY - pan.y) * zoom / oldZoom;
+  draw();
+}, { passive: false });
+
+function selectNode(id) {
+  selectedId = id;
+  refreshNodeList();
+  const n = data.nodes.find(x => x.id === id);
+  const editor = document.getElementById('node-editor');
+  if (!n) { editor.style.display = 'none'; return; }
+  editor.style.display = 'block';
+  document.getElementById('ne-id').value = n.id;
+  document.getElementById('ne-name').value = n.display_name || '';
+  document.getElementById('ne-desc').value = n.description || '';
+  document.getElementById('ne-ring').value = n.ring || 0;
+  document.getElementById('ne-px').value = n.position?.x || 0;
+  document.getElementById('ne-py').value = n.position?.y || 0;
+  document.getElementById('ne-unlocks').value = (n.unlocks || []).join(', ');
+  refreshCostEditor(n);
+  draw();
+}
+
+function refreshCostEditor(n) {
+  const div = document.getElementById('ne-cost');
+  div.innerHTML = '';
+  for (const c of (n.cost || [])) {
+    const row = document.createElement('div');
+    row.className = 'cost-row';
+    row.innerHTML = `<input value="${c.item}" placeholder="item_id"><input type="number" value="${c.quantity}" min="1" style="width:60px"><button class="danger" onclick="this.parentElement.remove()">x</button>`;
+    div.appendChild(row);
+  }
+}
+
+function addCostRow() {
+  const div = document.getElementById('ne-cost');
+  const row = document.createElement('div');
+  row.className = 'cost-row';
+  row.innerHTML = `<input placeholder="science_pack_1"><input type="number" value="10" min="1" style="width:60px"><button class="danger" onclick="this.parentElement.remove()">x</button>`;
+  div.appendChild(row);
+}
+
+function applyNodeEdit() {
+  const n = data.nodes.find(x => x.id === selectedId);
+  if (!n) return;
+  const newId = document.getElementById('ne-id').value.trim();
+  if (newId !== n.id) {
+    // Update edges
+    for (const e of data.edges) {
+      if (e.from === n.id) e.from = newId;
+      if (e.to === n.id) e.to = newId;
+    }
+    n.id = newId;
+    selectedId = newId;
+  }
+  n.display_name = document.getElementById('ne-name').value;
+  n.description = document.getElementById('ne-desc').value;
+  n.ring = parseInt(document.getElementById('ne-ring').value);
+  if (!n.position) n.position = {};
+  n.position.x = parseFloat(document.getElementById('ne-px').value);
+  n.position.y = parseFloat(document.getElementById('ne-py').value);
+  n.unlocks = document.getElementById('ne-unlocks').value.split(',').map(s => s.trim()).filter(s => s);
+  // Read cost
+  n.cost = [];
+  for (const row of document.getElementById('ne-cost').children) {
+    const inputs = row.querySelectorAll('input');
+    if (inputs[0].value.trim()) n.cost.push({ item: inputs[0].value.trim(), quantity: parseInt(inputs[1].value) || 1 });
+  }
+  refreshNodeList(); refreshEdgeList(); draw();
+}
+
+function deleteSelectedNode() {
+  if (!selectedId) return;
+  data.nodes = data.nodes.filter(n => n.id !== selectedId);
+  data.edges = data.edges.filter(e => e.from !== selectedId && e.to !== selectedId);
+  selectedId = null;
+  document.getElementById('node-editor').style.display = 'none';
+  refreshNodeList(); refreshEdgeList(); draw();
+}
+
+function addNode() {
+  const id = `tech_new_${Date.now() % 10000}`;
+  data.nodes.push({ id, display_name: 'New Tech', description: '', ring: 1, cost: [], unlocks: [], position: { x: 0, y: 0 } });
+  selectNode(id);
+  refreshNodeList(); draw();
+}
+
+function addEdge() {
+  edgeMode = true;
+  edgeFrom = null;
+  document.getElementById('status').textContent = 'Click a source node for the edge...';
+}
+
+function refreshNodeList() {
+  const div = document.getElementById('node-list');
+  div.innerHTML = '';
+  for (const n of data.nodes) {
+    const el = document.createElement('div');
+    el.className = 'node-item' + (n.id === selectedId ? ' selected' : '');
+    const rc = RING_COLORS[n.ring] || '#888';
+    el.innerHTML = `<span class="ring-badge" style="background:${rc}"></span>${n.display_name || n.id}`;
+    el.onclick = () => selectNode(n.id);
+    div.appendChild(el);
+  }
+}
+
+function refreshEdgeList() {
+  const div = document.getElementById('edge-list');
+  div.innerHTML = '';
+  for (let i = 0; i < data.edges.length; i++) {
+    const e = data.edges[i];
+    const el = document.createElement('div');
+    el.className = 'edge-item';
+    el.innerHTML = `<span>${e.from} → ${e.to}</span><button class="danger" onclick="data.edges.splice(${i},1);refreshEdgeList();draw();" style="padding:1px 4px;font-size:10px;">x</button>`;
+    div.appendChild(el);
+  }
+}
+
+function saveJSON() {
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'research_tree.json';
+  a.click();
+  document.getElementById('status').textContent = 'JSON saved!';
+}
+
+function loadJSON() {
+  document.getElementById('file-input').click();
+}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      data = JSON.parse(ev.target.result);
+      selectedId = null;
+      document.getElementById('node-editor').style.display = 'none';
+      refreshNodeList(); refreshEdgeList(); draw();
+      document.getElementById('status').textContent = `Loaded ${data.nodes.length} nodes, ${data.edges.length} edges.`;
+    } catch (err) { alert('Invalid JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// Init: try to load default
+fetch('../../resources/tech/research_tree.json')
+  .then(r => r.ok ? r.json() : JSON.parse(DEFAULT_JSON))
+  .then(d => { data = d; refreshNodeList(); refreshEdgeList(); resize(); })
+  .catch(() => { data = JSON.parse(DEFAULT_JSON); refreshNodeList(); refreshEdgeList(); resize(); });
+</script>
+</body>
+</html>
