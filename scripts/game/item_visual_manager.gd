@@ -2,7 +2,7 @@ extends RefCounted
 
 ## Renders all item visuals via a single MultiMeshInstance2D instead of
 ## individual Node2D instances. Drastically reduces draw calls.
-## Now uses an atlas texture (8x5 grid of 16x16 items) instead of colored circles.
+## Now uses an atlas texture (8x8 grid of 16x16 items) instead of colored circles.
 
 const ITEM_SIZE := 16.0
 const INITIAL_CAPACITY := 256
@@ -10,7 +10,7 @@ const HIDDEN_POS := Vector2(-99999, -99999)
 
 # Atlas layout
 const ATLAS_COLS := 8
-const ATLAS_ROWS := 5
+const ATLAS_ROWS := 8
 
 var multimesh: MultiMesh
 var instance: MultiMeshInstance2D
@@ -105,9 +105,9 @@ func _create_mesh() -> Mesh:
 func _create_atlas_material() -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = "shader_type canvas_item;
-// Atlas layout: 8 columns x 5 rows of 16x16 items
+// Atlas layout: 8 columns x 8 rows of 16x16 items
 const float COLS = 8.0;
-const float ROWS = 5.0;
+const float ROWS = 8.0;
 varying flat float v_col;
 varying flat float v_row;
 void vertex() {
