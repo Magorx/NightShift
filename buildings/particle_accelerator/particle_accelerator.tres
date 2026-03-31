@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/particle_accelerator/particle_accelerator.tscn" id="2"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="3"]
+[ext_resource type="Resource" path="res://resources/items/steel_frame.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/items/advanced_circuit.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/items/glass_lens.tres" id="6"]
+[ext_resource type="Resource" path="res://resources/items/gold_wire.tres" id="7"]
+
+[sub_resource type="Resource" id="cost_0"]
+script = ExtResource("3")
+item = ExtResource("4")
+quantity = 10
+
+[sub_resource type="Resource" id="cost_1"]
+script = ExtResource("3")
+item = ExtResource("5")
+quantity = 4
+
+[sub_resource type="Resource" id="cost_2"]
+script = ExtResource("3")
+item = ExtResource("6")
+quantity = 8
+
+[sub_resource type="Resource" id="cost_3"]
+script = ExtResource("3")
+item = ExtResource("7")
+quantity = 6
+
+[resource]
+script = ExtResource("1")
+id = &"particle_accelerator"
+display_name = "Particle Accelerator"
+color = Color(0.3, 0.25, 0.55, 1)
+description = "L-shaped particle accelerator for quantum chip production."
+category = "converter"
+scene = ExtResource("2")
+unlock_tech = &"tech_particle_accelerator"
+build_cost = [SubResource("cost_0"), SubResource("cost_1"), SubResource("cost_2"), SubResource("cost_3")]

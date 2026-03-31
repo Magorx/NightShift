@@ -5,13 +5,13 @@ extends RefCounted
 ## and a misc variant index.  The shader selects the correct atlas cell via
 ## INSTANCE_CUSTOM data encoding (atlas_col, atlas_row).
 ##
-## Atlas layout (8 cols × 10 rows of 32×32):
+## Atlas layout (8 cols × 14 rows of 32×32):
 ##   See ATLAS_INDEX below for the mapping from (tile_type, layer, variant)
 ##   to flat atlas index.  Row = index / 8, Col = index % 8.
 
 const TILE_SIZE := 32.0
 const ATLAS_COLS := 8
-const ATLAS_ROWS := 10
+const ATLAS_ROWS := 14
 const HIDDEN_POS := Vector2(-99999, -99999)
 
 # ── Atlas index table ───────────────────────────────────────────────────────
@@ -31,6 +31,10 @@ const T_TIN := 8
 const T_GOLD := 9
 const T_QUARTZ := 10
 const T_SULFUR := 11
+const T_OIL := 12
+const T_CRYSTAL := 13
+const T_URANIUM := 14
+const T_BIOMASS := 15
 
 # Grass tint multipliers for the 3 ground variants (applied in shader)
 # Normal grass = white (no tint), dark = darker, light = lighter
@@ -51,6 +55,10 @@ const GRASS_TINTS := {
 # Row 7: sulfur_fg0-2(56-58), sulfur_misc0-2(59-61), mud_bg(62), mud_fg0(63)
 # Row 8: mud_fg1-2(64-65), mud_misc0-2(66-68), stone_bg(69), stone_fg0-1(70-71)
 # Row 9: stone_fg2(72), stone_misc0-2(73-75)
+# Row 10: oil_bg(80), oil_fg0-2(81-83), oil_misc0-2(84-86), crystal_bg(87)
+# Row 11: crystal_fg0-2(88-90), crystal_misc0-2(91-93), uranium_bg(94), uranium_fg0(95)
+# Row 12: uranium_fg1-2(96-97), uranium_misc0-2(98-100), biomass_bg(101), biomass_fg0-1(102-103)
+# Row 13: biomass_fg2(104), biomass_misc0-2(105-107)
 
 const ATLAS := {
 	T_GROUND: {"bg": 0, "fg": [1, 2, 3, 4, 5, 6], "misc": [7, 8, 9, 10, 11, 12]},
@@ -65,6 +73,10 @@ const ATLAS := {
 	T_SULFUR: {"bg": 55, "fg": [56, 57, 58], "misc": [59, 60, 61]},
 	T_WALL: {"bg": 62, "fg": [63, 64, 65], "misc": [66, 67, 68]},
 	T_STONE: {"bg": 69, "fg": [70, 71, 72], "misc": [73, 74, 75]},
+	T_OIL: {"bg": 80, "fg": [81, 82, 83], "misc": [84, 85, 86]},
+	T_CRYSTAL: {"bg": 87, "fg": [88, 89, 90], "misc": [91, 92, 93]},
+	T_URANIUM: {"bg": 94, "fg": [95, 96, 97], "misc": [98, 99, 100]},
+	T_BIOMASS: {"bg": 101, "fg": [102, 103, 104], "misc": [105, 106, 107]},
 }
 
 var _bg_mm: MultiMesh
@@ -214,9 +226,9 @@ func _create_quad_mesh() -> Mesh:
 func _create_shader() -> Shader:
 	var shader := Shader.new()
 	shader.code = "shader_type canvas_item;
-// Terrain atlas: 8 columns x 10 rows of 32x32 tiles
+// Terrain atlas: 8 columns x 14 rows of 32x32 tiles
 const float COLS = 8.0;
-const float ROWS = 10.0;
+const float ROWS = 14.0;
 varying flat float v_col;
 varying flat float v_row;
 varying flat float v_tint_r;

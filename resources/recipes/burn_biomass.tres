@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="RecipeDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/recipe_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/items/biomass.tres" id="3"]
+
+[sub_resource type="Resource" id="input_0"]
+script = ExtResource("2")
+item = ExtResource("3")
+quantity = 1
+
+[resource]
+script = ExtResource("1")
+id = &"burn_biomass"
+display_name = "Burn Biomass"
+converter_type = "coal_burner"
+inputs = [SubResource("input_0")]
+outputs = []
+craft_time = 3.0
+energy_output = 60.0

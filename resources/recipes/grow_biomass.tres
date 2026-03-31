@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="RecipeDef" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/recipe_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/items/bio_compound.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/items/biomass.tres" id="4"]
+
+[sub_resource type="Resource" id="input_0"]
+script = ExtResource("2")
+item = ExtResource("3")
+quantity = 1
+
+[sub_resource type="Resource" id="output_0"]
+script = ExtResource("2")
+item = ExtResource("4")
+quantity = 3
+
+[resource]
+script = ExtResource("1")
+id = &"grow_biomass"
+display_name = "Grow Biomass"
+converter_type = "greenhouse"
+inputs = [SubResource("input_0")]
+outputs = [SubResource("output_0")]
+craft_time = 10.0
+energy_cost = 50.0

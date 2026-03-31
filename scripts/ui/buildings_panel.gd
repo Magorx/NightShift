@@ -7,6 +7,7 @@ const CATEGORY_DISPLAY_NAMES := {
 	"splitter": "Transportation",
 	"junction": "Transportation",
 	"tunnel": "Transportation",
+	"pipeline": "Transportation",
 	"extractor": "Extractors",
 	"converter": "Converters",
 	"sink": "Outputs",
@@ -14,7 +15,7 @@ const CATEGORY_DISPLAY_NAMES := {
 }
 
 # Categories hidden from the building panel (placed via multi-phase, not directly)
-const HIDDEN_CATEGORIES := ["tunnel_output"]
+const HIDDEN_CATEGORIES := ["tunnel_output", "pipeline_output"]
 
 # Preferred display order; categories not listed here are appended alphabetically.
 const _PREFERRED_ORDER := ["Transportation", "Extractors", "Converters", "Outputs", "Sources"]

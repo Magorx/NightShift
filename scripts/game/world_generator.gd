@@ -30,6 +30,10 @@ const TILE_TIN := 8
 const TILE_GOLD := 9
 const TILE_QUARTZ := 10
 const TILE_SULFUR := 11
+const TILE_OIL := 12
+const TILE_CRYSTAL := 13
+const TILE_URANIUM := 14
+const TILE_BIOMASS := 15
 
 const DEPOSIT_ITEMS := {
 	TILE_IRON: &"iron_ore",
@@ -39,6 +43,10 @@ const DEPOSIT_ITEMS := {
 	TILE_GOLD: &"gold_ore",
 	TILE_QUARTZ: &"quartz",
 	TILE_SULFUR: &"sulfur",
+	TILE_OIL: &"oil",
+	TILE_CRYSTAL: &"crystal",
+	TILE_URANIUM: &"uranium_ore",
+	TILE_BIOMASS: &"biomass",
 }
 
 # Generation parameters
@@ -218,6 +226,7 @@ func _generate_all_deposits(deposits: Dictionary, walls: Dictionary, map_size: i
 		[TILE_COAL, 14, 24, 1, 3, 5],
 		[TILE_TIN, 18, 28, 1, 3, 5],
 		[TILE_QUARTZ, 20, 30, 1, 3, 5],
+		[TILE_BIOMASS, 14, 22, 1, 4, 6],     # biomass grows near spawn, organic clusters
 		# Far deposits — larger but still scarce
 		[TILE_IRON, 24, 34, 1, 5, 7],
 		[TILE_COPPER, 24, 34, 1, 4, 6],
@@ -226,6 +235,14 @@ func _generate_all_deposits(deposits: Dictionary, walls: Dictionary, map_size: i
 		[TILE_QUARTZ, 26, 36, 1, 3, 5],
 		[TILE_GOLD, 28, 38, 1, 2, 4],
 		[TILE_SULFUR, 28, 38, 1, 2, 4],
+		[TILE_OIL, 22, 32, 1, 3, 5],         # oil seeps in mid-far range
+		[TILE_BIOMASS, 24, 34, 1, 3, 5],     # more biomass further out
+		# Very far deposits — rare advanced resources
+		[TILE_OIL, 30, 40, 1, 4, 6],         # large oil field
+		[TILE_CRYSTAL, 32, 42, 1, 2, 3],     # rare crystal deposit
+		[TILE_URANIUM, 34, 44, 1, 2, 3],     # very rare uranium
+		[TILE_CRYSTAL, 36, 44, 1, 2, 4],     # second crystal deposit
+		[TILE_URANIUM, 38, 46, 1, 2, 3],     # second uranium
 	]
 
 	var placed_centers: Array[Vector2i] = []

@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/pipeline/pipeline_output.tscn" id="2"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="3"]
+[ext_resource type="Resource" path="res://resources/items/steel.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/items/pipe.tres" id="5"]
+
+[sub_resource type="Resource" id="cost_0"]
+script = ExtResource("3")
+item = ExtResource("4")
+quantity = 2
+
+[sub_resource type="Resource" id="cost_1"]
+script = ExtResource("3")
+item = ExtResource("5")
+quantity = 1
+
+[resource]
+script = ExtResource("1")
+id = &"pipeline_output"
+display_name = "Pipeline Output"
+color = Color(0.6, 0.5, 0.7, 1)
+category = "pipeline_output"
+description = "Output end of a pipeline."
+scene = ExtResource("2")
+is_ground_level = true
+build_cost = [SubResource("cost_0"), SubResource("cost_1")]

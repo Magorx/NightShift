@@ -301,6 +301,10 @@ const TILE_TIN := 8
 const TILE_GOLD := 9
 const TILE_QUARTZ := 10
 const TILE_SULFUR := 11
+const TILE_OIL := 12
+const TILE_CRYSTAL := 13
+const TILE_URANIUM := 14
+const TILE_BIOMASS := 15
 
 # Deposit colors
 const DEPOSIT_COLORS := {
@@ -311,6 +315,10 @@ const DEPOSIT_COLORS := {
 	TILE_GOLD: Color(0.78, 0.68, 0.20),     # golden yellow — gold
 	TILE_QUARTZ: Color(0.80, 0.75, 0.85),   # pale lavender — quartz
 	TILE_SULFUR: Color(0.75, 0.72, 0.15),   # yellow-green — sulfur
+	TILE_OIL: Color(0.15, 0.12, 0.10),      # dark brown-black — oil seep
+	TILE_CRYSTAL: Color(0.70, 0.40, 0.85),  # purple — crystal deposit
+	TILE_URANIUM: Color(0.30, 0.75, 0.30),  # green glow — uranium deposit
+	TILE_BIOMASS: Color(0.40, 0.65, 0.20),  # organic green — biomass grove
 }
 
 # Wall colors (impassable terrain)
@@ -334,6 +342,10 @@ const DEPOSIT_ITEMS := {
 	TILE_GOLD: &"gold_ore",
 	TILE_QUARTZ: &"quartz",
 	TILE_SULFUR: &"sulfur",
+	TILE_OIL: &"oil",
+	TILE_CRYSTAL: &"crystal",
+	TILE_URANIUM: &"uranium_ore",
+	TILE_BIOMASS: &"biomass",
 }
 
 # Map from wall tile ID to the item a borer can extract

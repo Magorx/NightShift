@@ -45,9 +45,14 @@ const ENERGY_CONFIG := {
 	"assembler": {capacity = 80.0, demand = 5.0},
 	"assembler_mk2": {capacity = 200.0, demand = 10.0},
 	"fuel_generator": {capacity = 300.0, demand = 0.0},
-	"chemical_plant": {capacity = 80.0, demand = 8.0},
+	"chemical_plant": {capacity = 120.0, demand = 8.0},
 	"coal_burner": {capacity = 200.0, demand = 0.0},
 	"research_lab": {capacity = 50.0, demand = 5.0},
+	"centrifuge": {capacity = 200.0, demand = 15.0},
+	"greenhouse": {capacity = 80.0, demand = 5.0},
+	"particle_accelerator": {capacity = 300.0, demand = 20.0},
+	"fabricator": {capacity = 400.0, demand = 25.0},
+	"nuclear_reactor": {capacity = 1200.0, demand = 0.0},
 }
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:

@@ -28,6 +28,8 @@ const RING_ITEMS: Dictionary = {
 	1: [&"copper_ring", &"tin_plate", &"copper_wire", &"gear", &"tube", &"glass", &"brick"],
 	2: [&"circuit_board", &"motor", &"battery_cell", &"steel_frame", &"steel", &"steel_beam"],
 	3: [&"advanced_circuit", &"processor", &"engine", &"robo_frame"],
+	4: [&"plastic", &"rubber", &"acid", &"carbon_fiber", &"silicon", &"robot_arm", &"nano_fiber", &"fusion_cell"],
+	5: [&"quantum_chip", &"quantum_computer", &"power_armor", &"terraformer"],
 }
 
 ## Gate contract definitions: ring -> {requirements, title}
@@ -51,6 +53,22 @@ const GATE_DEFS: Dictionary = {
 		requirements = [
 			{item_id = &"processor", quantity = 5},
 			{item_id = &"robo_frame", quantity = 5},
+		],
+	},
+	4: {
+		title = "Gate: Unlock Ring 4",
+		requirements = [
+			{item_id = &"processor", quantity = 10},
+			{item_id = &"engine", quantity = 5},
+			{item_id = &"robo_frame", quantity = 5},
+		],
+	},
+	5: {
+		title = "Gate: Unlock Ring 5",
+		requirements = [
+			{item_id = &"robot_arm", quantity = 5},
+			{item_id = &"nano_fiber", quantity = 5},
+			{item_id = &"fusion_cell", quantity = 5},
 		],
 	},
 }

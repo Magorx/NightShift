@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"crystal"
+display_name = "Crystal"
+color = Color(0.7, 0.4, 0.85, 1)
+category = "raw"
+export_value = 3
+research_value = 0
+icon_atlas_index = 38

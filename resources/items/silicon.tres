@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"silicon"
+display_name = "Silicon"
+color = Color(0.35, 0.35, 0.45, 1)
+category = "intermediate"
+export_value = 5
+research_value = 2
+icon_atlas_index = 44

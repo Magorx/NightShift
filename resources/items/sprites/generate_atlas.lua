@@ -1,11 +1,11 @@
 -- generate_atlas.lua
--- Item atlas: 8 columns x 5 rows = 128x80 pixels, each cell 16x16.
+-- Item atlas: 8 columns x 8 rows = 128x128 pixels, each cell 16x16.
 -- Run: aseprite -b --script resources/items/sprites/generate_atlas.lua
 
 local H = dofile("/Users/gorishniymax/Repos/factor/tools/aseprite_helper.lua")
 
 local CELL = 16
-local COLS, ROWS = 8, 5
+local COLS, ROWS = 8, 8
 local W, HT = COLS * CELL, ROWS * CELL
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -233,6 +233,160 @@ local NRG_BASE     = H.hex("#F0D030")
 local NRG_HI       = H.hex("#FFE870")
 local NRG_SH       = H.hex("#C8A020")
 local NRG_DARK     = H.hex("#987818")
+
+-- New item colors (table to avoid Lua local variable limit)
+local C = {}
+
+-- Oil
+C.OIL_BASE     = H.hex("#1A1020")
+C.OIL_HI       = H.hex("#3A2848")
+C.OIL_SH       = H.hex("#0E0A14")
+C.OIL_SHEEN    = H.hex("#6848A0")
+
+-- Crystal
+C.CRYS_BASE    = H.hex("#8040C0")
+C.CRYS_HI      = H.hex("#B070E8")
+C.CRYS_SH      = H.hex("#502888")
+C.CRYS_EDGE    = H.hex("#381868")
+C.CRYS_GLEAM   = H.hex("#E0C0FF")
+
+-- Uranium Ore
+C.UORE_BASE    = H.hex("#506850")
+C.UORE_HI      = H.hex("#70A060")
+C.UORE_SH      = H.hex("#304830")
+C.UORE_GLOW    = H.hex("#80FF60")
+
+-- Biomass
+C.BIO_BASE     = H.hex("#408030")
+C.BIO_HI       = H.hex("#60A848")
+C.BIO_SH       = H.hex("#286020")
+C.BIO_LEAF     = H.hex("#50C838")
+
+-- Plastic
+C.PLAS_BASE    = H.hex("#E8E0D0")
+C.PLAS_HI      = H.hex("#F8F4EC")
+C.PLAS_SH      = H.hex("#B8B0A0")
+
+-- Rubber
+C.RUB_BASE     = H.hex("#303030")
+C.RUB_HI       = H.hex("#484848")
+C.RUB_SH       = H.hex("#1A1A1A")
+
+-- Acid
+C.ACID_BASE    = H.hex("#40E840")
+C.ACID_HI      = H.hex("#70FF70")
+C.ACID_SH      = H.hex("#20A820")
+C.ACID_VIAL    = H.hex("#C0D8E8")
+
+-- Silicon
+C.SILI_BASE    = H.hex("#405060")
+C.SILI_HI      = H.hex("#607080")
+C.SILI_SH      = H.hex("#283040")
+C.SILI_GRID    = H.hex("#506878")
+
+-- Carbon Fiber
+C.CFIB_BASE    = H.hex("#282828")
+C.CFIB_HI      = H.hex("#404040")
+C.CFIB_SH      = H.hex("#141414")
+C.CFIB_WEAVE   = H.hex("#383838")
+
+-- Refined Uranium
+C.RURA_BASE    = H.hex("#40C830")
+C.RURA_HI      = H.hex("#70FF50")
+C.RURA_SH      = H.hex("#209018")
+C.RURA_GLOW    = H.hex("#A0FF80")
+
+-- Bio Compound
+C.BIOC_BASE    = H.hex("#38A030")
+C.BIOC_HI      = H.hex("#58C848")
+C.BIOC_SH      = H.hex("#207818")
+C.BIOC_CAP     = H.hex("#C0C8D0")
+
+-- Ceramic
+C.CERA_BASE    = H.hex("#D0C0A0")
+C.CERA_HI      = H.hex("#E8D8C0")
+C.CERA_SH      = H.hex("#A89878")
+
+-- Alloy Plate
+C.ALLOY_BASE   = H.hex("#7080A0")
+C.ALLOY_HI     = H.hex("#90A0C0")
+C.ALLOY_SH     = H.hex("#506078")
+
+-- Insulated Wire
+C.IWIRE_BASE   = H.hex("#D88840")
+C.IWIRE_COAT   = H.hex("#303030")
+C.IWIRE_COAT_H = H.hex("#484848")
+
+-- Heat Sink
+C.HSINK_BASE   = H.hex("#909098")
+C.HSINK_HI     = H.hex("#B0B0B8")
+C.HSINK_SH     = H.hex("#606068")
+C.HSINK_FIN    = H.hex("#A0A0A8")
+
+-- Filter
+C.FILT_BASE    = H.hex("#808088")
+C.FILT_HI      = H.hex("#A0A0A8")
+C.FILT_SH      = H.hex("#585860")
+C.FILT_MESH    = H.hex("#C0C0C8")
+
+-- Plastic Casing
+C.PCAS_BASE    = H.hex("#E0D8C8")
+C.PCAS_HI      = H.hex("#F0EAE0")
+C.PCAS_SH      = H.hex("#B0A898")
+
+-- Crystal Oscillator
+C.COSC_BASE    = H.hex("#8040C0")
+C.COSC_HI      = H.hex("#A060E0")
+C.COSC_CASE    = H.hex("#707880")
+C.COSC_CASE_H  = H.hex("#9098A0")
+
+-- Quantum Chip
+C.QCHP_BASE    = H.hex("#1A1848")
+C.QCHP_HI      = H.hex("#2A2868")
+C.QCHP_TRACE   = H.hex("#40C0FF")
+C.QCHP_GLOW    = H.hex("#80E0FF")
+
+-- Nano Fiber
+C.NFIB_BASE    = H.hex("#181820")
+C.NFIB_HI      = H.hex("#303040")
+C.NFIB_SH      = H.hex("#0C0C10")
+C.NFIB_SHIM    = H.hex("#4848A0")
+
+-- Fusion Cell
+C.FCEL_BASE    = H.hex("#30B0C0")
+C.FCEL_HI      = H.hex("#60E0F0")
+C.FCEL_SH      = H.hex("#208090")
+C.FCEL_GLOW    = H.hex("#A0FFFF")
+
+-- Robot Arm
+C.RARM_BASE    = H.hex("#808890")
+C.RARM_HI      = H.hex("#A0A8B0")
+C.RARM_SH      = H.hex("#505860")
+C.RARM_JOINT   = H.hex("#606870")
+
+-- Science Pack 4 (purple)
+C.SP4_LIQUID   = H.hex("#8030D0")
+C.SP4_LIQ_HI   = H.hex("#A050F0")
+C.SP4_LIQ_SH   = H.hex("#6020A0")
+
+-- Quantum Computer
+C.QCOM_BASE    = H.hex("#1A1840")
+C.QCOM_HI      = H.hex("#2A2860")
+C.QCOM_SH      = H.hex("#0E0C28")
+C.QCOM_GLOW    = H.hex("#40C0FF")
+
+-- Power Armor
+C.PARM_BASE    = H.hex("#B07030")
+C.PARM_HI      = H.hex("#D09048")
+C.PARM_SH      = H.hex("#805020")
+C.PARM_EDGE    = H.hex("#6A3818")
+
+-- Terraformer
+C.TERR_BASE    = H.hex("#508040")
+C.TERR_HI      = H.hex("#70A058")
+C.TERR_SH      = H.hex("#386028")
+C.TERR_PLANT   = H.hex("#40C830")
+C.TERR_SOIL    = H.hex("#705030")
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -836,6 +990,953 @@ local function draw_flask(img, row, col, liquid, liq_hi, liq_sh, glass, cork)
   cpx(img, 5, 5, row, col, OL)
   cpx(img, 10, 4, row, col, OL)
   cpx(img, 10, 5, row, col, OL)
+end
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- NEW ITEM DRAW FUNCTIONS (indices 37-62)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+--- 37: Oil - dark viscous droplet with iridescent sheen
+function C.draw_oil(img, row, col)
+  -- Droplet body
+  cpx(img, 7, 1, row, col, C.OIL_BASE)
+  cpx(img, 8, 1, row, col, C.OIL_BASE)
+  crect(img, 6, 2, 9, 3, row, col, C.OIL_BASE)
+  crect(img, 5, 4, 10, 5, row, col, C.OIL_BASE)
+  crect(img, 4, 6, 11, 8, row, col, C.OIL_BASE)
+  crect(img, 3, 7, 12, 11, row, col, C.OIL_BASE)
+  crect(img, 4, 12, 11, 13, row, col, C.OIL_BASE)
+  crect(img, 5, 14, 10, 14, row, col, C.OIL_BASE)
+  -- Iridescent purple sheen
+  cpx(img, 6, 4, row, col, C.OIL_SHEEN)
+  cpx(img, 7, 5, row, col, C.OIL_SHEEN)
+  cpx(img, 5, 7, row, col, C.OIL_SHEEN)
+  cpx(img, 6, 8, row, col, C.OIL_SHEEN)
+  cpx(img, 5, 9, row, col, H.hex("#5838A0"))
+  -- Highlight
+  cpx(img, 6, 2, row, col, C.OIL_HI)
+  cpx(img, 7, 2, row, col, C.OIL_HI)
+  cpx(img, 5, 5, row, col, C.OIL_HI)
+  cpx(img, 4, 7, row, col, C.OIL_HI)
+  -- Shadow
+  crect(img, 9, 11, 11, 12, row, col, C.OIL_SH)
+  cpx(img, 10, 13, row, col, C.OIL_SH)
+  -- Outline
+  cpx(img, 6, 1, row, col, OL)
+  cpx(img, 9, 1, row, col, OL)
+  cpx(img, 5, 2, row, col, OL)
+  cpx(img, 10, 2, row, col, OL)
+  cpx(img, 5, 3, row, col, OL)
+  cpx(img, 10, 3, row, col, OL)
+  cpx(img, 4, 4, row, col, OL)
+  cpx(img, 11, 4, row, col, OL)
+  cpx(img, 4, 5, row, col, OL)
+  cpx(img, 11, 5, row, col, OL)
+  cpx(img, 3, 6, row, col, OL)
+  cpx(img, 12, 6, row, col, OL)
+  cline(img, 2, 7, 2, 11, row, col, OL)
+  cline(img, 13, 7, 13, 11, row, col, OL)
+  cpx(img, 3, 12, row, col, OL)
+  cpx(img, 12, 12, row, col, OL)
+  cpx(img, 4, 13, row, col, OL)
+  cpx(img, 11, 13, row, col, OL)
+  cline(img, 5, 15, 10, 15, row, col, OL)
+  cpx(img, 4, 14, row, col, OL)
+  cpx(img, 11, 14, row, col, OL)
+end
+
+--- 38: Crystal - purple faceted crystal with prismatic highlights
+function C.draw_crystal(img, row, col)
+  -- Main tall crystal body (hexagonal shape)
+  crect(img, 5, 2, 10, 13, row, col, C.CRYS_BASE)
+  crect(img, 4, 4, 11, 11, row, col, C.CRYS_BASE)
+  cpx(img, 6, 1, row, col, C.CRYS_BASE)
+  cpx(img, 7, 1, row, col, C.CRYS_BASE)
+  cpx(img, 8, 1, row, col, C.CRYS_BASE)
+  cpx(img, 9, 1, row, col, C.CRYS_BASE)
+  -- Left facet highlight
+  crect(img, 5, 3, 7, 6, row, col, C.CRYS_HI)
+  cpx(img, 6, 1, row, col, C.CRYS_HI)
+  cpx(img, 7, 1, row, col, C.CRYS_HI)
+  cpx(img, 4, 5, row, col, C.CRYS_HI)
+  cpx(img, 4, 6, row, col, C.CRYS_HI)
+  -- Gleam spot
+  cpx(img, 6, 3, row, col, C.CRYS_GLEAM)
+  cpx(img, 7, 3, row, col, C.CRYS_GLEAM)
+  cpx(img, 6, 4, row, col, H.hex("#D0B0F0"))
+  -- Right facet shadow
+  crect(img, 9, 8, 11, 12, row, col, C.CRYS_SH)
+  cpx(img, 10, 13, row, col, C.CRYS_SH)
+  -- Deep edge
+  cpx(img, 11, 10, row, col, C.CRYS_EDGE)
+  cpx(img, 11, 11, row, col, C.CRYS_EDGE)
+  -- Prismatic color accents
+  cpx(img, 5, 7, row, col, H.hex("#FF80C0"))
+  cpx(img, 8, 5, row, col, H.hex("#80C0FF"))
+  cpx(img, 7, 10, row, col, H.hex("#80FFE0"))
+  -- Outline
+  cpx(img, 5, 1, row, col, OL)
+  cpx(img, 10, 1, row, col, OL)
+  cline(img, 6, 0, 9, 0, row, col, OL)
+  cpx(img, 4, 2, row, col, OL)
+  cpx(img, 11, 2, row, col, OL)
+  cpx(img, 4, 3, row, col, OL)
+  cpx(img, 11, 3, row, col, OL)
+  cpx(img, 3, 4, row, col, OL)
+  cpx(img, 12, 4, row, col, OL)
+  cline(img, 3, 5, 3, 11, row, col, OL)
+  cline(img, 12, 5, 12, 11, row, col, OL)
+  cpx(img, 4, 12, row, col, OL)
+  cpx(img, 11, 12, row, col, OL)
+  cpx(img, 4, 13, row, col, OL)
+  cpx(img, 11, 13, row, col, OL)
+  cline(img, 5, 14, 10, 14, row, col, OL)
+end
+
+--- 39: Uranium Ore - green-glowing rocky chunk
+function C.draw_uranium_ore(img, row, col)
+  -- Rocky body (reuse iron ore shape style)
+  crect(img, 3, 3, 12, 13, row, col, C.UORE_BASE)
+  crect(img, 2, 5, 13, 11, row, col, C.UORE_BASE)
+  crect(img, 4, 2, 11, 14, row, col, C.UORE_BASE)
+  -- Highlight
+  crect(img, 3, 3, 7, 5, row, col, C.UORE_HI)
+  cpx(img, 4, 2, row, col, C.UORE_HI)
+  cpx(img, 5, 2, row, col, C.UORE_HI)
+  -- Shadow
+  crect(img, 10, 11, 12, 13, row, col, C.UORE_SH)
+  cpx(img, 11, 14, row, col, C.UORE_SH)
+  -- Radioactive glow spots
+  cpx(img, 5, 6, row, col, C.UORE_GLOW)
+  cpx(img, 6, 7, row, col, C.UORE_GLOW)
+  cpx(img, 9, 5, row, col, C.UORE_GLOW)
+  cpx(img, 8, 10, row, col, C.UORE_GLOW)
+  cpx(img, 10, 8, row, col, C.UORE_GLOW)
+  cpx(img, 4, 9, row, col, C.UORE_GLOW)
+  cpx(img, 7, 12, row, col, C.UORE_GLOW)
+  -- Cracks
+  cpx(img, 7, 8, row, col, C.UORE_SH)
+  cpx(img, 8, 9, row, col, C.UORE_SH)
+  cpx(img, 6, 11, row, col, C.UORE_SH)
+  -- Outline
+  cline(img, 4, 1, 11, 1, row, col, OL)
+  cpx(img, 3, 2, row, col, OL)
+  cpx(img, 12, 2, row, col, OL)
+  cpx(img, 1, 5, row, col, OL)
+  cpx(img, 1, 6, row, col, OL)
+  cline(img, 1, 7, 1, 10, row, col, OL)
+  cpx(img, 2, 4, row, col, OL)
+  cpx(img, 2, 11, row, col, OL)
+  cpx(img, 13, 4, row, col, OL)
+  cpx(img, 14, 5, row, col, OL)
+  cline(img, 14, 6, 14, 10, row, col, OL)
+  cpx(img, 13, 11, row, col, OL)
+  cpx(img, 3, 14, row, col, OL)
+  cpx(img, 12, 14, row, col, OL)
+  cline(img, 4, 15, 11, 15, row, col, OL)
+end
+
+--- 40: Biomass - organic green mass with leaf motifs
+function C.draw_biomass(img, row, col)
+  -- Irregular organic blob
+  crect(img, 3, 3, 12, 13, row, col, C.BIO_BASE)
+  crect(img, 2, 5, 13, 11, row, col, C.BIO_BASE)
+  crect(img, 5, 2, 10, 14, row, col, C.BIO_BASE)
+  -- Leaf vein patterns
+  cline(img, 4, 5, 7, 8, row, col, C.BIO_LEAF)
+  cline(img, 7, 8, 11, 6, row, col, C.BIO_LEAF)
+  cpx(img, 5, 10, row, col, C.BIO_LEAF)
+  cpx(img, 6, 11, row, col, C.BIO_LEAF)
+  cpx(img, 9, 10, row, col, C.BIO_LEAF)
+  cpx(img, 10, 11, row, col, C.BIO_LEAF)
+  -- Highlight
+  crect(img, 4, 4, 7, 5, row, col, C.BIO_HI)
+  cpx(img, 3, 5, row, col, C.BIO_HI)
+  cpx(img, 3, 6, row, col, C.BIO_HI)
+  -- Shadow
+  crect(img, 10, 11, 12, 12, row, col, C.BIO_SH)
+  cpx(img, 11, 13, row, col, C.BIO_SH)
+  -- Texture spots
+  cpx(img, 8, 4, row, col, H.hex("#306820"))
+  cpx(img, 6, 9, row, col, H.hex("#306820"))
+  cpx(img, 10, 7, row, col, H.hex("#306820"))
+  -- Outline
+  cline(img, 5, 1, 10, 1, row, col, OL)
+  cpx(img, 4, 2, row, col, OL)
+  cpx(img, 11, 2, row, col, OL)
+  cpx(img, 2, 4, row, col, OL)
+  cpx(img, 13, 4, row, col, OL)
+  cline(img, 1, 5, 1, 11, row, col, OL)
+  cline(img, 14, 5, 14, 11, row, col, OL)
+  cpx(img, 2, 12, row, col, OL)
+  cpx(img, 13, 12, row, col, OL)
+  cpx(img, 3, 2, row, col, OL)
+  cpx(img, 12, 2, row, col, OL)
+  cpx(img, 4, 14, row, col, OL)
+  cpx(img, 11, 14, row, col, OL)
+  cline(img, 5, 15, 10, 15, row, col, OL)
+  cpx(img, 3, 13, row, col, OL)
+  cpx(img, 12, 13, row, col, OL)
+end
+
+--- 41: Plastic - smooth white pellet
+function C.draw_plastic(img, row, col)
+  -- Smooth rounded rectangle pellet
+  crect(img, 3, 4, 12, 12, row, col, C.PLAS_BASE)
+  crect(img, 4, 3, 11, 13, row, col, C.PLAS_BASE)
+  crect(img, 5, 2, 10, 14, row, col, C.PLAS_BASE)
+  -- Highlight (large bright area)
+  crect(img, 4, 4, 8, 6, row, col, C.PLAS_HI)
+  cpx(img, 5, 3, row, col, C.PLAS_HI)
+  cpx(img, 6, 3, row, col, C.PLAS_HI)
+  cpx(img, 3, 5, row, col, C.PLAS_HI)
+  cpx(img, 3, 6, row, col, C.PLAS_HI)
+  -- White gleam
+  cpx(img, 5, 4, row, col, H.hex("#FFFFFF"))
+  cpx(img, 6, 4, row, col, H.hex("#FFFFFF"))
+  -- Shadow
+  crect(img, 9, 11, 11, 12, row, col, C.PLAS_SH)
+  cpx(img, 12, 9, row, col, C.PLAS_SH)
+  cpx(img, 12, 10, row, col, C.PLAS_SH)
+  cpx(img, 10, 13, row, col, C.PLAS_SH)
+  -- Subtle seam line
+  cline(img, 3, 8, 12, 8, row, col, H.hex("#D0C8B8"))
+  -- Outline
+  cline(img, 5, 1, 10, 1, row, col, OL)
+  cpx(img, 4, 2, row, col, OL)
+  cpx(img, 11, 2, row, col, OL)
+  cpx(img, 3, 3, row, col, OL)
+  cpx(img, 12, 3, row, col, OL)
+  cpx(img, 2, 4, row, col, OL)
+  cpx(img, 13, 4, row, col, OL)
+  cline(img, 2, 5, 2, 11, row, col, OL)
+  cline(img, 13, 5, 13, 11, row, col, OL)
+  cpx(img, 3, 12, row, col, OL)
+  cpx(img, 12, 12, row, col, OL)
+  cpx(img, 4, 13, row, col, OL)
+  cpx(img, 11, 13, row, col, OL)
+  cline(img, 5, 15, 10, 15, row, col, OL)
+  cpx(img, 4, 14, row, col, OL)
+  cpx(img, 11, 14, row, col, OL)
+end
+
+--- 42: Rubber - dark elastic block
+function C.draw_rubber(img, row, col)
+  -- Blocky body with slight rounding
+  crect(img, 2, 3, 13, 13, row, col, C.RUB_BASE)
+  crect(img, 3, 2, 12, 14, row, col, C.RUB_BASE)
+  -- Highlight
+  crect(img, 3, 3, 6, 5, row, col, C.RUB_HI)
+  cpx(img, 3, 2, row, col, C.RUB_HI)
+  cpx(img, 4, 2, row, col, C.RUB_HI)
+  cpx(img, 2, 4, row, col, C.RUB_HI)
+  -- Shadow
+  crect(img, 10, 11, 13, 13, row, col, C.RUB_SH)
+  cpx(img, 12, 14, row, col, C.RUB_SH)
+  -- Elastic stretch marks (subtle lines)
+  cline(img, 4, 7, 11, 7, row, col, H.hex("#3A3A3A"))
+  cline(img, 4, 10, 11, 10, row, col, H.hex("#3A3A3A"))
+  -- Matte texture dots
+  cpx(img, 6, 6, row, col, H.hex("#3C3C3C"))
+  cpx(img, 9, 9, row, col, H.hex("#3C3C3C"))
+  cpx(img, 5, 12, row, col, H.hex("#3C3C3C"))
+  -- Outline
+  cline(img, 3, 1, 12, 1, row, col, OL)
+  cpx(img, 2, 2, row, col, OL)
+  cpx(img, 13, 2, row, col, OL)
+  cpx(img, 1, 3, row, col, OL)
+  cpx(img, 14, 3, row, col, OL)
+  cline(img, 1, 4, 1, 12, row, col, OL)
+  cline(img, 14, 4, 14, 12, row, col, OL)
+  cpx(img, 2, 13, row, col, OL)
+  cpx(img, 13, 13, row, col, OL)
+  cpx(img, 2, 14, row, col, OL)
+  cpx(img, 13, 14, row, col, OL)
+  cline(img, 3, 15, 12, 15, row, col, OL)
+end
+
+--- 43: Acid - bright green liquid in a vial
+function C.draw_acid(img, row, col)
+  -- Vial body (tall thin glass)
+  crect(img, 5, 3, 10, 13, row, col, C.ACID_VIAL)
+  crect(img, 6, 2, 9, 14, row, col, C.ACID_VIAL)
+  -- Neck
+  crect(img, 6, 1, 9, 2, row, col, C.ACID_VIAL)
+  -- Stopper
+  crect(img, 7, 0, 8, 1, row, col, H.hex("#606060"))
+  coutline(img, 7, 0, 8, 1, row, col, OL)
+  -- Green liquid fill
+  crect(img, 5, 7, 10, 13, row, col, C.ACID_BASE)
+  crect(img, 6, 6, 9, 14, row, col, C.ACID_BASE)
+  -- Liquid highlight
+  cpx(img, 6, 7, row, col, C.ACID_HI)
+  cpx(img, 7, 7, row, col, C.ACID_HI)
+  cpx(img, 6, 8, row, col, C.ACID_HI)
+  -- Liquid shadow
+  cpx(img, 9, 13, row, col, C.ACID_SH)
+  cpx(img, 10, 12, row, col, C.ACID_SH)
+  cpx(img, 9, 14, row, col, C.ACID_SH)
+  -- Bubbles
+  cpx(img, 7, 5, row, col, H.hex("#80FF80"))
+  cpx(img, 8, 6, row, col, H.hex("#A0FFA0"))
+  -- Glass sheen
+  cpx(img, 5, 4, row, col, H.hex("#FFFFFF"))
+  cpx(img, 5, 5, row, col, H.hex("#E8F0FF"))
+  -- Outline
+  cpx(img, 5, 1, row, col, OL)
+  cpx(img, 10, 1, row, col, OL)
+  cpx(img, 4, 2, row, col, OL)
+  cpx(img, 11, 2, row, col, OL)
+  cpx(img, 4, 3, row, col, OL)
+  cpx(img, 11, 3, row, col, OL)
+  cline(img, 4, 4, 4, 12, row, col, OL)
+  cline(img, 11, 4, 11, 12, row, col, OL)
+  cpx(img, 5, 13, row, col, OL)
+  cpx(img, 10, 13, row, col, OL)
+  cpx(img, 5, 14, row, col, OL)
+  cpx(img, 10, 14, row, col, OL)
+  cline(img, 6, 15, 9, 15, row, col, OL)
+end
+
+--- 44: Silicon - dark blue-gray wafer with grid pattern
+function C.draw_silicon(img, row, col)
+  -- Square wafer body
+  crect(img, 2, 2, 13, 13, row, col, C.SILI_BASE)
+  crect(img, 3, 1, 12, 14, row, col, C.SILI_BASE)
+  -- Highlight
+  crect(img, 3, 2, 7, 4, row, col, C.SILI_HI)
+  cpx(img, 2, 3, row, col, C.SILI_HI)
+  cpx(img, 2, 4, row, col, C.SILI_HI)
+  -- Shadow
+  crect(img, 10, 11, 13, 13, row, col, C.SILI_SH)
+  cpx(img, 12, 14, row, col, C.SILI_SH)
+  -- Grid pattern (die markings)
+  for y = 4, 12, 2 do
+    cline(img, 3, y, 12, y, row, col, C.SILI_GRID)
+  end
+  for x = 4, 12, 2 do
+    cline(img, x, 3, x, 13, row, col, C.SILI_GRID)
+  end
+  -- Orientation notch
+  cpx(img, 7, 1, row, col, T)
+  cpx(img, 8, 1, row, col, T)
+  -- Outline
+  cline(img, 3, 0, 6, 0, row, col, OL)
+  cline(img, 9, 0, 12, 0, row, col, OL)
+  cpx(img, 2, 1, row, col, OL)
+  cpx(img, 13, 1, row, col, OL)
+  cpx(img, 1, 2, row, col, OL)
+  cpx(img, 14, 2, row, col, OL)
+  cline(img, 1, 3, 1, 13, row, col, OL)
+  cline(img, 14, 3, 14, 13, row, col, OL)
+  cpx(img, 2, 14, row, col, OL)
+  cpx(img, 13, 14, row, col, OL)
+  cline(img, 3, 15, 12, 15, row, col, OL)
+end
+
+--- 45: Carbon Fiber - woven dark sheet with crosshatch
+function C.draw_carbon_fiber(img, row, col)
+  -- Sheet body
+  crect(img, 2, 2, 13, 13, row, col, C.CFIB_BASE)
+  crect(img, 3, 1, 12, 14, row, col, C.CFIB_BASE)
+  -- Crosshatch weave pattern
+  for y = 2, 13 do
+    for x = 2, 13 do
+      if (x + y) % 2 == 0 then
+        cpx(img, x, y, row, col, C.CFIB_WEAVE)
+      end
+    end
+  end
+  -- Highlight (top-left corner)
+  crect(img, 3, 2, 6, 4, row, col, C.CFIB_HI)
+  cpx(img, 2, 3, row, col, C.CFIB_HI)
+  cpx(img, 2, 4, row, col, C.CFIB_HI)
+  -- Shadow
+  crect(img, 10, 11, 13, 13, row, col, C.CFIB_SH)
+  cpx(img, 11, 14, row, col, C.CFIB_SH)
+  -- Subtle fiber shine
+  cpx(img, 4, 3, row, col, H.hex("#505050"))
+  cpx(img, 6, 5, row, col, H.hex("#505050"))
+  cpx(img, 8, 7, row, col, H.hex("#505050"))
+  -- Outline
+  cline(img, 3, 0, 12, 0, row, col, OL)
+  cpx(img, 2, 1, row, col, OL)
+  cpx(img, 13, 1, row, col, OL)
+  cpx(img, 1, 2, row, col, OL)
+  cpx(img, 14, 2, row, col, OL)
+  cline(img, 1, 3, 1, 13, row, col, OL)
+  cline(img, 14, 3, 14, 13, row, col, OL)
+  cpx(img, 2, 14, row, col, OL)
+  cpx(img, 13, 14, row, col, OL)
+  cline(img, 3, 15, 12, 15, row, col, OL)
+end
+
+--- 46: Refined Uranium - bright green glowing rod
+function C.draw_refined_uranium(img, row, col)
+  -- Cylindrical rod body
+  crect(img, 5, 2, 10, 14, row, col, C.RURA_BASE)
+  crect(img, 6, 1, 9, 14, row, col, C.RURA_BASE)
+  -- Top cap
+  crect(img, 5, 1, 10, 2, row, col, H.hex("#808088"))
+  coutline(img, 5, 1, 10, 2, row, col, OL)
+  -- Bottom cap
+  crect(img, 5, 13, 10, 14, row, col, H.hex("#808088"))
+  coutline(img, 5, 13, 10, 14, row, col, OL)
+  -- Glow highlight
+  crect(img, 6, 4, 8, 7, row, col, C.RURA_HI)
+  cpx(img, 7, 5, row, col, C.RURA_GLOW)
+  cpx(img, 7, 6, row, col, C.RURA_GLOW)
+  -- Shadow side
+  crect(img, 9, 8, 10, 12, row, col, C.RURA_SH)
+  -- Radioactive symbol hint
+  cpx(img, 7, 9, row, col, H.hex("#1A1A1E"))
+  cpx(img, 8, 10, row, col, H.hex("#1A1A1E"))
+  cpx(img, 7, 11, row, col, H.hex("#1A1A1E"))
+  -- Glow aura pixels
+  cpx(img, 4, 5, row, col, H.hex("#60FF4080"))
+  cpx(img, 4, 8, row, col, H.hex("#60FF4080"))
+  cpx(img, 11, 6, row, col, H.hex("#60FF4080"))
+  cpx(img, 11, 9, row, col, H.hex("#60FF4080"))
+  -- Outline
+  cpx(img, 4, 2, row, col, OL)
+  cpx(img, 11, 2, row, col, OL)
+  cline(img, 4, 3, 4, 12, row, col, OL)
+  cline(img, 11, 3, 11, 12, row, col, OL)
+  cpx(img, 5, 0, row, col, OL)
+  cpx(img, 10, 0, row, col, OL)
+end
+
+--- 47: Bio Compound - green gel in a capsule
+function C.draw_bio_compound(img, row, col)
+  -- Capsule body (rounded pill shape)
+  crect(img, 4, 3, 11, 13, row, col, C.BIOC_BASE)
+  crect(img, 3, 5, 12, 11, row, col, C.BIOC_BASE)
+  crect(img, 5, 2, 10, 14, row, col, C.BIOC_BASE)
+  -- Capsule top cap (metallic)
+  crect(img, 4, 2, 11, 4, row, col, C.BIOC_CAP)
+  crect(img, 5, 1, 10, 3, row, col, C.BIOC_CAP)
+  coutline(img, 5, 1, 10, 3, row, col, OL)
+  cpx(img, 4, 2, row, col, OL)
+  cpx(img, 11, 2, row, col, OL)
+  cpx(img, 4, 3, row, col, OL)
+  cpx(img, 11, 3, row, col, OL)
+  -- Gel highlight
+  crect(img, 5, 5, 7, 7, row, col, C.BIOC_HI)
+  cpx(img, 4, 6, row, col, C.BIOC_HI)
+  -- Gel shadow
+  crect(img, 9, 11, 11, 12, row, col, C.BIOC_SH)
+  cpx(img, 10, 13, row, col, C.BIOC_SH)
+  -- Organic swirl marks
+  cpx(img, 6, 8, row, col, H.hex("#48B840"))
+  cpx(img, 7, 9, row, col, H.hex("#48B840"))
+  cpx(img, 8, 8, row, col, H.hex("#48B840"))
+  cpx(img, 9, 10, row, col, H.hex("#48B840"))
+  -- Outline
+  cpx(img, 3, 4, row, col, OL)
+  cpx(img, 12, 4, row, col, OL)
+  cline(img, 3, 5, 3, 11, row, col, OL)
+  cline(img, 12, 5, 12, 11, row, col, OL)
+  cpx(img, 4, 12, row, col, OL)
+  cpx(img, 11, 12, row, col, OL)
+  cpx(img, 4, 13, row, col, OL)
+  cpx(img, 11, 13, row, col, OL)
+  cline(img, 5, 15, 10, 15, row, col, OL)
+  cpx(img, 4, 14, row, col, OL)
+  cpx(img, 11, 14, row, col, OL)
+end
+
+--- 48: Ceramic - smooth tan disc/tile
+function C.draw_ceramic(img, row, col)
+  -- Wide disc body
+  crect(img, 2, 4, 13, 12, row, col, C.CERA_BASE)
+  crect(img, 3, 3, 12, 13, row, col, C.CERA_BASE)
+  crect(img, 5, 2, 10, 14, row, col, C.CERA_BASE)
+  -- Highlight top
+  crect(img, 3, 3, 10, 5, row, col, C.CERA_HI)
+  cpx(img, 5, 2, row, col, C.CERA_HI)
+  cpx(img, 6, 2, row, col, C.CERA_HI)
+  cpx(img, 2, 5, row, col, C.CERA_HI)
+  cpx(img, 2, 6, row, col, C.CERA_HI)
+  -- Shadow bottom
+  crect(img, 9, 11, 12, 12, row, col, C.CERA_SH)
+  cpx(img, 10, 13, row, col, C.CERA_SH)
+  cpx(img, 13, 9, row, col, C.CERA_SH)
+  cpx(img, 13, 10, row, col, C.CERA_SH)
+  -- Glaze sheen
+  cpx(img, 5, 4, row, col, H.hex("#F0E8D0"))
+  cpx(img, 6, 4, row, col, H.hex("#F0E8D0"))
+  -- Subtle center design
+  ccircle_ol(img, 7, 8, 2, row, col, H.hex("#C0B090"))
+  -- Outline
+  cline(img, 5, 1, 10, 1, row, col, OL)
+  cpx(img, 4, 2, row, col, OL)
+  cpx(img, 11, 2, row, col, OL)
+  cpx(img, 2, 3, row, col, OL)
+  cpx(img, 13, 3, row, col, OL)
+  cpx(img, 1, 4, row, col, OL)
+  cpx(img, 14, 4, row, col, OL)
+  cline(img, 1, 5, 1, 11, row, col, OL)
+  cline(img, 14, 5, 14, 11, row, col, OL)
+  cpx(img, 2, 12, row, col, OL)
+  cpx(img, 13, 12, row, col, OL)
+  cpx(img, 3, 13, row, col, OL)
+  cpx(img, 12, 13, row, col, OL)
+  cpx(img, 4, 14, row, col, OL)
+  cpx(img, 11, 14, row, col, OL)
+  cline(img, 5, 15, 10, 15, row, col, OL)
+end
+
+--- 49: Alloy Plate - blue-gray metallic plate
+function C.draw_alloy_plate(img, row, col)
+  cshaded(img, 2, 3, 13, 13, row, col, C.ALLOY_BASE, C.ALLOY_HI, C.ALLOY_SH)
+  coutline(img, 2, 3, 13, 13, row, col, OL)
+  -- Bevel highlight
+  cpx(img, 3, 4, row, col, C.ALLOY_HI)
+  cpx(img, 4, 4, row, col, C.ALLOY_HI)
+  cpx(img, 3, 5, row, col, C.ALLOY_HI)
+  -- Alloy speckle pattern
+  cpx(img, 6, 6, row, col, H.hex("#8898B0"))
+  cpx(img, 9, 7, row, col, H.hex("#8898B0"))
+  cpx(img, 5, 9, row, col, H.hex("#8898B0"))
+  cpx(img, 10, 10, row, col, H.hex("#8898B0"))
+  cpx(img, 7, 11, row, col, H.hex("#8898B0"))
+  -- Center sheen line
+  cline(img, 3, 8, 12, 8, row, col, C.ALLOY_HI)
+end
+
+--- 50: Insulated Wire - copper wire with black rubber coating
+function C.draw_insulated_wire(img, row, col)
+  -- Coiled wire with insulation showing
+  for i = 0, 3 do
+    local cy = 4 + i * 3
+    -- Black insulation outer
+    crect(img, 4, cy, 11, cy + 1, row, col, C.IWIRE_COAT)
+    cpx(img, 3, cy, row, col, C.IWIRE_COAT)
+    cpx(img, 12, cy, row, col, C.IWIRE_COAT)
+    cpx(img, 3, cy + 1, row, col, C.IWIRE_COAT_H)
+    cpx(img, 12, cy + 1, row, col, C.IWIRE_COAT_H)
+    -- Copper core visible in gaps
+    crect(img, 5, cy + 2, 10, cy + 2, row, col, C.IWIRE_BASE)
+    cpx(img, 6, cy + 2, row, col, H.hex("#F0A858"))
+    cpx(img, 7, cy + 2, row, col, H.hex("#F0A858"))
+  end
+  -- End caps
+  cpx(img, 7, 3, row, col, OL)
+  cpx(img, 8, 3, row, col, OL)
+  cpx(img, 7, 14, row, col, C.IWIRE_COAT)
+  cpx(img, 8, 14, row, col, C.IWIRE_COAT)
+  -- Outline on sides
+  cline(img, 3, 3, 3, 14, row, col, OL)
+  cline(img, 12, 3, 12, 14, row, col, OL)
+  cpx(img, 4, 3, row, col, OL)
+  cpx(img, 11, 3, row, col, OL)
+  cpx(img, 4, 14, row, col, OL)
+  cpx(img, 11, 14, row, col, OL)
+end
+
+--- 51: Heat Sink - metallic finned radiator
+function C.draw_heat_sink(img, row, col)
+  -- Base plate
+  crect(img, 2, 11, 13, 14, row, col, C.HSINK_BASE)
+  cline(img, 2, 11, 13, 11, row, col, C.HSINK_HI)
+  -- Fins (vertical)
+  for x = 3, 12, 2 do
+    crect(img, x, 2, x + 1, 11, row, col, C.HSINK_FIN)
+    cpx(img, x, 2, row, col, C.HSINK_HI)
+    cpx(img, x, 3, row, col, C.HSINK_HI)
+    cpx(img, x + 1, 9, row, col, C.HSINK_SH)
+    cpx(img, x + 1, 10, row, col, C.HSINK_SH)
+  end
+  -- Shadow on base
+  crect(img, 10, 12, 13, 13, row, col, C.HSINK_SH)
+  -- Outline
+  cline(img, 2, 1, 13, 1, row, col, OL)
+  cline(img, 2, 12, 2, 14, row, col, OL)
+  cline(img, 1, 2, 1, 11, row, col, OL)
+  cline(img, 14, 2, 14, 11, row, col, OL)
+  cline(img, 1, 12, 1, 14, row, col, OL)
+  cline(img, 14, 12, 14, 14, row, col, OL)
+  cline(img, 2, 15, 13, 15, row, col, OL)
+  -- Gaps between fins
+  for x = 4, 12, 2 do
+    cline(img, x + 1, 2, x + 1, 10, row, col, OL)
+  end
+end
+
+--- 52: Filter - gray mesh/screen in frame
+function C.draw_filter(img, row, col)
+  -- Outer frame
+  coutline(img, 2, 2, 13, 13, row, col, C.FILT_BASE)
+  coutline(img, 3, 3, 12, 12, row, col, C.FILT_BASE)
+  -- Frame highlight
+  cline(img, 2, 2, 13, 2, row, col, C.FILT_HI)
+  cline(img, 2, 3, 2, 13, row, col, C.FILT_HI)
+  -- Frame shadow
+  cline(img, 2, 13, 13, 13, row, col, C.FILT_SH)
+  cline(img, 13, 2, 13, 13, row, col, C.FILT_SH)
+  -- Mesh interior (checkerboard pattern)
+  for y = 4, 11 do
+    for x = 4, 11 do
+      if (x + y) % 2 == 0 then
+        cpx(img, x, y, row, col, C.FILT_MESH)
+      else
+        cpx(img, x, y, row, col, C.FILT_SH)
+      end
+    end
+  end
+  -- Outline
+  coutline(img, 1, 1, 14, 14, row, col, OL)
+  -- Inner outline
+  coutline(img, 4, 4, 11, 11, row, col, OL)
+  -- Corner rivets
+  cpx(img, 3, 3, row, col, OL)
+  cpx(img, 12, 3, row, col, OL)
+  cpx(img, 3, 12, row, col, OL)
+  cpx(img, 12, 12, row, col, OL)
+end
+
+--- 53: Plastic Casing - white/cream box or shell
+function C.draw_plastic_casing(img, row, col)
+  -- Box body
+  cshaded(img, 2, 3, 13, 14, row, col, C.PCAS_BASE, C.PCAS_HI, C.PCAS_SH)
+  -- Lid/top
+  crect(img, 2, 2, 13, 4, row, col, C.PCAS_HI)
+  cline(img, 2, 4, 13, 4, row, col, C.PCAS_SH)
+  -- Snap detail on lid
+  crect(img, 6, 2, 9, 3, row, col, C.PCAS_SH)
+  -- Side rib details
+  cline(img, 3, 7, 12, 7, row, col, H.hex("#D0C8B8"))
+  cline(img, 3, 10, 12, 10, row, col, H.hex("#D0C8B8"))
+  -- Rounded corner hint
+  cpx(img, 2, 3, row, col, C.PCAS_HI)
+  cpx(img, 13, 3, row, col, C.PCAS_SH)
+  -- Outline
+  cline(img, 2, 1, 13, 1, row, col, OL)
+  cpx(img, 1, 2, row, col, OL)
+  cpx(img, 14, 2, row, col, OL)
+  cline(img, 1, 3, 1, 13, row, col, OL)
+  cline(img, 14, 3, 14, 13, row, col, OL)
+  cpx(img, 2, 14, row, col, OL)
+  cpx(img, 13, 14, row, col, OL)
+  cline(img, 2, 15, 13, 15, row, col, OL)
+end
+
+--- 54: Crystal Oscillator - purple crystal in metal housing
+function C.draw_crystal_oscillator(img, row, col)
+  -- Metal housing (rectangular can)
+  crect(img, 3, 5, 12, 13, row, col, C.COSC_CASE)
+  cline(img, 3, 5, 12, 5, row, col, C.COSC_CASE_H)
+  cline(img, 3, 6, 3, 12, row, col, C.COSC_CASE_H)
+  -- Purple crystal visible through window
+  crect(img, 5, 7, 10, 11, row, col, C.COSC_BASE)
+  cpx(img, 6, 7, row, col, C.COSC_HI)
+  cpx(img, 7, 7, row, col, C.COSC_HI)
+  cpx(img, 6, 8, row, col, C.COSC_HI)
+  -- Crystal gleam
+  cpx(img, 7, 8, row, col, C.CRYS_GLEAM)
+  -- Pins protruding from top
+  cpx(img, 5, 2, row, col, H.hex("#E8C840"))
+  cpx(img, 5, 3, row, col, H.hex("#E8C840"))
+  cpx(img, 5, 4, row, col, H.hex("#E8C840"))
+  cpx(img, 10, 2, row, col, H.hex("#E8C840"))
+  cpx(img, 10, 3, row, col, H.hex("#E8C840"))
+  cpx(img, 10, 4, row, col, H.hex("#E8C840"))
+  -- Pin outlines
+  cpx(img, 4, 2, row, col, OL)
+  cpx(img, 6, 2, row, col, OL)
+  cpx(img, 4, 3, row, col, OL)
+  cpx(img, 6, 3, row, col, OL)
+  cpx(img, 4, 4, row, col, OL)
+  cpx(img, 6, 4, row, col, OL)
+  cpx(img, 9, 2, row, col, OL)
+  cpx(img, 11, 2, row, col, OL)
+  cpx(img, 9, 3, row, col, OL)
+  cpx(img, 11, 3, row, col, OL)
+  cpx(img, 9, 4, row, col, OL)
+  cpx(img, 11, 4, row, col, OL)
+  -- Housing outline
+  coutline(img, 3, 5, 12, 13, row, col, OL)
+  -- Window outline
+  coutline(img, 5, 7, 10, 11, row, col, H.hex("#505860"))
+end
+
+--- 55: Quantum Chip - deep blue/purple chip with glowing traces
+function C.draw_quantum_chip(img, row, col)
+  -- Chip body
+  crect(img, 3, 3, 12, 13, row, col, C.QCHP_BASE)
+  crect(img, 4, 2, 11, 14, row, col, C.QCHP_BASE)
+  -- Top surface
+  crect(img, 4, 3, 11, 12, row, col, C.QCHP_HI)
+  -- Glowing traces
+  cline(img, 5, 5, 10, 5, row, col, C.QCHP_TRACE)
+  cline(img, 7, 5, 7, 10, row, col, C.QCHP_TRACE)
+  cline(img, 5, 8, 10, 8, row, col, C.QCHP_TRACE)
+  cline(img, 5, 11, 10, 11, row, col, C.QCHP_TRACE)
+  -- Glow center
+  cpx(img, 7, 7, row, col, C.QCHP_GLOW)
+  cpx(img, 8, 7, row, col, C.QCHP_GLOW)
+  cpx(img, 7, 8, row, col, C.QCHP_GLOW)
+  cpx(img, 8, 8, row, col, C.QCHP_GLOW)
+  -- Gold pins
+  for i = 0, 3 do
+    cpx(img, 4 + i * 2, 1, row, col, H.hex("#E8C840"))
+    cpx(img, 4 + i * 2, 14, row, col, H.hex("#E8C840"))
+    cpx(img, 2, 4 + i * 2, row, col, H.hex("#E8C840"))
+    cpx(img, 13, 4 + i * 2, row, col, H.hex("#E8C840"))
+  end
+  -- Outline
+  cline(img, 3, 2, 12, 2, row, col, OL)
+  cline(img, 3, 13, 12, 13, row, col, OL)
+  cpx(img, 3, 3, row, col, OL)
+  cpx(img, 12, 3, row, col, OL)
+  cpx(img, 3, 12, row, col, OL)
+  cpx(img, 12, 12, row, col, OL)
+  cline(img, 2, 3, 2, 12, row, col, OL)
+  cline(img, 13, 3, 13, 12, row, col, OL)
+end
+
+--- 56: Nano Fiber - very dark strand bundle with subtle shimmer
+function C.draw_nano_fiber(img, row, col)
+  -- Bundle of strands (vertical)
+  crect(img, 4, 2, 11, 14, row, col, C.NFIB_BASE)
+  crect(img, 3, 3, 12, 13, row, col, C.NFIB_BASE)
+  -- Individual strand highlights
+  for y = 3, 13 do
+    cpx(img, 5, y, row, col, C.NFIB_HI)
+    cpx(img, 8, y, row, col, C.NFIB_HI)
+    cpx(img, 11, y, row, col, C.NFIB_HI)
+  end
+  -- Shimmer spots
+  cpx(img, 5, 4, row, col, C.NFIB_SHIM)
+  cpx(img, 8, 6, row, col, C.NFIB_SHIM)
+  cpx(img, 11, 5, row, col, C.NFIB_SHIM)
+  cpx(img, 5, 9, row, col, C.NFIB_SHIM)
+  cpx(img, 8, 11, row, col, C.NFIB_SHIM)
+  cpx(img, 11, 10, row, col, C.NFIB_SHIM)
+  -- Shadow edges
+  crect(img, 10, 12, 12, 13, row, col, C.NFIB_SH)
+  -- Binding ties
+  cline(img, 4, 4, 11, 4, row, col, H.hex("#404060"))
+  cline(img, 4, 12, 11, 12, row, col, H.hex("#404060"))
+  -- Outline
+  cline(img, 4, 1, 11, 1, row, col, OL)
+  cpx(img, 3, 2, row, col, OL)
+  cpx(img, 12, 2, row, col, OL)
+  cline(img, 2, 3, 2, 13, row, col, OL)
+  cline(img, 13, 3, 13, 13, row, col, OL)
+  cpx(img, 3, 14, row, col, OL)
+  cpx(img, 12, 14, row, col, OL)
+  cline(img, 4, 15, 11, 15, row, col, OL)
+end
+
+--- 57: Fusion Cell - cyan/teal glowing cylinder
+function C.draw_fusion_cell(img, row, col)
+  -- Cylindrical body
+  crect(img, 4, 3, 11, 13, row, col, C.FCEL_BASE)
+  crect(img, 5, 2, 10, 14, row, col, C.FCEL_BASE)
+  -- Top cap
+  crect(img, 4, 2, 11, 3, row, col, H.hex("#606870"))
+  coutline(img, 4, 2, 11, 3, row, col, OL)
+  -- Bottom cap
+  crect(img, 4, 13, 11, 14, row, col, H.hex("#606870"))
+  coutline(img, 4, 13, 11, 14, row, col, OL)
+  -- Glow highlight center
+  crect(img, 6, 6, 9, 10, row, col, C.FCEL_HI)
+  cpx(img, 7, 7, row, col, C.FCEL_GLOW)
+  cpx(img, 8, 7, row, col, C.FCEL_GLOW)
+  cpx(img, 7, 8, row, col, C.FCEL_GLOW)
+  cpx(img, 8, 8, row, col, C.FCEL_GLOW)
+  -- Shadow
+  crect(img, 10, 9, 11, 12, row, col, C.FCEL_SH)
+  -- Energy bands
+  cline(img, 5, 5, 10, 5, row, col, C.FCEL_HI)
+  cline(img, 5, 11, 10, 11, row, col, C.FCEL_HI)
+  -- Outline
+  cpx(img, 3, 3, row, col, OL)
+  cpx(img, 12, 3, row, col, OL)
+  cline(img, 3, 4, 3, 12, row, col, OL)
+  cline(img, 12, 4, 12, 12, row, col, OL)
+  cpx(img, 4, 1, row, col, OL)
+  cpx(img, 11, 1, row, col, OL)
+end
+
+--- 58: Robot Arm - metallic articulated arm with joints
+function C.draw_robot_arm(img, row, col)
+  -- Base mount
+  crect(img, 5, 12, 10, 14, row, col, C.RARM_BASE)
+  coutline(img, 5, 12, 10, 14, row, col, OL)
+  cline(img, 5, 12, 10, 12, row, col, C.RARM_HI)
+  -- Lower arm segment
+  crect(img, 8, 7, 10, 12, row, col, C.RARM_BASE)
+  cline(img, 8, 7, 8, 11, row, col, C.RARM_HI)
+  cpx(img, 10, 10, row, col, C.RARM_SH)
+  cpx(img, 10, 11, row, col, C.RARM_SH)
+  -- Elbow joint
+  ccircle(img, 8, 7, 2, row, col, C.RARM_JOINT)
+  ccircle_ol(img, 8, 7, 2, row, col, OL)
+  cpx(img, 8, 7, row, col, H.hex("#404850"))
+  -- Upper arm segment
+  crect(img, 5, 3, 8, 7, row, col, C.RARM_BASE)
+  cline(img, 5, 3, 5, 6, row, col, C.RARM_HI)
+  cpx(img, 8, 5, row, col, C.RARM_SH)
+  cpx(img, 8, 6, row, col, C.RARM_SH)
+  -- Shoulder joint
+  ccircle(img, 5, 3, 2, row, col, C.RARM_JOINT)
+  ccircle_ol(img, 5, 3, 2, row, col, OL)
+  cpx(img, 5, 3, row, col, H.hex("#404850"))
+  -- Gripper/hand
+  crect(img, 3, 1, 7, 3, row, col, C.RARM_HI)
+  coutline(img, 3, 1, 7, 3, row, col, OL)
+  -- Gripper prongs
+  cpx(img, 3, 0, row, col, C.RARM_BASE)
+  cpx(img, 7, 0, row, col, C.RARM_BASE)
+  cpx(img, 2, 0, row, col, OL)
+  cpx(img, 8, 0, row, col, OL)
+  cpx(img, 2, 1, row, col, OL)
+  cpx(img, 8, 1, row, col, OL)
+  -- Outline segments
+  cpx(img, 7, 7, row, col, OL)
+  cpx(img, 11, 7, row, col, OL)
+  cline(img, 11, 8, 11, 11, row, col, OL)
+  cpx(img, 4, 3, row, col, OL)
+  cpx(img, 4, 4, row, col, OL)
+  cpx(img, 9, 4, row, col, OL)
+  cline(img, 9, 5, 9, 6, row, col, OL)
+end
+
+--- 59: Science Pack 4 (Purple) - glass flask with purple liquid
+function C.draw_science_pack_4(img, row, col)
+  draw_flask(img, row, col, C.SP4_LIQUID, C.SP4_LIQ_HI, C.SP4_LIQ_SH, SP1_GLASS, SP1_CORK)
+end
+
+--- 60: Quantum Computer - dark blue/purple box with glowing center
+function C.draw_quantum_computer(img, row, col)
+  -- Main box body
+  cshaded(img, 2, 2, 13, 14, row, col, C.QCOM_BASE, C.QCOM_HI, C.QCOM_SH)
+  coutline(img, 2, 2, 13, 14, row, col, OL)
+  -- Glowing center orb
+  ccircle(img, 7, 8, 3, row, col, C.QCOM_GLOW)
+  ccircle(img, 7, 8, 2, row, col, H.hex("#80E0FF"))
+  cpx(img, 7, 8, row, col, H.hex("#FFFFFF"))
+  ccircle_ol(img, 7, 8, 3, row, col, H.hex("#2050A0"))
+  -- Radiating traces from center
+  cline(img, 3, 8, 4, 8, row, col, C.QCOM_GLOW)
+  cline(img, 11, 8, 12, 8, row, col, C.QCOM_GLOW)
+  cline(img, 7, 3, 7, 4, row, col, C.QCOM_GLOW)
+  cline(img, 7, 12, 7, 13, row, col, C.QCOM_GLOW)
+  -- Corner details
+  cpx(img, 3, 3, row, col, H.hex("#303058"))
+  cpx(img, 12, 3, row, col, H.hex("#303058"))
+  cpx(img, 3, 13, row, col, H.hex("#303058"))
+  cpx(img, 12, 13, row, col, H.hex("#303058"))
+  -- Status LED
+  cpx(img, 12, 4, row, col, H.hex("#40FF40"))
+  -- Top panel line
+  cline(img, 3, 4, 12, 4, row, col, H.hex("#202048"))
+end
+
+--- 61: Power Armor - orange/brown armored chestplate
+function C.draw_power_armor(img, row, col)
+  -- Chestplate body
+  crect(img, 3, 3, 12, 13, row, col, C.PARM_BASE)
+  crect(img, 2, 5, 13, 11, row, col, C.PARM_BASE)
+  -- Shoulder pads
+  crect(img, 1, 3, 4, 6, row, col, C.PARM_BASE)
+  crect(img, 11, 3, 14, 6, row, col, C.PARM_BASE)
+  cpx(img, 1, 3, row, col, C.PARM_HI)
+  cpx(img, 2, 3, row, col, C.PARM_HI)
+  cpx(img, 11, 3, row, col, C.PARM_HI)
+  cpx(img, 12, 3, row, col, C.PARM_HI)
+  -- Neck hole
+  crect(img, 5, 2, 10, 3, row, col, C.PARM_EDGE)
+  -- Center plate seam
+  cline(img, 7, 4, 8, 4, row, col, C.PARM_EDGE)
+  cline(img, 7, 5, 8, 5, row, col, C.PARM_EDGE)
+  cline(img, 7, 6, 8, 12, row, col, C.PARM_SH)
+  -- Highlight left shoulder/chest
+  crect(img, 3, 4, 6, 6, row, col, C.PARM_HI)
+  cpx(img, 2, 5, row, col, C.PARM_HI)
+  cpx(img, 3, 3, row, col, C.PARM_HI)
+  -- Shadow right/bottom
+  crect(img, 10, 10, 12, 12, row, col, C.PARM_SH)
+  cpx(img, 13, 8, row, col, C.PARM_SH)
+  cpx(img, 13, 9, row, col, C.PARM_SH)
+  -- Power core glow
+  cpx(img, 7, 8, row, col, H.hex("#40C0FF"))
+  cpx(img, 8, 8, row, col, H.hex("#40C0FF"))
+  -- Armor edge rivets
+  cpx(img, 4, 7, row, col, C.PARM_EDGE)
+  cpx(img, 11, 7, row, col, C.PARM_EDGE)
+  cpx(img, 4, 12, row, col, C.PARM_EDGE)
+  cpx(img, 11, 12, row, col, C.PARM_EDGE)
+  -- Outline
+  cline(img, 1, 2, 4, 2, row, col, OL)
+  cline(img, 11, 2, 14, 2, row, col, OL)
+  cpx(img, 0, 3, row, col, OL)
+  cpx(img, 15, 3, row, col, OL)
+  cline(img, 0, 4, 0, 6, row, col, OL)
+  cline(img, 15, 4, 15, 6, row, col, OL)
+  cpx(img, 1, 7, row, col, OL)
+  cpx(img, 14, 7, row, col, OL)
+  cline(img, 1, 8, 1, 12, row, col, OL)
+  cline(img, 14, 8, 14, 12, row, col, OL)
+  cpx(img, 2, 13, row, col, OL)
+  cpx(img, 13, 13, row, col, OL)
+  cline(img, 3, 14, 12, 14, row, col, OL)
+  cpx(img, 5, 1, row, col, OL)
+  cpx(img, 10, 1, row, col, OL)
+end
+
+--- 62: Terraformer - green/brown device with plant motifs
+function C.draw_terraformer(img, row, col)
+  -- Device body (box with rounded top)
+  crect(img, 3, 5, 12, 14, row, col, C.TERR_BASE)
+  crect(img, 4, 4, 11, 14, row, col, C.TERR_BASE)
+  -- Soil-colored base
+  crect(img, 3, 12, 12, 14, row, col, C.TERR_SOIL)
+  cline(img, 3, 12, 12, 12, row, col, H.hex("#886840"))
+  -- Dome/greenhouse top
+  crect(img, 5, 3, 10, 5, row, col, C.TERR_HI)
+  crect(img, 6, 2, 9, 4, row, col, C.TERR_HI)
+  cpx(img, 7, 1, row, col, C.TERR_HI)
+  cpx(img, 8, 1, row, col, C.TERR_HI)
+  -- Plant growth on top
+  cpx(img, 7, 2, row, col, C.TERR_PLANT)
+  cpx(img, 6, 3, row, col, C.TERR_PLANT)
+  cpx(img, 8, 3, row, col, C.TERR_PLANT)
+  cpx(img, 7, 3, row, col, H.hex("#50D840"))
+  cpx(img, 9, 4, row, col, C.TERR_PLANT)
+  cpx(img, 5, 4, row, col, C.TERR_PLANT)
+  -- Leaf detail
+  cpx(img, 5, 2, row, col, C.TERR_PLANT)
+  cpx(img, 10, 2, row, col, C.TERR_PLANT)
+  -- Highlight on body
+  crect(img, 4, 5, 6, 7, row, col, C.TERR_HI)
+  cpx(img, 3, 6, row, col, C.TERR_HI)
+  -- Shadow
+  crect(img, 10, 10, 12, 13, row, col, C.TERR_SH)
+  -- Panel details
+  cline(img, 4, 8, 11, 8, row, col, H.hex("#406830"))
+  cline(img, 4, 10, 11, 10, row, col, H.hex("#406830"))
+  -- Status light
+  cpx(img, 5, 9, row, col, H.hex("#40FF40"))
+  -- Outline
+  cpx(img, 6, 1, row, col, OL)
+  cpx(img, 9, 1, row, col, OL)
+  cpx(img, 5, 2, row, col, OL)
+  cpx(img, 10, 2, row, col, OL)
+  cpx(img, 4, 3, row, col, OL)
+  cpx(img, 11, 3, row, col, OL)
+  cpx(img, 3, 4, row, col, OL)
+  cpx(img, 12, 4, row, col, OL)
+  cpx(img, 2, 5, row, col, OL)
+  cpx(img, 13, 5, row, col, OL)
+  cline(img, 2, 6, 2, 13, row, col, OL)
+  cline(img, 13, 6, 13, 13, row, col, OL)
+  cpx(img, 3, 14, row, col, OL)
+  cpx(img, 12, 14, row, col, OL)
+  cline(img, 3, 15, 12, 15, row, col, OL)
 end
 
 
@@ -1564,13 +2665,96 @@ local function draw_all(img)
   cpx(img, 8, 12, 4, 4, OL)
   cline(img, 5, 14, 7, 14, 4, 4, OL)
   cpx(img, 5, 11, 4, 4, OL)
+
+
+  -- ═════════════════════════════════════════════════════════════════════════
+  -- ROW 4 (cont) + ROW 5-7: NEW ITEMS (indices 37-62)
+  -- ═════════════════════════════════════════════════════════════════════════
+
+  -- (4,5) index 37: oil
+  C.draw_oil(img, 4, 5)
+
+  -- (4,6) index 38: crystal
+  C.draw_crystal(img, 4, 6)
+
+  -- (4,7) index 39: uranium_ore
+  C.draw_uranium_ore(img, 4, 7)
+
+  -- (5,0) index 40: biomass
+  C.draw_biomass(img, 5, 0)
+
+  -- (5,1) index 41: plastic
+  C.draw_plastic(img, 5, 1)
+
+  -- (5,2) index 42: rubber
+  C.draw_rubber(img, 5, 2)
+
+  -- (5,3) index 43: acid
+  C.draw_acid(img, 5, 3)
+
+  -- (5,4) index 44: silicon
+  C.draw_silicon(img, 5, 4)
+
+  -- (5,5) index 45: carbon_fiber
+  C.draw_carbon_fiber(img, 5, 5)
+
+  -- (5,6) index 46: refined_uranium
+  C.draw_refined_uranium(img, 5, 6)
+
+  -- (5,7) index 47: bio_compound
+  C.draw_bio_compound(img, 5, 7)
+
+  -- (6,0) index 48: ceramic
+  C.draw_ceramic(img, 6, 0)
+
+  -- (6,1) index 49: alloy_plate
+  C.draw_alloy_plate(img, 6, 1)
+
+  -- (6,2) index 50: insulated_wire
+  C.draw_insulated_wire(img, 6, 2)
+
+  -- (6,3) index 51: heat_sink
+  C.draw_heat_sink(img, 6, 3)
+
+  -- (6,4) index 52: filter
+  C.draw_filter(img, 6, 4)
+
+  -- (6,5) index 53: plastic_casing
+  C.draw_plastic_casing(img, 6, 5)
+
+  -- (6,6) index 54: crystal_oscillator
+  C.draw_crystal_oscillator(img, 6, 6)
+
+  -- (6,7) index 55: quantum_chip
+  C.draw_quantum_chip(img, 6, 7)
+
+  -- (7,0) index 56: nano_fiber
+  C.draw_nano_fiber(img, 7, 0)
+
+  -- (7,1) index 57: fusion_cell
+  C.draw_fusion_cell(img, 7, 1)
+
+  -- (7,2) index 58: robot_arm
+  C.draw_robot_arm(img, 7, 2)
+
+  -- (7,3) index 59: science_pack_4
+  C.draw_science_pack_4(img, 7, 3)
+
+  -- (7,4) index 60: quantum_computer
+  C.draw_quantum_computer(img, 7, 4)
+
+  -- (7,5) index 61: power_armor
+  C.draw_power_armor(img, 7, 5)
+
+  -- (7,6) index 62: terraformer
+  C.draw_terraformer(img, 7, 6)
+
 end
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- CREATE SPRITE AND EXPORT
 -- ═══════════════════════════════════════════════════════════════════════════
-
 local DIR = "/Users/gorishniymax/Repos/factor/resources/items/sprites"
 
 local spr = Sprite(W, HT, ColorMode.RGB)
@@ -1600,5 +2784,5 @@ app.command.ExportSpriteSheet {
 }
 
 spr:close()
-print("[item_atlas] Generated 128x80 atlas with 37 items")
+print("[item_atlas] Generated 128x128 atlas with 63 items (indices 0-62)")
 print("[item_atlas] done")

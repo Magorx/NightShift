@@ -385,6 +385,308 @@
         "y": 2.5
       },
       "unlocks": []
+    },
+    {
+      "id": "tech_pump",
+      "display_name": "Pump",
+      "description": "Pump for extracting oil from seeps.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 10
+        }
+      ],
+      "effects": [
+        {
+          "callback": "unlock_building",
+          "building_id": "pump"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": -2.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_chemical_plant",
+      "display_name": "Chemical Plant",
+      "description": "Chemical Plant for processing oil into plastics, rubber, acid, and more.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {
+          "callback": "unlock_building",
+          "building_id": "chemical_plant"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": -1.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_centrifuge",
+      "display_name": "Centrifuge",
+      "description": "Centrifuge for refining uranium and producing fusion cells.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 30
+        }
+      ],
+      "effects": [
+        {
+          "callback": "unlock_building",
+          "building_id": "centrifuge"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": -0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_greenhouse",
+      "display_name": "Greenhouse",
+      "description": "Greenhouse for growing renewable biomass from bio compounds.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {
+          "callback": "unlock_building",
+          "building_id": "greenhouse"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": 0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_pipeline",
+      "display_name": "Pipeline",
+      "description": "Long-range item transport — place input and output endpoints up to 10 tiles apart.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {
+          "callback": "unlock_building",
+          "building_id": "pipeline_input"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": 1.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_cartography_4",
+      "display_name": "Cartography IV",
+      "description": "Orbital surveying — reveals the entire map.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 30
+        },
+        {
+          "item": "engine",
+          "quantity": 5
+        }
+      ],
+      "effects": [
+        {
+          "callback": "set_min_zoom",
+          "value": 0.5
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": 2.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_particle_accelerator",
+      "display_name": "Particle Accelerator",
+      "description": "L-shaped particle accelerator for producing quantum chips.",
+      "ring": 5,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_4",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {
+          "callback": "unlock_building",
+          "building_id": "particle_accelerator"
+        }
+      ],
+      "position": {
+        "x": 12,
+        "y": -1.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_fabricator",
+      "display_name": "Fabricator",
+      "description": "T-shaped fabricator for pinnacle-tier items: quantum computers, power armor, terraformers.",
+      "ring": 5,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 40
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 40
+        },
+        {
+          "item": "science_pack_4",
+          "quantity": 30
+        }
+      ],
+      "effects": [
+        {
+          "callback": "unlock_building",
+          "building_id": "fabricator"
+        }
+      ],
+      "position": {
+        "x": 12,
+        "y": -0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_nuclear_reactor",
+      "display_name": "Nuclear Reactor",
+      "description": "Cross-shaped nuclear reactor — massive power generation from fusion cells.",
+      "ring": 5,
+      "cost": [
+        {
+          "item": "science_pack_3",
+          "quantity": 40
+        },
+        {
+          "item": "science_pack_4",
+          "quantity": 30
+        }
+      ],
+      "effects": [
+        {
+          "callback": "unlock_building",
+          "building_id": "nuclear_reactor"
+        }
+      ],
+      "position": {
+        "x": 12,
+        "y": 0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_cartography_5",
+      "display_name": "Cartography V",
+      "description": "Quantum cartography — ultimate map control with terraformer integration.",
+      "ring": 5,
+      "cost": [
+        {
+          "item": "science_pack_3",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_4",
+          "quantity": 20
+        },
+        {
+          "item": "quantum_computer",
+          "quantity": 2
+        }
+      ],
+      "effects": [
+        {
+          "callback": "set_min_zoom",
+          "value": 0.35
+        }
+      ],
+      "position": {
+        "x": 12,
+        "y": 2.5
+      },
+      "unlocks": []
     }
   ],
   "edges": [
@@ -444,6 +746,62 @@
     {
       "from": "tech_cartography_2",
       "to": "tech_cartography_3"
+    },
+    {
+      "from": "tech_assembler_mk2",
+      "to": "tech_pump"
+    },
+    {
+      "from": "tech_assembler_mk2",
+      "to": "tech_chemical_plant"
+    },
+    {
+      "from": "tech_pump",
+      "to": "tech_chemical_plant"
+    },
+    {
+      "from": "tech_assembler_mk2",
+      "to": "tech_centrifuge"
+    },
+    {
+      "from": "tech_fuel_generator",
+      "to": "tech_greenhouse"
+    },
+    {
+      "from": "tech_assembler_mk2",
+      "to": "tech_greenhouse"
+    },
+    {
+      "from": "tech_conveyor_mk3",
+      "to": "tech_pipeline"
+    },
+    {
+      "from": "tech_cartography_3",
+      "to": "tech_cartography_4"
+    },
+    {
+      "from": "tech_chemical_plant",
+      "to": "tech_particle_accelerator"
+    },
+    {
+      "from": "tech_centrifuge",
+      "to": "tech_particle_accelerator"
+    },
+    {
+      "from": "tech_particle_accelerator",
+      "to": "tech_fabricator"
+    },
+    {
+      "from": "tech_chemical_plant",
+      "to": "tech_fabricator"
+    },
+    {
+      "from": "tech_centrifuge",
+      "to": "tech_nuclear_reactor"
+    },
+    {
+      "from": "tech_cartography_4",
+      "to": "tech_cartography_5"
     }
   ],
   "rings": {
@@ -466,6 +824,16 @@
       "name": "Ring 3",
       "color": "#4D80E6",
       "description": "Unlocked by completing Gate: Ring 3"
+    },
+    "4": {
+      "name": "Ring 4",
+      "color": "#CC8833",
+      "description": "Unlocked by completing Gate: Ring 4"
+    },
+    "5": {
+      "name": "Ring 5",
+      "color": "#9933CC",
+      "description": "Unlocked by completing Gate: Ring 5"
     }
   }
 }

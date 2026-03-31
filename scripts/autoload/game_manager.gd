@@ -105,6 +105,13 @@ func _register_placement_phases() -> void:
 		],
 		link_fn = &"_link_tunnels",
 	}
+	placement_phases[&"pipeline_input"] = {
+		phases = [
+			{building_id = &"pipeline_input"},
+			{building_id = &"pipeline_output", max_distance = 10, count_match = true},
+		],
+		link_fn = &"_link_pipelines",
+	}
 
 ## Link tunnel inputs and outputs after multi-phase placement.
 ## phase_placements[0] = inputs [{pos, rotation}], phase_placements[1] = outputs [{pos, rotation}]
@@ -118,6 +125,25 @@ func _link_tunnels(phase_placements: Array) -> void:
 		if not in_building or not out_building:
 			continue
 		if not in_building.logic is TunnelLogic or not out_building.logic is TunnelLogic:
+			continue
+		var in_pos: Vector2i = inputs[i].pos
+		var out_pos: Vector2i = outputs[i].pos
+		var dist := absi(out_pos.x - in_pos.x) + absi(out_pos.y - in_pos.y)
+		in_building.logic.setup_pair(out_building.logic, dist)
+		out_building.logic.setup_pair(in_building.logic, dist)
+
+## Link pipeline inputs and outputs after multi-phase placement.
+## phase_placements[0] = inputs [{pos, rotation}], phase_placements[1] = outputs [{pos, rotation}]
+func _link_pipelines(phase_placements: Array) -> void:
+	var inputs: Array = phase_placements[0]
+	var outputs: Array = phase_placements[1]
+	var count := mini(inputs.size(), outputs.size())
+	for i in range(count):
+		var in_building = buildings.get(inputs[i].pos)
+		var out_building = buildings.get(outputs[i].pos)
+		if not in_building or not out_building:
+			continue
+		if not in_building.logic is PipelineLogic or not out_building.logic is PipelineLogic:
 			continue
 		var in_pos: Vector2i = inputs[i].pos
 		var out_pos: Vector2i = outputs[i].pos

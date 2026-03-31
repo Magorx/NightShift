@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"power_armor"
+display_name = "Power Armor"
+color = Color(0.7, 0.35, 0.15, 1)
+category = "pinnacle"
+export_value = 150
+research_value = 50
+icon_atlas_index = 61

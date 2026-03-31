@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="RecipeDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/recipe_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/items/fusion_cell.tres" id="3"]
+
+[sub_resource type="Resource" id="input_0"]
+script = ExtResource("2")
+item = ExtResource("3")
+quantity = 1
+
+[resource]
+script = ExtResource("1")
+id = &"nuclear_fission"
+display_name = "Nuclear Fission"
+converter_type = "nuclear_reactor"
+inputs = [SubResource("input_0")]
+outputs = []
+craft_time = 20.0
+energy_output = 1000.0

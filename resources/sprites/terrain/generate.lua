@@ -5,9 +5,9 @@
 
 local CELL = 32
 local COLS = 8
-local ROWS = 10
+local ROWS = 14
 local W = COLS * CELL  -- 256
-local H = ROWS * CELL  -- 320
+local H = ROWS * CELL  -- 448
 
 -- ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -589,6 +589,249 @@ local function draw_sulfur_mounds(img, col, row, variant, seed)
     end
 end
 
+--- Oil BG: dark tar-like surface with iridescent rainbow sheen
+local function fill_oil_bg(img, col, row, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local base = Color(35, 28, 22)
+    local dark = Color(22, 18, 14)
+    local light = Color(48, 40, 32)
+    local sheen_purple = Color(55, 30, 65)
+    local sheen_blue = Color(30, 40, 60)
+    local sheen_green = Color(35, 50, 35)
+    for py = 0, CELL - 1 do
+        for px = 0, CELL - 1 do
+            local base_n = fbm(px, py, 3, seed)
+            local c = lerp_color(dark, light, base_n)
+            -- Iridescent oil sheen via overlapping noise
+            local n1 = value_noise(px, py, 0.8, seed + 500)
+            local n2 = value_noise(px, py, 1.2, seed + 600)
+            local sheen = (n1 + n2) * 0.5
+            if sheen > 0.55 and sheen < 0.65 then
+                c = lerp_color(c, sheen_purple, 0.4)
+            elseif sheen > 0.45 and sheen < 0.55 then
+                c = lerp_color(c, sheen_blue, 0.3)
+            elseif sheen > 0.35 and sheen < 0.45 then
+                c = lerp_color(c, sheen_green, 0.25)
+            end
+            img:drawPixel(ox + px, oy + py, c)
+        end
+    end
+end
+
+--- Oil FG: tar pools and bubble-like features
+local function draw_oil_pools(img, col, row, variant, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local pool_dark = Color(15, 12, 10)
+    local pool_sheen = Color(50, 35, 60)
+    local bubble = Color(60, 50, 70)
+    local count = 2 + variant
+    for i = 1, count do
+        local cx = math.floor(hash(i, 0, seed) * (CELL - 8)) + 4
+        local cy = math.floor(hash(i, 1, seed) * (CELL - 8)) + 4
+        local r = 2 + math.floor(hash(i, 2, seed) * 3)
+        for dy = -r, r do
+            for dx = -r, r do
+                local dist = math.sqrt(dx*dx + dy*dy)
+                if dist <= r + 0.5 then
+                    local t = dist / r
+                    local c = pool_dark
+                    if t > 0.6 then c = lerp_color(pool_dark, pool_sheen, (t - 0.6) / 0.4) end
+                    put(img, ox, oy, cx + dx, cy + dy, c)
+                end
+            end
+        end
+        -- Bubble highlights
+        if hash(i, 3, seed) > 0.4 then
+            put(img, ox, oy, cx - 1, cy - 1, bubble)
+        end
+    end
+end
+
+--- Crystal BG: dark violet host rock with angular prismatic formations
+local function fill_crystal_bg(img, col, row, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local base = Color(75, 50, 95)
+    local dark = Color(55, 35, 72)
+    local light = Color(98, 68, 120)
+    local prism1 = Color(140, 80, 180)
+    local prism2 = Color(100, 120, 200)
+    for py = 0, CELL - 1 do
+        for px = 0, CELL - 1 do
+            local base_n = fbm(px, py, 3, seed)
+            local c = lerp_color(dark, light, base_n)
+            -- Prismatic angular blocks
+            local n1 = value_noise(px, py, 1.0, seed + 500)
+            local n2 = value_noise(px, py, 1.0, seed + 600)
+            local edge = math.abs(n1 * 4 - math.floor(n1 * 4 + 0.5))
+            if edge < 0.06 then
+                c = lerp_color(c, prism1, 0.5)
+            elseif n2 > 0.7 then
+                c = lerp_color(c, prism2, 0.3)
+            end
+            img:drawPixel(ox + px, oy + py, c)
+        end
+    end
+end
+
+--- Crystal FG: protruding crystal formations
+local function draw_crystal_formations(img, col, row, variant, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local crystal_body = Color(160, 100, 200)
+    local crystal_hi = Color(200, 150, 240)
+    local crystal_shadow = Color(90, 55, 120)
+    local count = 3 + variant
+    for i = 1, count do
+        local cx = math.floor(hash(i, 0, seed) * (CELL - 8)) + 4
+        local cy = math.floor(hash(i, 1, seed) * (CELL - 8)) + 4
+        local h = 4 + math.floor(hash(i, 2, seed) * 5)
+        local w = 2 + math.floor(hash(i, 3, seed) * 2)
+        local tilt = math.floor((hash(i, 4, seed) - 0.5) * 3)
+        for dy = 0, h - 1 do
+            local row_w = w
+            if dy == 0 or dy == h - 1 then row_w = math.max(1, w - 1) end
+            local x_offset = math.floor(dy * tilt / h)
+            for dx = 0, row_w - 1 do
+                local px2 = cx - math.floor(row_w / 2) + dx + x_offset
+                local py2 = cy - math.floor(h / 2) + dy
+                local c = crystal_body
+                if dx == 0 then c = crystal_hi
+                elseif dx == row_w - 1 then c = crystal_shadow end
+                if dy == 0 then c = crystal_hi end
+                put(img, ox, oy, px2, py2, c)
+            end
+        end
+    end
+end
+
+--- Uranium BG: dark rock with eerie green luminescent veins
+local function fill_uranium_bg(img, col, row, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local base = Color(55, 60, 52)
+    local dark = Color(38, 42, 36)
+    local light = Color(72, 78, 68)
+    local glow = Color(60, 180, 75)
+    local glow_dim = Color(45, 120, 55)
+    for py = 0, CELL - 1 do
+        for px = 0, CELL - 1 do
+            local base_n = fbm(px, py, 3, seed)
+            local c = lerp_color(dark, light, base_n)
+            -- Green glowing veins
+            local vn = fbm(px, py, 2, seed + 500)
+            if math.abs(vn - 0.5) < 0.03 then
+                c = glow
+            elseif math.abs(vn - 0.5) < 0.06 then
+                c = lerp_color(c, glow_dim, 0.5)
+            end
+            img:drawPixel(ox + px, oy + py, c)
+        end
+    end
+end
+
+--- Uranium FG: glowing ore chunks
+local function draw_uranium_chunks(img, col, row, variant, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local ore_body = Color(50, 150, 60)
+    local ore_bright = Color(80, 210, 90)
+    local ore_dark = Color(35, 100, 42)
+    local count = 2 + variant
+    for i = 1, count do
+        local cx = math.floor(hash(i, 0, seed) * (CELL - 6)) + 3
+        local cy = math.floor(hash(i, 1, seed) * (CELL - 6)) + 3
+        local r = 2 + math.floor(hash(i, 2, seed) * 2)
+        for dy = -r, r do
+            for dx = -r, r do
+                local dist = math.sqrt(dx*dx + dy*dy)
+                if dist <= r + 0.3 then
+                    local t = dist / r
+                    local c = ore_body
+                    if t < 0.4 then c = ore_bright
+                    elseif t > 0.7 then c = ore_dark end
+                    put(img, ox, oy, cx + dx, cy + dy, c)
+                end
+            end
+        end
+        -- Glow halo
+        for dy = -(r+1), r+1 do
+            for dx = -(r+1), r+1 do
+                local dist = math.sqrt(dx*dx + dy*dy)
+                if dist > r + 0.3 and dist <= r + 1.5 then
+                    local h = hash(cx+dx, cy+dy, seed + 300)
+                    if h > 0.5 then
+                        put(img, ox, oy, cx + dx, cy + dy, Color(55, 140, 62, 100))
+                    end
+                end
+            end
+        end
+    end
+end
+
+--- Biomass BG: rich organic soil with decomposing plant matter
+local function fill_biomass_bg(img, col, row, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local base = Color(65, 85, 40)
+    local dark = Color(45, 62, 28)
+    local light = Color(82, 105, 52)
+    local soil = Color(72, 60, 38)
+    for py = 0, CELL - 1 do
+        for px = 0, CELL - 1 do
+            local base_n = fbm(px, py, 3, seed)
+            local c = lerp_color(dark, light, base_n)
+            -- Soil patches
+            local sn = value_noise(px, py, 0.8, seed + 500)
+            if sn > 0.65 then
+                c = lerp_color(c, soil, 0.4)
+            end
+            img:drawPixel(ox + px, oy + py, c)
+        end
+    end
+end
+
+--- Biomass FG: organic growths - mushrooms, moss patches, vine tendrils
+local function draw_biomass_growth(img, col, row, variant, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local leaf_green = Color(55, 120, 45)
+    local leaf_bright = Color(75, 145, 55)
+    local moss = Color(48, 95, 38)
+    local stem = Color(60, 50, 30)
+    -- Moss patches
+    local moss_count = 3 + variant
+    for i = 1, moss_count do
+        local cx = math.floor(hash(i, 0, seed) * (CELL - 4)) + 2
+        local cy = math.floor(hash(i, 1, seed) * (CELL - 4)) + 2
+        local r = 2 + math.floor(hash(i, 2, seed) * 2)
+        for dy = -r, r do
+            for dx = -r, r do
+                if hash(cx+dx, cy+dy, seed + 100 + i) > 0.35 then
+                    local dist = math.sqrt(dx*dx + dy*dy)
+                    if dist <= r + 0.5 then
+                        local c = moss
+                        if hash(cx+dx, cy+dy, seed + 200) > 0.6 then c = leaf_green end
+                        put(img, ox, oy, cx + dx, cy + dy, c)
+                    end
+                end
+            end
+        end
+    end
+    -- Small mushrooms/plants
+    for i = 1, 2 + variant do
+        local mx = math.floor(hash(i + 10, 0, seed) * (CELL - 4)) + 2
+        local my = math.floor(hash(i + 10, 1, seed) * (CELL - 4)) + 2
+        put(img, ox, oy, mx, my + 1, stem)
+        put(img, ox, oy, mx, my, leaf_bright)
+        put(img, ox, oy, mx - 1, my - 1, leaf_green)
+        put(img, ox, oy, mx + 1, my - 1, leaf_green)
+        put(img, ox, oy, mx, my - 1, leaf_bright)
+    end
+end
+
 -- ── Generic helpers for misc layer ─────────────────────────────────────────
 
 local function draw_tiny_shapes(img, col, row, shapes, seed)
@@ -1100,6 +1343,100 @@ draw_tiny_shapes(img, 3, 9, {
     {type="dot", color=Color(145, 142, 78)},
 }, 12007)
 
+-- ══════════════════════════════════════════════════════════════════════════
+-- OIL (Row 10)
+-- Dark tar-like pools with iridescent rainbow sheen
+-- ══════════════════════════════════════════════════════════════════════════
+
+fill_oil_bg(img, 0, 10, 13001)
+draw_oil_pools(img, 1, 10, 0, 13002)
+draw_oil_pools(img, 2, 10, 1, 13003)
+draw_oil_pools(img, 3, 10, 2, 13004)
+
+draw_tiny_shapes(img, 4, 10, {
+    {type="dot", color=Color(50, 35, 60)},
+    {type="dot", color=Color(45, 30, 55)},
+    {type="dot", color=Color(55, 40, 65)},
+}, 13005)
+draw_tiny_shapes(img, 5, 10, {
+    {type="square", color=Color(25, 20, 18)},
+    {type="dot", color=Color(30, 25, 22)},
+}, 13006)
+draw_tiny_shapes(img, 6, 10, {
+    {type="dot", color=Color(40, 50, 60, 120)},
+    {type="dot", color=Color(50, 30, 55, 100)},
+}, 13007)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- CRYSTAL (Row 11)
+-- Purple prismatic formations in dark violet rock
+-- ══════════════════════════════════════════════════════════════════════════
+
+fill_crystal_bg(img, 7, 10, 14001)
+draw_crystal_formations(img, 0, 11, 0, 14002)
+draw_crystal_formations(img, 1, 11, 1, 14003)
+draw_crystal_formations(img, 2, 11, 2, 14004)
+
+draw_tiny_shapes(img, 3, 11, {
+    {type="tri", color=Color(180, 120, 220)},
+    {type="dot", color=Color(170, 110, 210)},
+}, 14005)
+draw_tiny_shapes(img, 4, 11, {
+    {type="cross", color=Color(130, 80, 170)},
+    {type="dot", color=Color(140, 90, 180)},
+}, 14006)
+draw_tiny_shapes(img, 5, 11, {
+    {type="dot", color=Color(190, 140, 230)},
+    {type="dot", color=Color(100, 120, 200)},
+}, 14007)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- URANIUM (Row 12)
+-- Glowing green radioactive ore in dark rock
+-- ══════════════════════════════════════════════════════════════════════════
+
+fill_uranium_bg(img, 6, 11, 15001)
+draw_uranium_chunks(img, 7, 11, 0, 15002)
+draw_uranium_chunks(img, 0, 12, 1, 15003)
+draw_uranium_chunks(img, 1, 12, 2, 15004)
+
+draw_tiny_shapes(img, 2, 12, {
+    {type="cross", color=Color(70, 180, 80)},
+    {type="dot", color=Color(60, 160, 70)},
+}, 15005)
+draw_tiny_shapes(img, 3, 12, {
+    {type="dot", color=Color(50, 140, 55, 140)},
+    {type="dot", color=Color(55, 150, 60, 120)},
+}, 15006)
+draw_tiny_shapes(img, 4, 12, {
+    {type="dot", color=Color(45, 130, 52)},
+    {type="dot", color=Color(40, 110, 45)},
+}, 15007)
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- BIOMASS (Row 13)
+-- Organic green growths with moss, mushrooms, and vine tendrils
+-- ══════════════════════════════════════════════════════════════════════════
+
+fill_biomass_bg(img, 5, 12, 16001)
+draw_biomass_growth(img, 6, 12, 0, 16002)
+draw_biomass_growth(img, 7, 12, 1, 16003)
+draw_biomass_growth(img, 0, 13, 2, 16004)
+
+draw_tiny_shapes(img, 1, 13, {
+    {type="flower", color=Color(90, 150, 60), center=Color(120, 180, 80)},
+    {type="dot", color=Color(55, 110, 42)},
+}, 16005)
+draw_tiny_shapes(img, 2, 13, {
+    {type="tri", color=Color(70, 130, 50)},
+    {type="dot", color=Color(80, 140, 55)},
+}, 16006)
+draw_tiny_shapes(img, 3, 13, {
+    {type="dot", color=Color(65, 55, 35)},
+    {type="dot", color=Color(58, 48, 30)},
+    {type="square", color=Color(50, 95, 35)},
+}, 16007)
+
 -- ── Save ──────────────────────────────────────────────────────────────────
 
 local script_path = debug.getinfo(1, "S").source:sub(2)
@@ -1110,4 +1447,4 @@ spr:saveAs(dir .. "terrain_atlas.aseprite")
 spr:saveCopyAs(dir .. "terrain_atlas.png")
 
 print("Terrain atlas generated: " .. W .. "x" .. H .. " (" .. COLS .. "x" .. ROWS .. " grid of " .. CELL .. "x" .. CELL .. ")")
-print("Total sprites: 76 (13 grass + 63 deposits/walls)")
+print("Total sprites: 108 (13 grass + 63 deposits/walls + 32 new deposits)")

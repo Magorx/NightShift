@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/centrifuge/centrifuge.tscn" id="2"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="3"]
+[ext_resource type="Resource" path="res://resources/items/steel.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/items/gear.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/items/motor.tres" id="6"]
+
+[sub_resource type="Resource" id="cost_0"]
+script = ExtResource("3")
+item = ExtResource("4")
+quantity = 8
+
+[sub_resource type="Resource" id="cost_1"]
+script = ExtResource("3")
+item = ExtResource("5")
+quantity = 4
+
+[sub_resource type="Resource" id="cost_2"]
+script = ExtResource("3")
+item = ExtResource("6")
+quantity = 2
+
+[resource]
+script = ExtResource("1")
+id = &"centrifuge"
+display_name = "Centrifuge"
+color = Color(0.45, 0.5, 0.6, 1)
+description = "Refines uranium and produces fusion cells."
+category = "converter"
+scene = ExtResource("2")
+unlock_tech = &"tech_centrifuge"
+build_cost = [SubResource("cost_0"), SubResource("cost_1"), SubResource("cost_2")]

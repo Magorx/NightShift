@@ -21,7 +21,7 @@ const DELIVER_TIME := 2.0
 var _input_rr: RoundRobin = RoundRobin.new()
 
 ## Accepted science pack item IDs.
-var _accepted_packs: Array[StringName] = [&"science_pack_1", &"science_pack_2", &"science_pack_3"]
+var _accepted_packs: Array[StringName] = [&"science_pack_1", &"science_pack_2", &"science_pack_3", &"science_pack_4"]
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	super.configure(def, p_grid_pos, p_rotation)

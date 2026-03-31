@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"insulated_wire"
+display_name = "Insulated Wire"
+color = Color(0.8, 0.5, 0.2, 1)
+category = "component"
+export_value = 6
+research_value = 2
+icon_atlas_index = 50
