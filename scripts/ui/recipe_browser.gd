@@ -193,7 +193,7 @@ func _make_item_header(item_def: ItemDef) -> HBoxContainer:
 	hbox.add_theme_constant_override("separation", 8)
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	var icon := ItemIcon.create(item_def.id, Vector2(28, 28))
+	var icon := ItemIcon.create(item_def.id, Vector2(32, 32))
 	hbox.add_child(icon)
 
 	var vbox := VBoxContainer.new()
@@ -326,7 +326,7 @@ func _make_item_icon_with_qty(stack: ItemStack, highlight_id: StringName) -> Pan
 	slot.add_child(vbox)
 
 	# Icon
-	var icon := ItemIcon.create(stack.item.id, Vector2(20, 20))
+	var icon := ItemIcon.create(stack.item.id, Vector2(16, 16))
 	vbox.add_child(icon)
 
 	# Name + qty label
@@ -492,7 +492,7 @@ func _make_mini_recipe_card(recipe: RecipeDef, _highlight_id: StringName) -> HBo
 			qty.add_theme_font_size_override("font_size", 9)
 			qty.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			slot.add_child(qty)
-		slot.add_child(ItemIcon.create(recipe.inputs[i].item.id, Vector2(12, 12)))
+		slot.add_child(ItemIcon.create(recipe.inputs[i].item.id, Vector2(16, 16)))
 		row.add_child(slot)
 
 	# Arrow + building
@@ -537,7 +537,7 @@ func _make_mini_recipe_card(recipe: RecipeDef, _highlight_id: StringName) -> HBo
 			qty.add_theme_font_size_override("font_size", 9)
 			qty.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			slot.add_child(qty)
-		slot.add_child(ItemIcon.create(recipe.outputs[i].item.id, Vector2(12, 12)))
+		slot.add_child(ItemIcon.create(recipe.outputs[i].item.id, Vector2(16, 16)))
 		row.add_child(slot)
 
 	return row

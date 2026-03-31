@@ -43,9 +43,9 @@ func _create_slot(index: int) -> PanelContainer:
 	# Item icon indicator
 	var icon_rect := ItemIcon.new()
 	icon_rect.name = "ItemIcon"
-	icon_rect.custom_minimum_size = Vector2(20, 20)
-	icon_rect.position = Vector2(10, 6)
-	icon_rect.size = Vector2(20, 20)
+	icon_rect.custom_minimum_size = Vector2(16, 16)
+	icon_rect.position = Vector2(12, 8)
+	icon_rect.size = Vector2(16, 16)
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

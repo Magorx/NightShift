@@ -151,7 +151,7 @@ func _update_delivery_counter() -> void:
 		# Requirements
 		for req in contract.requirements:
 			var row := HBoxContainer.new()
-			row.add_child(ItemIcon.create(req.item_id, Vector2(12, 12)))
+			row.add_child(ItemIcon.create(req.item_id, Vector2(16, 16)))
 			var item_def = _get_item_def(req.item_id)
 			var name_label := Label.new()
 			name_label.text = " %s" % (item_def.display_name if item_def else str(req.item_id))

@@ -221,8 +221,12 @@ func deserialize_state(state: Dictionary) -> void:
 	if not state.has("tunnel_buffer"):
 		return
 	for item_data in state["tunnel_buffer"]:
+		var iid := StringName(item_data["id"])
+		if not GameManager.is_valid_item_id(iid):
+			GameLogger.warn("Tunnel at %s: skipped invalid item '%s'" % [grid_pos, iid])
+			continue
 		var item: Dictionary = {
-			id = StringName(item_data["id"]),
+			id = iid,
 			progress = float(item_data.get("progress", 0.0)),
 		}
 		buffer.items.append(item)

@@ -51,9 +51,9 @@ func _draw() -> void:
 	for i in count:
 		var offset := Vector2(i * 3.0 - (count - 1) * 1.5, -i * 2.0)
 		if _hovered:
-			draw_rect(Rect2(offset - Vector2(7, 7), Vector2(14, 14)), Color(1, 1, 1, 0.85), false, 1.5)
+			draw_rect(Rect2(offset - Vector2(9, 9), Vector2(18, 18)), Color(1, 1, 1, 0.85), false, 1.5)
 		if icon:
-			draw_texture_rect(icon, Rect2(offset - Vector2(6, 6), Vector2(12, 12)), false)
+			draw_texture_rect(icon, Rect2(offset - Vector2(8, 8), Vector2(16, 16)), false)
 
 	if _hovered:
 		var camera := get_viewport().get_camera_2d()

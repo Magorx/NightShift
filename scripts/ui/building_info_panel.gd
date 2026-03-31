@@ -115,7 +115,7 @@ func _populate_io_row(row: HBoxContainer, stacks: Array) -> void:
 		child.queue_free()
 	for stack in stacks:
 		var item_id: StringName = stack.item.id if stack.item else &""
-		row.add_child(ItemIcon.create(item_id, Vector2(12, 12)))
+		row.add_child(ItemIcon.create(item_id, Vector2(16, 16)))
 		var label := Label.new()
 		label.text = "%dx %s" % [stack.quantity, stack.item.display_name if stack.item else "?"]
 		label.add_theme_font_size_override("font_size", 12)

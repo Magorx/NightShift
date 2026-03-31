@@ -202,7 +202,7 @@ func _show_info(def) -> void:
 		for stack in def.build_cost:
 			var cost_row := HBoxContainer.new()
 			cost_row.add_theme_constant_override("separation", 4)
-			cost_row.add_child(ItemIcon.create(stack.item.id, Vector2(14, 14)))
+			cost_row.add_child(ItemIcon.create(stack.item.id, Vector2(16, 16)))
 			var cost_label := Label.new()
 			cost_label.text = "%dx %s" % [stack.quantity, stack.item.display_name]
 			cost_label.add_theme_font_size_override("font_size", 11)

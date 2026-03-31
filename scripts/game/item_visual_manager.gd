@@ -4,7 +4,7 @@ extends RefCounted
 ## individual Node2D instances. Drastically reduces draw calls.
 ## Now uses an atlas texture (8x5 grid of 16x16 items) instead of colored circles.
 
-const ITEM_SIZE := 15.0
+const ITEM_SIZE := 16.0
 const INITIAL_CAPACITY := 256
 const HIDDEN_POS := Vector2(-99999, -99999)
 

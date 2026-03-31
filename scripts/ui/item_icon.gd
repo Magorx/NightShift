@@ -14,7 +14,7 @@ var rmb_browsable: bool = false
 var _rmb_hold_time: float = 0.0
 const RMB_HOLD_THRESHOLD := 0.3
 
-static func create(item_id: StringName, icon_size: Vector2 = Vector2(12, 12), browsable: bool = false) -> Control:
+static func create(item_id: StringName, icon_size: Vector2 = Vector2(16, 16), browsable: bool = false) -> Control:
 	var icon_tex := GameManager.get_item_icon(item_id)
 	if not icon_tex:
 		return _create_color_fallback(item_id, icon_size)

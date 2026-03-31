@@ -194,6 +194,9 @@ func get_item_def(item_id: StringName):
 		return def
 	return null
 
+func is_valid_item_id(item_id: StringName) -> bool:
+	return item_id != &"" and get_item_def(item_id) != null
+
 # ── Item icon atlas ────────────────────────────────────────────────────────────
 
 var _item_atlas_texture: Texture2D

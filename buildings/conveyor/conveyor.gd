@@ -150,6 +150,9 @@ func deserialize_state(state: Dictionary) -> void:
 		return
 	for item_data in state["items"]:
 		var item_id := StringName(item_data["id"])
+		if not GameManager.is_valid_item_id(item_id):
+			GameLogger.warn("Conveyor at %s: skipped invalid item '%s'" % [grid_pos, item_id])
+			continue
 		var entry_from := Vector2i(int(item_data["entry_from_x"]), int(item_data["entry_from_y"]))
 		var entry_dist: float = item_data.get("entry_dist", 0.5)
 		if place_item(item_id, entry_from, entry_dist):

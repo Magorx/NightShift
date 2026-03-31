@@ -73,6 +73,7 @@ func _on_new_run_pressed() -> void:
 
 func _start_new_run() -> void:
 	confirm_overlay.visible = false
+	GameLogger.info("New game started (slot %d)" % AccountManager.active_slot)
 	SaveManager.delete_run_save()
 	GameManager.total_currency = 0
 	GameManager.map_size = 64

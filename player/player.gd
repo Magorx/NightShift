@@ -419,7 +419,7 @@ class _PickupFloat extends Node2D:
 		queue_redraw()
 	func _draw() -> void:
 		var alpha := 1.0 - (_timer / LIFETIME)
-		var s := 10.0
+		var s := 16.0
 		if _icon:
 			draw_texture_rect(_icon, Rect2(-s * 0.5, -s * 0.5, s, s), false, Color(1, 1, 1, alpha))
 		# "+1" text
@@ -746,7 +746,12 @@ func deserialize(data: Dictionary) -> void:
 	var inv_data: Array = data.get("inventory", [])
 	for i in INVENTORY_SLOTS:
 		if i < inv_data.size() and inv_data[i] != null:
-			inventory[i] = {item_id = StringName(inv_data[i]["item_id"]), quantity = int(inv_data[i]["quantity"])}
+			var iid := StringName(inv_data[i]["item_id"])
+			if GameManager.is_valid_item_id(iid):
+				inventory[i] = {item_id = iid, quantity = int(inv_data[i]["quantity"])}
+			else:
+				GameLogger.warn("Player inventory slot %d: skipped invalid item '%s'" % [i, iid])
+				inventory[i] = null
 		else:
 			inventory[i] = null
 

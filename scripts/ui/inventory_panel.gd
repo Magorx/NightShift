@@ -64,9 +64,9 @@ func _create_slot(index: int) -> PanelContainer:
 
 	var icon_rect := ItemIcon.new()
 	icon_rect.name = "ItemIcon"
-	icon_rect.custom_minimum_size = Vector2(28, 28)
-	icon_rect.position = Vector2(10, 10)
-	icon_rect.size = Vector2(28, 28)
+	icon_rect.custom_minimum_size = Vector2(32, 32)
+	icon_rect.position = Vector2(8, 8)
+	icon_rect.size = Vector2(32, 32)
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -110,7 +110,7 @@ func _create_cursor_ghost() -> void:
 	_cursor_ghost.z_index = 100
 
 	_ghost_icon = TextureRect.new()
-	_ghost_icon.size = Vector2(24, 24)
+	_ghost_icon.size = Vector2(32, 32)
 	_ghost_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_ghost_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_ghost_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -120,7 +120,7 @@ func _create_cursor_ghost() -> void:
 
 	_ghost_label = Label.new()
 	_ghost_label.add_theme_font_size_override("font_size", 10)
-	_ghost_label.position = Vector2(14, 14)
+	_ghost_label.position = Vector2(18, 18)
 	_ghost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_cursor_ghost.add_child(_ghost_label)
 
@@ -176,7 +176,7 @@ func _update_cursor_ghost() -> void:
 		_cursor_ghost.visible = false
 		return
 	_cursor_ghost.visible = true
-	var ghost_size := Vector2(24, 24)
+	var ghost_size := Vector2(32, 32)
 	var vp_size := get_viewport_rect().size
 	var pos := get_global_mouse_position() + Vector2(8, 8)
 	pos.x = clampf(pos.x, 0, vp_size.x - ghost_size.x)
@@ -381,7 +381,7 @@ func _return_held_item() -> void:
 # ── Fly Animation (pickup & place) ─────────────────────────────────────────
 
 func _get_cursor_ghost_pos() -> Vector2:
-	var ghost_size := Vector2(24, 24)
+	var ghost_size := Vector2(32, 32)
 	var vp_size := get_viewport_rect().size
 	var pos := get_global_mouse_position() + Vector2(8, 8)
 	pos.x = clampf(pos.x, 0, vp_size.x - ghost_size.x)
@@ -410,7 +410,7 @@ func _animate_pickup_to_cursor(slot_index: int, item_id: StringName, quantity: i
 	_fly_item.z_index = 101
 
 	var icon_rect := TextureRect.new()
-	icon_rect.size = Vector2(24, 24)
+	icon_rect.size = Vector2(32, 32)
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

@@ -16,9 +16,9 @@ const SEGMENT_COLOR_OFF := Color(0.15, 0.15, 0.15, 0.6)
 const SEGMENT_COLOR_ON := Color(0.9, 0.75, 0.2, 0.95)
 const SEGMENT_THRESHOLDS := [0.2, 0.4, 0.6, 0.8]
 
-const ICON_SIZE := Vector2(14, 14)
-const FONT_SIZE := 11
-const NUM_WIDTH := 14.0 # fixed width for quantity numbers
+const ICON_SIZE := Vector2(16, 16)
+const FONT_SIZE := 12
+const NUM_WIDTH := 16.0 # fixed width for quantity numbers
 
 var _building: Node2D
 var _update_timer: float = 0.0
@@ -30,7 +30,6 @@ var _col_widths: Dictionary = {} # {in_widths: Array, out_widths: Array, max_in:
 var _recipe_row_normal_style: StyleBox
 var _recipe_row_pressed_style: StyleBox
 var _current_recipe = null # cached recipe to avoid rebuilding every update
-var _current_inventory_key: String = "" # cached inventory fingerprint
 
 @onready var recipe_section: VBoxContainer = %RecipeSection
 @onready var recipe_row_button: PanelContainer = %RecipeRowButton
@@ -86,7 +85,6 @@ func show_building(building: Node2D, camera: Camera2D) -> void:
 	_building = building
 	_camera = camera
 	_current_recipe = null
-	_current_inventory_key = ""
 	recipe_row.custom_minimum_size.x = 0
 	custom_minimum_size.x = 0
 	_lock_width()
@@ -177,7 +175,6 @@ func hide_popup() -> void:
 	visible = false
 	_building = null
 	_current_recipe = null
-	_current_inventory_key = ""
 
 # ── Recipe menu ────────────────────────────────────────────────────────────
 
@@ -458,31 +455,33 @@ func _update_energy_row(e) -> void:
 func _update_inventory_row(items: Array) -> void:
 	if items.is_empty():
 		inventory_row.visible = false
-		_current_inventory_key = ""
 		return
 	inventory_row.visible = true
-	# Build a fingerprint to detect changes
-	var key := ""
-	for entry in items:
-		key += "%s:%d," % [entry.id, entry.count]
-	if key == _current_inventory_key:
-		return
-	_current_inventory_key = key
-	for child in inventory_row.get_children():
-		inventory_row.remove_child(child)
-		child.queue_free()
 	# Compute max number width across all inventory items
 	var font: Font = get_theme_font("font")
 	var max_num_w: float = 0.0
 	for entry in items:
 		var w: float = font.get_string_size(str(entry.count), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 		max_num_w = maxf(max_num_w, w)
-	for entry in items:
-		var num_label := Label.new()
-		num_label.text = str(entry.count)
-		num_label.add_theme_font_size_override("font_size", FONT_SIZE)
-		num_label.custom_minimum_size = Vector2(max_num_w, 0)
-		num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		inventory_row.add_child(num_label)
-		inventory_row.add_child(ItemIcon.create(entry.id, ICON_SIZE))
+	var existing := inventory_row.get_children()
+	# Reuse existing slots, add new ones as needed, remove extras
+	for i in items.size():
+		var entry = items[i]
+		if i < existing.size():
+			# Reuse existing billet
+			var panel: PanelContainer = existing[i]
+			var hbox: HBoxContainer = panel.get_child(0)
+			var num_label: Label = hbox.get_child(0)
+			num_label.text = str(entry.count)
+			num_label.custom_minimum_size.x = max_num_w
+			var icon: ItemIcon = hbox.get_child(1) as ItemIcon
+			if icon:
+				icon.set_item(entry.id)
+		else:
+			# Create new billet
+			inventory_row.add_child(_create_slot_billet(str(entry.count), max_num_w, ItemIcon.create(entry.id, ICON_SIZE)))
+	# Remove excess slots
+	for i in range(existing.size() - 1, items.size() - 1, -1):
+		var child := existing[i]
+		inventory_row.remove_child(child)
+		child.queue_free()

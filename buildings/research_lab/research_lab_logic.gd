@@ -154,7 +154,11 @@ func deserialize_state(state: Dictionary) -> void:
 	if state.has("deliver_timer"):
 		_deliver_timer = state["deliver_timer"]
 	if state.has("delivering_item") and state["delivering_item"] != "":
-		_delivering_item = StringName(state["delivering_item"])
+		var iid := StringName(state["delivering_item"])
+		if GameManager.is_valid_item_id(iid):
+			_delivering_item = iid
+		else:
+			GameLogger.warn("ResearchLab at %s: skipped invalid delivering_item '%s'" % [grid_pos, iid])
 	if state.has("input_inv"):
 		_deserialize_inventory(input_inv, state["input_inv"])
 	if state.has("energy") and energy:
@@ -169,6 +173,9 @@ func _serialize_inventory(inv: Inventory) -> Dictionary:
 func _deserialize_inventory(inv: Inventory, data: Dictionary) -> void:
 	for item_id_str in data:
 		var iid := StringName(item_id_str)
+		if not GameManager.is_valid_item_id(iid):
+			GameLogger.warn("ResearchLab at %s: skipped invalid item '%s'" % [grid_pos, iid])
+			continue
 		var count: int = int(data[item_id_str])
 		if inv.get_capacity(iid) == 0:
 			inv.set_capacity(iid, count + 10)

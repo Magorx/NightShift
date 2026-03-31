@@ -312,6 +312,9 @@ func _serialize_inventory(inv: Inventory) -> Dictionary:
 func _deserialize_inventory(inv: Inventory, data: Dictionary) -> void:
 	for item_id_str in data:
 		var iid := StringName(item_id_str)
+		if not GameManager.is_valid_item_id(iid):
+			GameLogger.warn("Converter at %s: skipped invalid item '%s'" % [grid_pos, iid])
+			continue
 		var count: int = int(data[item_id_str])
 		if inv.get_capacity(iid) == 0:
 			inv.set_capacity(iid, count + 10)

@@ -246,7 +246,11 @@ func deserialize_state(state: Dictionary) -> void:
 	if not state.has("buffer"):
 		return
 	for item_data in state["buffer"]:
-		var item: Dictionary = buffer.add_item(StringName(item_data["id"]), {
+		var iid := StringName(item_data["id"])
+		if not GameManager.is_valid_item_id(iid):
+			GameLogger.warn("Splitter at %s: skipped invalid item '%s'" % [grid_pos, iid])
+			continue
+		var item: Dictionary = buffer.add_item(iid, {
 			from_dir_idx = int(item_data["from_dir_idx"]),
 			output_dir_idx = int(item_data.get("output_dir_idx", -1)),
 		})

@@ -57,16 +57,16 @@ func load_run() -> bool:
 
 	var data := _read_json(autosave_path)
 	if data.is_empty():
-		print("[SaveManager] Autosave corrupt or missing, trying backup...")
+		GameLogger.warn("Autosave corrupt or missing for slot %d, trying backup" % AccountManager.active_slot)
 		data = _read_json(backup_path)
 	if data.is_empty():
-		printerr("[SaveManager] No valid save found for slot %d" % AccountManager.active_slot)
+		GameLogger.err("No valid save found for slot %d" % AccountManager.active_slot)
 		load_completed.emit(false)
 		return false
 
 	_deserialize_run(data)
 	load_completed.emit(true)
-	print("[SaveManager] Run loaded from slot %d" % AccountManager.active_slot)
+	GameLogger.info("Save loaded from slot %d" % AccountManager.active_slot)
 	return true
 
 ## Peek at save data without doing a full load (used for world seed on startup).
@@ -234,7 +234,11 @@ func _deserialize_run(data: Dictionary) -> void:
 	var delivered: Dictionary = data.get("items_delivered", {})
 	GameManager.items_delivered.clear()
 	for item_id_str in delivered:
-		GameManager.items_delivered[StringName(item_id_str)] = int(delivered[item_id_str])
+		var iid := StringName(item_id_str)
+		if GameManager.is_valid_item_id(iid):
+			GameManager.items_delivered[iid] = int(delivered[item_id_str])
+		else:
+			GameLogger.warn("Items delivered: skipped invalid item '%s'" % iid)
 
 	# Migrate old run-level hotkeys to account meta if present
 	if data.has("building_hotkeys") and not data["building_hotkeys"].is_empty():
@@ -347,8 +351,12 @@ func _deserialize_ground_items(items_data: Array) -> void:
 		return
 	var ground_item_scene := preload("res://player/ground_item.tscn")
 	for entry in items_data:
+		var iid := StringName(entry.get("item_id", ""))
+		if not GameManager.is_valid_item_id(iid):
+			GameLogger.warn("Ground item: skipped invalid item '%s'" % iid)
+			continue
 		var item = ground_item_scene.instantiate()
-		item.item_id = StringName(entry.get("item_id", ""))
+		item.item_id = iid
 		item.quantity = int(entry.get("quantity", 1))
 		item.position = Vector2(float(entry.get("x", 0)), float(entry.get("y", 0)))
 		item.despawn_timer = float(entry.get("despawn", 120))

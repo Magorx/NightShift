@@ -84,6 +84,9 @@ func deserialize_state(state: Dictionary) -> void:
 	if state.has("inventory"):
 		for item_id_str in state["inventory"]:
 			var iid := StringName(item_id_str)
+			if not GameManager.is_valid_item_id(iid):
+				GameLogger.warn("Extractor at %s: skipped invalid item '%s'" % [grid_pos, iid])
+				continue
 			var count: int = int(state["inventory"][item_id_str])
 			if inventory.get_capacity(iid) == 0:
 				inventory.set_capacity(iid, count + 10)

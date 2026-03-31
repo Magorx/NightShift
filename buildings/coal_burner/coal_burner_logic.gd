@@ -119,6 +119,9 @@ func deserialize_state(state: Dictionary) -> void:
 	if state.has("fuel_inv"):
 		for item_id_str in state["fuel_inv"]:
 			var iid := StringName(item_id_str)
+			if not GameManager.is_valid_item_id(iid):
+				GameLogger.warn("CoalBurner at %s: skipped invalid item '%s'" % [grid_pos, iid])
+				continue
 			var count: int = int(state["fuel_inv"][item_id_str])
 			if fuel_inv.get_capacity(iid) == 0:
 				fuel_inv.set_capacity(iid, count + 10)

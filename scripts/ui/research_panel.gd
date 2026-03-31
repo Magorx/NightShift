@@ -318,7 +318,7 @@ func _draw_tech_node(tech_id: StringName) -> void:
 	var cost_font_size := int(9 * _zoom)
 	if cost_font_size < 5:
 		return
-	var icon_size := 12.0 * _zoom
+	var icon_size := 16.0 * _zoom
 	var cost_x: float = rect.position.x + 6.0 * _zoom
 	var cost_y: float = rect.position.y + rect.size.y - 6.0 * _zoom
 	for stack in tech.cost:
@@ -416,7 +416,7 @@ func _update_info_panel() -> void:
 	info_cost.add_child(cost_title)
 	for stack in tech.cost:
 		var row := HBoxContainer.new()
-		row.add_child(ItemIcon.create(stack.item.id, Vector2(14, 14)))
+		row.add_child(ItemIcon.create(stack.item.id, Vector2(16, 16)))
 		var gap := Control.new()
 		gap.custom_minimum_size = Vector2(4, 0)
 		row.add_child(gap)

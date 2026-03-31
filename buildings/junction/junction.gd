@@ -168,7 +168,11 @@ func deserialize_state(state: Dictionary) -> void:
 	var axes_data: Array = state["junction_buffers"]
 	for axis in mini(axes_data.size(), 2):
 		for item_data in axes_data[axis]:
-			var item: Dictionary = buffers[axis].add_item(StringName(item_data["id"]), {
+			var iid := StringName(item_data["id"])
+			if not GameManager.is_valid_item_id(iid):
+				GameLogger.warn("Junction at %s: skipped invalid item '%s'" % [grid_pos, iid])
+				continue
+			var item: Dictionary = buffers[axis].add_item(iid, {
 				from_dir_idx = int(item_data["from_dir_idx"]),
 				output_dir_idx = int(item_data["output_dir_idx"]),
 			})
