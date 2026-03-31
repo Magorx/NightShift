@@ -2,14 +2,14 @@
 
 [ext_resource type="Script" path="res://scripts/resources/recipe_def.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="2"]
-[ext_resource type="Resource" path="res://resources/items/tube.tres" id="3"]
-[ext_resource type="Resource" path="res://resources/items/copper_ring.tres" id="4"]
-[ext_resource type="Resource" path="res://resources/items/pipe.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/items/copper_ring.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/items/iron_plate.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/items/copper_wire.tres" id="5"]
 
 [sub_resource type="Resource" id="input_0"]
 script = ExtResource("2")
 item = ExtResource("3")
-quantity = 2
+quantity = 3
 
 [sub_resource type="Resource" id="input_1"]
 script = ExtResource("2")
@@ -19,14 +19,13 @@ quantity = 1
 [sub_resource type="Resource" id="output_0"]
 script = ExtResource("2")
 item = ExtResource("5")
-quantity = 1
+quantity = 3
 
 [resource]
 script = ExtResource("1")
-id = &"press_pipe"
-display_name = "Press Pipe"
-converter_type = "press"
+id = &"assemble_copper_wire"
+display_name = "Assemble Copper Wire"
+converter_type = "hand_assembler"
 inputs = [SubResource("input_0"), SubResource("input_1")]
 outputs = [SubResource("output_0")]
-craft_time = 3.0
-energy_cost = 20.0
+craft_time = 4.0

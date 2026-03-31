@@ -269,3 +269,6 @@ func get_inventory_items() -> Array:
 	for id in buffer.get_item_counts():
 		result.append({id = id, count = buffer.get_item_counts()[id]})
 	return result
+
+func remove_inventory_item(item_id: StringName, count: int) -> int:
+	return buffer.remove_items_by_id(item_id, count)

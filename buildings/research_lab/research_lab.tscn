@@ -1,10 +1,197 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="3"]
 [ext_resource type="Script" path="res://buildings/shared/energy_node.gd" id="7"]
 [ext_resource type="Script" path="res://buildings/research_lab/research_lab_logic.gd" id="8"]
+[ext_resource type="Texture2D" path="res://buildings/research_lab/sprites/main.png" id="9_sheet"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bi0"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bi1"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bw0"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bw1"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba0"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba1"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba2"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba3"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bd0"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bd1"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_base"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ba0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ba1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ba2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ba3")
+}],
+"loop": true,
+"name": &"active",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bi0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bi1")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bd0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bd1")
+}],
+"loop": false,
+"name": &"winddown",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bw0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_bw1")
+}],
+"loop": false,
+"name": &"windup",
+"speed": 6.0
+}]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ti0"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ti1"]
+atlas = ExtResource("9_sheet")
+region = Rect2(64, 64, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tw0"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_tw1"]
+atlas = ExtResource("9_sheet")
+region = Rect2(64, 128, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta0"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta1"]
+atlas = ExtResource("9_sheet")
+region = Rect2(64, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta2"]
+atlas = ExtResource("9_sheet")
+region = Rect2(128, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ta3"]
+atlas = ExtResource("9_sheet")
+region = Rect2(192, 192, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_td0"]
+atlas = ExtResource("9_sheet")
+region = Rect2(0, 256, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_td1"]
+atlas = ExtResource("9_sheet")
+region = Rect2(64, 128, 64, 64)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_top"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ta0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ta1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ta2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ta3")
+}],
+"loop": true,
+"name": &"active",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ti0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ti1")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_td0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_td1")
+}],
+"loop": false,
+"name": &"winddown",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tw0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_tw1")
+}],
+"loop": false,
+"name": &"windup",
+"speed": 6.0
+}]
 
 [node name="ResearchLab" type="Node2D"]
 script = ExtResource("1")
@@ -71,6 +258,21 @@ max_connections = 2
 throughput = 100.0
 inner_capacity = 50.0
 connection_range = 5.0
+
+[node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
+texture_filter = 1
+position = Vector2(32, 32)
+sprite_frames = SubResource("SpriteFrames_base")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
+z_index = 10
+texture_filter = 1
+position = Vector2(32, 32)
+sprite_frames = SubResource("SpriteFrames_top")
+animation = &"idle"
+autoplay = "idle"
 
 [node name="ResearchLabLogic" type="Node" parent="."]
 script = ExtResource("8")

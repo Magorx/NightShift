@@ -113,3 +113,10 @@ func get_inventory_items() -> Array:
 		if count > 0:
 			result.append({id = iid, count = count})
 	return result
+
+func remove_inventory_item(item_id: StringName, count: int) -> int:
+	var available := inventory.get_count(item_id)
+	var to_remove := mini(count, available)
+	if to_remove > 0 and inventory.remove(item_id, to_remove):
+		return to_remove
+	return 0

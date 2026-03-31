@@ -127,6 +127,13 @@ func get_inventory_items() -> Array:
 			result.append({id = pack_id, count = c})
 	return result
 
+func remove_inventory_item(item_id: StringName, count: int) -> int:
+	var available := input_inv.get_count(item_id)
+	var to_remove := mini(count, available)
+	if to_remove > 0 and input_inv.remove(item_id, to_remove):
+		return to_remove
+	return 0
+
 func get_info_stats() -> Array:
 	var stats: Array = []
 	if ResearchManager.current_research:

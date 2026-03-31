@@ -200,3 +200,8 @@ func get_popup_progress() -> float:
 ## Override in all buildings that hold items.
 func get_inventory_items() -> Array:
 	return []
+
+## Remove up to count of item_id from this building's inventory.
+## Returns the amount actually removed. Override in buildings that hold items.
+func remove_inventory_item(item_id: StringName, count: int) -> int:
+	return 0

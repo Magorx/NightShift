@@ -5,13 +5,15 @@ const TILE_SIZE := 32
 
 # ── Zoom ────────────────────────────────────────────────────────────────────
 const ZOOM_SPEED := 0.1
-const MIN_ZOOM := 0.25
+const DEFAULT_MIN_ZOOM := 3.0
 const MAX_ZOOM := 3.0
 const ZOOM_SMOOTH_SPEED := 8.0
 
+var min_zoom: float = DEFAULT_MIN_ZOOM
+
 # ── Follow ──────────────────────────────────────────────────────────────────
 const FOLLOW_SPEED := 8.0
-const CURSOR_DEADZONE := 0.8       # fraction of window — cursor inside this = no offset
+const CURSOR_DEADZONE := 1.1       # fraction of window — cursor inside this = no offset
 const CURSOR_WEIGHT := 0.2          # max offset strength when cursor is at window edge
 
 var target_node: Node2D              # the node to follow (player)
@@ -19,12 +21,18 @@ var _target_zoom: float = 1.0
 
 func _ready() -> void:
 	_target_zoom = zoom.x
+	ResearchManager.register_callback(&"set_min_zoom", _on_set_min_zoom)
+	ResearchManager.effects_reset.connect(reset_min_zoom)
+
+func reset_min_zoom() -> void:
+	min_zoom = DEFAULT_MIN_ZOOM
+	_target_zoom = clampf(_target_zoom, min_zoom, MAX_ZOOM)
 
 func snap_to(pos: Vector2) -> void:
 	position = pos
 
 func set_target_zoom(z: float) -> void:
-	_target_zoom = z
+	_target_zoom = clampf(z, min_zoom, MAX_ZOOM)
 
 func update_camera(real_delta: float) -> void:
 	_follow(real_delta)
@@ -33,11 +41,11 @@ func update_camera(real_delta: float) -> void:
 func handle_zoom_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT]:
-			_target_zoom = clampf(_target_zoom + ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM)
+			_target_zoom = clampf(_target_zoom + ZOOM_SPEED, min_zoom, MAX_ZOOM)
 		elif event.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT]:
-			_target_zoom = clampf(_target_zoom - ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM)
+			_target_zoom = clampf(_target_zoom - ZOOM_SPEED, min_zoom, MAX_ZOOM)
 	elif event is InputEventPanGesture:
-		_target_zoom = clampf(_target_zoom - event.delta.y * ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM)
+		_target_zoom = clampf(_target_zoom - event.delta.y * ZOOM_SPEED, min_zoom, MAX_ZOOM)
 
 # ── Follow ──────────────────────────────────────────────────────────────────
 
@@ -80,6 +88,12 @@ func _smooth_zoom(real_delta: float) -> void:
 	zoom = Vector2(new_zoom, new_zoom)
 	var world_after := position + mouse_offset / zoom.x
 	position += world_before - world_after
+
+func _on_set_min_zoom(effect: Dictionary) -> void:
+	var value: float = float(effect.get("value", min_zoom))
+	if value < min_zoom:
+		min_zoom = value
+		_target_zoom = clampf(_target_zoom, min_zoom, MAX_ZOOM)
 
 # ── Bounds ──────────────────────────────────────────────────────────────────
 

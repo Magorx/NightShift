@@ -383,3 +383,18 @@ func get_inventory_items() -> Array:
 	for id in counts:
 		result.append({id = id, count = counts[id]})
 	return result
+
+func remove_inventory_item(item_id: StringName, count: int) -> int:
+	var removed := 0
+	# Remove from output first, then input
+	var out_count := output_inv.get_count(item_id)
+	var out_take := mini(count, out_count)
+	if out_take > 0 and output_inv.remove(item_id, out_take):
+		removed += out_take
+	var remaining := count - removed
+	if remaining > 0:
+		var in_count := input_inv.get_count(item_id)
+		var in_take := mini(remaining, in_count)
+		if in_take > 0 and input_inv.remove(item_id, in_take):
+			removed += in_take
+	return removed

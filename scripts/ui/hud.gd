@@ -60,12 +60,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		_change_speed(1)
 	elif event.is_action_pressed(&"time_speed_down"):
 		_change_speed(-1)
-	# Building hotkeys
+	# Building hotkeys (Ctrl/Cmd + number)
 	if event is InputEventKey and event.pressed and not event.echo:
-		var keycode: int = event.physical_keycode
-		if GameManager.building_hotkeys.has(keycode):
-			var bid: StringName = GameManager.building_hotkeys[keycode]
-			building_selected.emit(bid)
+		if event.ctrl_pressed or event.meta_pressed:
+			var keycode: int = event.physical_keycode
+			if GameManager.building_hotkeys.has(keycode):
+				var bid: StringName = GameManager.building_hotkeys[keycode]
+				building_selected.emit(bid)
+				get_viewport().set_input_as_handled()
 
 func is_buildings_panel_open() -> bool:
 	return buildings_panel.visible
@@ -231,6 +233,28 @@ func _on_menu_toggle_pressed() -> void:
 	menu_toggle.text = "▶" if _menu_expanded else "◀"
 
 # ── Helpers ───────────────────────────────────────────────────────────────
+
+func serialize_ui_panels() -> Dictionary:
+	var data := {}
+	if buildings_panel:
+		data["buildings_panel"] = buildings_panel.serialize_ui_state()
+	if inventory_panel:
+		data["inventory_panel"] = inventory_panel.serialize_ui_state()
+	if research_panel:
+		data["research_panel"] = research_panel.serialize_ui_state()
+	if recipe_browser:
+		data["recipe_browser"] = recipe_browser.serialize_ui_state()
+	return data
+
+func deserialize_ui_panels(data: Dictionary) -> void:
+	if buildings_panel and data.has("buildings_panel"):
+		buildings_panel.deserialize_ui_state(data["buildings_panel"])
+	if inventory_panel and data.has("inventory_panel"):
+		inventory_panel.deserialize_ui_state(data["inventory_panel"])
+	if research_panel and data.has("research_panel"):
+		research_panel.deserialize_ui_state(data["research_panel"])
+	if recipe_browser and data.has("recipe_browser"):
+		recipe_browser.deserialize_ui_state(data["recipe_browser"])
 
 func _get_item_def(item_id: StringName):
 	return GameManager.get_item_def(item_id)

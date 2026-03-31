@@ -171,7 +171,7 @@ func _print_production_chains() -> void:
 
 	# Chain analysis: how many drills/buildings needed for sustained output
 	_analyze_chain("Iron Plate", &"iron_plate", recipe_for)
-	_analyze_chain("Copper Plate", &"copper_plate", recipe_for)
+	_analyze_chain("Copper Ring", &"copper_ring", recipe_for)
 	_analyze_chain("Copper Wire", &"copper_wire", recipe_for)
 	_analyze_chain("Gear", &"gear", recipe_for)
 	_analyze_chain("Tube", &"tube", recipe_for)
@@ -286,7 +286,7 @@ func _print_milestones() -> void:
 	# But need press first for gears, wire drawer for wire
 	# Red science: 10 packs per tech
 	# 1 hand assembler: 10/min science packs
-	# Need: iron_gear (2 iron_plate, 2s press) + copper_wire (1 copper_plate, 2s drawer)
+	# Need: iron_gear (2 iron_plate, 2s press) + copper_wire (1 copper_ring, 2s drawer)
 	var science1_time := 6.0
 	var science1_per_min := 60.0 / science1_time
 	print("  Science Pack 1 rate: %.0f/min per hand assembler" % science1_per_min)

@@ -18,7 +18,7 @@
 | ID | Name | Recipe | Time | Energy |
 |---|---|---|---|---|
 | iron_plate | Iron Plate | 1 iron_ore | 3s | 0 (free) |
-| copper_plate | Copper Plate | 1 copper_ore | 3s | 0 |
+| copper_ring | Copper Ring | 1 copper_ore | 3s | 0 |
 | tin_plate | Tin Plate | 1 tin_ore | 3s | 0 |
 | gold_ingot | Gold Ingot | 1 gold_ore | 4s | 50 |
 | steel | Steel | 2 iron_plate + 1 coal | 5s | 80 |
@@ -28,7 +28,7 @@
 ### Tier 1 Components (8) - Press / Wire Drawer
 | ID | Name | Building | Recipe | Time |
 |---|---|---|---|---|
-| copper_wire | Copper Wire | Wire Drawer | 1 copper_plate → 2 | 2s |
+| copper_wire | Copper Wire | Wire Drawer | 1 copper_ring → 2 | 2s |
 | gold_wire | Gold Wire | Wire Drawer | 1 gold_ingot → 2 | 3s |
 | iron_gear | Iron Gear | Press | 2 iron_plate | 2s |
 | iron_tube | Iron Tube | Press | 1 iron_plate | 1.5s |
@@ -48,7 +48,7 @@
 
 Actually: replace insulated_wire with:
 | concrete | Concrete | 3 brick + 1 iron_plate | 4s | 20 |
-| pipe | Pipe | 2 iron_tube + 1 copper_plate | 3s | 20 |
+| pipe | Pipe | 2 iron_tube + 1 copper_ring | 3s | 20 |
 
 ### Tier 3 Advanced (4) - Assembler Mk2
 | ID | Name | Recipe | Time | Energy |
@@ -88,7 +88,7 @@ Actually: replace insulated_wire with:
 | drill_mk2 | Drill Mk2 | 1x1 | extractor | 4 steel + 2 motor | Tier 2 |
 | smelter | Smelter | 2x3 | converter | 4 brick + 4 iron_plate | Start |
 | press | Press | 2x1 | converter | 6 iron_plate + 2 iron_gear | Tier 1 |
-| wire_drawer | Wire Drawer | 1x2 | converter | 4 copper_plate + 2 iron_gear | Tier 1 |
+| wire_drawer | Wire Drawer | 1x2 | converter | 4 copper_ring + 2 iron_gear | Tier 1 |
 | hand_assembler | Hand Assembler | 1x1 | converter | 4 iron_plate | Start |
 | assembler_mk1 | Assembler Mk1 | 2x2 | converter | 6 steel + 4 iron_gear + 2 circuit_board | Tier 2 |
 | assembler_mk2 | Assembler Mk2 | 3x2 | converter | 4 steel_frame + 4 motor + 2 advanced_circuit | Tier 3 |

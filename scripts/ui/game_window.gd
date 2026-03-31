@@ -149,10 +149,37 @@ func _update_cursor(edge: int) -> void:
 	elif edge == 6 or edge == 9: # top-right or bottom-left
 		mouse_default_cursor_shape = Control.CURSOR_BDIAGSIZE
 
-# ── Close on RMB outside ────────────────────────────────────────────────────
+# ── UI state persistence ────────────────────────────────────────────────────
+
+func serialize_ui_state() -> Dictionary:
+	var data := {
+		"visible": visible,
+		"x": global_position.x,
+		"y": global_position.y,
+		"w": size.x,
+		"h": size.y,
+	}
+	return data
+
+func deserialize_ui_state(data: Dictionary) -> void:
+	visible = data.get("visible", false)
+	global_position = Vector2(
+		float(data.get("x", global_position.x)),
+		float(data.get("y", global_position.y)),
+	)
+	var w: float = float(data.get("w", size.x))
+	var h: float = float(data.get("h", size.y))
+	custom_minimum_size = Vector2(w, h)
+	size = Vector2(w, h)
+
+# ── Close on ESC / RMB outside ──────────────────────────────────────────────
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
+		return
+	if event.is_action_pressed("ui_cancel"):
+		visible = false
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		visible = false

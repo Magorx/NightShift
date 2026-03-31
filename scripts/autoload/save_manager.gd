@@ -106,6 +106,7 @@ func _serialize_run() -> Dictionary:
 		"research": ResearchManager.serialize(),
 		"contracts": ContractManager.serialize(),
 		"creative_mode": GameManager.creative_mode,
+		"ui_panels": _serialize_ui_panels(),
 	}
 	var gw := _get_game_world()
 	if gw:
@@ -147,6 +148,12 @@ func _serialize_hud_state() -> Dictionary:
 			"contracts_collapsed": hud._contracts_collapsed,
 			"menu_expanded": hud._menu_expanded,
 		}
+	return {}
+
+func _serialize_ui_panels() -> Dictionary:
+	var hud = _get_hud()
+	if hud and hud.has_method("serialize_ui_panels"):
+		return hud.serialize_ui_panels()
 	return {}
 
 func _serialize_camera() -> Dictionary:
@@ -276,6 +283,11 @@ func _deserialize_run(data: Dictionary) -> void:
 	var hud_state: Dictionary = data.get("hud_state", {})
 	if not hud_state.is_empty():
 		call_deferred("_restore_hud_state", hud_state)
+
+	# Restore UI panel states (deferred so panels are ready)
+	var ui_panels: Dictionary = data.get("ui_panels", {})
+	if not ui_panels.is_empty():
+		call_deferred("_restore_ui_panels", ui_panels)
 
 	# Restore player state
 	var player_data: Dictionary = data.get("player", {})
@@ -407,6 +419,11 @@ func _restore_time_speed(data: Dictionary) -> void:
 			Engine.time_scale = hud.SPEED_STEPS[hud.speed_index]
 			hud.speed_label.text = hud.SPEED_LABELS[hud.speed_index]
 			hud._update_speed_buttons()
+
+func _restore_ui_panels(data: Dictionary) -> void:
+	var hud = _get_hud()
+	if hud and hud.has_method("deserialize_ui_panels"):
+		hud.deserialize_ui_panels(data)
 
 func _restore_hud_state(data: Dictionary) -> void:
 	var hud = _get_hud()

@@ -40,7 +40,7 @@ script = ExtResource("5")
 script = ExtResource("6")
 
 [node name="EnergyOverlay" type="Node2D" parent="."]
-z_index = 5
+z_index = 15
 script = ExtResource("7")
 
 [node name="UI" type="CanvasLayer" parent="."]

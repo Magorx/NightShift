@@ -63,7 +63,7 @@ const PLAYER_COLLISION_LAYER := 1
 const BUILDING_COLLISION_LAYER := 2
 
 # ── Hand mining ─────────────────────────────────────────────────────────────
-const HAND_MINE_TIME := 3.0      # seconds per ore mined by hand
+const HAND_MINE_TIME := 1.0      # seconds per ore mined by hand
 const HAND_MINE_RANGE := 48.0    # max distance from player to deposit (1.5 tiles)
 var _mining: bool = false
 var _mine_timer: float = 0.0
@@ -129,12 +129,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		var key: int = event.physical_keycode
 		if key >= KEY_1 and key <= KEY_8:
 			selected_slot = key - KEY_1
-	# Mouse scroll for slot cycling
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-			selected_slot = (selected_slot - 1 + INVENTORY_SLOTS) % INVENTORY_SLOTS
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-			selected_slot = (selected_slot + 1) % INVENTORY_SLOTS
 
 # ── Movement ─────────────────────────────────────────────────────────────────
 
@@ -632,6 +626,10 @@ func _update_conv_item_hover() -> void:
 	if _is_dead or not _conv_highlight:
 		if _conv_highlight:
 			_conv_highlight.visible = false
+		return
+
+	if get_viewport().gui_get_hovered_control() != null:
+		_conv_highlight.visible = false
 		return
 
 	var mouse_world := get_global_mouse_position()

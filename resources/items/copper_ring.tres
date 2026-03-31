@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1")
-id = &"copper_plate"
-display_name = "Copper Plate"
+id = &"copper_ring"
+display_name = "Copper Ring"
 color = Color(0.88, 0.55, 0.2, 1)
 category = "intermediate"
 export_value = 3

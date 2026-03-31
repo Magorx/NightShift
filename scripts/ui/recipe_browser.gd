@@ -14,6 +14,17 @@ var _all_items: Array = []  # Array of ItemDef, sorted alphabetically
 var _all_recipes: Array = []  # Array of RecipeDef
 var _selected_item_id: StringName = &""
 
+func serialize_ui_state() -> Dictionary:
+	var data := super.serialize_ui_state()
+	data["selected_item"] = str(_selected_item_id)
+	return data
+
+func deserialize_ui_state(data: Dictionary) -> void:
+	super.deserialize_ui_state(data)
+	var item_id := StringName(data.get("selected_item", ""))
+	if item_id != &"" and GameManager.get_item_def(item_id):
+		select_item(item_id)
+
 # Caches: item_id -> Array[RecipeDef]
 var _recipes_producing: Dictionary = {}  # recipes whose output contains item
 var _recipes_consuming: Dictionary = {}  # recipes whose input contains item

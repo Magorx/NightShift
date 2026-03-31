@@ -29,6 +29,18 @@ const _PREFERRED_ORDER := ["Transportation", "Extractors", "Converters", "Output
 
 var _awaiting_hotkey_for: StringName = &""
 var _active_category: String = ""
+var _icon_cache: Dictionary = {}  # building_id -> Texture2D
+
+func serialize_ui_state() -> Dictionary:
+	var data := super.serialize_ui_state()
+	data["active_category"] = _active_category
+	return data
+
+func deserialize_ui_state(data: Dictionary) -> void:
+	super.deserialize_ui_state(data)
+	var cat: String = data.get("active_category", "")
+	if cat != "" and _by_category.has(cat):
+		_select_category(cat)
 # Buildings grouped by category name
 var _by_category: Dictionary = {}
 
@@ -42,12 +54,32 @@ func _ready() -> void:
 	if order.size() > 0:
 		_select_category(order[0])
 	_clear_info()
+	ResearchManager.research_completed.connect(_on_research_completed)
+	SaveManager.load_completed.connect(_on_load_completed)
+
+func _on_load_completed(_success: bool) -> void:
+	_refresh_buildings()
+
+func _on_research_completed(_tech_id: StringName) -> void:
+	_refresh_buildings()
+
+func _refresh_buildings() -> void:
+	_group_buildings()
+	_create_category_tabs()
+	if _active_category != "" and _by_category.has(_active_category):
+		_select_category(_active_category)
+	else:
+		var order := _get_category_order()
+		if order.size() > 0:
+			_select_category(order[0])
 
 func _group_buildings() -> void:
 	_by_category.clear()
 	for id in GameManager.building_defs:
 		var def = GameManager.building_defs[id]
 		if def.category in HIDDEN_CATEGORIES:
+			continue
+		if not ResearchManager.is_building_unlocked(id):
 			continue
 		var cat_name: String = CATEGORY_DISPLAY_NAMES.get(def.category, def.category.capitalize())
 		if not _by_category.has(cat_name):
@@ -116,12 +148,23 @@ func _create_building_row(def, idx: int) -> PanelContainer:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	# Color icon
-	var color_rect := ColorRect.new()
-	color_rect.custom_minimum_size = Vector2(20, 20)
-	color_rect.color = def.color
-	color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(color_rect)
+	# Building sprite icon
+	var icon_tex := _get_building_icon(def)
+	if icon_tex:
+		var tex_rect := TextureRect.new()
+		tex_rect.texture = icon_tex
+		tex_rect.custom_minimum_size = Vector2(24, 24)
+		tex_rect.expand_mode = TextureRect.EXPAND_FIT_HEIGHT
+		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tex_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(tex_rect)
+	else:
+		var color_rect := ColorRect.new()
+		color_rect.custom_minimum_size = Vector2(24, 24)
+		color_rect.color = def.color
+		color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(color_rect)
 
 	# Spacer
 	var spacer := Control.new()
@@ -247,7 +290,7 @@ func _refresh_hotkey_labels() -> void:
 			var hotkey_lbl = row.find_child("HotkeyLabel", true, false)
 			if hotkey_lbl:
 				var key_str := _get_hotkey_for(bid)
-				hotkey_lbl.text = "[%s]" % key_str if key_str != "" else ""
+				hotkey_lbl.text = "[⌘%s]" % key_str if key_str != "" else ""
 
 func _get_hotkey_for(building_id: StringName) -> String:
 	for keycode in GameManager.building_hotkeys:
@@ -274,3 +317,76 @@ func _get_shape_size(def) -> Vector2i:
 		max_c.x = maxi(max_c.x, cell.x)
 		max_c.y = maxi(max_c.y, cell.y)
 	return max_c - min_c + Vector2i(1, 1)
+
+func _get_building_icon(def: BuildingDef) -> Texture2D:
+	if _icon_cache.has(def.id):
+		return _icon_cache[def.id]
+	var tex := _extract_building_icon(def)
+	_icon_cache[def.id] = tex
+	return tex
+
+func _extract_building_icon(def: BuildingDef) -> Texture2D:
+	if not def.scene:
+		return null
+	var instance := def.scene.instantiate()
+	var container := BuildingDef.get_rotatable(instance)
+
+	# Collect bottom and top sprite nodes
+	var bottom: AnimatedSprite2D = container.find_child("SpriteBottom", false, false)
+	var top: AnimatedSprite2D = container.find_child("SpriteTop", false, false)
+	# Fallback: use any AnimatedSprite2D
+	if not bottom:
+		for child in container.get_children():
+			if child is AnimatedSprite2D:
+				bottom = child
+				break
+	if not bottom or not bottom.sprite_frames:
+		instance.free()
+		return null
+
+	var anim_name := _pick_anim(bottom.sprite_frames)
+	if anim_name == &"":
+		instance.free()
+		return null
+
+	var bottom_tex := bottom.sprite_frames.get_frame_texture(anim_name, 0)
+	if not bottom_tex:
+		instance.free()
+		return null
+
+	# Get bottom image
+	var bottom_img := _get_texture_image(bottom_tex)
+	if not bottom_img:
+		instance.free()
+		return bottom_tex
+
+	# Blend top layer if available
+	if top and top.sprite_frames:
+		var top_anim := _pick_anim(top.sprite_frames)
+		if top_anim != &"":
+			var top_tex := top.sprite_frames.get_frame_texture(top_anim, 0)
+			if top_tex:
+				var top_img := _get_texture_image(top_tex)
+				if top_img and top_img.get_size() == bottom_img.get_size():
+					bottom_img.blend_rect(top_img, Rect2i(Vector2i.ZERO, top_img.get_size()), Vector2i.ZERO)
+
+	instance.free()
+	return ImageTexture.create_from_image(bottom_img)
+
+func _pick_anim(frames: SpriteFrames) -> StringName:
+	if frames.has_animation(&"idle"):
+		return &"idle"
+	var anims := frames.get_animation_names()
+	if anims.size() > 0:
+		return StringName(anims[0])
+	return &""
+
+func _get_texture_image(tex: Texture2D) -> Image:
+	if tex is AtlasTexture:
+		var atlas_tex: AtlasTexture = tex
+		var atlas_img: Image = atlas_tex.atlas.get_image()
+		if not atlas_img:
+			return null
+		var region: Rect2 = atlas_tex.region
+		return atlas_img.get_region(Rect2i(int(region.position.x), int(region.position.y), int(region.size.x), int(region.size.y)))
+	return tex.get_image()

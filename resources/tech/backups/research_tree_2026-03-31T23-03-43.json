@@ -1,11 +1,12 @@
 {
-  "description": "Research tree definition. Each node is a technology with ring, cost, unlocks, and visual position.",
+  "description": "Research tree definition. Each node is a technology with ring, cost, effects, and visual position.",
   "nodes": [
     {
       "id": "tech_research_lab",
       "display_name": "Research Lab",
       "description": "Research Lab for consuming science packs.",
       "ring": 0,
+      "type": "instant",
       "cost": [
         {
           "item": "iron_ore",
@@ -16,12 +17,12 @@
           "quantity": 10
         }
       ],
-      "unlocks": [
-        "research_lab"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "research_lab"}
       ],
       "position": {
         "x": -6.5,
-        "y": 0.5
+        "y": 0
       }
     },
     {
@@ -35,8 +36,8 @@
           "quantity": 10
         }
       ],
-      "unlocks": [
-        "press"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "press"}
       ],
       "position": {
         "x": -3,
@@ -54,8 +55,8 @@
           "quantity": 10
         }
       ],
-      "unlocks": [
-        "wire_drawer"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "wire_drawer"}
       ],
       "position": {
         "x": -3,
@@ -73,8 +74,8 @@
           "quantity": 10
         }
       ],
-      "unlocks": [
-        "solar_panel"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "solar_panel"}
       ],
       "position": {
         "x": 0,
@@ -92,8 +93,8 @@
           "quantity": 10
         }
       ],
-      "unlocks": [
-        "coke_oven"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "coke_oven"}
       ],
       "position": {
         "x": -3,
@@ -111,12 +112,31 @@
           "quantity": 15
         }
       ],
-      "unlocks": [
-        "conveyor_mk2"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "conveyor_mk2"}
       ],
       "position": {
         "x": -3,
         "y": 0.5
+      }
+    },
+    {
+      "id": "tech_cartography_1",
+      "display_name": "Cartography I",
+      "description": "Improved mapping techniques allow a wider camera view.",
+      "ring": 1,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 10
+        }
+      ],
+      "effects": [
+        {"callback": "set_min_zoom", "value": 2.4}
+      ],
+      "position": {
+        "x": -3,
+        "y": 2.5
       }
     },
     {
@@ -134,8 +154,8 @@
           "quantity": 20
         }
       ],
-      "unlocks": [
-        "assembler"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "assembler"}
       ],
       "position": {
         "x": 0,
@@ -157,8 +177,8 @@
           "quantity": 20
         }
       ],
-      "unlocks": [
-        "fuel_generator"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "fuel_generator"}
       ],
       "position": {
         "x": 0,
@@ -180,12 +200,35 @@
           "quantity": 15
         }
       ],
-      "unlocks": [
-        "drill_mk2"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "drill_mk2"}
       ],
       "position": {
         "x": 0,
         "y": -0.5
+      }
+    },
+    {
+      "id": "tech_cartography_2",
+      "display_name": "Cartography II",
+      "description": "Advanced surveying allows an even wider camera view.",
+      "ring": 2,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 15
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 15
+        }
+      ],
+      "effects": [
+        {"callback": "set_min_zoom", "value": 1.2}
+      ],
+      "position": {
+        "x": 0,
+        "y": 3.5
       }
     },
     {
@@ -203,8 +246,8 @@
           "quantity": 15
         }
       ],
-      "unlocks": [
-        "conveyor_mk3"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "conveyor_mk3"}
       ],
       "position": {
         "x": 4,
@@ -230,12 +273,39 @@
           "quantity": 50
         }
       ],
-      "unlocks": [
-        "assembler_mk2"
+      "effects": [
+        {"callback": "unlock_building", "building_id": "assembler_mk2"}
       ],
       "position": {
         "x": 4,
         "y": -0.5
+      }
+    },
+    {
+      "id": "tech_cartography_3",
+      "display_name": "Cartography III",
+      "description": "Full satellite mapping — maximum camera zoom out.",
+      "ring": 3,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {"callback": "set_min_zoom", "value": 0.75}
+      ],
+      "position": {
+        "x": 4,
+        "y": 2.5
       }
     }
   ],
@@ -271,11 +341,31 @@
     },
     {
       "from": "tech_research_lab",
-      "to": "tech_coke_oven"
+      "to": "tech_conveyor_mk2"
     },
     {
       "from": "tech_research_lab",
-      "to": "tech_conveyor_mk2"
+      "to": "tech_coke_oven"
+    },
+    {
+      "from": "tech_coke_oven",
+      "to": "tech_solar"
+    },
+    {
+      "from": "tech_drill_mk2",
+      "to": "tech_conveyor_mk3"
+    },
+    {
+      "from": "tech_research_lab",
+      "to": "tech_cartography_1"
+    },
+    {
+      "from": "tech_cartography_1",
+      "to": "tech_cartography_2"
+    },
+    {
+      "from": "tech_cartography_2",
+      "to": "tech_cartography_3"
     }
   ],
   "rings": {

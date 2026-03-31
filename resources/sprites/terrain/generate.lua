@@ -147,28 +147,35 @@ local function fill_copper_bg(img, col, row, seed)
     end
 end
 
---- Coal BG: near-black with glossy horizontal strata layers
+--- Coal BG: dark rocky base with embedded glossy coal veins
 local function fill_coal_bg(img, col, row, seed)
     local ox = col * CELL
     local oy = row * CELL
-    local base = Color(35, 35, 40)
-    local dark = Color(22, 22, 26)
-    local light = Color(50, 50, 56)
-    local shiny = Color(72, 72, 82)
+    local rock_dark = Color(48, 44, 46)
+    local rock_light = Color(72, 68, 70)
+    local coal_core = Color(18, 18, 22)
+    local coal_edge = Color(30, 30, 36)
+    local coal_shiny = Color(55, 55, 68)
     for py = 0, CELL - 1 do
         for px = 0, CELL - 1 do
             local base_n = fbm(px, py, 3, seed)
-            local c = lerp_color(dark, light, base_n)
-            -- Strong horizontal strata: use y-dominant pattern
-            local strata = value_noise(px * 0.3, py, 1.5, seed + 500)
-            local wobble = value_noise(px, py, 0.5, seed + 600) * 0.15
-            strata = strata + wobble
-            -- Sharp bands
-            local band = math.abs(math.sin(strata * 12.0))
-            if band > 0.85 then
-                c = lerp_color(c, shiny, (band - 0.85) / 0.15 * 0.8)
-            elseif band < 0.15 then
-                c = lerp_color(c, dark, 0.5)
+            local c = lerp_color(rock_dark, rock_light, base_n)
+            -- Chunky coal veins via noise threshold (like iron/copper style)
+            local vn = fbm(px, py, 2, seed + 500)
+            local vn2 = value_noise(px * 0.8, py, 1.0, seed + 600)
+            local v = vn * 0.55 + vn2 * 0.45
+            if v > 0.48 and v < 0.58 then
+                c = lerp_color(c, coal_edge, 0.7)
+            elseif v >= 0.58 and v < 0.72 then
+                local t = (v - 0.58) / 0.14
+                c = lerp_color(coal_core, coal_edge, t)
+                -- Glossy highlight on coal surface
+                local shine = hash(px, py, seed + 700)
+                if shine > 0.85 then
+                    c = lerp_color(c, coal_shiny, 0.6)
+                end
+            elseif v >= 0.72 and v < 0.78 then
+                c = lerp_color(c, coal_edge, 0.5)
             end
             img:drawPixel(ox + px, oy + py, c)
         end
@@ -401,30 +408,40 @@ end
 local function draw_coal_seams(img, col, row, variant, seed)
     local ox = col * CELL
     local oy = row * CELL
-    local seam = Color(62, 62, 72)
-    local shiny = Color(88, 88, 102)
-    local bright = Color(105, 105, 120)
-    -- Horizontal seams at different y positions
-    local seam_count = 3 + variant
-    for i = 1, seam_count do
-        local y_pos = math.floor(hash(i, 0, seed) * CELL)
-        local thickness = 1 + math.floor(hash(i, 1, seed) * 2)
-        for px = 0, CELL - 1 do
-            local wobble = math.floor(value_noise(px, i, 0.5, seed + 200) * 2 - 1)
-            for t = 0, thickness - 1 do
-                local draw_y = y_pos + t + wobble
-                local c = seam
-                -- Shiny reflection on top row of seam
-                if t == 0 and hash(px, i, seed + 300) > 0.4 then
-                    c = shiny
-                    if hash(px, i, seed + 310) > 0.7 then c = bright end
-                end
-                put(img, ox, oy, px, draw_y, c)
+    local coal_dark = Color(12, 12, 16)
+    local coal_gloss = Color(48, 48, 62)
+    local coal_bright = Color(75, 75, 92)
+    -- Organic coal chunk veins (like copper/iron style, not horizontal lines)
+    local count = 3 + variant * 2
+    for i = 1, count do
+        local sx = math.floor(hash(i, 0, seed) * CELL)
+        local sy = math.floor(hash(i, 1, seed) * CELL)
+        local angle = hash(i, 2, seed) * math.pi * 2
+        local len = 6 + math.floor(hash(i, 3, seed) * 10)
+        local cx, cy = sx + 0.0, sy + 0.0
+        for step = 0, len do
+            local px2 = math.floor(cx)
+            local py2 = math.floor(cy)
+            -- Coal vein body (2px wide)
+            put(img, ox, oy, px2, py2, coal_dark)
+            put(img, ox, oy, px2 + 1, py2, coal_dark)
+            put(img, ox, oy, px2, py2 + 1, coal_dark)
+            -- Glossy edge highlight
+            if hash(step, i, seed + 300) > 0.5 then
+                put(img, ox, oy, px2 - 1, py2, coal_gloss)
             end
-            -- Occasional gap in seam
-            if hash(px, i, seed + 400) > 0.92 then
-                -- skip (creates broken seam look)
+            if hash(step, i, seed + 310) > 0.6 then
+                put(img, ox, oy, px2, py2 - 1, coal_gloss)
             end
+            -- Occasional bright glint
+            if hash(step, i, seed + 400) > 0.85 then
+                put(img, ox, oy, px2, py2, coal_bright)
+            end
+            -- Wander direction
+            local turn = (hash(step, i, seed + 50) - 0.5) * 1.2
+            angle = angle + turn
+            cx = cx + math.cos(angle)
+            cy = cy + math.sin(angle)
         end
     end
 end
@@ -811,17 +828,18 @@ draw_coal_seams(img, 5, 3, 1, 6003)
 draw_coal_seams(img, 6, 3, 2, 6004)
 
 draw_tiny_shapes(img, 7, 3, {
-    {type="dot", color=Color(80, 80, 92)},
-    {type="dot", color=Color(75, 75, 86)},
-    {type="cross", color=Color(90, 90, 105)},
+    {type="dot", color=Color(55, 55, 68)},
+    {type="dot", color=Color(48, 48, 60)},
+    {type="cross", color=Color(65, 65, 78)},
 }, 6005)
 draw_tiny_shapes(img, 0, 4, {
-    {type="line", color=Color(22, 22, 26), len=4},
-    {type="vline", color=Color(20, 20, 24), len=3},
+    {type="dot", color=Color(35, 35, 44)},
+    {type="line", color=Color(42, 42, 52), len=3},
+    {type="dot", color=Color(70, 70, 85)},
 }, 6006)
 draw_tiny_shapes(img, 1, 4, {
-    {type="dot", color=Color(160, 60, 30, 140)},
-    {type="dot", color=Color(180, 80, 40, 120)},
+    {type="dot", color=Color(85, 60, 35, 140)},
+    {type="dot", color=Color(95, 70, 40, 120)},
 }, 6007)
 
 -- ══════════════════════════════════════════════════════════════════════════

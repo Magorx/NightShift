@@ -44,6 +44,24 @@ const NODE_SIZE := Vector2(130, 48)
 const NODE_HGAP := 160.0  # horizontal gap between columns (rings)
 const NODE_VGAP := 64.0   # vertical gap between nodes in same ring
 
+func serialize_ui_state() -> Dictionary:
+	var data := super.serialize_ui_state()
+	data["pan_x"] = _pan.x
+	data["pan_y"] = _pan.y
+	data["zoom"] = _zoom
+	data["selected_tech"] = str(_selected_tech_id)
+	return data
+
+func deserialize_ui_state(data: Dictionary) -> void:
+	super.deserialize_ui_state(data)
+	_pan = Vector2(float(data.get("pan_x", _pan.x)), float(data.get("pan_y", _pan.y)))
+	_zoom = float(data.get("zoom", _zoom))
+	var tech_id := StringName(data.get("selected_tech", ""))
+	if tech_id != &"" and ResearchManager.tech_defs.has(tech_id):
+		_selected_tech_id = tech_id
+		_update_info_panel()
+	tree_display.queue_redraw()
+
 func _ready() -> void:
 	super._ready()
 	research_button.pressed.connect(_on_research_pressed)
@@ -89,6 +107,11 @@ func _process(delta: float) -> void:
 	if _update_timer >= 0.5:
 		_update_timer = 0.0
 		_refresh_progress_display()
+		# Refresh cost labels for instant techs (inventory counts change)
+		if _selected_tech_id != &"":
+			var tech: TechDef = ResearchManager.tech_defs.get(_selected_tech_id)
+			if tech and tech.type == &"instant" and not ResearchManager.unlocked_techs.has(_selected_tech_id):
+				_update_info_panel()
 		tree_display.queue_redraw()
 
 const GRID_SCALE := 80.0  # matches GRID in the HTML editor
@@ -407,6 +430,10 @@ func _update_info_panel() -> void:
 	info_name.text = tech.display_name
 	info_desc.text = tech.description
 
+	var is_unlocked: bool = ResearchManager.unlocked_techs.has(_selected_tech_id)
+	var is_current: bool = ResearchManager.current_research != null and ResearchManager.current_research.id == _selected_tech_id
+	var is_available: bool = _is_tech_available(_selected_tech_id)
+
 	# Cost
 	_clear_children(info_cost)
 	var cost_title := Label.new()
@@ -421,36 +448,45 @@ func _update_info_panel() -> void:
 		gap.custom_minimum_size = Vector2(4, 0)
 		row.add_child(gap)
 		var lbl := Label.new()
-		var delivered: int = 0
-		if ResearchManager.current_research and ResearchManager.current_research.id == _selected_tech_id:
-			delivered = ResearchManager.research_progress.get(stack.item.id, 0)
-		lbl.text = "%s: %d/%d" % [stack.item.display_name, delivered, stack.quantity]
+		var have: int = 0
+		if tech.type == &"instant" and not is_unlocked:
+			var player: Player = GameManager.player
+			if player:
+				have = player.count_item(stack.item.id)
+		elif is_current:
+			have = ResearchManager.research_progress.get(stack.item.id, 0)
+		lbl.text = "%s: %d/%d" % [stack.item.display_name, have, stack.quantity]
 		lbl.add_theme_font_size_override("font_size", 11)
-		if delivered >= stack.quantity:
+		if have >= stack.quantity:
 			lbl.add_theme_color_override("font_color", Color(0.3, 0.9, 0.3))
+		else:
+			lbl.add_theme_color_override("font_color", Color(0.9, 0.4, 0.4))
 		row.add_child(lbl)
 		info_cost.add_child(row)
 
-	# Unlocks
+	# Effects
 	_clear_children(info_unlocks)
-	if tech.unlocks.size() > 0:
+	if tech.effects.size() > 0:
 		var unlock_title := Label.new()
-		unlock_title.text = "Unlocks:"
+		unlock_title.text = "Effects:"
 		unlock_title.add_theme_font_size_override("font_size", 12)
 		unlock_title.add_theme_color_override("font_color", Color(0.6, 0.8, 0.6))
 		info_unlocks.add_child(unlock_title)
-		for building_id in tech.unlocks:
-			var bdef = GameManager.get_building_def(building_id)
-			var bname: String = bdef.display_name if bdef else str(building_id)
+		for effect in tech.effects:
 			var lbl := Label.new()
-			lbl.text = "  " + bname
 			lbl.add_theme_font_size_override("font_size", 11)
+			var cb: String = effect.get("callback", "")
+			if cb == "unlock_building":
+				var building_id := StringName(effect.get("building_id", ""))
+				var bdef = GameManager.get_building_def(building_id)
+				lbl.text = "  Unlock: " + (bdef.display_name if bdef else str(building_id))
+			elif cb == "set_min_zoom":
+				lbl.text = "  Camera zoom: " + str(effect.get("value", ""))
+			else:
+				lbl.text = "  " + cb
 			info_unlocks.add_child(lbl)
 
 	# Status + button
-	var is_unlocked: bool = ResearchManager.unlocked_techs.has(_selected_tech_id)
-	var is_current: bool = ResearchManager.current_research != null and ResearchManager.current_research.id == _selected_tech_id
-	var is_available: bool = _is_tech_available(_selected_tech_id)
 
 	if is_unlocked:
 		info_status.text = "COMPLETED"
@@ -461,10 +497,19 @@ func _update_info_panel() -> void:
 		info_status.add_theme_color_override("font_color", Color(0.9, 0.85, 0.2))
 		research_button.visible = false
 	elif is_available:
-		info_status.text = "Available"
-		info_status.add_theme_color_override("font_color", Color(0.7, 0.8, 0.9))
-		research_button.visible = true
-		research_button.text = "Start Research"
+		if tech.type == &"instant":
+			var can_afford := ResearchManager.can_afford_instant(tech)
+			info_status.text = "Instant — requires items"
+			info_status.add_theme_color_override("font_color", Color(0.9, 0.75, 0.3))
+			research_button.visible = true
+			research_button.text = "Research (from inventory)"
+			research_button.disabled = not can_afford
+		else:
+			info_status.text = "Available"
+			info_status.add_theme_color_override("font_color", Color(0.7, 0.8, 0.9))
+			research_button.visible = true
+			research_button.text = "Start Research"
+			research_button.disabled = false
 	else:
 		info_status.text = "Locked (Ring %d)" % tech.ring
 		info_status.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))

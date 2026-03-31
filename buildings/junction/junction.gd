@@ -197,3 +197,11 @@ func get_inventory_items() -> Array:
 	for id in counts:
 		result.append({id = id, count = counts[id]})
 	return result
+
+func remove_inventory_item(item_id: StringName, count: int) -> int:
+	var removed := 0
+	for axis in 2:
+		if removed >= count:
+			break
+		removed += buffers[axis].remove_items_by_id(item_id, count - removed)
+	return removed

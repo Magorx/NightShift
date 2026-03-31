@@ -28,7 +28,7 @@ func run_simulation() -> void:
 	var press_logic: ConverterLogic = press.logic
 	sim_assert(press_logic.recipes.size() > 0, "Press has recipes (got %d)" % press_logic.recipes.size())
 
-	# ── Test 2: Wire Drawer (copper_ore -> smelter -> copper_plate -> wire_drawer -> copper_wire) ──
+	# ── Test 2: Wire Drawer (copper_ore -> smelter -> copper_ring -> wire_drawer -> copper_wire) ──
 	sim_add_deposit(Vector2i(5, 12), &"copper_ore")
 	sim_place_building(&"drill", Vector2i(5, 12), 0)
 	sim_place_building(&"conveyor", Vector2i(6, 12), 0)

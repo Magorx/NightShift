@@ -2,6 +2,7 @@ extends Node
 
 ## Research/Tech Tree manager. Tracks unlocked techs, current research target,
 ## and science pack delivery progress. Registered as an autoload singleton.
+## On completion, techs apply their effects via registered callbacks.
 
 # All tech definitions: tech_id -> TechDef
 var tech_defs: Dictionary = {}
@@ -15,15 +16,22 @@ var current_research: Resource = null
 # Progress: item_id -> count of packs delivered so far
 var research_progress: Dictionary = {}
 
+# Callback registry: callback_name -> Callable(effect: Dictionary)
+var _callbacks: Dictionary = {}
+
 signal research_completed(tech_id: StringName)
 signal research_started(tech_id: StringName)
+signal effects_reset  # emitted before replaying effects on reset/deserialize
 
 func _ready():
 	_load_from_json()
-	# Ring 0 techs are free — unlock them immediately
+	# Ring 0 normal techs are free — unlock them immediately
+	# Ring 0 instant techs must be manually researched (costs taken from player inventory)
 	for tech_id in tech_defs:
-		if tech_defs[tech_id].ring == 0:
+		var tech: TechDef = tech_defs[tech_id]
+		if tech.ring == 0 and tech.type != &"instant":
 			unlocked_techs[tech_id] = true
+			_apply_effects(tech)
 
 func _load_from_json():
 	## Load all tech definitions from research_tree.json (single source of truth).
@@ -45,9 +53,10 @@ func _load_from_json():
 		def.display_name = node_data.get("display_name", "")
 		def.description = node_data.get("description", "")
 		def.ring = int(node_data.get("ring", 0))
-		def.unlocks = []
-		for unlock_id in node_data.get("unlocks", []):
-			def.unlocks.append(StringName(unlock_id))
+		def.type = StringName(node_data.get("type", "normal"))
+		def.effects = []
+		for effect_data in node_data.get("effects", []):
+			def.effects.append(effect_data)
 		def.cost = []
 		for cost_data in node_data.get("cost", []):
 			var stack := ItemStack.new()
@@ -72,6 +81,17 @@ func _load_tech_defs_tres():
 				tech_defs[def.id] = def
 		file_name = dir.get_next()
 
+func register_callback(callback_name: StringName, callable: Callable) -> void:
+	## Register a callback that tech effects can invoke on completion.
+	_callbacks[callback_name] = callable
+
+func _apply_effects(tech: TechDef) -> void:
+	## Run all effects for a completed tech through registered callbacks.
+	for effect in tech.effects:
+		var cb_name := StringName(str(effect.get("callback", "")))
+		if _callbacks.has(cb_name):
+			_callbacks[cb_name].call(effect)
+
 func is_building_unlocked(building_id: StringName) -> bool:
 	## Check if a building is unlocked by any completed tech.
 	var def = GameManager.get_building_def(building_id)
@@ -82,12 +102,41 @@ func is_building_unlocked(building_id: StringName) -> bool:
 func start_research(tech_id: StringName) -> bool:
 	if unlocked_techs.has(tech_id):
 		return false
-	var def = tech_defs.get(tech_id)
+	var def: TechDef = tech_defs.get(tech_id)
 	if not def:
 		return false
+	if def.type == &"instant":
+		return _try_instant_research(def)
 	current_research = def
 	research_progress = {}
 	research_started.emit(tech_id)
+	return true
+
+func can_afford_instant(tech: TechDef) -> bool:
+	## Check if the player has enough items in inventory for an instant tech.
+	var player: Player = GameManager.player
+	if not player:
+		return false
+	for stack in tech.cost:
+		if player.count_item(stack.item.id) < stack.quantity:
+			return false
+	return true
+
+func _try_instant_research(tech: TechDef) -> bool:
+	## Attempt to complete an instant tech by consuming items from player inventory.
+	var player: Player = GameManager.player
+	if not player:
+		return false
+	# Verify the player has all required items
+	if not can_afford_instant(tech):
+		return false
+	# Remove all items
+	for stack in tech.cost:
+		player.remove_item(stack.item.id, stack.quantity)
+	# Complete immediately
+	unlocked_techs[tech.id] = true
+	_apply_effects(tech)
+	research_completed.emit(tech.id)
 	return true
 
 func deliver_science_pack(item_id: StringName) -> bool:
@@ -122,10 +171,12 @@ func _check_completion():
 		if research_progress.get(stack.item.id, 0) < stack.quantity:
 			return
 	# Complete!
-	var completed_id: StringName = current_research.id
+	var completed_tech: TechDef = current_research
+	var completed_id: StringName = completed_tech.id
 	unlocked_techs[completed_id] = true
 	current_research = null
 	research_progress = {}
+	_apply_effects(completed_tech)
 	research_completed.emit(completed_id)
 
 func get_available_techs() -> Array:
@@ -166,8 +217,12 @@ func serialize() -> Dictionary:
 
 func deserialize(data: Dictionary):
 	unlocked_techs.clear()
+	effects_reset.emit()
 	for tech_id_str in data.get("unlocked", []):
-		unlocked_techs[StringName(tech_id_str)] = true
+		var tid := StringName(tech_id_str)
+		unlocked_techs[tid] = true
+		if tech_defs.has(tid):
+			_apply_effects(tech_defs[tid])
 	var current_id = data.get("current", "")
 	if current_id != "":
 		current_research = tech_defs.get(StringName(current_id))
@@ -181,7 +236,11 @@ func reset() -> void:
 	unlocked_techs.clear()
 	current_research = null
 	research_progress = {}
-	# Ring 0 techs are free — unlock them immediately
+	effects_reset.emit()
+	# Ring 0 normal techs are free — unlock them immediately
+	# Ring 0 instant techs must be manually researched
 	for tech_id in tech_defs:
-		if tech_defs[tech_id].ring == 0:
+		var tech: TechDef = tech_defs[tech_id]
+		if tech.ring == 0 and tech.type != &"instant":
 			unlocked_techs[tech_id] = true
+			_apply_effects(tech)

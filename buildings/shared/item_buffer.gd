@@ -93,6 +93,19 @@ func get_item_counts() -> Dictionary:
 		counts[item.id] = counts.get(item.id, 0) + 1
 	return counts
 
+## Remove up to count items with the given id, freeing their visuals.
+## Returns the number actually removed.
+func remove_items_by_id(item_id: StringName, count: int) -> int:
+	var removed := 0
+	var i := items.size() - 1
+	while i >= 0 and removed < count:
+		if items[i].id == item_id:
+			free_visual(items[i])
+			items.remove_at(i)
+			removed += 1
+		i -= 1
+	return removed
+
 ## Return a single item's visual node to the pool.
 func free_visual(item: Dictionary) -> void:
 	if item.has("visual") and item.visual:

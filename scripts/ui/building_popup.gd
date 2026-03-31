@@ -170,6 +170,17 @@ func _compute_column_widths(recipes: Array) -> Dictionary:
 			max_arrow_w = maxf(max_arrow_w, aw)
 	return {in_widths = in_widths, out_widths = out_widths, max_in = max_in, max_arrow_w = max_arrow_w, has_energy_cost = has_energy_cost, energy_cost_w = energy_cost_w}
 
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if event.is_action_pressed("ui_cancel"):
+		if _recipe_menu:
+			_close_recipe_menu()
+		else:
+			hide_popup()
+			dismissed.emit()
+		get_viewport().set_input_as_handled()
+
 func hide_popup() -> void:
 	_close_recipe_menu()
 	visible = false
@@ -477,11 +488,41 @@ func _update_inventory_row(items: Array) -> void:
 			var icon: ItemIcon = hbox.get_child(1) as ItemIcon
 			if icon:
 				icon.set_item(entry.id)
+			panel.set_meta(&"item_id", entry.id)
 		else:
 			# Create new billet
-			inventory_row.add_child(_create_slot_billet(str(entry.count), max_num_w, ItemIcon.create(entry.id, ICON_SIZE)))
+			var slot := _create_inventory_slot(str(entry.count), max_num_w, entry.id)
+			inventory_row.add_child(slot)
 	# Remove excess slots
 	for i in range(existing.size() - 1, items.size() - 1, -1):
 		var child := existing[i]
 		inventory_row.remove_child(child)
 		child.queue_free()
+
+func _create_inventory_slot(num_text: String, num_w: float, item_id: StringName) -> PanelContainer:
+	var panel := _create_slot_billet(num_text, num_w, ItemIcon.create(item_id, ICON_SIZE))
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.set_meta(&"item_id", item_id)
+	panel.gui_input.connect(_on_inventory_slot_input.bind(panel))
+	return panel
+
+func _on_inventory_slot_input(event: InputEvent, panel: PanelContainer) -> void:
+	if not (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed):
+		return
+	if not _building or not is_instance_valid(_building) or not _building.logic:
+		return
+	var player: Player = GameManager.player
+	if not player or not is_instance_valid(player):
+		return
+	var item_id: StringName = panel.get_meta(&"item_id", &"")
+	if item_id == &"":
+		return
+	panel.accept_event()
+	# Try to remove 1 item from building and add to player
+	var removed: int = _building.logic.remove_inventory_item(item_id, 1)
+	if removed > 0:
+		var leftover: int = player.add_item(item_id, removed)
+		if leftover > 0:
+			# Player inventory full — drop as ground item
+			player._spawn_ground_item(item_id, leftover, player.position)
+		_update_content()

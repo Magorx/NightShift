@@ -9,11 +9,12 @@ const TILE_SIZE := 32.0
 const WIRE_COLOR := Color(0.3, 0.65, 1.0, 0.5)
 const WIRE_COLOR_ACTIVE := Color(0.4, 0.8, 1.0, 0.7)
 const WIRE_WIDTH := 1.5
-const NO_POWER_COLOR := Color(1.0, 0.25, 0.15, 0.85)
 const SMOOTH_RATE := 2.5  # how fast flow direction changes (per second)
+const UNPOWERED_GRACE := 1.0  # seconds a building must be unpowered before showing icon
 
 ## The particle emitter scene — tweak visuals in this .tscn via the editor.
 var _emitter_scene: PackedScene = preload("res://scripts/energy/energy_wire_emitter.tscn")
+var _no_power_texture: Texture2D = preload("res://scripts/energy/no_power_icon.png")
 
 var _time: float = 0.0
 var _delta: float = 0.0
@@ -22,6 +23,7 @@ var _wire_emitters: Dictionary = {}  # int pair_key -> GPUParticles2D
 var _active_pairs: Dictionary = {}   # int pair_key -> true, built each frame
 var _had_unpowered: bool = false      # track previous frame to trigger final redraw
 var _was_energy_mode: bool = false     # track previous frame to clear wires on exit
+var _unpowered_timers: Dictionary = {}  # building instance_id -> float (seconds unpowered)
 
 func _is_energy_mode() -> bool:
 	var bs = get_node_or_null("../BuildSystem")
@@ -32,7 +34,10 @@ func _process(delta: float) -> void:
 	_delta = delta
 
 	var in_energy_mode := _is_energy_mode()
-	var has_unpowered := _has_unpowered_buildings()
+
+	# Update unpowered timers
+	_update_unpowered_timers(delta)
+	var has_unpowered := _has_visible_unpowered()
 
 	# Always compute edge flows — particles need them even outside energy mode
 	if GameManager.energy_system:
@@ -52,13 +57,32 @@ func _process(delta: float) -> void:
 	_was_energy_mode = in_energy_mode
 	_had_unpowered = has_unpowered
 
-func _has_unpowered_buildings() -> bool:
+func _update_unpowered_timers(delta: float) -> void:
 	if not GameManager.energy_system:
-		return false
+		_unpowered_timers.clear()
+		return
+	var active_ids: Dictionary = {}
 	for logic in GameManager.energy_system.energy_buildings:
-		if is_instance_valid(logic) and logic.energy:
-			if logic.energy.base_energy_demand > 0.0 and not logic.energy.is_powered:
-				return true
+		if not is_instance_valid(logic) or not logic.energy:
+			continue
+		var id: int = logic.get_instance_id()
+		if logic.energy.base_energy_demand > 0.0 and not logic.energy.is_powered:
+			active_ids[id] = true
+			_unpowered_timers[id] = _unpowered_timers.get(id, 0.0) + delta
+		else:
+			_unpowered_timers.erase(id)
+	# Clean up stale entries for removed buildings
+	var to_erase: Array = []
+	for id in _unpowered_timers:
+		if not active_ids.has(id):
+			to_erase.append(id)
+	for id in to_erase:
+		_unpowered_timers.erase(id)
+
+func _has_visible_unpowered() -> bool:
+	for id in _unpowered_timers:
+		if _unpowered_timers[id] >= UNPOWERED_GRACE:
+			return true
 	return false
 
 func _draw() -> void:
@@ -86,13 +110,12 @@ func _draw() -> void:
 				drawn_pairs[pair_key] = true
 				_draw_wire(node, other)
 
-	# No-power icons always visible
+	# No-power icons always visible (after grace period)
 	for logic in es.energy_buildings:
-		if not is_instance_valid(logic):
+		if not is_instance_valid(logic) or not logic.energy:
 			continue
-		if not logic.energy:
-			continue
-		if logic.energy.base_energy_demand > 0.0 and not logic.energy.is_powered:
+		var id: int = logic.get_instance_id()
+		if _unpowered_timers.get(id, 0.0) >= UNPOWERED_GRACE:
 			_draw_no_power_icon(logic)
 
 # ── Wire drawing ─────────────────────────────────────────────────────────────
@@ -239,27 +262,10 @@ func _cleanup_stale_emitters() -> void:
 # ── No-power icon ────────────────────────────────────────────────────────────
 
 func _draw_no_power_icon(logic) -> void:
-	var building = logic.get_parent()
-	if not building or not is_instance_valid(building):
-		return
-
 	var pos := Vector2(logic.grid_pos) * TILE_SIZE + Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
-	var flash: float = 0.5 + 0.5 * sin(_time * 4.0)
-
-	# Red circle background
-	var bg_alpha: float = 0.4 + 0.3 * flash
-	draw_circle(pos, 8.0, Color(0.15, 0.05, 0.05, bg_alpha))
-
-	# Lightning bolt
-	var bolt_col := Color(NO_POWER_COLOR.r, NO_POWER_COLOR.g, NO_POWER_COLOR.b, 0.6 + 0.4 * flash)
-	draw_line(pos + Vector2(1, -6), pos + Vector2(-2, -1), bolt_col, 1.5)
-	draw_line(pos + Vector2(-2, -1), pos + Vector2(2, -1), bolt_col, 1.5)
-	draw_line(pos + Vector2(2, -1), pos + Vector2(-1, 6), bolt_col, 1.5)
-
-	# Red X
-	var x_col := Color(1.0, 0.2, 0.1, 0.5 + 0.3 * flash)
-	draw_line(pos + Vector2(-5, -5), pos + Vector2(5, 5), x_col, 1.5)
-	draw_line(pos + Vector2(5, -5), pos + Vector2(-5, 5), x_col, 1.5)
+	var rect := Rect2(pos - Vector2(TILE_SIZE, TILE_SIZE) / 2.0, Vector2(TILE_SIZE, TILE_SIZE))
+	var flash: float = 0.7 + 0.3 * sin(_time * 4.0)
+	draw_texture_rect(_no_power_texture, rect, false, Color(1, 1, 1, flash))
 
 # ── Utility ──────────────────────────────────────────────────────────────────
 

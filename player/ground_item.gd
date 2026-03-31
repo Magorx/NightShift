@@ -22,6 +22,7 @@ var _feed_timer: float = 0.0
 func _ready() -> void:
 	add_to_group("ground_items")
 	z_index = Z_NORMAL
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_merge_timer = randf() * MERGE_INTERVAL # stagger merge checks
 	_feed_timer = randf() * FEED_INTERVAL
 
@@ -32,7 +33,8 @@ func _process(delta: float) -> void:
 		return
 	if _pickup_immunity > 0:
 		_pickup_immunity -= delta
-	_hovered = get_local_mouse_position().length() < HOVER_RADIUS
+	var mouse_over_ui := get_viewport().gui_get_hovered_control() != null
+	_hovered = not mouse_over_ui and get_local_mouse_position().length() < HOVER_RADIUS
 	z_index = Z_HOVERED if _hovered else Z_NORMAL
 	_merge_timer += delta
 	if _merge_timer >= MERGE_INTERVAL:
@@ -51,9 +53,9 @@ func _draw() -> void:
 	for i in count:
 		var offset := Vector2(i * 3.0 - (count - 1) * 1.5, -i * 2.0)
 		if _hovered:
-			draw_rect(Rect2(offset - Vector2(9, 9), Vector2(18, 18)), Color(1, 1, 1, 0.85), false, 1.5)
+			draw_rect(Rect2(offset - Vector2(6, 6), Vector2(12, 12)), Color(1, 1, 1, 0.85), false, 1.5)
 		if icon:
-			draw_texture_rect(icon, Rect2(offset - Vector2(8, 8), Vector2(16, 16)), false)
+			draw_texture_rect(icon, Rect2(offset - Vector2(5, 5), Vector2(10, 10)), false)
 
 	if _hovered:
 		var camera := get_viewport().get_camera_2d()
@@ -61,7 +63,7 @@ func _draw() -> void:
 		# Anchor at top-right corner of the topmost dot (fixed world position)
 		var top_idx := count - 1
 		var top_offset := Vector2(top_idx * 3.0 - (count - 1) * 1.5, -top_idx * 2.0)
-		var anchor := top_offset + Vector2(8, -8)
+		var anchor := top_offset + Vector2(5, -5)
 		# Scale text to fixed screen size; position stays pinned to the anchor
 		draw_set_transform(anchor, 0.0, Vector2(inv_zoom, inv_zoom))
 		var font := ThemeDB.fallback_font
