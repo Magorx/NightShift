@@ -1,10 +1,11 @@
-[gd_scene load_steps=28 format=3]
+[gd_scene load_steps=29 format=3]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="3"]
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="4"]
 [ext_resource type="Script" uid="uid://dbaj4knyfgpst" path="res://buildings/smelter/converter.gd" id="6"]
+[ext_resource type="Script" path="res://buildings/press/press_sparks.gd" id="10_sparks"]
 [ext_resource type="Texture2D" path="res://buildings/press/sprites/main.png" id="7_sheet"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba0"]
@@ -250,6 +251,10 @@ position = Vector2(32, 16)
 sprite_frames = SubResource("SpriteFrames_top")
 animation = &"idle"
 autoplay = "idle"
+
+[node name="CodeAnimSparks" type="Node2D" parent="Rotatable"]
+z_index = 11
+script = ExtResource("10_sparks")
 
 [node name="ConverterLogic" type="Node" parent="."]
 script = ExtResource("6")
