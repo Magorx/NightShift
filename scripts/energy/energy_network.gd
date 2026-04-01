@@ -25,16 +25,18 @@ var total_stored: float = 0.0   # cached, updated each tick
 
 ## Tuning constants
 const DEMAND_BUFFER_SECONDS := 5.0   # how many seconds of demand a building protects
-const RELAXATION_PASSES := 3         # iterations per redistribution phase
+const RELAXATION_PASSES := 2         # iterations per redistribution phase
 
 ## Per-tick edge budgets (parallel array to edges, reset each tick)
 var _edge_budgets: Array = []   # Array[float]
+var _floor_cache: Dictionary = {}  # instance_id -> float, cleared each tick
 
 func tick(delta: float) -> void:
 	if buildings.is_empty():
 		return
 
-	# Initialize per-tick throughput budgets
+	# Initialize per-tick throughput budgets and clear caches
+	_floor_cache.clear()
 	_init_edge_budgets(delta)
 
 	# Phase 1: Generate
@@ -51,7 +53,7 @@ func tick(delta: float) -> void:
 # ── Phase 1: Generation ─────────────────────────────────────────────────────
 
 func _phase_generate(delta: float) -> void:
-	# Check if grid is full
+	# Single pass: compute totals, set grid_full, and generate
 	total_stored = 0.0
 	total_capacity = 0.0
 	for building in buildings:
@@ -61,13 +63,7 @@ func _phase_generate(delta: float) -> void:
 
 	for building in buildings:
 		building.energy.grid_full = is_full
-
-	if is_full:
-		return
-
-	# Iterate all buildings — generation_rate can be dynamic (e.g. coal burner)
-	for building in buildings:
-		if building.energy.generation_rate > 0.0:
+		if not is_full and building.energy.generation_rate > 0.0:
 			var gen: float = building.energy.generation_rate * delta
 			building.energy.energy_stored = minf(
 				building.energy.energy_stored + gen,
@@ -263,7 +259,12 @@ func _init_edge_budgets(delta: float) -> void:
 ## voluntarily release during redistribution.
 ## floor = base_energy_demand * DEMAND_BUFFER_SECONDS + max affordable recipe cost
 func _get_floor(logic) -> float:
+	var id = logic.get_instance_id()
+	if _floor_cache.has(id):
+		return _floor_cache[id]
 	var e = logic.energy
 	var demand_floor: float = e.base_energy_demand * DEMAND_BUFFER_SECONDS
 	var recipe_floor: float = logic.get_max_affordable_recipe_cost()
-	return minf(demand_floor + recipe_floor, e.energy_capacity)
+	var result := minf(demand_floor + recipe_floor, e.energy_capacity)
+	_floor_cache[id] = result
+	return result

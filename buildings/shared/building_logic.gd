@@ -60,12 +60,20 @@ func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 
 ## Find child EnergyNode if present. Returns null if none.
 ## Uses duck-typing to avoid compile-time dependency on EnergyNode class.
+## Result is cached after first call.
+var _cached_energy_node = null
+var _energy_node_looked_up: bool = false
+
 func get_energy_node():
+	if _energy_node_looked_up:
+		return _cached_energy_node
+	_energy_node_looked_up = true
 	var building = get_parent()
 	var rotatable = building.find_child("Rotatable", false, false)
 	var container = rotatable if rotatable else building
 	for child in container.get_children():
 		if child is Node2D and child.has_method("can_connect_to"):
+			_cached_energy_node = child
 			return child
 	return null
 
@@ -109,14 +117,22 @@ func on_removing() -> void:
 
 ## Call each frame with the building's functional active state.
 ## Handles hold timer (anti-flicker) and windup/winddown transitions.
+var _cached_sprite_base: AnimatedSprite2D
+var _cached_sprite_top: AnimatedSprite2D
+var _sprites_cached: bool = false
+
 func _update_building_sprites(is_active: bool, delta: float) -> void:
 	if is_active:
 		_active_hold_timer = ACTIVE_HOLD_TIME
 	elif _active_hold_timer > 0.0:
 		_active_hold_timer -= delta
 	var want_active := is_active or _active_hold_timer > 0.0
-	var base := get_parent().get_node_or_null("Rotatable/SpriteBottom") as AnimatedSprite2D
-	var top := get_parent().get_node_or_null("Rotatable/SpriteTop") as AnimatedSprite2D
+	if not _sprites_cached:
+		_sprites_cached = true
+		_cached_sprite_base = get_parent().get_node_or_null("Rotatable/SpriteBottom") as AnimatedSprite2D
+		_cached_sprite_top = get_parent().get_node_or_null("Rotatable/SpriteTop") as AnimatedSprite2D
+	var base := _cached_sprite_base
+	var top := _cached_sprite_top
 	if not base:
 		return
 	if not _anim_connected:
@@ -152,10 +168,10 @@ func _set_building_anim(base: AnimatedSprite2D, top: AnimatedSprite2D, anim: Str
 		top.play()
 
 func _on_building_anim_finished() -> void:
-	var base := get_parent().get_node_or_null("Rotatable/SpriteBottom") as AnimatedSprite2D
+	var base := _cached_sprite_base
 	if not base:
 		return
-	var top := get_parent().get_node_or_null("Rotatable/SpriteTop") as AnimatedSprite2D
+	var top := _cached_sprite_top
 	if base.animation == &"windup":
 		_set_building_anim(base, top, &"active")
 	elif base.animation == &"winddown":

@@ -158,12 +158,20 @@ static func rotate_mask(mask: Array, rotation: int) -> Array:
 	return result
 
 ## Get shape cells rotated for the given placement rotation.
+## Returns a cached array — callers must NOT modify the result.
+var _rotated_shape_cache: Array = [null, null, null, null]
+
 func get_rotated_shape(rotation: int) -> Array:
+	if _rotated_shape_cache[rotation] != null:
+		return _rotated_shape_cache[rotation]
+	var result: Array
 	if rotation == 0:
-		return shape.duplicate()
-	var result: Array = []
-	for cell in shape:
-		result.append(rotate_cell(cell, rotation))
+		result = shape.duplicate()
+	else:
+		result = []
+		for cell in shape:
+			result.append(rotate_cell(cell, rotation))
+	_rotated_shape_cache[rotation] = result
 	return result
 
 ## Compute the bounding box of a rotated shape.

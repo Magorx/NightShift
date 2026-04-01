@@ -15,9 +15,11 @@ const ARROW_HOVER_COLOR := Color(1.0, 1.0, 1.0)
 @onready var vbox: VBoxContainer = %VBox
 
 var _configs: Array = []
+var _logic = null  # ConverterLogic reference for dirty notification
 
-func populate(configs: Array) -> void:
+func populate(configs: Array, logic = null) -> void:
 	_configs = configs
+	_logic = logic
 	_configs.sort_custom(func(a, b): return a.priority < b.priority)
 	_rebuild()
 
@@ -264,6 +266,8 @@ func _on_move_input(event: InputEvent, idx: int, direction: int) -> void:
 	# Update priorities to match new order (1-based)
 	for i in range(_configs.size()):
 		_configs[i].priority = i + 1
+	if _logic and _logic.has_method("mark_configs_dirty"):
+		_logic.mark_configs_dirty()
 	_rebuild()
 
 func _on_toggle_input(event: InputEvent, config, rect: ColorRect) -> void:
@@ -272,3 +276,5 @@ func _on_toggle_input(event: InputEvent, config, rect: ColorRect) -> void:
 	rect.accept_event()
 	config.enabled = not config.enabled
 	rect.color = ENABLED_COLOR if config.enabled else DISABLED_COLOR
+	if _logic and _logic.has_method("mark_configs_dirty"):
+		_logic.mark_configs_dirty()

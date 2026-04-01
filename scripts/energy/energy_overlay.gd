@@ -24,10 +24,14 @@ var _active_pairs: Dictionary = {}   # int pair_key -> true, built each frame
 var _had_unpowered: bool = false      # track previous frame to trigger final redraw
 var _was_energy_mode: bool = false     # track previous frame to clear wires on exit
 var _unpowered_timers: Dictionary = {}  # building instance_id -> float (seconds unpowered)
+var _unpowered_accum: float = 0.0      # throttle unpowered timer updates
+var _emitter_accum: float = 0.0        # throttle emitter updates
+var _build_system = null               # cached BuildSystem reference
 
 func _is_energy_mode() -> bool:
-	var bs = get_node_or_null("../BuildSystem")
-	return bs and bs.energy_link_mode
+	if not _build_system:
+		_build_system = get_node_or_null("../BuildSystem")
+	return _build_system and _build_system.energy_link_mode
 
 func _process(delta: float) -> void:
 	_time += delta
@@ -35,18 +39,24 @@ func _process(delta: float) -> void:
 
 	var in_energy_mode := _is_energy_mode()
 
-	# Update unpowered timers
-	_update_unpowered_timers(delta)
+	# Throttle unpowered timer updates to every 0.5s
+	_unpowered_accum += delta
+	if _unpowered_accum >= 0.5:
+		_update_unpowered_timers(_unpowered_accum)
+		_unpowered_accum = 0.0
 	var has_unpowered := _has_visible_unpowered()
 
-	# Always compute edge flows — particles need them even outside energy mode
+	# Only compute edge flows when particles or wires actually need them
 	if GameManager.energy_system:
-		GameManager.energy_system.needs_edge_flows = true
+		GameManager.energy_system.needs_edge_flows = in_energy_mode or has_unpowered
 
-	# Always update particle emitters (visible at all times)
-	_active_pairs.clear()
-	_update_emitters()
-	_cleanup_stale_emitters()
+	# Throttle emitter updates to ~10fps
+	_emitter_accum += delta
+	if _emitter_accum >= 0.1:
+		_emitter_accum = 0.0
+		_active_pairs.clear()
+		_update_emitters()
+		_cleanup_stale_emitters()
 
 	# Redraw for wires (energy mode) or no-power icons
 	if in_energy_mode or has_unpowered:

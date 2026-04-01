@@ -20,10 +20,15 @@ func _physics_process(delta: float) -> void:
 		var conv = conveyors[pos]
 		conv.update_items(delta, 1.0 / conv.traverse_time)
 
-	# Second pass: pull-based transfers from ANY output provider (round-robin)
+	# Second pass: pull-based transfers + clamp (merged to avoid extra iteration)
 	for pos in conveyors:
 		var conv = conveyors[pos]
 		if not conv.can_accept():
+			# Clamp front item if stuck
+			if not conv.buffer.is_empty():
+				var front = conv.get_front_item()
+				if front.progress > 1.0:
+					front.progress = 1.0
 			continue
 
 		var rr: RoundRobin = _pull_rr[pos]
@@ -40,20 +45,19 @@ func _physics_process(delta: float) -> void:
 					break
 			if not pulled:
 				break
+		# Clamp front item after pulls
+		if not conv.buffer.is_empty():
+			var front = conv.get_front_item()
+			if front.progress > 1.0:
+				front.progress = 1.0
 
-	# Third pass: clamp items that couldn't transfer (end of chain or blocked)
-	for pos in conveyors:
-		var conv = conveyors[pos]
-		if conv.buffer.is_empty():
-			continue
-		var front = conv.get_front_item()
-		if front.progress > 1.0:
-			front.progress = 1.0
-
-	# Fourth pass: pick up ground items sitting on conveyors
-	_pickup_ground_items()
+	# Fourth pass: pick up ground items sitting on conveyors (every 4th frame)
+	_ground_frame += 1
+	if _ground_frame % 4 == 0:
+		_pickup_ground_items()
 
 const TILE_SIZE := 32
+var _ground_frame: int = 0
 
 func _pickup_ground_items() -> void:
 	var ground_items := get_tree().get_nodes_in_group("ground_items")

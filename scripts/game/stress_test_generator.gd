@@ -61,8 +61,11 @@ func _discover_buildings() -> Dictionary:
 		energy_ids = [],   # all "energy" category building IDs
 		converters = {},   # converter_type (String) → building id
 	}
+	# First pass: collect only unlocked (no research_tag) buildings
 	for id: StringName in GameManager.building_defs:
 		var def: Resource = GameManager.building_defs[id]
+		if def.research_tag != &"":
+			continue
 		match def.category:
 			"extractor":
 				if result.extractor.is_empty(): result.extractor = id

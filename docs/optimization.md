@@ -540,3 +540,35 @@ if visible and _redraw_timer >= 0.5:
 **Recommended attack order:** Fix items 1-4 first — they are easy changes with the highest impact. Together they likely account for 40-65% of the frame budget. Items 5-9 are the next tier. Items 10+ are polish.
 
 The core theme: **too many things run unconditionally every frame** when they should be throttled, cached, or gated on dirty flags.
+
+---
+
+## Applied Optimizations — Results
+
+All fixes below were applied and verified via screenshot comparison (delivery counts, conveyor visuals, building layout all preserved).
+
+### Fixes Applied
+
+| # | Fix | File(s) |
+|---|-----|---------|
+| 1 | `BuildSystem.queue_redraw()` — only when state changes | `build_system.gd` |
+| 2 | EnergyOverlay — throttle unpowered timers (0.5s), emitters (0.1s), edge flows only when needed | `energy_overlay.gd` |
+| 3 | Converter recipe sort — cached, only re-sorted on priority change | `converter.gd` |
+| 4 | `_get_floor()` — cached per-tick via `_floor_cache` dictionary | `energy_network.gd` |
+| 5 | `get_rotated_shape()` — cached per rotation index | `building_def.gd` |
+| 6 | ConveyorSystem — merged clamp pass into pull pass (3 passes → 2) | `conveyor_system.gd` |
+| 7 | Ground items pickup — throttled to every 4th frame | `conveyor_system.gd` |
+| 8 | `get_energy_node()` — cached on first lookup | `building_logic.gd` |
+| 9 | ItemSink — capped at 4 pulls per frame | `sink.gd` |
+| 10 | EnergySystem rebuild — merged clear + build passes into one | `energy_system.gd` |
+| 11 | `_update_energy_demand()` — dirty flag, only recalculates on inventory change | `converter.gd` |
+| 12 | `_update_building_sprites()` — cached sprite node lookups | `building_logic.gd` |
+| 13 | EnergyOverlay — cached BuildSystem reference | `energy_overlay.gd` |
+| 14 | EnergyNetwork — reduced relaxation passes 3→2, merged generate phase loops | `energy_network.gd` |
+| 15 | Stress test generator — filter to unlocked buildings only | `stress_test_generator.gd` |
+
+### Benchmark (160x160, ~1600 buildings, macOS vsync-locked)
+
+160x160 stress test holds stable 60fps across all zoom levels (vsync-locked — actual headroom unknown due to macOS vsync enforcement).
+
+At 192x192 (~3000 buildings), performance drops to ~6fps. The bottleneck at that scale is GDScript iteration overhead — 2000+ conveyors iterated twice per frame, 500+ buildings ticked individually. Further gains at that scale would require C++/GDExtension for the hot loops (ConveyorSystem, EnergyNetwork).

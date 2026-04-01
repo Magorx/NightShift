@@ -19,8 +19,8 @@ var _failed: bool = false
 # it MUST be frozen/seeded in simulations so that screenshot baselines remain
 # reproducible. Use a fixed RNG seed or disable random systems entirely.
 
-const SCREENSHOT_WIDTH := 320
-const SCREENSHOT_HEIGHT := 180
+const SCREENSHOT_WIDTH := 1280
+const SCREENSHOT_HEIGHT := 720
 const SCREENSHOT_INTERVAL := 60  # auto-capture at most every N ticks
 const SCREENSHOT_DIFF_THRESHOLD := 0.02  # max 2% average pixel diff
 

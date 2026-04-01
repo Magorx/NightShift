@@ -22,6 +22,8 @@ var recipes: Array = []:
 
 ## Per-recipe configuration (priority + enabled). One RecipeConfig per recipe.
 var recipe_configs: Array = []
+var _sorted_configs: Array = []
+var _configs_dirty: bool = true
 
 ## Inventories for input ingredients and craft outputs.
 var input_inv: Inventory = Inventory.new()
@@ -72,6 +74,7 @@ func _build_recipe_configs() -> void:
 	recipe_configs.clear()
 	for i in range(recipes.size()):
 		recipe_configs.append(RecipeConfig.new(recipes[i], i + 1))
+	_configs_dirty = true
 
 func _build_capacities() -> void:
 	input_inv = Inventory.new()
@@ -137,16 +140,25 @@ func _try_pull_inputs() -> void:
 			if input_inv.has_space(peek_id):
 				GameManager.pull_item(world_cell, dir_idx)
 				input_inv.add(peek_id)
+				_demand_dirty = true
+
+var _demand_dirty: bool = true
 
 func _update_energy_demand() -> void:
-	if not energy:
+	if not energy or not _demand_dirty:
 		return
 	energy.energy_demand = get_max_affordable_recipe_cost()
+	_demand_dirty = false
+
+func mark_configs_dirty() -> void:
+	_configs_dirty = true
 
 func _try_start_craft() -> void:
-	var sorted := recipe_configs.duplicate()
-	sorted.sort_custom(func(a, b): return a.priority < b.priority)
-	for config in sorted:
+	if _configs_dirty:
+		_sorted_configs = recipe_configs.duplicate()
+		_sorted_configs.sort_custom(func(a, b): return a.priority < b.priority)
+		_configs_dirty = false
+	for config in _sorted_configs:
 		if not config.enabled:
 			continue
 		if not _can_craft(config.recipe):
@@ -183,6 +195,7 @@ func _start_craft(recipe) -> void:
 		input_inv.remove(inp.item.id, inp.quantity)
 	_active_recipe = recipe
 	_craft_timer = 0.0
+	_demand_dirty = true
 
 func _try_finish_craft() -> void:
 	for out in _active_recipe.outputs:
@@ -193,6 +206,7 @@ func _try_finish_craft() -> void:
 	_last_recipe = _active_recipe
 	_active_recipe = null
 	_craft_timer = 0.0
+	_demand_dirty = true
 
 func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
 	var remaining := quantity
@@ -253,6 +267,7 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 			for iid in output_inv.get_item_ids():
 				if output_inv.has(iid):
 					output_inv.remove(iid)
+					_demand_dirty = true
 					return iid
 	return &""
 
@@ -307,6 +322,7 @@ func deserialize_state(state: Dictionary) -> void:
 		energy.deserialize(state["energy"])
 	if state.has("recipe_configs"):
 		RecipeConfig.deserialize_into(recipe_configs, state["recipe_configs"])
+		_configs_dirty = true
 
 func _serialize_inventory(inv: Inventory) -> Dictionary:
 	var result := {}

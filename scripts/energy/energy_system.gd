@@ -80,18 +80,17 @@ func _physics_process(delta: float) -> void:
 # ── Network rebuild (flood-fill + edge graph) ──────────────────────────────
 
 func _rebuild_networks() -> void:
-	# Clear old network references
-	for logic in energy_buildings:
-		if is_instance_valid(logic) and logic.energy:
-			logic.energy.network = null
 	networks.clear()
 
-	# Build adjacency map: grid_pos -> BuildingLogic (only energy-capable buildings)
+	# Single pass: clear network refs + build adjacency map
 	var pos_to_logic: Dictionary = {}
 	for logic in energy_buildings:
 		if not is_instance_valid(logic):
 			continue
-		if not logic.energy or logic.energy.energy_capacity <= 0.0:
+		if not logic.energy:
+			continue
+		logic.energy.network = null
+		if logic.energy.energy_capacity <= 0.0:
 			continue
 		var building = logic.get_parent()
 		if building and building.has_method("init"):  # BuildingBase

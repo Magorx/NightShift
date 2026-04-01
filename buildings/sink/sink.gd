@@ -7,10 +7,13 @@ var _pull_index: int = 0
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, _rotation: int) -> void:
 	super.configure(_def, p_grid_pos, _rotation)
 
+const MAX_PULLS_PER_TICK := 4
+
 func _physics_process(_delta: float) -> void:
-	# Keep pulling until nothing is ready
+	# Pull up to MAX_PULLS_PER_TICK items per frame
+	var pulls := 0
 	var keep_pulling := true
-	while keep_pulling:
+	while keep_pulling and pulls < MAX_PULLS_PER_TICK:
 		keep_pulling = false
 		for i in range(4):
 			var dir_idx = (_pull_index + i) % 4
@@ -21,6 +24,7 @@ func _physics_process(_delta: float) -> void:
 				var export_val: int = item_def.export_value if item_def else 1
 				GameManager.record_delivery(result.id, export_val)
 				_pull_index = (dir_idx + 1) % 4
+				pulls += 1
 				keep_pulling = true
 				break
 

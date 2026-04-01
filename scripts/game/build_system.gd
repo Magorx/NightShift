@@ -66,8 +66,10 @@ var _phase_placements: Array = [] # Array of Arrays of {pos: Vector2i, rotation:
 var _ghost_nodes: Array = []
 var _ghost_building_id: StringName = &""
 var _ghost_rotation: int = -1
+var _was_drawing: bool = false
 
 func _process(_delta: float) -> void:
+	var prev_grid_pos := cursor_grid_pos
 	cursor_grid_pos = _get_grid_pos_under_mouse()
 	if _dragging:
 		_update_blueprints()
@@ -79,7 +81,11 @@ func _process(_delta: float) -> void:
 	elif not _highlighted_buildings.is_empty():
 		_clear_all_highlights()
 	_update_ghosts()
-	queue_redraw()
+	# Only redraw when there's something to draw and cursor moved
+	var needs_draw := destroy_mode or energy_link_mode or (_phase_index > 0 and not _phase_placements.is_empty())
+	if needs_draw or _was_drawing:
+		queue_redraw()
+	_was_drawing = needs_draw
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
