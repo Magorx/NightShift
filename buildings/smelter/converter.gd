@@ -70,11 +70,16 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 		var cfg = ENERGY_CONFIG[converter_type]
 		energy = BuildingEnergy.new(cfg.capacity, cfg.demand, 0.0)
 
-func _build_recipe_configs() -> void:
+func _build_recipe_configs(default_enabled: bool = true) -> void:
 	recipe_configs.clear()
 	for i in range(recipes.size()):
-		recipe_configs.append(RecipeConfig.new(recipes[i], i + 1))
+		var config := RecipeConfig.new(recipes[i], i + 1)
+		config.enabled = default_enabled
+		recipe_configs.append(config)
 	_configs_dirty = true
+
+const INPUT_CAPACITY_MULTIPLIER := 3   # Buffer 3 batches of each input
+const OUTPUT_CAPACITY_MULTIPLIER := 5  # Buffer 5 batches of each output
 
 func _build_capacities() -> void:
 	input_inv = Inventory.new()
@@ -82,12 +87,12 @@ func _build_capacities() -> void:
 	for recipe in recipes:
 		for inp in recipe.inputs:
 			var cur = input_inv.get_capacity(inp.item.id)
-			if inp.quantity * 3 > cur:
-				input_inv.set_capacity(inp.item.id, inp.quantity * 3)
+			if inp.quantity * INPUT_CAPACITY_MULTIPLIER > cur:
+				input_inv.set_capacity(inp.item.id, inp.quantity * INPUT_CAPACITY_MULTIPLIER)
 		for out in recipe.outputs:
 			var cur = output_inv.get_capacity(out.item.id)
-			if out.quantity * 5 > cur:
-				output_inv.set_capacity(out.item.id, out.quantity * 5)
+			if out.quantity * OUTPUT_CAPACITY_MULTIPLIER > cur:
+				output_inv.set_capacity(out.item.id, out.quantity * OUTPUT_CAPACITY_MULTIPLIER)
 
 func _physics_process(delta: float) -> void:
 	# Always signal energy demand so redistribution delivers energy proactively
@@ -271,9 +276,6 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 					return iid
 	return &""
 
-func cleanup_visuals() -> void:
-	pass
-
 ## Returns craft progress as 0.0–1.0 for progress bar display.
 func get_progress() -> float:
 	if _active_recipe:
@@ -289,8 +291,8 @@ func serialize_state() -> Dictionary:
 	state["craft_timer"] = _craft_timer
 	state["active_recipe_id"] = str(_active_recipe.id) if _active_recipe else ""
 	state["last_recipe_id"] = str(_last_recipe.id) if _last_recipe else ""
-	state["input_inv"] = _serialize_inventory(input_inv)
-	state["output_inv"] = _serialize_inventory(output_inv)
+	state["input_inv"] = input_inv.serialize()
+	state["output_inv"] = output_inv.serialize()
 	if energy:
 		state["energy"] = energy.serialize()
 	var configs_data: Array = []
@@ -303,9 +305,9 @@ func deserialize_state(state: Dictionary) -> void:
 	if state.has("craft_timer"):
 		_craft_timer = state["craft_timer"]
 	if state.has("input_inv"):
-		_deserialize_inventory(input_inv, state["input_inv"])
+		input_inv.deserialize(state["input_inv"])
 	if state.has("output_inv"):
-		_deserialize_inventory(output_inv, state["output_inv"])
+		output_inv.deserialize(state["output_inv"])
 	if state.has("active_recipe_id") and state["active_recipe_id"] != "":
 		var recipe_id := StringName(state["active_recipe_id"])
 		for recipe in recipes:
@@ -324,23 +326,6 @@ func deserialize_state(state: Dictionary) -> void:
 		RecipeConfig.deserialize_into(recipe_configs, state["recipe_configs"])
 		_configs_dirty = true
 
-func _serialize_inventory(inv: Inventory) -> Dictionary:
-	var result := {}
-	for iid in inv.get_item_ids():
-		result[str(iid)] = inv.get_count(iid)
-	return result
-
-func _deserialize_inventory(inv: Inventory, data: Dictionary) -> void:
-	for item_id_str in data:
-		var iid := StringName(item_id_str)
-		if not GameManager.is_valid_item_id(iid):
-			GameLogger.warn("Converter at %s: skipped invalid item '%s'" % [grid_pos, iid])
-			continue
-		var count: int = int(data[item_id_str])
-		if inv.get_capacity(iid) == 0:
-			inv.set_capacity(iid, count + 10)
-		for i in count:
-			inv.add(iid)
 
 # ── Info panel ─────────────────────────────────────────────────────────────────
 

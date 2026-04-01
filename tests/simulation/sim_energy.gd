@@ -187,6 +187,7 @@ func run_simulation() -> void:
 
 	# Source producing coal fast enough to keep burner fueled
 	var source9 = sim_place_building(&"source", Vector2i(60, 20), 0)
+	source9.logic.enabled_items = [&"coal"]
 	source9.logic.item_id = &"coal"
 	source9.logic.produce_interval = 0.25
 	sim_place_building(&"conveyor", Vector2i(61, 20), 0)

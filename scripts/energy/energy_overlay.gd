@@ -110,11 +110,7 @@ func _draw() -> void:
 			for other in node.connections:
 				if not is_instance_valid(other):
 					continue
-				var id_a: int = node.get_instance_id()
-				var id_b: int = other.get_instance_id()
-				var min_id: int = mini(id_a, id_b)
-				var max_id: int = maxi(id_a, id_b)
-				var pair_key: int = (min_id + max_id) * (min_id + max_id + 1) / 2 + max_id
+				var pair_key: int = EnergySystem.edge_key(node.get_instance_id(), other.get_instance_id())
 				if drawn_pairs.has(pair_key):
 					continue
 				drawn_pairs[pair_key] = true
@@ -159,11 +155,9 @@ func _update_emitters() -> void:
 		for other in node.connections:
 			if not is_instance_valid(other):
 				continue
-			var id_a: int = node.get_instance_id()
-			var id_b: int = other.get_instance_id()
-			if id_a >= id_b:
+			if node.get_instance_id() >= other.get_instance_id():
 				continue  # process each pair once
-			var pair_key: int = (id_a + id_b) * (id_a + id_b + 1) / 2 + id_b
+			var pair_key: int = EnergySystem.edge_key(node.get_instance_id(), other.get_instance_id())
 			_active_pairs[pair_key] = true
 			_update_wire_emitter(pair_key, node, other)
 

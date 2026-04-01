@@ -1,11 +1,10 @@
-extends RefCounted
+extends BaseMultiMeshManager
 
 ## Renders all conveyor sprites via a single MultiMeshInstance2D instead of
 ## individual AnimatedSprite2D nodes. Drastically reduces draw calls.
 
 const TILE_SIZE := 32.0
 const INITIAL_CAPACITY := 512
-const HIDDEN_POS := Vector2(-99999, -99999)
 const ANIM_FPS := 10.0
 const FRAME_COUNT := 4
 
@@ -14,10 +13,6 @@ const FRAME_COUNT := 4
 #   Row 0: straight, Row 1: turn, Row 2: dual_side_input,
 #   Row 3: side_input, Row 4: crossroad, Row 5: start
 
-var multimesh: MultiMesh
-var instance: MultiMeshInstance2D
-var _free_list: Array[int] = []
-var _capacity: int = 0
 var _material: ShaderMaterial
 var _idx_map: Dictionary = {}  # Vector2i → int (multimesh index)
 
@@ -25,7 +20,7 @@ func _init() -> void:
 	multimesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_2D
 	multimesh.use_custom_data = true
-	multimesh.mesh = _create_quad_mesh()
+	multimesh.mesh = BaseMultiMeshManager.create_quad_mesh(TILE_SIZE)
 
 	_material = _create_material()
 
@@ -139,43 +134,6 @@ func _is_feeding(grid_pos: Vector2i, dir_offset: Vector2i) -> bool:
 		return false
 	return GameManager.has_output_at(grid_pos, dir_idx)
 
-func _grow(new_capacity: int) -> void:
-	var old := _capacity
-	_capacity = new_capacity
-	if old == 0:
-		multimesh.instance_count = _capacity
-	else:
-		var old_transforms: Array = []
-		var old_custom: Array = []
-		for i in range(old):
-			old_transforms.append(multimesh.get_instance_transform_2d(i))
-			old_custom.append(multimesh.get_instance_custom_data(i))
-		multimesh.instance_count = _capacity
-		for i in range(old):
-			multimesh.set_instance_transform_2d(i, old_transforms[i])
-			multimesh.set_instance_custom_data(i, old_custom[i])
-	for i in range(old, _capacity):
-		multimesh.set_instance_transform_2d(i, Transform2D(0, HIDDEN_POS))
-		_free_list.append(i)
-
-func _create_quad_mesh() -> Mesh:
-	var arr_mesh := ArrayMesh.new()
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	var h := TILE_SIZE * 0.5
-	# Vertices centered at origin; in 2D (Y-down) (-h,-h) is top-left
-	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
-		Vector3(-h, -h, 0), Vector3(h, -h, 0),
-		Vector3(h, h, 0), Vector3(-h, h, 0),
-	])
-	# UVs: (0,0) at top-left, (1,1) at bottom-right — no ambiguity
-	arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array([
-		Vector2(0, 0), Vector2(1, 0),
-		Vector2(1, 1), Vector2(0, 1),
-	])
-	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
-	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return arr_mesh
 
 func _create_material() -> ShaderMaterial:
 	var shader := Shader.new()

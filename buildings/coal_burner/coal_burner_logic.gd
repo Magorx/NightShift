@@ -94,19 +94,13 @@ func has_input_from(cell: Vector2i, from_dir_idx: int) -> bool:
 			return true
 	return false
 
-func cleanup_visuals() -> void:
-	pass
-
 # ── Serialization ────────────────────────────────────────────────────────────
 
 func serialize_state() -> Dictionary:
 	var state := {}
 	state["burn_timer"] = _burn_timer
 	state["is_burning"] = _is_burning
-	var inv_data := {}
-	for iid in fuel_inv.get_item_ids():
-		inv_data[str(iid)] = fuel_inv.get_count(iid)
-	state["fuel_inv"] = inv_data
+	state["fuel_inv"] = fuel_inv.serialize()
 	if energy:
 		state["energy"] = energy.serialize()
 	return state
@@ -117,16 +111,7 @@ func deserialize_state(state: Dictionary) -> void:
 	if state.has("is_burning"):
 		_is_burning = state["is_burning"]
 	if state.has("fuel_inv"):
-		for item_id_str in state["fuel_inv"]:
-			var iid := StringName(item_id_str)
-			if not GameManager.is_valid_item_id(iid):
-				GameLogger.warn("CoalBurner at %s: skipped invalid item '%s'" % [grid_pos, iid])
-				continue
-			var count: int = int(state["fuel_inv"][item_id_str])
-			if fuel_inv.get_capacity(iid) == 0:
-				fuel_inv.set_capacity(iid, count + 10)
-			for i in count:
-				fuel_inv.add(iid)
+		fuel_inv.deserialize(state["fuel_inv"])
 	if state.has("energy") and energy:
 		energy.deserialize(state["energy"])
 

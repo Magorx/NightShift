@@ -23,6 +23,16 @@ var _last_placed_node = null  # EnergyNode or null
 # When true, register_node() skips auto-linking (set during save load)
 var loading: bool = false
 
+## Call before batch-placing buildings from a save file.
+func begin_batch_load() -> void:
+	loading = true
+
+## Call after all buildings are placed from a save file.
+func end_batch_load() -> void:
+	loading = false
+	_last_placed_node = null
+	_networks_dirty = true
+
 # Per-tick edge flow data for visualization (built after ticking networks)
 # Key: "min_logic_id:max_logic_id", Value: net flow (positive = min → max)
 var edge_flows: Dictionary = {}
@@ -61,6 +71,12 @@ func unregister_node(node) -> void:
 	if _last_placed_node == node:
 		_last_placed_node = null
 	_networks_dirty = true
+
+## Compute a unique edge key from two instance IDs (order-independent).
+static func edge_key(id_a: int, id_b: int) -> int:
+	var lo := mini(id_a, id_b)
+	var hi := maxi(id_a, id_b)
+	return (lo + hi) * (lo + hi + 1) / 2 + hi
 
 # ── Per-tick processing ─────────────────────────────────────────────────────
 
@@ -148,11 +164,9 @@ func _rebuild_networks() -> void:
 					# Record adjacency edge (deduplicated per building pair)
 					var eid_a: int = current.get_instance_id()
 					var eid_b: int = nlid
-					var min_e: int = mini(eid_a, eid_b)
-					var max_e: int = maxi(eid_a, eid_b)
-					var edge_key: int = (min_e + max_e) * (min_e + max_e + 1) / 2 + max_e
-					if not edge_set.has(edge_key):
-						edge_set[edge_key] = true
+					var ek: int = EnergySystem.edge_key(eid_a, eid_b)
+					if not edge_set.has(ek):
+						edge_set[ek] = true
 						var throughput := minf(
 							current.energy.adjacency_throughput,
 							neighbor_logic.energy.adjacency_throughput
@@ -181,13 +195,9 @@ func _rebuild_networks() -> void:
 						visited_logics[cn_lid] = true
 						queue.append(cn_logic)
 					# Record node edge (deduplicated, offset by 1 to distinguish from adjacency)
-					var eid_a: int = enode.get_instance_id()
-					var eid_b: int = connected_node.get_instance_id()
-					var min_n: int = mini(eid_a, eid_b)
-					var max_n: int = maxi(eid_a, eid_b)
-					var edge_key: int = (min_n + max_n) * (min_n + max_n + 1) / 2 + max_n + 1
-					if not edge_set.has(edge_key):
-						edge_set[edge_key] = true
+					var ek: int = EnergySystem.edge_key(enode.get_instance_id(), connected_node.get_instance_id()) + 1
+					if not edge_set.has(ek):
+						edge_set[ek] = true
 						var throughput := minf(enode.throughput, connected_node.throughput)
 						network.edges.append({
 							a = current, b = cn_logic,
@@ -246,9 +256,7 @@ func _build_edge_flows() -> void:
 			var id_a: int = edge.a.get_instance_id()
 			var id_b: int = edge.b.get_instance_id()
 			var min_id: int = mini(id_a, id_b)
-			var max_id: int = maxi(id_a, id_b)
-			# Cantor pairing: unique int key from two ints (no string formatting)
-			var key: int = (min_id + max_id) * (min_id + max_id + 1) / 2 + max_id
+			var key: int = EnergySystem.edge_key(id_a, id_b)
 			var canonical_flow: float = edge.net_flow if id_a == min_id else -edge.net_flow
 			if edge_flows.has(key):
 				edge_flows[key] += canonical_flow

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
+[ext_resource type="PackedScene" path="res://buildings/biomass_extractor/biomass_extractor_output.tscn" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"biomass_extractor_output"
+display_name = "Biomass Extractor Output"
+color = Color(0.4, 0.55, 0.25, 1)
+description = "Output end of a biomass extractor."
+category = "biomass_extractor_output"
+scene = ExtResource("2")
+is_ground_level = true

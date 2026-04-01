@@ -16,9 +16,6 @@ func has_output_toward(_target_pos: Vector2i) -> bool:
 func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 	return false
 
-func cleanup_visuals() -> void:
-	pass
-
 # ── Serialization ────────────────────────────────────────────────────────────
 
 func serialize_state() -> Dictionary:

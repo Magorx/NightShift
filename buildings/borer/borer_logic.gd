@@ -69,31 +69,16 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 	return false
 
-func cleanup_visuals() -> void:
-	pass
-
 # ── Serialization ──────────────────────────────────────────────────────────────
 
 func serialize_state() -> Dictionary:
-	var inv_data := {}
-	for iid in inventory.get_item_ids():
-		inv_data[str(iid)] = inventory.get_count(iid)
-	return {"timer": _timer, "inventory": inv_data}
+	return {"timer": _timer, "inventory": inventory.serialize()}
 
 func deserialize_state(state: Dictionary) -> void:
 	if state.has("timer"):
 		_timer = state["timer"]
 	if state.has("inventory"):
-		for item_id_str in state["inventory"]:
-			var iid := StringName(item_id_str)
-			if not GameManager.is_valid_item_id(iid):
-				GameLogger.warn("Borer at %s: skipped invalid item '%s'" % [grid_pos, iid])
-				continue
-			var count: int = int(state["inventory"][item_id_str])
-			if inventory.get_capacity(iid) == 0:
-				inventory.set_capacity(iid, count + 10)
-			for i in count:
-				inventory.add(iid)
+		inventory.deserialize(state["inventory"])
 
 # ── Info panel ─────────────────────────────────────────────────────────────────
 

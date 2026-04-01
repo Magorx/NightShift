@@ -106,6 +106,7 @@ func _serialize_run() -> Dictionary:
 		"research": ResearchManager.serialize(),
 		"contracts": ContractManager.serialize(),
 		"creative_mode": GameManager.creative_mode,
+		"deposit_stocks": _serialize_deposit_stocks(),
 		"ui_panels": _serialize_ui_panels(),
 	}
 	var gw := _get_game_world()
@@ -127,6 +128,14 @@ func _serialize_ground_items() -> Array:
 	for item in gw.get_tree().get_nodes_in_group("ground_items"):
 		if is_instance_valid(item) and item.has_method("serialize"):
 			result.append(item.serialize())
+	return result
+
+func _serialize_deposit_stocks() -> Dictionary:
+	var result := {}
+	for pos: Vector2i in GameManager.deposit_stocks:
+		var stock: int = GameManager.deposit_stocks[pos]
+		if stock != -1:  # Only save finite stocks to keep save small
+			result["%d,%d" % [pos.x, pos.y]] = stock
 	return result
 
 func _serialize_items_delivered() -> Dictionary:
@@ -159,11 +168,12 @@ func _serialize_ui_panels() -> Dictionary:
 func _serialize_camera() -> Dictionary:
 	var gw := _get_game_world()
 	if not gw:
-		return {"x": 640, "y": 360, "zoom": 1.0}
+		return {"zoom": 1.0}
 	var cam: Camera2D = gw.find_child("Camera2D", false, false)
 	if not cam:
-		return {"x": 640, "y": 360, "zoom": 1.0}
-	return {"x": cam.position.x, "y": cam.position.y, "zoom": cam.zoom.x}
+		return {"zoom": 1.0}
+	# Only save zoom — camera position follows the player on load
+	return {"zoom": cam.zoom.x}
 
 func _serialize_buildings() -> Array:
 	var result: Array = []
@@ -185,6 +195,11 @@ func _serialize_buildings() -> Array:
 # ── Deserialization ──────────────────────────────────────────────────────────
 
 func _deserialize_run(data: Dictionary) -> void:
+	var version: int = data.get("version", 0)
+	if version > SAVE_VERSION:
+		GameLogger.err("Save version %d is newer than supported %d — skipping load" % [version, SAVE_VERSION])
+		return
+
 	# Clear existing state
 	GameManager.clear_all()
 
@@ -209,7 +224,7 @@ func _deserialize_run(data: Dictionary) -> void:
 
 	# Suppress energy auto-linking while placing saved buildings
 	if GameManager.energy_system:
-		GameManager.energy_system.loading = true
+		GameManager.energy_system.begin_batch_load()
 
 	# Restore buildings
 	var building_list: Array = data.get("buildings", [])
@@ -228,14 +243,20 @@ func _deserialize_run(data: Dictionary) -> void:
 			building.logic.deserialize_state(state)
 
 	if GameManager.energy_system:
-		GameManager.energy_system.loading = false
-		GameManager.energy_system._last_placed_node = null
+		GameManager.energy_system.end_batch_load()
 
 	# Deferred pass: link tunnel pairs using saved partner positions
 	_link_tunnels_deferred(building_list)
 
+	# Deferred pass: link biomass extractor pairs
+	_link_biomass_extractors_deferred(building_list)
+
 	# Deferred pass: restore energy node connections
 	_link_energy_nodes_deferred(building_list)
+
+	# Restore deposit stocks (finite stocks only; infinite are default)
+	var stocks_data: Dictionary = data.get("deposit_stocks", {})
+	_deserialize_deposit_stocks(stocks_data)
 
 	# Restore items delivered
 	var delivered: Dictionary = data.get("items_delivered", {})
@@ -317,12 +338,55 @@ func _link_tunnels_deferred(building_list: Array) -> void:
 		var out_building = GameManager.buildings.get(partner_pos)
 		if not in_building or not out_building:
 			continue
-		if not in_building.logic is TunnelLogic or not out_building.logic is TunnelLogic:
+		if not in_building.logic is UndergroundTransportLogic or not out_building.logic is UndergroundTransportLogic:
 			continue
 		var length: int = int(state.get("tunnel_length", 1))
 		in_building.logic.setup_pair(out_building.logic, length)
 		out_building.logic.setup_pair(in_building.logic, length)
 		in_building.logic.restore_visuals()
+
+## Restore finite deposit stocks from saved data.
+func _deserialize_deposit_stocks(data: Dictionary) -> void:
+	# First, set all existing deposits to their default stock
+	# (world gen already set stocks for new games; for loaded games we override)
+	for pos: Vector2i in GameManager.deposits:
+		if not GameManager.deposit_stocks.has(pos):
+			# Biomass deposits without saved stock data get default 5
+			if GameManager.deposits[pos] == &"biomass":
+				GameManager.deposit_stocks[pos] = 5
+			else:
+				GameManager.deposit_stocks[pos] = -1
+	# Override with saved finite stocks
+	for key: String in data:
+		var parts := key.split(",")
+		if parts.size() != 2:
+			continue
+		var pos := Vector2i(int(parts[0]), int(parts[1]))
+		GameManager.deposit_stocks[pos] = int(data[key])
+
+## Re-link biomass extractor pairs after all buildings are deserialized.
+func _link_biomass_extractors_deferred(building_list: Array) -> void:
+	for entry in building_list:
+		var state: Dictionary = entry.get("state", {})
+		if not state.has("output_x"):
+			continue
+		var grid_pos := Vector2i(int(entry["grid_x"]), int(entry["grid_y"]))
+		var output_pos := Vector2i(int(state["output_x"]), int(state["output_y"]))
+		var ext_building = GameManager.buildings.get(grid_pos)
+		var out_building = GameManager.buildings.get(output_pos)
+		if not ext_building or not out_building:
+			continue
+		if not ext_building.logic is BiomassExtractorLogic:
+			continue
+		if not out_building.logic is BiomassExtractorOutputLogic:
+			continue
+		ext_building.logic.output_device = out_building.logic
+		out_building.logic.extractor = ext_building.logic
+	# Initialize cluster drain manager
+	if not GameManager.cluster_drain_manager:
+		var CDM = load("res://scripts/game/cluster_drain_manager.gd")
+		GameManager.cluster_drain_manager = CDM.new()
+	GameManager.cluster_drain_manager.invalidate_cache()
 
 ## Re-link energy node connections after all buildings are deserialized.
 func _link_energy_nodes_deferred(building_list: Array) -> void:

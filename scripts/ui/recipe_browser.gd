@@ -29,18 +29,7 @@ func deserialize_ui_state(data: Dictionary) -> void:
 var _recipes_producing: Dictionary = {}  # recipes whose output contains item
 var _recipes_consuming: Dictionary = {}  # recipes whose input contains item
 
-# Building colors for recipe cards
-const CONVERTER_COLORS: Dictionary = {
-	"smelter": Color(0.85, 0.45, 0.2),
-	"press": Color(0.6, 0.6, 0.7),
-	"wire_drawer": Color(0.8, 0.55, 0.2),
-	"assembler": Color(0.3, 0.6, 0.8),
-	"assembler_mk2": Color(0.4, 0.5, 0.9),
-	"coke_oven": Color(0.5, 0.35, 0.2),
-	"coal_burner": Color(0.7, 0.3, 0.15),
-	"fuel_generator": Color(0.6, 0.4, 0.1),
-	"hand_assembler": Color(0.5, 0.7, 0.5),
-}
+const _DEFAULT_CONVERTER_COLOR := Color(0.4, 0.4, 0.5)
 
 func _ready() -> void:
 	super._ready()
@@ -356,16 +345,9 @@ func _make_item_icon_with_qty(stack: ItemStack, highlight_id: StringName) -> Pan
 func _make_building_box(recipe: RecipeDef) -> PanelContainer:
 	## Visual building representation: colored box with converter name and time.
 	var box := PanelContainer.new()
-	var box_style := StyleBoxFlat.new()
-	var conv_color: Color = CONVERTER_COLORS.get(recipe.converter_type, Color(0.4, 0.4, 0.5))
-	box_style.bg_color = Color(conv_color, 0.3)
-	box_style.border_color = Color(conv_color, 0.7)
-	box_style.border_width_left = 2
-	box_style.border_width_right = 2
-	box_style.border_width_top = 2
-	box_style.border_width_bottom = 2
-	box_style.set_corner_radius_all(4)
-	box_style.set_content_margin_all(6)
+	var def = GameManager.get_building_def(StringName(recipe.converter_type))
+	var conv_color: Color = def.color if def else _DEFAULT_CONVERTER_COLOR
+	var box_style := UIStyles.bordered_panel(Color(conv_color, 0.3), Color(conv_color, 0.7))
 	box.add_theme_stylebox_override("panel", box_style)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -507,7 +489,8 @@ func _make_mini_recipe_card(recipe: RecipeDef, _highlight_id: StringName) -> HBo
 		row.add_child(slot)
 
 	# Arrow + building
-	var conv_color: Color = CONVERTER_COLORS.get(recipe.converter_type, Color(0.4, 0.4, 0.5))
+	var _def = GameManager.get_building_def(StringName(recipe.converter_type))
+	var conv_color: Color = _def.color if _def else _DEFAULT_CONVERTER_COLOR
 	var arrow := Label.new()
 	arrow.text = " → "
 	arrow.add_theme_font_size_override("font_size", 10)

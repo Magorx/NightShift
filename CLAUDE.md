@@ -75,18 +75,18 @@ Each building type lives in its own folder under `buildings/`. Every building's 
 ```
 buildings/
   shared/              # base scripts shared by all buildings
-    building_base.gd   # BuildingBase class (root node script), has typed `logic: BuildingLogic`
-    building_logic.gd  # BuildingLogic base class — pull interface, configure, serialize, info stats, lifecycle
-    building_def.gd    # BuildingDef resource class — auto-extracts shape/IO from scene, rotation math
-    building_energy.gd # per-building energy state component (capacity, generation, demand, is_powered)
-    energy_node.gd     # long-range energy connection component
-    item_buffer.gd     # core item queue with progress tracking (0.0–1.0)
-    building_fill.gd   # visual fill indicator
-    input_cell.gd      # ColorRect input marker with directional masks
-    output_cell.gd     # ColorRect output marker with directional masks
-    shape_cell.gd      # ColorRect shape marker
-    building_arrow.gd  # direction arrow overlay
-    destroy_highlight.gdshader
+	building_base.gd   # BuildingBase class (root node script), has typed `logic: BuildingLogic`
+	building_logic.gd  # BuildingLogic base class — pull interface, configure, serialize, info stats, lifecycle
+	building_def.gd    # BuildingDef resource class — auto-extracts shape/IO from scene, rotation math
+	building_energy.gd # per-building energy state component (capacity, generation, demand, is_powered)
+	energy_node.gd     # long-range energy connection component
+	item_buffer.gd     # core item queue with progress tracking (0.0–1.0)
+	building_fill.gd   # visual fill indicator
+	input_cell.gd      # ColorRect input marker with directional masks
+	output_cell.gd     # ColorRect output marker with directional masks
+	shape_cell.gd      # ColorRect shape marker
+	building_arrow.gd  # direction arrow overlay
+	destroy_highlight.gdshader
   # --- Transport ---
   conveyor/            # belt transport (ConveyorBelt extends BuildingLogic), 1.0s traverse, 2 capacity
   conveyor_mk2/        # faster belt (0.5s traverse, 3 capacity), reuses ConveyorBelt
@@ -268,9 +268,9 @@ GameWorld (Node2D)                    # scripts/game/game_world.gd
   ConveyorVisualManager               # scripts/game/conveyor_visual_manager.gd
   Player                              # player/player.gd — character with inventory
   UI (CanvasLayer)
-    HUD                               # scripts/ui/hud.gd — speed controls, currency, buildings panel, minimap
-    BuildingPopup                     # scripts/ui/building_popup.gd — contextual popup above clicked building
-    PauseMenu                         # scripts/ui/pause_menu.gd
+	HUD                               # scripts/ui/hud.gd — speed controls, currency, buildings panel, minimap
+	BuildingPopup                     # scripts/ui/building_popup.gd — contextual popup above clicked building
+	PauseMenu                         # scripts/ui/pause_menu.gd
 ```
 
 Key scenes: `scenes/game/game_world.tscn` (gameplay), `scenes/game/test_world.tscn` (dev testing), `scenes/ui/main_menu.tscn` (entry point).

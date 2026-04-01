@@ -1,4 +1,4 @@
-extends RefCounted
+extends BaseMultiMeshManager
 
 ## Renders terrain via three MultiMeshInstance2D layers (bg, fg, misc) using
 ## an atlas texture.  Each tile has a base type, a foreground variant index,
@@ -11,8 +11,7 @@ extends RefCounted
 
 const TILE_SIZE := 32.0
 const ATLAS_COLS := 8
-const ATLAS_ROWS := 14
-const HIDDEN_POS := Vector2(-99999, -99999)
+const ATLAS_ROWS := 15
 
 # ── Atlas index table ───────────────────────────────────────────────────────
 # Maps tile_type -> { "bg": int, "fg": [int...], "misc": [int...] }
@@ -35,6 +34,7 @@ const T_OIL := 12
 const T_CRYSTAL := 13
 const T_URANIUM := 14
 const T_BIOMASS := 15
+const T_ASH := 16
 
 # Grass tint multipliers for the 3 ground variants (applied in shader)
 # Normal grass = white (no tint), dark = darker, light = lighter
@@ -58,7 +58,8 @@ const GRASS_TINTS := {
 # Row 10: oil_bg(80), oil_fg0-2(81-83), oil_misc0-2(84-86), crystal_bg(87)
 # Row 11: crystal_fg0-2(88-90), crystal_misc0-2(91-93), uranium_bg(94), uranium_fg0(95)
 # Row 12: uranium_fg1-2(96-97), uranium_misc0-2(98-100), biomass_bg(101), biomass_fg0-1(102-103)
-# Row 13: biomass_fg2(104), biomass_misc0-2(105-107)
+# Row 13: biomass_fg2(104), biomass_misc0-2(105-107), ash_bg(108), ash_fg0-2(109-111)
+# Row 14: (ash misc reuses ash bg/fg slots)
 
 const ATLAS := {
 	T_GROUND: {"bg": 0, "fg": [1, 2, 3, 4, 5, 6], "misc": [7, 8, 9, 10, 11, 12]},
@@ -77,6 +78,7 @@ const ATLAS := {
 	T_CRYSTAL: {"bg": 87, "fg": [88, 89, 90], "misc": [91, 92, 93]},
 	T_URANIUM: {"bg": 94, "fg": [95, 96, 97], "misc": [98, 99, 100]},
 	T_BIOMASS: {"bg": 101, "fg": [102, 103, 104], "misc": [105, 106, 107]},
+	T_ASH: {"bg": 108, "fg": [109, 110, 111], "misc": [108, 109, 110]},
 }
 
 var _bg_mm: MultiMesh
@@ -160,6 +162,29 @@ func build(map_size: int, tile_types: PackedByteArray, variants: PackedByteArray
 			_set_instance(_misc_mm, idx, xform, misc_arr[misc_idx], tint)
 
 
+## Update a single cell's terrain visuals (e.g. when biomass becomes ash).
+func update_cell(map_size: int, x: int, y: int, tile_type: int, fg_var: int, misc_var: int) -> void:
+	if _map_size == 0 or not _bg_mm:
+		return
+	var idx := y * map_size + x
+	if idx < 0 or idx >= _bg_mm.instance_count:
+		return
+	var actual_type := tile_type
+	if not ATLAS.has(actual_type):
+		actual_type = T_GROUND
+	var entry: Dictionary = ATLAS[actual_type]
+	var tint := Color(1, 1, 1, 1)
+	if GRASS_TINTS.has(actual_type):
+		tint = GRASS_TINTS[actual_type]
+	var center := Vector2(x * TILE_SIZE + TILE_SIZE * 0.5, y * TILE_SIZE + TILE_SIZE * 0.5)
+	var xform := Transform2D(0, center)
+	_set_instance(_bg_mm, idx, xform, entry["bg"], tint)
+	var fg_arr: Array = entry["fg"]
+	_set_instance(_fg_mm, idx, xform, fg_arr[fg_var % fg_arr.size()], tint)
+	var misc_arr: Array = entry["misc"]
+	_set_instance(_misc_mm, idx, xform, misc_arr[misc_var % misc_arr.size()], tint)
+
+
 func clear() -> void:
 	if _bg_mm:
 		_bg_mm.instance_count = 0
@@ -176,7 +201,7 @@ func _create_layer(texture: Texture2D, shader: Shader, z: int) -> Array:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_2D
 	mm.use_custom_data = true
-	mm.mesh = _create_quad_mesh()
+	mm.mesh = BaseMultiMeshManager.create_quad_mesh(TILE_SIZE)
 
 	var inst := MultiMeshInstance2D.new()
 	inst.multimesh = mm
@@ -205,22 +230,6 @@ func _set_instance(mm: MultiMesh, idx: int, xform: Transform2D, atlas_idx: int, 
 	mm.set_instance_custom_data(idx, Color(col, row, tint.r, tint.g))
 
 
-func _create_quad_mesh() -> Mesh:
-	var arr_mesh := ArrayMesh.new()
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	var h := TILE_SIZE * 0.5
-	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
-		Vector3(-h, -h, 0), Vector3(h, -h, 0),
-		Vector3(h, h, 0), Vector3(-h, h, 0),
-	])
-	arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array([
-		Vector2(0, 0), Vector2(1, 0),
-		Vector2(1, 1), Vector2(0, 1),
-	])
-	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
-	arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return arr_mesh
 
 
 func _create_shader() -> Shader:
@@ -228,7 +237,7 @@ func _create_shader() -> Shader:
 	shader.code = "shader_type canvas_item;
 // Terrain atlas: 8 columns x 14 rows of 32x32 tiles
 const float COLS = 8.0;
-const float ROWS = 14.0;
+const float ROWS = 15.0;
 varying flat float v_col;
 varying flat float v_row;
 varying flat float v_tint_r;

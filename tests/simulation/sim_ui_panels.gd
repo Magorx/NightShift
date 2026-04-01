@@ -33,7 +33,7 @@ func run_simulation() -> void:
 	hud.recipe_browser._on_search_changed("science")
 	await sim_advance_ticks(5)
 	var list_children: int = hud.recipe_browser.item_list_box.get_child_count()
-	sim_assert(list_children == 3, "Search 'science' shows 3 items (got %d)" % list_children)
+	sim_assert(list_children == 4, "Search 'science' shows 4 items (got %d)" % list_children)
 
 	# Clear search
 	hud.recipe_browser.search_edit.text = ""
@@ -70,31 +70,31 @@ func run_simulation() -> void:
 
 	# Check that tech nodes are laid out
 	var tech_count: int = hud.research_panel._tech_positions.size()
-	sim_assert(tech_count == 11, "All 11 techs positioned (got %d)" % tech_count)
+	sim_assert(tech_count == 24, "All 24 techs positioned (got %d)" % tech_count)
 
 	# Check ring groupings
 	var ring1_count: int = hud.research_panel._ring_techs.get(1, []).size()
 	var ring2_count: int = hud.research_panel._ring_techs.get(2, []).size()
 	var ring3_count: int = hud.research_panel._ring_techs.get(3, []).size()
-	sim_assert(ring1_count == 6, "Ring 1 has 6 techs (got %d)" % ring1_count)
-	sim_assert(ring2_count == 4, "Ring 2 has 4 techs (got %d)" % ring2_count)
-	sim_assert(ring3_count == 1, "Ring 3 has 1 tech (got %d)" % ring3_count)
+	sim_assert(ring1_count == 5, "Ring 1 has 5 techs (got %d)" % ring1_count)
+	sim_assert(ring2_count == 5, "Ring 2 has 5 techs (got %d)" % ring2_count)
+	sim_assert(ring3_count == 3, "Ring 3 has 3 techs (got %d)" % ring3_count)
 
 	# Select a tech and verify info panel updates
-	hud.research_panel._selected_tech_id = &"tech_press"
+	hud.research_panel._selected_tech_id = &"tech_cartography_1"
 	hud.research_panel._update_info_panel()
 	await sim_advance_ticks(5)
-	sim_assert(hud.research_panel.info_name.text == "Press", "Info panel shows Press name (got '%s')" % hud.research_panel.info_name.text)
+	sim_assert(hud.research_panel.info_name.text == "Cartography I", "Info panel shows Cartography I name (got '%s')" % hud.research_panel.info_name.text)
 
 	# Unlock ring 1 and start research
 	ContractManager._current_ring = 1
-	var can_research: bool = hud.research_panel._is_tech_available(&"tech_press")
-	sim_assert(can_research, "Press tech is available after ring 1 unlock")
+	var can_research: bool = hud.research_panel._is_tech_available(&"tech_cartography_1")
+	sim_assert(can_research, "Cartography I tech is available after ring 1 unlock")
 
-	var started: bool = ResearchManager.start_research(&"tech_press")
-	sim_assert(started, "Research started for tech_press")
+	var started: bool = ResearchManager.start_research(&"tech_cartography_1")
+	sim_assert(started, "Research started for tech_cartography_1")
 	sim_assert(ResearchManager.current_research != null, "Current research is set")
-	sim_assert(ResearchManager.current_research.id == &"tech_press", "Current research is tech_press")
+	sim_assert(ResearchManager.current_research.id == &"tech_cartography_1", "Current research is tech_cartography_1")
 
 	hud.research_panel._update_info_panel()
 	await sim_advance_ticks(5)

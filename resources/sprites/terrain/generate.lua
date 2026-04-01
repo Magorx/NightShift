@@ -5,9 +5,9 @@
 
 local CELL = 32
 local COLS = 8
-local ROWS = 14
+local ROWS = 15
 local W = COLS * CELL  -- 256
-local H = ROWS * CELL  -- 448
+local H = ROWS * CELL  -- 480
 
 -- ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -1437,6 +1437,72 @@ draw_tiny_shapes(img, 3, 13, {
     {type="square", color=Color(50, 95, 35)},
 }, 16007)
 
+-- ══════════════════════════════════════════════════════════════════════════
+-- ASH (Row 14)
+-- Depleted biomass — dry cracked gray-brown soil with charred remnants
+-- ══════════════════════════════════════════════════════════════════════════
+
+local function fill_ash_bg(img, col, row, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local base = Color(105, 95, 82)
+    local dark = Color(82, 74, 64)
+    local light = Color(120, 110, 96)
+    local char_dark = Color(55, 50, 45)
+    for py = 0, CELL - 1 do
+        for px = 0, CELL - 1 do
+            local base_n = fbm(px, py, 3, seed)
+            local c = lerp_color(dark, light, base_n)
+            -- Charred patches
+            local sn = value_noise(px, py, 0.7, seed + 500)
+            if sn > 0.7 then
+                c = lerp_color(c, char_dark, 0.5)
+            end
+            -- Cracks: thin dark lines
+            local crack_n = value_noise(px, py, 1.2, seed + 300)
+            if crack_n > 0.78 and crack_n < 0.82 then
+                c = lerp_color(c, Color(45, 40, 35), 0.7)
+            end
+            img:drawPixel(ox + px, oy + py, c)
+        end
+    end
+end
+
+local function draw_ash_detail(img, col, row, variant, seed)
+    local ox = col * CELL
+    local oy = row * CELL
+    local char_color = Color(60, 55, 48)
+    local dead_stem = Color(75, 65, 50)
+    local ember = Color(140, 80, 40)
+    -- Charred debris spots
+    local count = 2 + variant
+    for i = 1, count do
+        local cx = math.floor(hash(i, 0, seed) * (CELL - 4)) + 2
+        local cy = math.floor(hash(i, 1, seed) * (CELL - 4)) + 2
+        put(img, ox, oy, cx, cy, char_color)
+        if hash(i, 2, seed) > 0.5 then
+            put(img, ox, oy, cx + 1, cy, char_color)
+        end
+    end
+    -- Dead plant stumps
+    for i = 1, 1 + variant do
+        local sx = math.floor(hash(i + 20, 0, seed) * (CELL - 4)) + 2
+        local sy = math.floor(hash(i + 20, 1, seed) * (CELL - 4)) + 2
+        put(img, ox, oy, sx, sy, dead_stem)
+        put(img, ox, oy, sx, sy + 1, dead_stem)
+        if hash(i + 20, 2, seed) > 0.7 then
+            put(img, ox, oy, sx - 1, sy, ember)
+        end
+    end
+end
+
+-- Ash bg at atlas index 108 -> col 4, row 13
+fill_ash_bg(img, 4, 13, 17001)
+-- Ash fg variants at 109-111 -> (5,13), (6,13), (7,13)
+draw_ash_detail(img, 5, 13, 0, 17002)
+draw_ash_detail(img, 6, 13, 1, 17003)
+draw_ash_detail(img, 7, 13, 2, 17004)
+
 -- ── Save ──────────────────────────────────────────────────────────────────
 
 local script_path = debug.getinfo(1, "S").source:sub(2)
@@ -1447,4 +1513,4 @@ spr:saveAs(dir .. "terrain_atlas.aseprite")
 spr:saveCopyAs(dir .. "terrain_atlas.png")
 
 print("Terrain atlas generated: " .. W .. "x" .. H .. " (" .. COLS .. "x" .. ROWS .. " grid of " .. CELL .. "x" .. CELL .. ")")
-print("Total sprites: 108 (13 grass + 63 deposits/walls + 32 new deposits)")
+print("Total sprites: 112 (13 grass + 63 deposits/walls + 32 new deposits + 4 ash)")

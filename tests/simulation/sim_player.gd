@@ -143,11 +143,15 @@ func run_simulation() -> void:
 	var ground_items = get_tree().get_nodes_in_group("ground_items")
 	sim_assert(ground_items.size() > 0, "Ground item exists after drop")
 
-	# Pick it back up
+	# Pick it back up — force hover flag since there's no mouse in headless
 	if ground_items.size() > 0:
-		player.position = ground_items[0].position  # Move to item
+		var gi = ground_items[0]
+		player.position = gi.position
+		gi._hovered = true
 		player._try_pickup()
-		sim_assert(player.inventory[0].quantity == 3, "Picked up ground item (qty=%d)" % player.inventory[0].quantity)
+		await sim_advance_ticks(5)
+		var total_iron: int = player.count_item(&"iron_ore")
+		sim_assert(total_iron == 3, "Picked up ground item (total=%d)" % total_iron)
 
 	# ── Test 11: Serialization round-trip ────────────────────────────────────
 	player.hp = 75.0

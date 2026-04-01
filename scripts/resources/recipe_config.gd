@@ -19,10 +19,12 @@ func serialize() -> Dictionary:
 	}
 
 static func deserialize_into(configs: Array, data: Array) -> void:
+	var by_id := {}
+	for config in configs:
+		by_id[config.recipe.id] = config
 	for entry in data:
-		var rid := StringName(entry["recipe_id"])
-		for config in configs:
-			if config.recipe.id == rid:
-				config.priority = int(entry["priority"])
-				config.enabled = bool(entry["enabled"])
-				break
+		var rid := StringName(entry.get("recipe_id", ""))
+		var config = by_id.get(rid)
+		if config:
+			config.priority = int(entry.get("priority", 1))
+			config.enabled = bool(entry.get("enabled", true))

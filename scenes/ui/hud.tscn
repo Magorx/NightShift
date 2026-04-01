@@ -115,6 +115,13 @@ layout_mode = 2
 visible = false
 alignment = 2
 
+[node name="DebugButton" type="Button" parent="BottomRight/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "DEBUG"
+
 [node name="ResearchButton" type="Button" parent="BottomRight/ButtonRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 28)

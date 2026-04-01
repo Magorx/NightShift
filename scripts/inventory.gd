@@ -48,3 +48,25 @@ func is_empty() -> bool:
 ## Returns all stored item IDs.
 func get_item_ids() -> Array:
 	return _items.keys()
+
+## Serialize inventory contents to a dictionary (item_id_string -> count).
+func serialize() -> Dictionary:
+	var data := {}
+	for iid in _items:
+		if _items[iid] > 0:
+			data[str(iid)] = _items[iid]
+	return data
+
+## Deserialize inventory contents from a dictionary. Validates item IDs and
+## auto-creates capacity if not already registered.
+func deserialize(data: Dictionary) -> void:
+	for item_id_str in data:
+		var iid := StringName(item_id_str)
+		if not GameManager.is_valid_item_id(iid):
+			GameLogger.warn("Inventory: skipped invalid item '%s'" % iid)
+			continue
+		var count: int = int(data[item_id_str])
+		if get_capacity(iid) == 0:
+			set_capacity(iid, count + 10)
+		for i in count:
+			add(iid)

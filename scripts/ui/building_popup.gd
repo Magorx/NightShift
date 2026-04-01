@@ -448,11 +448,12 @@ func _add_energy_slot(row: HBoxContainer, num_text: String, num_w: float = NUM_W
 	row.add_child(_create_slot_billet(num_text, num_w, ItemIcon.create(&"energy", ICON_SIZE)))
 
 func _create_slot_billet(num_text: String, num_w: float, icon: Control) -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.08, 0.08, 0.08, 0.6)
-	style.set_corner_radius_all(3)
-	style.content_margin_left = 2
-	style.content_margin_right = 2
+	return _build_billet(UIStyles.slot_panel(Color(0.08, 0.08, 0.08, 0.6), 3, 1), num_text, num_w, icon)
+
+func _create_empty_billet(num_w: float) -> PanelContainer:
+	return _build_billet(UIStyles.slot_panel(Color.TRANSPARENT, 0, 1), "", num_w, null)
+
+func _build_billet(style: StyleBoxFlat, num_text: String, num_w: float, icon: Control) -> PanelContainer:
 	style.content_margin_top = 1
 	style.content_margin_bottom = 1
 	var panel := PanelContainer.new()
@@ -465,35 +466,17 @@ func _create_slot_billet(num_text: String, num_w: float, icon: Control) -> Panel
 	num_label.text = num_text
 	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
 	num_label.custom_minimum_size = Vector2(num_w, 0)
-	num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	if num_text != "":
+		num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(num_label)
-	hbox.add_child(icon)
-	panel.add_child(hbox)
-	return panel
-
-func _create_empty_billet(num_w: float) -> PanelContainer:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color.TRANSPARENT
-	style.content_margin_left = 2
-	style.content_margin_right = 2
-	style.content_margin_top = 1
-	style.content_margin_bottom = 1
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", style)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 1)
-	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var num_label := Label.new()
-	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
-	num_label.custom_minimum_size = Vector2(num_w, 0)
-	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(num_label)
-	var icon_pad := Control.new()
-	icon_pad.custom_minimum_size = ICON_SIZE
-	icon_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(icon_pad)
+	if icon:
+		hbox.add_child(icon)
+	else:
+		var icon_pad := Control.new()
+		icon_pad.custom_minimum_size = ICON_SIZE
+		icon_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hbox.add_child(icon_pad)
 	panel.add_child(hbox)
 	return panel
 

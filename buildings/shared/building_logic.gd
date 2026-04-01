@@ -13,6 +13,14 @@ const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector
 
 var grid_pos: Vector2i
 
+## Get the grid cell adjacent to this building in the given direction.
+func adjacent_cell(dir_idx: int) -> Vector2i:
+	return grid_pos + DIRECTION_VECTORS[dir_idx]
+
+## Get the opposite direction index (0↔2, 1↔3).
+static func opposite_dir(dir_idx: int) -> int:
+	return (dir_idx + 2) % 4
+
 ## Energy component (BuildingEnergy or null). null = building does not participate in energy grid.
 var energy = null
 

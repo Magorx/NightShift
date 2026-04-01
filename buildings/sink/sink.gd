@@ -44,9 +44,6 @@ func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 func can_accept_from(_from_dir_idx: int) -> bool:
 	return true
 
-func cleanup_visuals() -> void:
-	pass
-
 # ── Serialization ──────────────────────────────────────────────────────────────
 
 func serialize_state() -> Dictionary:

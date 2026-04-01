@@ -288,70 +288,30 @@ func _spawn_player() -> void:
 	GameManager.player = player
 	camera.snap_to(player.position)
 
-# Tile source IDs
-const TILE_GROUND := 0
-const TILE_IRON := 1
-const TILE_COPPER := 2
-const TILE_COAL := 3
-const TILE_WALL := 4
-const TILE_GROUND_DARK := 5
-const TILE_GROUND_LIGHT := 6
-const TILE_STONE := 7
-const TILE_TIN := 8
-const TILE_GOLD := 9
-const TILE_QUARTZ := 10
-const TILE_SULFUR := 11
-const TILE_OIL := 12
-const TILE_CRYSTAL := 13
-const TILE_URANIUM := 14
-const TILE_BIOMASS := 15
-
-# Deposit colors
-const DEPOSIT_COLORS := {
-	TILE_IRON: Color(0.45, 0.42, 0.44),     # dark gray — iron deposit
-	TILE_COPPER: Color(0.72, 0.45, 0.2),    # orange-brown — copper deposit
-	TILE_COAL: Color(0.18, 0.18, 0.2),      # near-black — coal seam
-	TILE_TIN: Color(0.60, 0.62, 0.65),      # silvery-blue — tin
-	TILE_GOLD: Color(0.78, 0.68, 0.20),     # golden yellow — gold
-	TILE_QUARTZ: Color(0.80, 0.75, 0.85),   # pale lavender — quartz
-	TILE_SULFUR: Color(0.75, 0.72, 0.15),   # yellow-green — sulfur
-	TILE_OIL: Color(0.15, 0.12, 0.10),      # dark brown-black — oil seep
-	TILE_CRYSTAL: Color(0.70, 0.40, 0.85),  # purple — crystal deposit
-	TILE_URANIUM: Color(0.30, 0.75, 0.30),  # green glow — uranium deposit
-	TILE_BIOMASS: Color(0.40, 0.65, 0.20),  # organic green — biomass grove
-}
-
-# Wall colors (impassable terrain)
-const WALL_COLORS := {
-	TILE_WALL: Color(0.42, 0.32, 0.22),     # brown — mud wall
-	TILE_STONE: Color(0.55, 0.54, 0.50),    # gray-beige — stone wall
-}
-
-# Wall display names
-const WALL_NAMES := {
-	TILE_WALL: "Mud Wall",
-	TILE_STONE: "Stone Wall",
-}
-
-# Map from tile source ID to the item it produces
-const DEPOSIT_ITEMS := {
-	TILE_IRON: &"iron_ore",
-	TILE_COPPER: &"copper_ore",
-	TILE_COAL: &"coal",
-	TILE_TIN: &"tin_ore",
-	TILE_GOLD: &"gold_ore",
-	TILE_QUARTZ: &"quartz",
-	TILE_SULFUR: &"sulfur",
-	TILE_OIL: &"oil",
-	TILE_CRYSTAL: &"crystal",
-	TILE_URANIUM: &"uranium_ore",
-	TILE_BIOMASS: &"biomass",
-}
-
-# Map from wall tile ID to the item a borer can extract
-const WALL_ITEMS := {
-	TILE_STONE: &"stone",
-}
+# Tile constants — single source of truth in TileDatabase
+const TILE_GROUND = TileDatabase.TILE_GROUND
+const TILE_IRON = TileDatabase.TILE_IRON
+const TILE_COPPER = TileDatabase.TILE_COPPER
+const TILE_COAL = TileDatabase.TILE_COAL
+const TILE_WALL = TileDatabase.TILE_WALL
+const TILE_GROUND_DARK = TileDatabase.TILE_GROUND_DARK
+const TILE_GROUND_LIGHT = TileDatabase.TILE_GROUND_LIGHT
+const TILE_STONE = TileDatabase.TILE_STONE
+const TILE_TIN = TileDatabase.TILE_TIN
+const TILE_GOLD = TileDatabase.TILE_GOLD
+const TILE_QUARTZ = TileDatabase.TILE_QUARTZ
+const TILE_SULFUR = TileDatabase.TILE_SULFUR
+const TILE_OIL = TileDatabase.TILE_OIL
+const TILE_CRYSTAL = TileDatabase.TILE_CRYSTAL
+const TILE_URANIUM = TileDatabase.TILE_URANIUM
+const TILE_BIOMASS = TileDatabase.TILE_BIOMASS
+const TILE_ASH = TileDatabase.TILE_ASH
+const ASH_COLOR := Color(0.50, 0.45, 0.40)
+const DEPOSIT_COLORS = TileDatabase.DEPOSIT_COLORS
+const WALL_COLORS = TileDatabase.WALL_COLORS
+const WALL_NAMES = TileDatabase.WALL_NAMES
+const DEPOSIT_ITEMS = TileDatabase.DEPOSIT_ITEMS
+const WALL_ITEMS = TileDatabase.WALL_ITEMS
 
 func _create_tile_source(tile_set: TileSet, source_id: int, color: Color, has_collision: bool = false) -> void:
 	var img := Image.create(TILE_SIZE, TILE_SIZE, false, Image.FORMAT_RGBA8)
@@ -385,48 +345,54 @@ func _setup_tileset() -> void:
 		_create_tile_source(tile_set, id, WALL_COLORS[id], true)
 	_create_tile_source(tile_set, TILE_GROUND_DARK, Color(0.24, 0.30, 0.20))
 	_create_tile_source(tile_set, TILE_GROUND_LIGHT, Color(0.32, 0.40, 0.28))
+	_create_tile_source(tile_set, TILE_ASH, ASH_COLOR)
 	tile_map.tile_set = tile_set
 
 
 # ── Terrain Serialization ────────────────────────────────────────────────────
 
-## Pack all tile map cells into a base64 string (nibble-packed: 2 cells per byte).
+## Pack all tile map cells into a base64 string (one byte per cell).
 func serialize_terrain() -> String:
 	var map_size := GameManager.map_size
 	var cell_count := map_size * map_size
-	var byte_count := (cell_count + 1) / 2
+	# Use terrain_tile_types directly if available (already byte-per-cell)
+	if GameManager.terrain_tile_types.size() == cell_count:
+		return Marshalls.raw_to_base64(GameManager.terrain_tile_types)
 	var bytes := PackedByteArray()
-	bytes.resize(byte_count)
-	bytes.fill(0)
+	bytes.resize(cell_count)
 	for y in range(map_size):
 		for x in range(map_size):
 			var idx := y * map_size + x
 			var source_id := tile_map.get_cell_source_id(Vector2i(x, y))
 			if source_id < 0:
 				source_id = TILE_GROUND
-			if idx % 2 == 0:
-				bytes[idx / 2] = source_id
-			else:
-				bytes[idx / 2] = bytes[idx / 2] | (source_id << 4)
+			bytes[idx] = source_id
 	return Marshalls.raw_to_base64(bytes)
 
 ## Restore tile map and GameManager.deposits/walls from base64 terrain data.
 ## Also populates GameManager.terrain_tile_types for MultiMesh rendering.
+## Supports both legacy nibble-packed format and new byte-per-cell format.
 func deserialize_terrain(data: String) -> void:
 	var bytes := Marshalls.base64_to_raw(data)
 	var map_size := GameManager.map_size
+	var cell_count := map_size * map_size
 	GameManager.deposits.clear()
 	GameManager.walls.clear()
 	var tile_types := PackedByteArray()
-	tile_types.resize(map_size * map_size)
+	tile_types.resize(cell_count)
+	# Detect format: legacy nibble-packed has ~half the bytes
+	var is_legacy := bytes.size() < cell_count
 	for y in range(map_size):
 		for x in range(map_size):
 			var idx := y * map_size + x
 			var source_id: int
-			if idx % 2 == 0:
-				source_id = bytes[idx / 2] & 0x0F
+			if is_legacy:
+				if idx % 2 == 0:
+					source_id = bytes[idx / 2] & 0x0F
+				else:
+					source_id = (bytes[idx / 2] >> 4) & 0x0F
 			else:
-				source_id = (bytes[idx / 2] >> 4) & 0x0F
+				source_id = bytes[idx]
 			var pos := Vector2i(x, y)
 			tile_map.set_cell(pos, source_id, Vector2i(0, 0))
 			tile_types[idx] = source_id
@@ -434,5 +400,6 @@ func deserialize_terrain(data: String) -> void:
 				GameManager.walls[pos] = source_id
 			elif DEPOSIT_ITEMS.has(source_id):
 				GameManager.deposits[pos] = DEPOSIT_ITEMS[source_id]
+			# TILE_ASH: no deposit, no wall — just terrain
 	GameManager.terrain_tile_types = tile_types
 

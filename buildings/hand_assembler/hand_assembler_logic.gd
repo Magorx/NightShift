@@ -7,12 +7,8 @@ extends ConverterLogic
 
 var _craft_queue: int = 0
 
-func _build_recipe_configs() -> void:
-	recipe_configs.clear()
-	for i in range(recipes.size()):
-		var config := RecipeConfig.new(recipes[i], i + 1)
-		config.enabled = false
-		recipe_configs.append(config)
+func _build_recipe_configs(_default_enabled: bool = true) -> void:
+	super._build_recipe_configs(false)
 
 func _try_start_craft() -> void:
 	var sorted := recipe_configs.duplicate()

@@ -2,8 +2,10 @@ extends "simulation_base.gd"
 
 func run_simulation() -> void:
 	# Test 1: Drill can only be placed on a deposit
-	# Position (5, 5) is ground — drill should fail
-	var result = sim_place_building(&"drill", Vector2i(5, 5), 0)
+	# Use a far corner that won't have a deposit from world gen
+	var empty_pos := Vector2i(99, 99)
+	GameManager.deposits.erase(empty_pos)  # ensure no deposit
+	var result = sim_place_building(&"drill", empty_pos, 0)
 	sim_assert(result == null, "Drill cannot be placed on empty ground")
 
 	# Test 2: Place drill on an iron deposit

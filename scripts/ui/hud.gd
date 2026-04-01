@@ -24,6 +24,7 @@ const SPEED_LABELS := ["x0.25", "x0.5", "x1", "x1.5", "x2", "x3"]
 @onready var contract_content: VBoxContainer = $DeliveryPanel/MarginContainer/VBox/ContractContent
 @onready var menu_toggle: Button = %MenuToggle
 @onready var button_row: VBoxContainer = $BottomRight/ButtonRow
+@onready var debug_button: Button = %DebugButton
 
 var speed_index: int = 2 # default x1
 var paused: bool = false
@@ -32,6 +33,8 @@ var _contracts_collapsed: bool = false
 var _menu_expanded: bool = false
 
 func _ready() -> void:
+	get_tree().node_added.connect(_on_node_added)
+	_disable_focus_recursive(get_tree().root)
 	slow_button.pressed.connect(_on_slow_pressed)
 	fast_button.pressed.connect(_on_fast_pressed)
 	collapse_button.pressed.connect(_on_collapse_pressed)
@@ -41,7 +44,18 @@ func _ready() -> void:
 	inventory_button.gui_input.connect(_on_inventory_button_gui_input)
 	research_button.gui_input.connect(_on_research_button_gui_input)
 	recipes_button.gui_input.connect(_on_recipes_button_gui_input)
+	debug_button.pressed.connect(_on_debug_pressed)
 	$Hotbar.inventory_panel = inventory_panel
+
+func _on_node_added(node: Node) -> void:
+	if node is BaseButton:
+		node.focus_mode = Control.FOCUS_NONE
+
+func _disable_focus_recursive(node: Node) -> void:
+	if node is BaseButton:
+		node.focus_mode = Control.FOCUS_NONE
+	for child in node.get_children():
+		_disable_focus_recursive(child)
 
 func set_camera(cam: Camera2D) -> void:
 	minimap_display.set_camera(cam)
@@ -231,6 +245,40 @@ func _on_menu_toggle_pressed() -> void:
 	_menu_expanded = not _menu_expanded
 	button_row.visible = _menu_expanded
 	menu_toggle.text = "▶" if _menu_expanded else "◀"
+
+# ── Debug ─────────────────────────────────────────────────────────────────
+
+func _on_debug_pressed() -> void:
+	_debug_renew_ash()
+
+## Convert all ash tiles back to biomass deposits with fresh stock.
+func _debug_renew_ash() -> void:
+	var ms: int = GameManager.map_size
+	var count := 0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = Time.get_ticks_usec()
+	for y in range(ms):
+		for x in range(ms):
+			var idx := y * ms + x
+			if idx >= GameManager.terrain_tile_types.size():
+				continue
+			if GameManager.terrain_tile_types[idx] != TileDatabase.TILE_ASH:
+				continue
+			var pos := Vector2i(x, y)
+			# Restore to biomass
+			GameManager.terrain_tile_types[idx] = TileDatabase.TILE_BIOMASS
+			GameManager.deposits[pos] = &"biomass"
+			GameManager.deposit_stocks[pos] = rng.randi_range(2, 10)
+			# Update terrain visual
+			if GameManager.terrain_visual_manager:
+				var fg_var := rng.randi() % 3
+				var misc_var := rng.randi() % 3
+				GameManager.terrain_visual_manager.update_cell(ms, x, y, TileDatabase.TILE_BIOMASS, fg_var, misc_var)
+			count += 1
+	# Invalidate drain cache so extractors pick up renewed tiles
+	if GameManager.cluster_drain_manager:
+		GameManager.cluster_drain_manager.invalidate_cache()
+	print("[DEBUG] Renewed %d ash tiles to biomass" % count)
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 

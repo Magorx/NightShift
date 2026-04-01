@@ -10,44 +10,24 @@ extends RefCounted
 ## - Clear spawn area with starter resources nearby
 ## - Connectivity guarantee: all deposits reachable from spawn
 
-# Tile source IDs (must match game_world.gd)
-const TILE_GROUND := 0
-const TILE_IRON := 1
-const TILE_COPPER := 2
-const TILE_COAL := 3
-const TILE_WALL := 4
-const TILE_GROUND_DARK := 5
-const TILE_GROUND_LIGHT := 6
-# New deposit tile IDs — requires matching constants, DEPOSIT_COLORS entries,
-# DEPOSIT_ITEMS entries, and _create_tile_source calls in game_world.gd:
-#   TILE_STONE   = 7  -> Color(0.55, 0.54, 0.50)  gray-beige stone
-#   TILE_TIN     = 8  -> Color(0.60, 0.62, 0.65)  silvery-blue tin
-#   TILE_GOLD    = 9  -> Color(0.78, 0.68, 0.20)  golden yellow
-#   TILE_QUARTZ  = 10 -> Color(0.80, 0.75, 0.85)  pale lavender quartz
-#   TILE_SULFUR  = 11 -> Color(0.75, 0.72, 0.15)  yellow-green sulfur
-const TILE_STONE := 7
-const TILE_TIN := 8
-const TILE_GOLD := 9
-const TILE_QUARTZ := 10
-const TILE_SULFUR := 11
-const TILE_OIL := 12
-const TILE_CRYSTAL := 13
-const TILE_URANIUM := 14
-const TILE_BIOMASS := 15
-
-const DEPOSIT_ITEMS := {
-	TILE_IRON: &"iron_ore",
-	TILE_COPPER: &"copper_ore",
-	TILE_COAL: &"coal",
-	TILE_TIN: &"tin_ore",
-	TILE_GOLD: &"gold_ore",
-	TILE_QUARTZ: &"quartz",
-	TILE_SULFUR: &"sulfur",
-	TILE_OIL: &"oil",
-	TILE_CRYSTAL: &"crystal",
-	TILE_URANIUM: &"uranium_ore",
-	TILE_BIOMASS: &"biomass",
-}
+# Tile constants — single source of truth in TileDatabase
+const TILE_GROUND = TileDatabase.TILE_GROUND
+const TILE_IRON = TileDatabase.TILE_IRON
+const TILE_COPPER = TileDatabase.TILE_COPPER
+const TILE_COAL = TileDatabase.TILE_COAL
+const TILE_WALL = TileDatabase.TILE_WALL
+const TILE_GROUND_DARK = TileDatabase.TILE_GROUND_DARK
+const TILE_GROUND_LIGHT = TileDatabase.TILE_GROUND_LIGHT
+const TILE_STONE = TileDatabase.TILE_STONE
+const TILE_TIN = TileDatabase.TILE_TIN
+const TILE_GOLD = TileDatabase.TILE_GOLD
+const TILE_QUARTZ = TileDatabase.TILE_QUARTZ
+const TILE_SULFUR = TileDatabase.TILE_SULFUR
+const TILE_OIL = TileDatabase.TILE_OIL
+const TILE_CRYSTAL = TileDatabase.TILE_CRYSTAL
+const TILE_URANIUM = TileDatabase.TILE_URANIUM
+const TILE_BIOMASS = TileDatabase.TILE_BIOMASS
+const DEPOSIT_ITEMS = TileDatabase.DEPOSIT_ITEMS
 
 # Generation parameters
 const BORDER_WIDTH := 2
@@ -534,6 +514,11 @@ func _apply(tile_map: TileMapLayer, map_size: int, walls: Dictionary, deposits: 
 				var tile_id: int = deposits[pos]
 				tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
 				GameManager.deposits[pos] = DEPOSIT_ITEMS[tile_id]
+				# Set deposit stock: biomass gets random 2-10, all others infinite (-1)
+				if tile_id == TILE_BIOMASS:
+					GameManager.deposit_stocks[pos] = _rng.randi_range(2, 10)
+				else:
+					GameManager.deposit_stocks[pos] = -1
 				tile_types[idx] = tile_id
 			elif ground_variant.has(pos):
 				var variant: int = ground_variant[pos]

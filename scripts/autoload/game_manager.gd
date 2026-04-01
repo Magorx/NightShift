@@ -25,8 +25,14 @@ var unique_buildings: Array = []
 # Deposits: grid_pos -> item_id (what resource this deposit produces)
 var deposits: Dictionary = {}
 
+# Deposit stocks: grid_pos -> int (-1 = infinite, >0 = remaining units)
+var deposit_stocks: Dictionary = {}
+
 # Walls: grid_pos -> tile_id (impassable terrain, blocks building placement)
 var walls: Dictionary = {}
+
+# Cluster drain manager for finite-stock deposits (lazy-initialized)
+var cluster_drain_manager
 
 # Terrain visual data (for MultiMesh rendering and save/load)
 var terrain_tile_types: PackedByteArray  # flat row-major, one byte per cell
@@ -103,19 +109,26 @@ func _register_placement_phases() -> void:
 			{building_id = &"tunnel_input"},
 			{building_id = &"tunnel_output", max_distance = 5, count_match = true},
 		],
-		link_fn = &"_link_tunnels",
+		link_fn = &"_link_underground_transport",
 	}
 	placement_phases[&"pipeline_input"] = {
 		phases = [
 			{building_id = &"pipeline_input"},
 			{building_id = &"pipeline_output", max_distance = 10, count_match = true},
 		],
-		link_fn = &"_link_pipelines",
+		link_fn = &"_link_underground_transport",
+	}
+	placement_phases[&"biomass_extractor"] = {
+		phases = [
+			{building_id = &"biomass_extractor"},
+			{building_id = &"biomass_extractor_output", max_distance = 4, count_match = true},
+		],
+		link_fn = &"_link_biomass_extractor",
 	}
 
-## Link tunnel inputs and outputs after multi-phase placement.
+## Link underground transport (tunnel/pipeline) inputs and outputs after multi-phase placement.
 ## phase_placements[0] = inputs [{pos, rotation}], phase_placements[1] = outputs [{pos, rotation}]
-func _link_tunnels(phase_placements: Array) -> void:
+func _link_underground_transport(phase_placements: Array) -> void:
 	var inputs: Array = phase_placements[0]
 	var outputs: Array = phase_placements[1]
 	var count := mini(inputs.size(), outputs.size())
@@ -124,7 +137,7 @@ func _link_tunnels(phase_placements: Array) -> void:
 		var out_building = buildings.get(outputs[i].pos)
 		if not in_building or not out_building:
 			continue
-		if not in_building.logic is TunnelLogic or not out_building.logic is TunnelLogic:
+		if not in_building.logic is UndergroundTransportLogic or not out_building.logic is UndergroundTransportLogic:
 			continue
 		var in_pos: Vector2i = inputs[i].pos
 		var out_pos: Vector2i = outputs[i].pos
@@ -132,24 +145,49 @@ func _link_tunnels(phase_placements: Array) -> void:
 		in_building.logic.setup_pair(out_building.logic, dist)
 		out_building.logic.setup_pair(in_building.logic, dist)
 
-## Link pipeline inputs and outputs after multi-phase placement.
-## phase_placements[0] = inputs [{pos, rotation}], phase_placements[1] = outputs [{pos, rotation}]
-func _link_pipelines(phase_placements: Array) -> void:
-	var inputs: Array = phase_placements[0]
+## Link biomass extractor to its output device after multi-phase placement.
+## Validates the 1-cell gap constraint in any cardinal direction from extractor.
+func _link_biomass_extractor(phase_placements: Array) -> void:
+	var extractors: Array = phase_placements[0]
 	var outputs: Array = phase_placements[1]
-	var count := mini(inputs.size(), outputs.size())
+	var count := mini(extractors.size(), outputs.size())
 	for i in range(count):
-		var in_building = buildings.get(inputs[i].pos)
+		var ext_building = buildings.get(extractors[i].pos)
 		var out_building = buildings.get(outputs[i].pos)
-		if not in_building or not out_building:
+		if not ext_building or not out_building:
 			continue
-		if not in_building.logic is PipelineLogic or not out_building.logic is PipelineLogic:
+		var ext_logic = ext_building.logic
+		var out_logic = out_building.logic
+		if not ext_logic or not out_logic:
 			continue
-		var in_pos: Vector2i = inputs[i].pos
-		var out_pos: Vector2i = outputs[i].pos
-		var dist := absi(out_pos.x - in_pos.x) + absi(out_pos.y - in_pos.y)
-		in_building.logic.setup_pair(out_building.logic, dist)
-		out_building.logic.setup_pair(in_building.logic, dist)
+		# Validate: output must be exactly 1 cell gap from extractor footprint
+		# in a cardinal direction
+		var ext_def = get_building_def(ext_building.building_id)
+		if not ext_def:
+			continue
+		var ext_shape: Array = ext_def.get_rotated_shape(ext_building.rotation_index)
+		var valid := false
+		for cell in ext_shape:
+			var ext_cell: Vector2i = ext_building.grid_pos + Vector2i(cell)
+			for dir in DIRECTION_VECTORS:
+				# 1 cell gap means: ext_cell + dir (gap) + dir (output)
+				var expected_output: Vector2i = ext_cell + dir * 2
+				if expected_output == outputs[i].pos:
+					valid = true
+					break
+			if valid:
+				break
+		if not valid:
+			# Invalid position — remove the output
+			remove_building(outputs[i].pos)
+			continue
+		ext_logic.output_device = out_logic
+		out_logic.extractor = ext_logic
+	# Initialize cluster drain manager if needed
+	if not cluster_drain_manager:
+		var CDM = load("res://scripts/game/cluster_drain_manager.gd")
+		cluster_drain_manager = CDM.new()
+	cluster_drain_manager.invalidate_cache()
 
 func _load_building_defs() -> void:
 	var root_dir := DirAccess.open("res://buildings/")
@@ -540,6 +578,42 @@ func get_building_group(building: BuildingBase) -> Array:
 func get_deposit_at(grid_pos: Vector2i):
 	return deposits.get(grid_pos)
 
+## Get the remaining stock for a deposit (-1 = infinite, 0 = depleted).
+func get_deposit_stock(pos: Vector2i) -> int:
+	return deposit_stocks.get(pos, -1)
+
+## Drain one unit of deposit stock. Returns true if item was available.
+## When stock reaches 0, converts tile to ash.
+func drain_deposit_stock(pos: Vector2i) -> bool:
+	if not deposits.has(pos):
+		return false  # not a deposit (ash, ground, etc.)
+	var stock: int = deposit_stocks.get(pos, -1)
+	if stock == -1:
+		return true  # infinite
+	if stock <= 0:
+		return false  # already depleted
+	stock -= 1
+	if stock <= 0:
+		convert_tile_to_ash(pos)
+		return true
+	deposit_stocks[pos] = stock
+	return true
+
+## Convert a deposit tile to ash (depleted biomass).
+func convert_tile_to_ash(pos: Vector2i) -> void:
+	deposits.erase(pos)
+	deposit_stocks.erase(pos)
+	# Update terrain tile type array
+	var idx := pos.y * map_size + pos.x
+	if idx >= 0 and idx < terrain_tile_types.size():
+		terrain_tile_types[idx] = TileDatabase.TILE_ASH
+	# Update terrain visual
+	if terrain_visual_manager:
+		terrain_visual_manager.update_cell(map_size, pos.x, pos.y, TileDatabase.TILE_ASH, 0, 0)
+	# Invalidate BFS cache
+	if cluster_drain_manager:
+		cluster_drain_manager.invalidate_cache()
+
 # ── Conveyor sprite updates ───────────────────────────────────────────────────
 
 func _update_conveyor_sprites(grid_pos: Vector2i) -> void:
@@ -590,6 +664,7 @@ func clear_all() -> void:
 		terrain_visual_manager.clear()
 	terrain_tile_types = PackedByteArray()
 	terrain_variants = PackedByteArray()
+	deposit_stocks.clear()
 	total_currency = 0
 	items_delivered.clear()
 	if conveyor_system:

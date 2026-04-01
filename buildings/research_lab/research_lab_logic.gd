@@ -143,9 +143,6 @@ func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
 		remaining -= 1
 	return remaining
 
-func cleanup_visuals() -> void:
-	pass
-
 # ── Info panel / popup ────────────────────────────────────────────────────
 
 func get_popup_progress() -> float:
@@ -186,7 +183,7 @@ func serialize_state() -> Dictionary:
 	var state := {}
 	state["deliver_timer"] = _deliver_timer
 	state["delivering_item"] = str(_delivering_item)
-	state["input_inv"] = _serialize_inventory(input_inv)
+	state["input_inv"] = input_inv.serialize()
 	if energy:
 		state["energy"] = energy.serialize()
 	return state
@@ -201,24 +198,7 @@ func deserialize_state(state: Dictionary) -> void:
 		else:
 			GameLogger.warn("ResearchLab at %s: skipped invalid delivering_item '%s'" % [grid_pos, iid])
 	if state.has("input_inv"):
-		_deserialize_inventory(input_inv, state["input_inv"])
+		input_inv.deserialize(state["input_inv"])
 	if state.has("energy") and energy:
 		energy.deserialize(state["energy"])
 
-func _serialize_inventory(inv: Inventory) -> Dictionary:
-	var result := {}
-	for iid in inv.get_item_ids():
-		result[str(iid)] = inv.get_count(iid)
-	return result
-
-func _deserialize_inventory(inv: Inventory, data: Dictionary) -> void:
-	for item_id_str in data:
-		var iid := StringName(item_id_str)
-		if not GameManager.is_valid_item_id(iid):
-			GameLogger.warn("ResearchLab at %s: skipped invalid item '%s'" % [grid_pos, iid])
-			continue
-		var count: int = int(data[item_id_str])
-		if inv.get_capacity(iid) == 0:
-			inv.set_capacity(iid, count + 10)
-		for i in count:
-			inv.add(iid)

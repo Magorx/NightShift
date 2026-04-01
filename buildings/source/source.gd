@@ -58,9 +58,6 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 	return false
 
-func cleanup_visuals() -> void:
-	pass
-
 # ── Popup interface ────────────────────────────────────────────────────────────
 
 func has_custom_popup_row() -> bool:

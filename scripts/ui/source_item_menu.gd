@@ -7,8 +7,8 @@ extends PanelContainer
 const ICON_SIZE := Vector2(16, 16)
 const CELL_SIZE := Vector2(20, 20)
 const GRID_COLUMNS := 8
-const ENABLED_COLOR := Color(0.2, 0.8, 0.3, 0.9)
-const DISABLED_COLOR := Color(0.8, 0.2, 0.2, 0.9)
+const ENABLED_COLOR := UIStyles.ENABLED_COLOR
+const DISABLED_COLOR := UIStyles.DISABLED_COLOR
 
 var _source_logic # ItemSource reference
 var _cells: Array = [] # [{panel: PanelContainer, item_id: StringName, style: StyleBoxFlat}]
