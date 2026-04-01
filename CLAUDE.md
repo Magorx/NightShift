@@ -37,13 +37,14 @@ Exit code 0 = pass, 1 = failure. All output goes to stdout/stderr.
 
 ### Autoload Singletons
 
-Five singletons registered in Project Settings > Autoload:
+Six singletons registered in Project Settings > Autoload:
 
+- **GameLogger** (`scripts/autoload/logger.gd`) — persistent append-only logging to `user://absolute_log.txt`
 - **GameManager** (`scripts/autoload/game_manager.gd`) — building registry, placement/removal API, unified pull system, currency/delivery tracking, building costs, item icon atlas, building hotkeys, conveyor sprite updates
 - **SaveManager** (`scripts/autoload/save_manager.gd`) — JSON-based save/load with autosave rotation
 - **AccountManager** (`scripts/autoload/account_manager.gd`) — 3-slot account management under `user://saves/`
-- **ResearchManager** (`scripts/autoload/research_manager.gd`) — tech tree with ring-based progression, science pack delivery, building unlock gating
-- **ContractManager** (`scripts/autoload/contract_manager.gd`) — dynamic gate + side contracts, delivery integration, progression milestones
+- **ResearchManager** (`scripts/autoload/research_manager.gd`) — JSON-based tech tree (`research_tree.json`) with ring-based progression, tag-based unlock system, science pack delivery
+- **ContractManager** (`scripts/autoload/contract_manager.gd`) — dynamic gate + side contracts (max 3 active), delivery integration, progression milestones
 
 ### Unified Pull System
 
@@ -62,10 +63,10 @@ Game content is defined as `.tres` resource files — adding new items, recipes,
 - **ItemDef** (`scripts/resources/item_def.gd`) — id, display_name, color, category, export_value, research_value, icon_atlas_index
 - **RecipeDef** (`scripts/resources/recipe_def.gd`) — converter_type, inputs/outputs as ItemStack arrays, craft_time, energy_cost, energy_output
 - **ItemStack** (`scripts/resources/item_stack.gd`) — item + quantity pair used in recipes and building costs
-- **BuildingDef** (`buildings/shared/building_def.gd`) — scene reference, display_name, color, category, description, unlock_tech, build_cost, replaceable_by; auto-extracts shape/inputs/outputs/anchor from the scene's marker nodes; owns all rotation/shape math
-- **TechDef** (`scripts/resources/tech_def.gd`) — id, display_name, ring, cost (science packs), unlocks (building IDs)
+- **BuildingDef** (`buildings/shared/building_def.gd`) — scene reference, display_name, color, category, description, research_tag, build_cost, replaceable_by, is_ground_level; auto-extracts shape/inputs/outputs/anchor from the scene's marker nodes; owns all rotation/shape math
+- **TechDef** (`scripts/resources/tech_def.gd`) — id, display_name, description, ring, type (normal/instant), cost (science packs), effects (array of callback dictionaries with unlock_tag)
 
-Current content: 37 items across 6 categories (8 raw, 8 intermediate, 8 component, 9 advanced, 3 science, 1 special/energy), 31 recipes, 11 tech nodes. Resources live under `resources/items/`, `resources/recipes/`, and `resources/tech/`. Item sprites rendered via 16x16 atlas (`resources/items/sprites/item_atlas.png`, 8x5 grid).
+Current content: 64 items across 7 categories (12 raw, 17 intermediate, 13 component, 13 advanced, 4 science, 3 pinnacle, 1 special/energy), 58 recipes, 24 tech nodes across 6 rings (0–5). Resources live under `resources/items/`, `resources/recipes/`, and `resources/tech/`. Item sprites rendered via 16×16 atlas (`resources/items/sprites/item_atlas.png`, 8×8 grid). Tech tree defined in `resources/tech/research_tree.json`.
 
 ### Building Organization
 
@@ -74,39 +75,55 @@ Each building type lives in its own folder under `buildings/`. Every building's 
 ```
 buildings/
   shared/              # base scripts shared by all buildings
-	building_base.gd   # BuildingBase class (root node script), has typed `logic: BuildingLogic`
-	building_logic.gd  # BuildingLogic base class — pull interface, configure, serialize, info stats, lifecycle
-	building_def.gd    # BuildingDef resource class — auto-extracts shape/IO from scene, rotation math
-	item_buffer.gd     # core item queue with progress tracking (0.0–1.0)
-	item_visual.gd     # item dot rendering on ItemLayer
-	input_cell.gd      # ColorRect input marker with directional masks
-	output_cell.gd     # ColorRect output marker with directional masks
-	shape_cell.gd      # ColorRect shape marker
-	building_arrow.gd  # direction arrow overlay
-	destroy_highlight.gdshader
-  conveyor/            # belt transport (ConveyorBelt extends BuildingLogic), supports mk1/mk2/mk3 speed tiers
-  conveyor_mk2/        # faster belt (2x speed, 3 capacity), reuses ConveyorBelt
-  conveyor_mk3/        # fastest belt (3x speed, 4 capacity), reuses ConveyorBelt
-  drill/               # resource extractor (ExtractorLogic extends BuildingLogic), supports mk1/mk2 tiers
-  drill_mk2/           # faster extractor (2x speed), reuses ExtractorLogic
+    building_base.gd   # BuildingBase class (root node script), has typed `logic: BuildingLogic`
+    building_logic.gd  # BuildingLogic base class — pull interface, configure, serialize, info stats, lifecycle
+    building_def.gd    # BuildingDef resource class — auto-extracts shape/IO from scene, rotation math
+    building_energy.gd # per-building energy state component (capacity, generation, demand, is_powered)
+    energy_node.gd     # long-range energy connection component
+    item_buffer.gd     # core item queue with progress tracking (0.0–1.0)
+    building_fill.gd   # visual fill indicator
+    input_cell.gd      # ColorRect input marker with directional masks
+    output_cell.gd     # ColorRect output marker with directional masks
+    shape_cell.gd      # ColorRect shape marker
+    building_arrow.gd  # direction arrow overlay
+    destroy_highlight.gdshader
+  # --- Transport ---
+  conveyor/            # belt transport (ConveyorBelt extends BuildingLogic), 1.0s traverse, 2 capacity
+  conveyor_mk2/        # faster belt (0.5s traverse, 3 capacity), reuses ConveyorBelt
+  conveyor_mk3/        # fastest belt (0.333s traverse, 4 capacity), reuses ConveyorBelt
+  splitter/            # round-robin distributor (SplitterLogic), 2-item buffer, load balancing
+  junction/            # 4-directional pass-through routing (JunctionLogic), dual-axis buffers
+  tunnel/              # linked pair (TunnelLogic), multi-phase placement, max 4 cell gap
+  pipeline/            # linked pair like tunnel (PipelineLogic), max 9 cell gap
+  # --- Extraction ---
+  drill/               # resource extractor (ExtractorLogic), 2.0s production, 5 capacity
+  drill_mk2/           # faster extractor (1.0s production, 10 capacity), reuses ExtractorLogic
+  borer/               # special drilling building (BorerLogic)
+  pump/                # oil extraction (pipeline component)
+  # --- Converters ---
   smelter/             # converter (ConverterLogic extends BuildingLogic) — base class for all converters
   press/               # 2x1 converter — stamps plates into gears, tubes, beams, lenses
   wire_drawer/         # 1x2 converter — draws plates into wire
   coke_oven/           # 1x2 converter — bakes coal into coke
-  hand_assembler/      # 1x1 manual crafter (HandAssemblerLogic) — recipes disabled by default, craft queue
+  hand_assembler/      # 1x1 manual crafter (HandAssemblerLogic) — recipes disabled by default
   assembler/           # 2x2 automated assembler with energy, ConverterLogic
-  assembler_mk2/       # 3x2 advanced assembler (the 3-part building!), ConverterLogic
-  fuel_generator/      # 2x2 energy generator — burns coke, ConverterLogic
-  research_lab/        # 2x2 science consumer (ResearchLabLogic) — delivers packs to ResearchManager
+  assembler_mk2/       # 3x2 advanced assembler, ConverterLogic
+  chemical_plant/      # recipes-based converter (plastics, rubber, acid, bio compound, carbon fiber)
+  centrifuge/          # recipes-based converter (uranium refinement, fusion cells)
+  fabricator/          # high-end converter (400 energy capacity, pinnacle items)
+  particle_accelerator/ # recipes-based converter (300 capacity, quantum chips)
+  greenhouse/          # recipes-based converter (renewable biomass, 80 capacity)
+  # --- Energy ---
   coal_burner/         # 2x1 energy generator (CoalBurnerLogic)
-  solar_panel/         # 1x1 passive energy generator
-  energy_pole/         # 1x1 energy relay with EnergyNode
-  battery/             # 1x1 energy storage with EnergyNode
+  fuel_generator/      # 2x2 energy generator — burns coke, ConverterLogic
+  solar_panel/         # 1x1 passive energy generator (8 energy/s, 30 capacity)
+  nuclear_reactor/     # highest capacity energy generator (1200 capacity, fusion)
+  energy_pole/         # 1x1 energy relay (50 capacity) with EnergyNode
+  battery/             # 1x1 energy storage (2000 capacity) with EnergyNode
+  # --- Special ---
+  research_lab/        # 2x2 science consumer (ResearchLabLogic) — delivers packs to ResearchManager
   sink/                # infinite item consumer (ItemSink extends BuildingLogic)
-  source/              # simple timer-based item producer (ItemSource extends BuildingLogic)
-  splitter/            # distributes items across multiple outputs (SplitterLogic extends BuildingLogic)
-  junction/            # 4-directional pass-through routing (JunctionLogic extends BuildingLogic)
-  tunnel/              # linked pair (TunnelLogic extends BuildingLogic), multi-phase placement
+  source/              # configurable timer-based item producer (ItemSource extends BuildingLogic)
 ```
 
 ### BuildingLogic Interface
@@ -118,8 +135,11 @@ All building logic nodes extend `BuildingLogic` and override virtual methods as 
 - **Configuration**: `configure(def, grid_pos, rotation)` — each building self-configures from its BuildingDef
 - **Serialization**: `serialize_state()` / `deserialize_state()` — each building handles its own save/load
 - **Info panel**: `get_info_stats()` — returns structured `[{type, ...}]` entries (types: "stat", "progress", "recipe", "inventory")
-- **Popup interface**: `get_popup_recipe()` (current/last/first recipe), `get_popup_progress()` (craft progress 0.0–1.0, -1.0 = none), `get_inventory_items()` (items as `[{id, count}]`)
+- **Popup interface**: `get_popup_recipe()` (current/last/first recipe), `get_popup_progress()` (craft progress 0.0–1.0, -1.0 = none), `get_inventory_items()` (items as `[{id, count}]`), `has_custom_popup_row()`, `get_custom_row_items()`, `create_side_menu()`
+- **Player insertion**: `try_insert_item(item_id, quantity)` — returns leftover count, `remove_inventory_item(item_id, count)`
+- **Animation**: `_update_building_sprites(is_active, delta)` — idle/windup/active/winddown states with anti-flicker hold timer
 - **Lifecycle**: `on_removing()` (cleanup on deletion), `cleanup_visuals()`, `get_linked_positions()`
+- **Placement**: `get_placement_error(grid_pos, rotation)` — building-specific validation (e.g., extractors require deposits)
 
 To add a new building type: create a script extending `BuildingLogic`, override the relevant methods, and place it as a child node in the building's `.tscn` scene. No changes to GameManager or other systems needed.
 
@@ -133,12 +153,22 @@ BuildingDef reads the `.tscn` scene at load time to extract:
 
 This means IO configuration lives in the `.tscn` scene, not in code.
 
+### Research & Unlock System
+
+Tech tree loaded from `resources/tech/research_tree.json` with 24 nodes across 6 rings (0–5). Uses a **tag-based unlock system**: each TechDef has `effects` containing `unlock_tag` strings. Buildings have a `research_tag` field in their BuildingDef — they're unlocked when `ResearchManager.is_tag_unlocked(tag)` returns true (empty tag = always available).
+
+- Ring 0 normal techs are auto-unlocked on game start; instant techs require player inventory items
+- Rings 1–5 require science packs (1–4) delivered by research labs
+- Gate contracts unlock access to higher rings
+- Cartography techs progressively unlock camera zoom levels
+- Signals: `tag_unlocked`, `research_completed`, `research_started`, `tags_reset`
+
 ### Energy System
 
 Energy flows through a graph of buildings connected by adjacency edges and EnergyNode links. **Energy never teleports** — all transfers respect per-edge throughput limits.
 
 **Core classes:**
-- **EnergySystem** (`scripts/energy/energy_system.gd`) — registration, network rebuild (flood-fill + full edge graph)
+- **EnergySystem** (`scripts/energy/energy_system.gd`) — registration, network rebuild (flood-fill + full edge graph), auto-linking on placement
 - **EnergyNetwork** (`scripts/energy/energy_network.gd`) — per-tick 4-phase distribution algorithm
 - **BuildingEnergy** (`buildings/shared/building_energy.gd`) — per-building energy state component (null = no energy)
 - **EnergyNode** (`buildings/shared/energy_node.gd`) — long-range connection component (attach to scene for explicit links)
@@ -156,7 +186,7 @@ Energy flows through a graph of buildings connected by adjacency edges and Energ
 
 **Throughput:** every edge has a per-tick budget (`throughput * delta`), shared across all 4 phases. Adjacency edges use `min(a.adjacency_throughput, b.adjacency_throughput)` (default 200/s). Node edges use `min(node_a.throughput, node_b.throughput)`.
 
-**Tuning constants** (in EnergyNetwork): `DEMAND_BUFFER_SECONDS = 5.0`, `RELAXATION_PASSES = 3`.
+**Tuning constants** (in EnergyNetwork): `DEMAND_BUFFER_SECONDS = 5.0`, `RELAXATION_PASSES = 2`.
 
 **Converter energy behavior:** converters use priority-based recipe selection via `RecipeConfig` (lower priority number = tried first). Disabled recipes are skipped. If a powered recipe can't be afforded locally, they immediately fall back to a cheaper/free recipe — no waiting. `energy_demand` is signaled every tick (even mid-craft) so redistribution proactively delivers energy.
 
@@ -164,26 +194,40 @@ Energy flows through a graph of buildings connected by adjacency edges and Energ
 
 Player entity lives in `player/` with movement, conveyor interaction, mining, inventory, and ground items.
 
-- **Player** (`player/player.gd`, `player/player.tscn`) — walking (3 tiles/s), sprinting (5 tiles/s), jump/elevated states, conveyor push, building collision, health (100 HP, 2 HP/s regen), inventory (24 slots, 16 stack), 1.5-tile pickup range
+- **Player** (`player/player.gd`, `player/player.tscn`) — walking (3 tiles/s), sprinting (5 tiles/s), jump/elevated states, conveyor push, building collision, health (100 HP, 2 HP/s regen), inventory (24 slots, 16 stack), 1.5-tile pickup range, hand mining (iron only, 1 HP/s for 1s)
 - **PlayerSprite** (`player/player_sprite.gd`) — directional sprite animation
 - **PlayerShadow** (`player/player_shadow.gd`) — shadow effect for jump states
-- **GroundItem** (`player/ground_item.gd`, `player/ground_item.tscn`) — dropped items that auto-feed into adjacent buildings every 0.5s via `logic.try_insert_item()`
+- **GroundItem** (`player/ground_item.gd`, `player/ground_item.tscn`) — dropped items that auto-feed into adjacent buildings every 0.5s via `logic.try_insert_item()`, auto-despawn after 120s, auto-merge nearby stacks
 
 ### Game Systems
 
-- **BuildSystem** (`scripts/game/build_system.gd`) — grid-based placement with rotation, drag multi-placement, destroy mode with shader highlights, multi-phase building support (tunnels)
-- **BuildingTickSystem** (`scripts/game/building_tick_system.gd`) — per-frame building update processing
+- **GameWorld** (`scripts/game/game_world.gd`) — root scene orchestrator; initializes all systems, handles save loading
+- **BuildSystem** (`scripts/game/build_system.gd`) — grid-based placement with rotation, drag multi-placement, destroy mode with shader highlights, multi-phase building support (tunnels, pipelines), energy link mode, ghost pool (max 64)
+- **BuildingTickSystem** (`scripts/game/building_tick_system.gd`) — batched per-frame building update (eliminates per-node notification overhead)
 - **BuildingCollision** (`scripts/game/building_collision.gd`) — player-building collision handling (16 tile-based, multi-tile blocks)
 - **ConveyorSystem** (`scripts/game/conveyor_system.gd`) — per-physics-frame processing: item advancement, pull-based transfers, progress clamping, ground item pickup
-- **ConveyorVisualManager** (`scripts/game/conveyor_visual_manager.gd`) — MultiMesh-based conveyor sprite rendering
-- **ItemVisualManager** (`scripts/game/item_visual_manager.gd`) — MultiMesh-based item rendering via atlas texture (replaces individual Node2D instances)
+- **ConveyorVisualManager** (`scripts/game/conveyor_visual_manager.gd`) — MultiMesh-based conveyor sprite rendering (4-frame animation atlas, variant detection from neighbors)
+- **ItemVisualManager** (`scripts/game/item_visual_manager.gd`) — MultiMesh-based item rendering via 8×8 atlas texture (replaces individual Node2D instances)
+- **TerrainVisualManager** (`scripts/game/terrain_visual_manager.gd`) — MultiMesh-based terrain tile rendering with variant support
 - **EnergySystem** (`scripts/energy/energy_system.gd`) — energy network management, edge graph rebuild, per-tick distribution
-- **EnergyOverlay** (`scripts/energy/energy_overlay.gd`) — visual debug overlay for energy networks
-- **WorldGenerator** (`scripts/game/world_generator.gd`) — procedural/template map generation
-- **GameCamera** (`scripts/game/game_camera.gd`) — camera control (pan, zoom)
-- **GridOverlay** (`scripts/game/grid_overlay.gd`) — visual grid rendering
+- **EnergyOverlay** (`scripts/energy/energy_overlay.gd`) — visual overlay with wires, flow particles, no-power icons
+- **WorldGenerator** (`scripts/game/world_generator.gd`) — procedural map generation (simplex + cellular noise, 12 resource types, connectivity guarantee via BFS)
+- **GameCamera** (`scripts/game/game_camera.gd`) — smooth player-following camera with cursor offset, research-unlocked zoom levels
+- **GridOverlay** (`scripts/game/grid_overlay.gd`) — visual grid rendering (viewport-culled)
 - **Inventory** (`scripts/inventory.gd`) — per-item storage with capacity limits (used by extractors/converters)
 - **RoundRobin** (`scripts/round_robin.gd`) — fair round-robin iterator for multi-directional pulling
+- **DrawUtils** (`scripts/utils/draw_utils.gd`) — Manhattan-distance area drawing with outline
+
+### UI System
+
+All UI panels extend **GameWindow** (`scripts/ui/game_window.gd`) — base class providing titlebar, drag-to-move, resize handle, and serialize/deserialize for panel position/size.
+
+- **HUD** (`scripts/ui/hud.gd`) — speed controls [x0.25–x3], currency display, delivery counter, panel toggle buttons, minimap, FPS counter
+- **BuildingsPanel** (`scripts/ui/buildings_panel.gd`) — searchable/filterable building catalog with category tabs, hotkey assignment (Ctrl+Click)
+- **InventoryPanel** (`scripts/ui/inventory_panel.gd`) — 8-slot hotbar + 16-slot grid, drag-and-drop, multi-select, quantity display
+- **ResearchPanel** (`scripts/ui/research_panel.gd`) — interactive tech tree with pan/zoom, ring-based layout, edge rendering
+- **RecipeBrowser** (`scripts/ui/recipe_browser.gd`) — searchable recipe catalog, shows producing/consuming recipes per item
+- **MiniMap** (`scripts/ui/minimap.gd`) — overhead world view with player/building positions
 
 ### Building Popup & Recipe Menu
 
@@ -235,8 +279,8 @@ Key scenes: `scenes/game/game_world.tscn` (gameplay), `scenes/game/test_world.ts
 
 - JSON format: `meta.json` (account), `run_autosave.json` + `run_backup.json` (game state)
 - Autosave every 60s with backup rotation; corrupt autosave falls back to backup
-- Serializes: buildings (type, grid_pos, rotation, state via `logic.serialize_state()`), currency, items_delivered, camera, time_speed
-- Linked buildings (tunnel pairs) are serialized and restored on load
+- Serializes: buildings (type, grid_pos, rotation, state via `logic.serialize_state()`), currency, items_delivered, camera, time_speed, research state, contract state, UI panel states
+- Linked buildings (tunnel/pipeline pairs) and energy nodes are deferred-linked on load
 - Building hotkeys persisted per account slot in `meta.json`
 - 3 account slots under `user://saves/slot_0/` through `slot_2/`
 
@@ -249,7 +293,7 @@ Custom lightweight test framework (no plugin dependencies) for headless executio
 - Unit tests in `tests/unit/`, integration tests in `tests/integration/`
 - Simulations in `tests/simulation/` extend `SimulationBase` — scripted play-throughs with time advancement and input synthesis
 
-Available simulations: `sim_conveyor_transport`, `sim_conveyor_visuals`, `sim_unified_pull`, `sim_drill_extractor`, `sim_smelter_converter`, `sim_merge_and_source_sink`, `sim_junction`, `sim_splitter`, `sim_energy`, `sim_new_buildings`, `sim_player`, `sim_stress_test`.
+Available simulations: `sim_conveyor_transport`, `sim_conveyor_visuals`, `sim_unified_pull`, `sim_drill_extractor`, `sim_smelter_converter`, `sim_merge_and_source_sink`, `sim_junction`, `sim_splitter`, `sim_energy`, `sim_new_buildings`, `sim_player`, `sim_stress_test`, `sim_content_update`, `sim_ui_panels`, `sim_ui_screenshot`.
 
 ### Workflow for New Buildings
 
@@ -267,12 +311,5 @@ Available simulations: `sim_conveyor_transport`, `sim_conveyor_visuals`, `sim_un
 
 ## Documentation
 
-- `docs/design.md` — full game design (items, recipes, converters, research, campaigns)
-- `docs/energy.md` — energy system design (generators, distribution algorithm, node connections)
-- `docs/gameplay_plan.md` — gameplay progression, resource tree, building costs, research tree, contracts
-- `docs/implementation_details.md` — detailed architecture and save format
-- `docs/inventory_ui.md` — inventory UI design (hotbar, drag & drop, stack splitting)
-- `docs/player_entity.md` — player movement, health, conveyor interaction, collision
-- `docs/state.md` — implementation progress tracking
-- `docs/step13_ui_design.md` — UI layout specifications
-- `docs/to_fix.md` — known issues and technical debt (14 priority items)
+- `docs/optimization.md` — performance optimization guide
+- `docs/archive/` — archived design documents (design, energy, gameplay_plan, implementation_details, inventory_ui, player_entity, state, to_fix, etc.)
