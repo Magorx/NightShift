@@ -27,6 +27,7 @@ const DELIVER_TIME := 2.0
 const BUFFER_CAPACITY := 5
 
 var _input_rr: RoundRobin = RoundRobin.new()
+var _code_anims: Array = []
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	super.configure(def, p_grid_pos, p_rotation)
@@ -37,6 +38,12 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	# Register in global lab list
 	if self not in _all_labs:
 		_all_labs.append(self)
+	# Find CodeAnim* nodes for procedural animation
+	var rotatable = get_parent().get_node_or_null("Rotatable")
+	if rotatable:
+		for child in rotatable.get_children():
+			if child is Node2D and String(child.name).begins_with("CodeAnim"):
+				_code_anims.append(child)
 
 func on_removing() -> void:
 	_all_labs.erase(self)
@@ -59,7 +66,11 @@ func _physics_process(delta: float) -> void:
 	else:
 		_try_start_delivery()
 
-	_update_building_sprites(_delivering_item != &"", delta)
+	var is_working := _delivering_item != &""
+	_update_building_sprites(is_working, delta)
+	for anim in _code_anims:
+		if anim and anim.has_method("set_active"):
+			anim.set_active(is_working)
 
 func _is_needed(item_id: StringName) -> bool:
 	## Check if the current research still needs this item, accounting for
