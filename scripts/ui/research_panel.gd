@@ -37,8 +37,10 @@ const RING_COLORS := [
 	Color(0.9, 0.3, 0.3),   # Ring 1 (red)
 	Color(0.3, 0.8, 0.3),   # Ring 2 (green)
 	Color(0.3, 0.5, 0.9),   # Ring 3 (blue)
+	Color(0.8, 0.53, 0.2),  # Ring 4 (orange)
+	Color(0.6, 0.2, 0.8),   # Ring 5 (purple)
 ]
-const RING_NAMES := ["Ring 0", "Ring 1", "Ring 2", "Ring 3"]
+const RING_NAMES := ["Ring 0", "Ring 1", "Ring 2", "Ring 3", "Ring 4", "Ring 5"]
 
 const NODE_SIZE := Vector2(130, 48)
 const NODE_HGAP := 160.0  # horizontal gap between columns (rings)
@@ -200,8 +202,6 @@ func _on_tree_draw() -> void:
 	var rings_sorted: Array = _ring_techs.keys()
 	rings_sorted.sort()
 	for ring in rings_sorted:
-		if ring >= RING_COLORS.size():
-			continue
 		var techs: Array = _ring_techs[ring]
 		if techs.is_empty():
 			continue
@@ -220,7 +220,8 @@ func _on_tree_draw() -> void:
 		var label_font := int(14 * _zoom)
 		if label_font >= 6:
 			var label_width := _estimate_text_width(ring_name, label_font)
-			tree_display.draw_string(ThemeDB.fallback_font, Vector2(label_screen.x - label_width * 0.5, label_screen.y), ring_name, HORIZONTAL_ALIGNMENT_LEFT, -1, label_font, Color(RING_COLORS[ring], 0.6))
+			var label_color: Color = RING_COLORS[ring] if ring < RING_COLORS.size() else Color.WHITE
+			tree_display.draw_string(ThemeDB.fallback_font, Vector2(label_screen.x - label_width * 0.5, label_screen.y), ring_name, HORIZONTAL_ALIGNMENT_LEFT, -1, label_font, Color(label_color, 0.6))
 
 	# Draw edges
 	for edge in _edges:
