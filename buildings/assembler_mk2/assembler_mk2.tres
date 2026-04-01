@@ -24,5 +24,5 @@ color = Color(0.3, 0.25, 0.5, 1)
 description = "Advanced automated assembly for complex products."
 category = "converter"
 scene = ExtResource("2")
-unlock_tech = &"tech_assembler_mk2"
+research_tag = &"assembler_mk2"
 build_cost = [SubResource("cost_0"), SubResource("cost_1")]

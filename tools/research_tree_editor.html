@@ -69,6 +69,7 @@ button.primary:hover { background: #2c8b2c; }
     <label>Position X <input id="ne-px" type="number" step="0.5"></label>
     <label>Position Y <input id="ne-py" type="number" step="0.5"></label>
     <label>Unlocks (comma-separated) <input id="ne-unlocks"></label>
+    <label>Tags (comma-separated unlock tags) <input id="ne-tags"></label>
     <h3 style="margin-top:8px;">Cost</h3>
     <div id="ne-cost"></div>
     <button onclick="addCostRow()" style="margin-top:4px;">+ Cost Item</button>
@@ -567,6 +568,7 @@ function selectNode(id) {
   document.getElementById('ne-px').value = n.position?.x || 0;
   document.getElementById('ne-py').value = n.position?.y || 0;
   document.getElementById('ne-unlocks').value = (n.unlocks || []).join(', ');
+  document.getElementById('ne-tags').value = (n.effects || []).map(e => e.unlock_tag || '').filter(s => s).join(', ');
   refreshCostEditor(n);
   draw();
 }
@@ -697,6 +699,7 @@ function applyNodeEdit() {
   n.position.x = parseFloat(document.getElementById('ne-px').value);
   n.position.y = parseFloat(document.getElementById('ne-py').value);
   n.unlocks = document.getElementById('ne-unlocks').value.split(',').map(s => s.trim()).filter(s => s);
+  n.effects = document.getElementById('ne-tags').value.split(',').map(s => s.trim()).filter(s => s).map(tag => ({ unlock_tag: tag }));
   n.cost = [];
   for (const row of document.getElementById('ne-cost').children) {
     const itemId = row.dataset.item;
@@ -719,7 +722,7 @@ function deleteSelectedNode() {
 
 function addNode() {
   const id = `tech_new_${Date.now() % 10000}`;
-  data.nodes.push({ id, display_name: 'New Tech', description: '', ring: 1, cost: [], unlocks: [], position: { x: 0, y: 0 } });
+  data.nodes.push({ id, display_name: 'New Tech', description: '', ring: 1, cost: [], effects: [], unlocks: [], position: { x: 0, y: 0 } });
   selectNode(id);
   markDirty();
   refreshNodeList(); draw();
@@ -861,7 +864,7 @@ async function init() {
 function autoApply() {
   if (document.getElementById('ne-autoapply').checked && selectedId) applyNodeEdit();
 }
-for (const id of ['ne-id', 'ne-name', 'ne-desc', 'ne-px', 'ne-py', 'ne-unlocks']) {
+for (const id of ['ne-id', 'ne-name', 'ne-desc', 'ne-px', 'ne-py', 'ne-unlocks', 'ne-tags']) {
   document.getElementById(id).addEventListener('input', autoApply);
 }
 document.getElementById('ne-ring').addEventListener('change', autoApply);

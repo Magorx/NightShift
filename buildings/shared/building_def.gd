@@ -9,7 +9,7 @@ const TILE_SIZE := 32
 @export var category: String # "extractor", "conveyor", "converter", "sink"
 @export var description: String = ""
 @export var scene: PackedScene
-@export var unlock_tech: StringName
+@export var research_tag: StringName
 ## Building IDs that can replace this building when placed on top of it.
 @export var replaceable_by: Array[StringName] = []
 ## Ground-level buildings (conveyors, junctions, etc.) don't block the player.

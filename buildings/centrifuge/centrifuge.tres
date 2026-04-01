@@ -30,5 +30,5 @@ color = Color(0.45, 0.5, 0.6, 1)
 description = "Refines uranium and produces fusion cells."
 category = "converter"
 scene = ExtResource("2")
-unlock_tech = &"tech_centrifuge"
+research_tag = &"centrifuge"
 build_cost = [SubResource("cost_0"), SubResource("cost_1"), SubResource("cost_2")]

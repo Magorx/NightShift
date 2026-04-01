@@ -36,5 +36,5 @@ color = Color(0.25, 0.6, 0.35, 1)
 description = "Cross-shaped nuclear reactor — massive power from fusion cells."
 category = "converter"
 scene = ExtResource("2")
-unlock_tech = &"tech_nuclear_reactor"
+research_tag = &"nuclear_reactor"
 build_cost = [SubResource("cost_0"), SubResource("cost_1"), SubResource("cost_2"), SubResource("cost_3")]

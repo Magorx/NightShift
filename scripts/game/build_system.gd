@@ -992,7 +992,7 @@ func _get_placement_fail_reason(id: StringName, grid_pos: Vector2i, rotation: in
 	var def = GameManager.get_building_def(id)
 	if not def:
 		return ""
-	if not GameManager.creative_mode and not ResearchManager.is_building_unlocked(id):
+	if not ResearchManager.is_tag_unlocked(def.research_tag):
 		return "Research required"
 	var rotated_shape: Array = def.get_rotated_shape(rotation)
 	for cell in rotated_shape:

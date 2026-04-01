@@ -80,7 +80,7 @@ func _group_buildings() -> void:
 		var def = GameManager.building_defs[id]
 		if def.category in HIDDEN_CATEGORIES:
 			continue
-		if not ResearchManager.is_building_unlocked(id):
+		if not ResearchManager.is_tag_unlocked(def.research_tag):
 			continue
 		var cat_name: String = CATEGORY_DISPLAY_NAMES.get(def.category, def.category.capitalize())
 		if not _by_category.has(cat_name):

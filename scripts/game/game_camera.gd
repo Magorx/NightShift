@@ -9,6 +9,15 @@ const DEFAULT_MIN_ZOOM := 3.0
 const MAX_ZOOM := 3.0
 const ZOOM_SMOOTH_SPEED := 8.0
 
+# Cartography tags and their zoom-out levels (lower = more zoomed out)
+const CARTOGRAPHY_ZOOM := {
+	&"cartography_1": 2.4,
+	&"cartography_2": 1.2,
+	&"cartography_3": 0.75,
+	&"cartography_4": 0.5,
+	&"cartography_5": 0.35,
+}
+
 var min_zoom: float = DEFAULT_MIN_ZOOM
 
 # ── Follow ──────────────────────────────────────────────────────────────────
@@ -21,10 +30,17 @@ var _target_zoom: float = 1.0
 
 func _ready() -> void:
 	_target_zoom = zoom.x
-	ResearchManager.register_callback(&"set_min_zoom", _on_set_min_zoom)
-	ResearchManager.effects_reset.connect(reset_min_zoom)
+	ResearchManager.tag_unlocked.connect(_on_tag_unlocked)
+	ResearchManager.tags_reset.connect(_on_tags_reset)
 
-func reset_min_zoom() -> void:
+func _on_tag_unlocked(tag: StringName) -> void:
+	if CARTOGRAPHY_ZOOM.has(tag):
+		var value: float = CARTOGRAPHY_ZOOM[tag]
+		if value < min_zoom:
+			min_zoom = value
+			_target_zoom = clampf(_target_zoom, min_zoom, MAX_ZOOM)
+
+func _on_tags_reset() -> void:
 	min_zoom = DEFAULT_MIN_ZOOM
 	_target_zoom = clampf(_target_zoom, min_zoom, MAX_ZOOM)
 
@@ -88,12 +104,6 @@ func _smooth_zoom(real_delta: float) -> void:
 	zoom = Vector2(new_zoom, new_zoom)
 	var world_after := position + mouse_offset / zoom.x
 	position += world_before - world_after
-
-func _on_set_min_zoom(effect: Dictionary) -> void:
-	var value: float = float(effect.get("value", min_zoom))
-	if value < min_zoom:
-		min_zoom = value
-		_target_zoom = clampf(_target_zoom, min_zoom, MAX_ZOOM)
 
 # ── Bounds ──────────────────────────────────────────────────────────────────
 

@@ -18,5 +18,5 @@ color = Color(0.5, 0.5, 0.55, 1)
 description = "Stamps and shapes metal plates into components."
 category = "converter"
 scene = ExtResource("2")
-unlock_tech = &"tech_press"
+research_tag = &"press"
 build_cost = [SubResource("cost_0")]

@@ -1,8 +1,12 @@
 extends Node
 
 ## Research/Tech Tree manager. Tracks unlocked techs, current research target,
-## and science pack delivery progress. Registered as an autoload singleton.
-## On completion, techs apply their effects via registered callbacks.
+## and science pack delivery progress.
+##
+## Unlock state uses a tag-based system: unlocked_tags maps tag names to bool.
+## Any system queries is_tag_unlocked(tag). Unknown tags warn and return unlocked.
+## Creative mode reports everything as unlocked.
+## When a tag is unlocked, tag_unlocked signal is emitted so listeners can react.
 
 # All tech definitions: tech_id -> TechDef
 var tech_defs: Dictionary = {}
@@ -10,21 +14,23 @@ var tech_defs: Dictionary = {}
 # Unlocked techs: tech_id -> true
 var unlocked_techs: Dictionary = {}
 
+# Tag-based unlock state: tag_name -> bool (true = unlocked)
+var unlocked_tags: Dictionary = {}
+
 # Current research target: TechDef or null
 var current_research: Resource = null
 
 # Progress: item_id -> count of packs delivered so far
 var research_progress: Dictionary = {}
 
-# Callback registry: callback_name -> Callable(effect: Dictionary)
-var _callbacks: Dictionary = {}
-
 signal research_completed(tech_id: StringName)
 signal research_started(tech_id: StringName)
-signal effects_reset  # emitted before replaying effects on reset/deserialize
+signal tag_unlocked(tag: StringName)
+signal tags_reset  # emitted when tags are cleared (reset/deserialize), listeners should reset their state
 
 func _ready():
 	_load_from_json()
+	_register_all_tags()
 	# Ring 0 normal techs are free — unlock them immediately
 	# Ring 0 instant techs must be manually researched (costs taken from player inventory)
 	for tech_id in tech_defs:
@@ -81,23 +87,41 @@ func _load_tech_defs_tres():
 				tech_defs[def.id] = def
 		file_name = dir.get_next()
 
-func register_callback(callback_name: StringName, callable: Callable) -> void:
-	## Register a callback that tech effects can invoke on completion.
-	_callbacks[callback_name] = callable
+# ── Tag system ────────────────────────────────────────────────────────────────
+
+func _register_all_tags() -> void:
+	## Scan all tech effects and register every unlock_tag as locked (false).
+	unlocked_tags.clear()
+	for tech_id in tech_defs:
+		var tech: TechDef = tech_defs[tech_id]
+		for effect in tech.effects:
+			var tag: String = effect.get("unlock_tag", "")
+			if tag != "":
+				unlocked_tags[StringName(tag)] = false
+
+func is_tag_unlocked(tag: StringName) -> bool:
+	## Check if a research tag is unlocked.
+	## Creative mode: everything is unlocked.
+	## Empty tag: always unlocked (no research requirement).
+	## Unknown tag: warn and return unlocked.
+	if GameManager.creative_mode:
+		return true
+	if tag == &"":
+		return true
+	if not unlocked_tags.has(tag):
+		push_warning("ResearchManager: unknown tag '%s' queried — treating as unlocked" % tag)
+		return true
+	return unlocked_tags[tag]
 
 func _apply_effects(tech: TechDef) -> void:
-	## Run all effects for a completed tech through registered callbacks.
+	## Unlock all tags from a completed tech's effects and emit signals.
 	for effect in tech.effects:
-		var cb_name := StringName(str(effect.get("callback", "")))
-		if _callbacks.has(cb_name):
-			_callbacks[cb_name].call(effect)
+		var tag: String = effect.get("unlock_tag", "")
+		if tag != "":
+			unlocked_tags[StringName(tag)] = true
+			tag_unlocked.emit(StringName(tag))
 
-func is_building_unlocked(building_id: StringName) -> bool:
-	## Check if a building is unlocked by any completed tech.
-	var def = GameManager.get_building_def(building_id)
-	if not def or def.unlock_tech == &"":
-		return true  # No tech requirement = always available
-	return unlocked_techs.has(def.unlock_tech)
+# ── Research flow ─────────────────────────────────────────────────────────────
 
 func start_research(tech_id: StringName) -> bool:
 	if unlocked_techs.has(tech_id):
@@ -127,13 +151,10 @@ func _try_instant_research(tech: TechDef) -> bool:
 	var player: Player = GameManager.player
 	if not player:
 		return false
-	# Verify the player has all required items
 	if not can_afford_instant(tech):
 		return false
-	# Remove all items
 	for stack in tech.cost:
 		player.remove_item(stack.item.id, stack.quantity)
-	# Complete immediately
 	unlocked_techs[tech.id] = true
 	_apply_effects(tech)
 	research_completed.emit(tech.id)
@@ -144,7 +165,6 @@ func deliver_science_pack(item_id: StringName) -> bool:
 	## Returns true if the pack was accepted (needed for current research).
 	if not current_research:
 		return false
-	# Check if this pack type is needed
 	for stack in current_research.cost:
 		if stack.item.id == item_id:
 			var current = research_progress.get(item_id, 0)
@@ -170,7 +190,6 @@ func _check_completion():
 	for stack in current_research.cost:
 		if research_progress.get(stack.item.id, 0) < stack.quantity:
 			return
-	# Complete!
 	var completed_tech: TechDef = current_research
 	var completed_id: StringName = completed_tech.id
 	unlocked_techs[completed_id] = true
@@ -217,7 +236,8 @@ func serialize() -> Dictionary:
 
 func deserialize(data: Dictionary):
 	unlocked_techs.clear()
-	effects_reset.emit()
+	_register_all_tags()
+	tags_reset.emit()
 	for tech_id_str in data.get("unlocked", []):
 		var tid := StringName(tech_id_str)
 		unlocked_techs[tid] = true
@@ -236,9 +256,8 @@ func reset() -> void:
 	unlocked_techs.clear()
 	current_research = null
 	research_progress = {}
-	effects_reset.emit()
-	# Ring 0 normal techs are free — unlock them immediately
-	# Ring 0 instant techs must be manually researched
+	_register_all_tags()
+	tags_reset.emit()
 	for tech_id in tech_defs:
 		var tech: TechDef = tech_defs[tech_id]
 		if tech.ring == 0 and tech.type != &"instant":

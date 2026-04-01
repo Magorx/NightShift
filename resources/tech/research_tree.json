@@ -19,8 +19,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "research_lab"
+          "unlock_tag": "research_lab"
         }
       ],
       "position": {
@@ -46,8 +45,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "press"
+          "unlock_tag": "press"
         }
       ],
       "position": {
@@ -74,8 +72,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "wire_drawer"
+          "unlock_tag": "wire_drawer"
         }
       ],
       "position": {
@@ -97,8 +94,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "solar_panel"
+          "unlock_tag": "solar_panel"
         }
       ],
       "position": {
@@ -120,8 +116,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "coke_oven"
+          "unlock_tag": "coke_oven"
         }
       ],
       "position": {
@@ -142,8 +137,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "conveyor_mk2"
+          "unlock_tag": "conveyor_mk2"
         }
       ],
       "position": {
@@ -169,8 +163,7 @@
       ],
       "effects": [
         {
-          "callback": "set_min_zoom",
-          "value": 2.4
+          "unlock_tag": "cartography_1"
         }
       ],
       "position": {
@@ -196,8 +189,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "assembler"
+          "unlock_tag": "assembler"
         }
       ],
       "position": {
@@ -223,8 +215,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "fuel_generator"
+          "unlock_tag": "fuel_generator"
         }
       ],
       "position": {
@@ -249,8 +240,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "drill_mk2"
+          "unlock_tag": "drill_mk2"
         }
       ],
       "position": {
@@ -279,8 +269,7 @@
       ],
       "effects": [
         {
-          "callback": "set_min_zoom",
-          "value": 1.2
+          "unlock_tag": "cartography_2"
         }
       ],
       "position": {
@@ -314,8 +303,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "conveyor_mk3"
+          "unlock_tag": "conveyor_mk3"
         }
       ],
       "position": {
@@ -345,8 +333,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "assembler_mk2"
+          "unlock_tag": "assembler_mk2"
         }
       ],
       "position": {
@@ -358,7 +345,7 @@
     {
       "id": "tech_cartography_3",
       "display_name": "Cartography III",
-      "description": "Full satellite mapping — maximum camera zoom out.",
+      "description": "Full satellite mapping \u2014 maximum camera zoom out.",
       "ring": 3,
       "cost": [
         {
@@ -376,8 +363,7 @@
       ],
       "effects": [
         {
-          "callback": "set_min_zoom",
-          "value": 0.75
+          "unlock_tag": "cartography_3"
         }
       ],
       "position": {
@@ -407,8 +393,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "pump"
+          "unlock_tag": "pump"
         }
       ],
       "position": {
@@ -438,8 +423,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "chemical_plant"
+          "unlock_tag": "chemical_plant"
         }
       ],
       "position": {
@@ -469,8 +453,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "centrifuge"
+          "unlock_tag": "centrifuge"
         }
       ],
       "position": {
@@ -496,8 +479,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "greenhouse"
+          "unlock_tag": "greenhouse"
         }
       ],
       "position": {
@@ -509,7 +491,7 @@
     {
       "id": "tech_pipeline",
       "display_name": "Pipeline",
-      "description": "Long-range item transport — place input and output endpoints up to 10 tiles apart.",
+      "description": "Long-range item transport \u2014 place input and output endpoints up to 10 tiles apart.",
       "ring": 4,
       "cost": [
         {
@@ -527,8 +509,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "pipeline_input"
+          "unlock_tag": "pipeline_input"
         }
       ],
       "position": {
@@ -540,7 +521,7 @@
     {
       "id": "tech_cartography_4",
       "display_name": "Cartography IV",
-      "description": "Orbital surveying — reveals the entire map.",
+      "description": "Orbital surveying \u2014 reveals the entire map.",
       "ring": 4,
       "cost": [
         {
@@ -558,8 +539,7 @@
       ],
       "effects": [
         {
-          "callback": "set_min_zoom",
-          "value": 0.5
+          "unlock_tag": "cartography_4"
         }
       ],
       "position": {
@@ -589,8 +569,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "particle_accelerator"
+          "unlock_tag": "particle_accelerator"
         }
       ],
       "position": {
@@ -620,8 +599,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "fabricator"
+          "unlock_tag": "fabricator"
         }
       ],
       "position": {
@@ -633,7 +611,7 @@
     {
       "id": "tech_nuclear_reactor",
       "display_name": "Nuclear Reactor",
-      "description": "Cross-shaped nuclear reactor — massive power generation from fusion cells.",
+      "description": "Cross-shaped nuclear reactor \u2014 massive power generation from fusion cells.",
       "ring": 5,
       "cost": [
         {
@@ -647,8 +625,7 @@
       ],
       "effects": [
         {
-          "callback": "unlock_building",
-          "building_id": "nuclear_reactor"
+          "unlock_tag": "nuclear_reactor"
         }
       ],
       "position": {
@@ -660,7 +637,7 @@
     {
       "id": "tech_cartography_5",
       "display_name": "Cartography V",
-      "description": "Quantum cartography — ultimate map control with terraformer integration.",
+      "description": "Quantum cartography \u2014 ultimate map control with terraformer integration.",
       "ring": 5,
       "cost": [
         {
@@ -678,8 +655,7 @@
       ],
       "effects": [
         {
-          "callback": "set_min_zoom",
-          "value": 0.35
+          "unlock_tag": "cartography_5"
         }
       ],
       "position": {

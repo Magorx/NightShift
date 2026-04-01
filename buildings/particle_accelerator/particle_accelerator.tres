@@ -36,5 +36,5 @@ color = Color(0.3, 0.25, 0.55, 1)
 description = "L-shaped particle accelerator for quantum chip production."
 category = "converter"
 scene = ExtResource("2")
-unlock_tech = &"tech_particle_accelerator"
+research_tag = &"particle_accelerator"
 build_cost = [SubResource("cost_0"), SubResource("cost_1"), SubResource("cost_2"), SubResource("cost_3")]

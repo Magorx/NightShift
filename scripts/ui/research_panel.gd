@@ -476,15 +476,16 @@ func _update_info_panel() -> void:
 		for effect in tech.effects:
 			var lbl := Label.new()
 			lbl.add_theme_font_size_override("font_size", 11)
-			var cb: String = effect.get("callback", "")
-			if cb == "unlock_building":
-				var building_id := StringName(effect.get("building_id", ""))
-				var bdef = GameManager.get_building_def(building_id)
-				lbl.text = "  Unlock: " + (bdef.display_name if bdef else str(building_id))
-			elif cb == "set_min_zoom":
-				lbl.text = "  Camera zoom: " + str(effect.get("value", ""))
+			var tag: String = effect.get("unlock_tag", "")
+			if tag == "":
+				continue
+			var bdef = GameManager.get_building_def(StringName(tag))
+			if bdef:
+				lbl.text = "  Unlock: " + bdef.display_name
+			elif tag.begins_with("cartography_"):
+				lbl.text = "  Camera zoom upgrade"
 			else:
-				lbl.text = "  " + cb
+				lbl.text = "  Unlock: " + tag
 			info_unlocks.add_child(lbl)
 
 	# Status + button

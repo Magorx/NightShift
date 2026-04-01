@@ -30,5 +30,5 @@ color = Color(0.35, 0.6, 0.3, 1)
 description = "Grows renewable biomass from bio compounds using energy."
 category = "converter"
 scene = ExtResource("2")
-unlock_tech = &"tech_greenhouse"
+research_tag = &"greenhouse"
 build_cost = [SubResource("cost_0"), SubResource("cost_1"), SubResource("cost_2")]

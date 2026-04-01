@@ -24,6 +24,6 @@ color = Color(0.5, 0.4, 0.6, 1)
 category = "pipeline"
 description = "Underground pipeline. Place input, then output. Max 9 cells apart."
 scene = ExtResource("2")
-unlock_tech = &"tech_pipeline"
+research_tag = &"pipeline_input"
 is_ground_level = true
 build_cost = [SubResource("cost_0"), SubResource("cost_1")]

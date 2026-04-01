@@ -24,5 +24,5 @@ color = Color(0.5, 0.35, 0.25, 1)
 description = "Burns coke to generate high-output power."
 category = "generator"
 scene = ExtResource("2")
-unlock_tech = &"tech_fuel_generator"
+research_tag = &"fuel_generator"
 build_cost = [SubResource("cost_0"), SubResource("cost_1")]

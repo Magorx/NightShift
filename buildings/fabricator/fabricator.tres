@@ -36,5 +36,5 @@ color = Color(0.5, 0.4, 0.55, 1)
 description = "T-shaped fabricator for pinnacle-tier manufacturing."
 category = "converter"
 scene = ExtResource("2")
-unlock_tech = &"tech_fabricator"
+research_tag = &"fabricator"
 build_cost = [SubResource("cost_0"), SubResource("cost_1"), SubResource("cost_2"), SubResource("cost_3")]
