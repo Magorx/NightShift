@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" path="res://buildings/biomass_extractor/biomass_extractor_output_logic.gd" id="3"]
@@ -6,34 +6,158 @@
 [ext_resource type="Script" path="res://buildings/shared/output_cell.gd" id="5"]
 [ext_resource type="Texture2D" path="res://buildings/biomass_extractor/sprites/output.png" id="7_sheet"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_b0"]
+[sub_resource type="AtlasTexture" id="bi0"]
 atlas = ExtResource("7_sheet")
 region = Rect2(0, 0, 32, 32)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_t0"]
+[sub_resource type="AtlasTexture" id="bw0"]
 atlas = ExtResource("7_sheet")
-region = Rect2(0, 32, 32, 32)
+region = Rect2(0, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="bw1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="ba0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 128, 32, 32)
+
+[sub_resource type="AtlasTexture" id="ba1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 128, 32, 32)
+
+[sub_resource type="AtlasTexture" id="ba2"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 128, 32, 32)
+
+[sub_resource type="AtlasTexture" id="ba3"]
+atlas = ExtResource("7_sheet")
+region = Rect2(96, 128, 32, 32)
+
+[sub_resource type="AtlasTexture" id="bd0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 192, 32, 32)
+
+[sub_resource type="AtlasTexture" id="bd1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(32, 192, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_b0")
+"texture": SubResource("ba0")
+}, {
+"duration": 1.0,
+"texture": SubResource("ba1")
+}, {
+"duration": 1.0,
+"texture": SubResource("ba2")
+}, {
+"duration": 1.0,
+"texture": SubResource("ba3")
 }],
 "loop": true,
-"name": &"default",
-"speed": 5.0
+"name": &"active",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("bi0")
+}, {
+"duration": 1.0,
+"texture": SubResource("bi0")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("bd0")
+}, {
+"duration": 1.0,
+"texture": SubResource("bd1")
+}],
+"loop": false,
+"name": &"winddown",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("bw0")
+}, {
+"duration": 1.0,
+"texture": SubResource("bw1")
+}],
+"loop": false,
+"name": &"windup",
+"speed": 6.0
 }]
+
+[sub_resource type="AtlasTexture" id="ti0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="tw1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 96, 32, 32)
+
+[sub_resource type="AtlasTexture" id="ta0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 160, 32, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_t0")
+"texture": SubResource("ta0")
+}, {
+"duration": 1.0,
+"texture": SubResource("ti0")
+}, {
+"duration": 1.0,
+"texture": SubResource("ta0")
+}, {
+"duration": 1.0,
+"texture": SubResource("ti0")
 }],
 "loop": true,
-"name": &"default",
-"speed": 5.0
+"name": &"active",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("ti0")
+}, {
+"duration": 1.0,
+"texture": SubResource("ti0")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("ti0")
+}, {
+"duration": 1.0,
+"texture": SubResource("ti0")
+}],
+"loop": false,
+"name": &"winddown",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("ti0")
+}, {
+"duration": 1.0,
+"texture": SubResource("tw1")
+}],
+"loop": false,
+"name": &"windup",
+"speed": 6.0
 }]
 
 [node name="BiomassExtractorOutput" type="Node2D"]
@@ -67,14 +191,16 @@ allow_left = false
 texture_filter = 1
 position = Vector2(16, 16)
 sprite_frames = SubResource("SpriteFrames_base")
-autoplay = "default"
+animation = &"idle"
+autoplay = "idle"
 
 [node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
 z_index = 10
 texture_filter = 1
 position = Vector2(16, 16)
 sprite_frames = SubResource("SpriteFrames_top")
-autoplay = "default"
+animation = &"idle"
+autoplay = "idle"
 
 [node name="BiomassExtractorOutputLogic" type="Node" parent="."]
 script = ExtResource("3")

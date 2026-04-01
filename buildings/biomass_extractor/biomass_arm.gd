@@ -31,6 +31,7 @@ var state := IDLE
 var _timer := 0.0
 var _target := Vector2.ZERO  # randomized point inside a target cell
 @export var base_pos := Vector2(16, 16)  # shoulder pivot (Rotatable-local, unrotated)
+var drop_pos := Vector2(16, 16)  # where the arm deposits fragments (maw center)
 
 var _shoulder := Vector2.ZERO
 var _elbow := Vector2.ZERO
@@ -38,6 +39,7 @@ var _hand := Vector2.ZERO
 var _has_fragment := false
 var _active := false
 var _ever_animated := false  # true once first cycle starts
+var _extend_from := Vector2.ZERO  # hand position at start of extend
 
 ## Initial delay before first cycle (used to stagger multiple arms).
 @export var start_delay: float = 0.0
@@ -59,7 +61,8 @@ func _ready() -> void:
 	_rng.seed = hash(get_instance_id())
 	_shoulder = base_pos
 	_elbow = base_pos
-	_hand = base_pos
+	_hand = drop_pos
+	_extend_from = drop_pos
 
 
 func _process(delta: float) -> void:
@@ -114,6 +117,7 @@ func _start_cycle() -> void:
 		_rng.randf_range(-INNER_SCATTER, INNER_SCATTER),
 		_rng.randf_range(-INNER_SCATTER, INNER_SCATTER)
 	)
+	_extend_from = _hand  # start from current hand position
 	_target = cell_center + offset
 	state = EXTENDING
 	_timer = 0.0
@@ -122,19 +126,19 @@ func _start_cycle() -> void:
 
 
 func _compute_joints() -> void:
-	var t: float
+	_shoulder = base_pos
+
 	match state:
 		EXTENDING:
-			t = _smoothstep(_timer / EXTEND_TIME)
+			var t := _smoothstep(_timer / EXTEND_TIME)
+			_hand = _extend_from.lerp(_target, t)
 		GRABBING:
-			t = 1.0
+			_hand = _target
 		RETRACTING:
-			t = 1.0 - _smoothstep(_timer / RETRACT_TIME)
+			var t := _smoothstep(_timer / RETRACT_TIME)
+			_hand = _target.lerp(drop_pos, t)
 		_:
-			t = 0.0
-
-	_shoulder = base_pos
-	_hand = base_pos.lerp(_target, t)
+			_hand = drop_pos
 
 	# 2-segment IK for elbow position
 	var reach := _shoulder.distance_to(_hand)

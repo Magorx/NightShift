@@ -59,6 +59,7 @@ func _physics_process(delta: float) -> void:
 	var producing := output_device != null and output_device.has_method("accept_from_extractor")
 	if not producing:
 		_update_arm(false)
+		_update_building_sprites(false, delta)
 		return
 
 	_timer += delta
@@ -72,6 +73,7 @@ func _physics_process(delta: float) -> void:
 		_timer = produce_interval
 
 	_update_arm(true)
+	_update_building_sprites(true, delta)
 
 func _update_arm(active: bool) -> void:
 	if _arms.is_empty():

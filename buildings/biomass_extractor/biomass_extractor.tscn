@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=33 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" path="res://buildings/biomass_extractor/biomass_extractor_logic.gd" id="3"]
@@ -6,34 +6,186 @@
 [ext_resource type="Script" path="res://buildings/biomass_extractor/biomass_arm.gd" id="6"]
 [ext_resource type="Texture2D" path="res://buildings/biomass_extractor/sprites/extractor.png" id="7_sheet"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_b0"]
+[sub_resource type="AtlasTexture" id="bi0"]
 atlas = ExtResource("7_sheet")
 region = Rect2(0, 0, 64, 32)
+
+[sub_resource type="AtlasTexture" id="bi1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 0, 64, 32)
+
+[sub_resource type="AtlasTexture" id="bw0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 64, 64, 32)
+
+[sub_resource type="AtlasTexture" id="bw1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 64, 64, 32)
+
+[sub_resource type="AtlasTexture" id="ba0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 128, 64, 32)
+
+[sub_resource type="AtlasTexture" id="ba1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 128, 64, 32)
+
+[sub_resource type="AtlasTexture" id="ba2"]
+atlas = ExtResource("7_sheet")
+region = Rect2(128, 128, 64, 32)
+
+[sub_resource type="AtlasTexture" id="ba3"]
+atlas = ExtResource("7_sheet")
+region = Rect2(192, 128, 64, 32)
+
+[sub_resource type="AtlasTexture" id="bd0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 192, 64, 32)
+
+[sub_resource type="AtlasTexture" id="bd1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 192, 64, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_b0")
+"texture": SubResource("ba0")
+}, {
+"duration": 1.0,
+"texture": SubResource("ba1")
+}, {
+"duration": 1.0,
+"texture": SubResource("ba2")
+}, {
+"duration": 1.0,
+"texture": SubResource("ba3")
 }],
 "loop": true,
-"name": &"default",
-"speed": 5.0
+"name": &"active",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("bi0")
+}, {
+"duration": 1.0,
+"texture": SubResource("bi1")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("bd0")
+}, {
+"duration": 1.0,
+"texture": SubResource("bd1")
+}],
+"loop": false,
+"name": &"winddown",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("bw0")
+}, {
+"duration": 1.0,
+"texture": SubResource("bw1")
+}],
+"loop": false,
+"name": &"windup",
+"speed": 6.0
 }]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_t0"]
+[sub_resource type="AtlasTexture" id="ti0"]
 atlas = ExtResource("7_sheet")
 region = Rect2(0, 32, 64, 32)
+
+[sub_resource type="AtlasTexture" id="tw0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 96, 64, 32)
+
+[sub_resource type="AtlasTexture" id="tw1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 96, 64, 32)
+
+[sub_resource type="AtlasTexture" id="ta0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 160, 64, 32)
+
+[sub_resource type="AtlasTexture" id="ta1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(64, 160, 64, 32)
+
+[sub_resource type="AtlasTexture" id="ta2"]
+atlas = ExtResource("7_sheet")
+region = Rect2(128, 160, 64, 32)
+
+[sub_resource type="AtlasTexture" id="ta3"]
+atlas = ExtResource("7_sheet")
+region = Rect2(192, 160, 64, 32)
+
+[sub_resource type="AtlasTexture" id="td0"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 224, 64, 32)
+
+[sub_resource type="AtlasTexture" id="td1"]
+atlas = ExtResource("7_sheet")
+region = Rect2(0, 96, 64, 32)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_t0")
+"texture": SubResource("ta0")
+}, {
+"duration": 1.0,
+"texture": SubResource("ta1")
+}, {
+"duration": 1.0,
+"texture": SubResource("ta2")
+}, {
+"duration": 1.0,
+"texture": SubResource("ta3")
 }],
 "loop": true,
-"name": &"default",
-"speed": 5.0
+"name": &"active",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("ti0")
+}, {
+"duration": 1.0,
+"texture": SubResource("ti0")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 2.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("td0")
+}, {
+"duration": 1.0,
+"texture": SubResource("td1")
+}],
+"loop": false,
+"name": &"winddown",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("tw0")
+}, {
+"duration": 1.0,
+"texture": SubResource("tw1")
+}],
+"loop": false,
+"name": &"windup",
+"speed": 6.0
 }]
 
 [node name="BiomassExtractor" type="Node2D"]
@@ -66,14 +218,16 @@ script = ExtResource("5")
 texture_filter = 1
 position = Vector2(32, 16)
 sprite_frames = SubResource("SpriteFrames_base")
-autoplay = "default"
+animation = &"idle"
+autoplay = "idle"
 
 [node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
 z_index = 10
 texture_filter = 1
 position = Vector2(32, 16)
 sprite_frames = SubResource("SpriteFrames_top")
-autoplay = "default"
+animation = &"idle"
+autoplay = "idle"
 
 [node name="CodeAnimArmL" type="Node2D" parent="Rotatable"]
 z_index = 11

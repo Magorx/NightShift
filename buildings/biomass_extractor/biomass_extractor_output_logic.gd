@@ -21,6 +21,9 @@ func accept_from_extractor(item_id: StringName) -> bool:
 		return true
 	return false
 
+func _physics_process(delta: float) -> void:
+	_update_building_sprites(not inventory.is_empty(), delta)
+
 func unlink_extractor() -> void:
 	extractor = null
 
