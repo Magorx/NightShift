@@ -1,8 +1,13 @@
 class_name ResearchLabLogic
 extends BuildingLogic
 
-## Research Lab building logic. Pulls science packs from inputs and delivers
-## them to ResearchManager to advance the current research target.
+## Research Lab building logic. Pulls items needed by current research from inputs
+## and delivers them to ResearchManager to advance the current research target.
+## Only accepts items required by the active research, and refuses items whose
+## requirement is already satisfied (including items buffered across ALL labs).
+
+## All active research labs — used to sum buffered items globally.
+static var _all_labs: Array[ResearchLabLogic] = []
 
 ## Building rotation index (0=right, 1=down, 2=left, 3=up).
 var rotation: int = 0
@@ -10,28 +15,31 @@ var rotation: int = 0
 ## Input IO points: Array of {cell: Vector2i, mask: Array} — world-space offsets.
 var input_points: Array = []
 
-## Inventory for holding science packs before delivery.
+## Inventory for holding research items before delivery.
 var input_inv: Inventory = Inventory.new()
 
-## Delivery timer: time between consuming a pack from inventory and delivering it.
+## Delivery timer: time between consuming an item from inventory and delivering it.
 var _deliver_timer: float = 0.0
 var _delivering_item: StringName = &""
 const DELIVER_TIME := 2.0
 
-var _input_rr: RoundRobin = RoundRobin.new()
+## Max items to buffer per type in inventory.
+const BUFFER_CAPACITY := 5
 
-## Accepted science pack item IDs.
-var _accepted_packs: Array[StringName] = [&"science_pack_1", &"science_pack_2", &"science_pack_3", &"science_pack_4"]
+var _input_rr: RoundRobin = RoundRobin.new()
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	super.configure(def, p_grid_pos, p_rotation)
 	rotation = p_rotation
 	input_points = def.get_rotated_inputs(p_rotation)
-	# Set up inventory capacity for all science pack types
-	for pack_id in _accepted_packs:
-		input_inv.set_capacity(pack_id, 5)
 	# Energy setup
 	energy = BuildingEnergy.new(50.0, 5.0, 0.0)
+	# Register in global lab list
+	if self not in _all_labs:
+		_all_labs.append(self)
+
+func on_removing() -> void:
+	_all_labs.erase(self)
 
 func _physics_process(delta: float) -> void:
 	# Require power to operate
@@ -53,6 +61,27 @@ func _physics_process(delta: float) -> void:
 
 	_update_building_sprites(_delivering_item != &"", delta)
 
+func _is_needed(item_id: StringName) -> bool:
+	## Check if the current research still needs this item, accounting for
+	## items buffered across ALL research labs (not yet delivered).
+	if not ResearchManager.current_research:
+		return false
+	for stack in ResearchManager.current_research.cost:
+		if stack.item.id == item_id:
+			var delivered: int = ResearchManager.research_progress.get(item_id, 0)
+			var buffered: int = 0
+			for lab in _all_labs:
+				buffered += lab.input_inv.get_count(item_id)
+				if lab._delivering_item == item_id:
+					buffered += 1
+			return (delivered + buffered) < stack.quantity
+	return false
+
+func _ensure_capacity(item_id: StringName) -> void:
+	## Ensure inventory has capacity registered for this item type.
+	if input_inv.get_capacity(item_id) == 0:
+		input_inv.set_capacity(item_id, BUFFER_CAPACITY)
+
 func _try_pull_inputs() -> void:
 	var count: int = input_points.size()
 	var start: int = _input_rr.next(count)
@@ -66,9 +95,9 @@ func _try_pull_inputs() -> void:
 			var peek_id = GameManager.peek_output_item(world_cell, dir_idx)
 			if peek_id == &"":
 				continue
-			# Only accept science packs that the current research needs
-			if peek_id not in _accepted_packs:
+			if not _is_needed(peek_id):
 				continue
+			_ensure_capacity(peek_id)
 			if not input_inv.has_space(peek_id):
 				continue
 			GameManager.pull_item(world_cell, dir_idx)
@@ -78,11 +107,11 @@ func _try_start_delivery() -> void:
 	# Check if there's active research
 	if not ResearchManager.current_research:
 		return
-	# Find a pack in inventory that the research needs
-	for pack_id in _accepted_packs:
-		if input_inv.has(pack_id) and ResearchManager.needs_pack(pack_id):
-			input_inv.remove(pack_id)
-			_delivering_item = pack_id
+	# Find an item in inventory that the research still needs
+	for item_id in input_inv.get_item_ids():
+		if input_inv.has(item_id) and ResearchManager.needs_pack(item_id):
+			input_inv.remove(item_id)
+			_delivering_item = item_id
 			_deliver_timer = 0.0
 			return
 
@@ -95,14 +124,19 @@ func has_input_from(cell: Vector2i, from_dir_idx: int) -> bool:
 	return false
 
 func can_accept_from(from_dir_idx: int) -> bool:
-	for pack_id in _accepted_packs:
-		if input_inv.has_space(pack_id):
-			return true
+	if not ResearchManager.current_research:
+		return false
+	for stack in ResearchManager.current_research.cost:
+		if _is_needed(stack.item.id):
+			_ensure_capacity(stack.item.id)
+			if input_inv.has_space(stack.item.id):
+				return true
 	return false
 
 func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
-	if item_id not in _accepted_packs:
+	if not _is_needed(item_id):
 		return quantity
+	_ensure_capacity(item_id)
 	var remaining := quantity
 	while remaining > 0 and input_inv.has_space(item_id):
 		input_inv.add(item_id)
@@ -121,10 +155,10 @@ func get_popup_progress() -> float:
 
 func get_inventory_items() -> Array:
 	var result: Array = []
-	for pack_id in _accepted_packs:
-		var c := input_inv.get_count(pack_id)
+	for item_id in input_inv.get_item_ids():
+		var c := input_inv.get_count(item_id)
 		if c > 0:
-			result.append({id = pack_id, count = c})
+			result.append({id = item_id, count = c})
 	return result
 
 func remove_inventory_item(item_id: StringName, count: int) -> int:

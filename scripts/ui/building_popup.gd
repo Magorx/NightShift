@@ -220,8 +220,8 @@ func _toggle_recipe_menu() -> void:
 	if configs.is_empty():
 		return
 	var menu = _recipe_menu_scene.instantiate()
-	menu.populate(configs, _building.logic)
 	_open_side_menu(menu)
+	menu.populate(configs, _building.logic)
 
 func _toggle_custom_menu() -> void:
 	if _side_menu:
