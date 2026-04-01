@@ -23,18 +23,22 @@ const NUM_WIDTH := 16.0 # fixed width for quantity numbers
 var _building: Node2D
 var _update_timer: float = 0.0
 var _camera: Camera2D
-var _recipe_menu = null
+var _side_menu = null # currently open side menu (recipe menu or custom)
 var _click_blocker: Control = null
 var _recipe_menu_scene: PackedScene = preload("res://scenes/ui/recipe_menu.tscn")
 var _col_widths: Dictionary = {} # {in_widths: Array, out_widths: Array, max_in: int, max_arrow_w: float}
-var _recipe_row_normal_style: StyleBox
-var _recipe_row_pressed_style: StyleBox
+var _clickable_row_normal_style: StyleBox
+var _clickable_row_pressed_style: StyleBox
 var _current_recipe = null # cached recipe to avoid rebuilding every update
+var _current_custom_items: Array = [] # cached custom row items
 
 @onready var recipe_section: VBoxContainer = %RecipeSection
 @onready var recipe_row_button: PanelContainer = %RecipeRowButton
 @onready var craft_bar_row: HBoxContainer = %CraftBarRow
 @onready var recipe_row: HBoxContainer = %RecipeRow
+@onready var custom_section: VBoxContainer = %CustomSection
+@onready var custom_row_button: PanelContainer = %CustomRowButton
+@onready var custom_row: HBoxContainer = %CustomRow
 @onready var energy_row: HBoxContainer = %EnergyRow
 @onready var energy_bar: ProgressBar = %EnergyBar
 @onready var energy_label: Label = %EnergyLabel
@@ -43,13 +47,14 @@ var _current_recipe = null # cached recipe to avoid rebuilding every update
 
 func _ready() -> void:
 	visible = false
-	_recipe_row_normal_style = recipe_row_button.get_theme_stylebox("panel").duplicate()
-	_recipe_row_pressed_style = _recipe_row_normal_style.duplicate()
-	_recipe_row_pressed_style.bg_color = Color(0.1, 0.1, 0.1, 0.5)
-	_recipe_row_pressed_style.border_color = Color(0.4, 0.4, 0.4, 0.6)
-	_recipe_row_pressed_style.content_margin_top = 3.0
-	_recipe_row_pressed_style.content_margin_bottom = 1.0
-	recipe_row_button.gui_input.connect(_on_recipe_row_input)
+	_clickable_row_normal_style = recipe_row_button.get_theme_stylebox("panel").duplicate()
+	_clickable_row_pressed_style = _clickable_row_normal_style.duplicate()
+	_clickable_row_pressed_style.bg_color = Color(0.1, 0.1, 0.1, 0.5)
+	_clickable_row_pressed_style.border_color = Color(0.4, 0.4, 0.4, 0.6)
+	_clickable_row_pressed_style.content_margin_top = 3.0
+	_clickable_row_pressed_style.content_margin_bottom = 1.0
+	recipe_row_button.gui_input.connect(_on_clickable_row_input.bind(recipe_row_button, _toggle_recipe_menu))
+	custom_row_button.gui_input.connect(_on_clickable_row_input.bind(custom_row_button, _toggle_custom_menu))
 
 func _process(delta: float) -> void:
 	if not _building:
@@ -81,10 +86,11 @@ func show_building(building: Node2D, camera: Camera2D) -> void:
 	if logic and not _has_popup_content(logic):
 		hide_popup()
 		return
-	_close_recipe_menu()
+	_close_side_menu()
 	_building = building
 	_camera = camera
 	_current_recipe = null
+	_current_custom_items = []
 	recipe_row.custom_minimum_size.x = 0
 	custom_minimum_size.x = 0
 	_lock_width()
@@ -95,6 +101,8 @@ func show_building(building: Node2D, camera: Camera2D) -> void:
 
 func _has_popup_content(logic) -> bool:
 	if logic.get_popup_recipe():
+		return true
+	if logic.has_custom_popup_row():
 		return true
 	if logic.energy:
 		return true
@@ -174,84 +182,98 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
 	if event.is_action_pressed("ui_cancel"):
-		if _recipe_menu:
-			_close_recipe_menu()
+		if _side_menu:
+			_close_side_menu()
 		else:
 			hide_popup()
 			dismissed.emit()
 		get_viewport().set_input_as_handled()
 
 func hide_popup() -> void:
-	_close_recipe_menu()
+	_close_side_menu()
 	visible = false
 	_building = null
 	_current_recipe = null
+	_current_custom_items = []
 
-# ── Recipe menu ────────────────────────────────────────────────────────────
+# ── Clickable row + side menu (shared by recipe row and custom row) ───────
 
-func _on_recipe_row_input(event: InputEvent) -> void:
+func _on_clickable_row_input(event: InputEvent, button: PanelContainer, toggle_fn: Callable) -> void:
 	if not (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT):
 		return
-	if not _building or not _building.logic or not _building.logic.has_method("get_recipe_configs"):
+	if not _building or not _building.logic:
 		return
-	recipe_row_button.accept_event()
+	button.accept_event()
 	if event.pressed:
-		recipe_row_button.add_theme_stylebox_override("panel", _recipe_row_pressed_style)
+		button.add_theme_stylebox_override("panel", _clickable_row_pressed_style)
 	else:
-		recipe_row_button.add_theme_stylebox_override("panel", _recipe_row_normal_style)
-		_toggle_recipe_menu()
+		button.add_theme_stylebox_override("panel", _clickable_row_normal_style)
+		toggle_fn.call()
 
 func _toggle_recipe_menu() -> void:
-	if _recipe_menu:
-		_close_recipe_menu()
+	if _side_menu:
+		_close_side_menu()
+		return
+	if not _building.logic.has_method("get_recipe_configs"):
 		return
 	var configs: Array = _building.logic.get_recipe_configs()
 	if configs.is_empty():
 		return
-	# Click blocker (full-screen transparent layer to catch outside clicks)
+	var menu = _recipe_menu_scene.instantiate()
+	menu.populate(configs)
+	_open_side_menu(menu)
+
+func _toggle_custom_menu() -> void:
+	if _side_menu:
+		_close_side_menu()
+		return
+	if not _building or not _building.logic:
+		return
+	var menu: Control = _building.logic.create_side_menu()
+	if not menu:
+		return
+	_open_side_menu(menu)
+
+func _open_side_menu(menu: Control) -> void:
+	_close_side_menu()
 	_click_blocker = Control.new()
 	_click_blocker.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_click_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
 	_click_blocker.gui_input.connect(_on_blocker_input)
 	get_parent().add_child(_click_blocker)
-	# Menu
-	_recipe_menu = _recipe_menu_scene.instantiate()
-	get_parent().add_child(_recipe_menu)
-	_recipe_menu.populate(configs)
-	# Position to the right of the recipe row
+	_side_menu = menu
+	get_parent().add_child(_side_menu)
 	await get_tree().process_frame
-	_position_recipe_menu()
+	_position_side_menu()
 
-func _position_recipe_menu() -> void:
-	if not _recipe_menu or not is_instance_valid(recipe_row_button):
+func _position_side_menu() -> void:
+	if not _side_menu:
 		return
 	var popup_rect := get_global_rect()
-	var row_rect := recipe_row_button.get_global_rect()
 	var menu_x := popup_rect.end.x + MENU_GAP
 	var menu_y := popup_rect.position.y
-	# If menu would go off-screen right, place it to the left
 	var viewport_w := get_viewport_rect().size.x
-	if menu_x + _recipe_menu.size.x > viewport_w - SCREEN_MARGIN:
-		menu_x = popup_rect.position.x - _recipe_menu.size.x - MENU_GAP
-	_recipe_menu.position = Vector2(menu_x, menu_y)
+	if menu_x + _side_menu.size.x > viewport_w - SCREEN_MARGIN:
+		menu_x = popup_rect.position.x - _side_menu.size.x - MENU_GAP
+	_side_menu.position = Vector2(menu_x, menu_y)
 
 func _on_blocker_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton and event.pressed):
 		return
 	var click_pos: Vector2 = event.global_position
 	var in_popup := get_global_rect().has_point(click_pos)
-	var in_menu: bool = _recipe_menu and _recipe_menu.get_global_rect().has_point(click_pos)
+	var in_menu: bool = _side_menu and _side_menu.get_global_rect().has_point(click_pos)
 	if not in_popup and not in_menu:
-		_close_recipe_menu()
+		_close_side_menu()
 		hide_popup()
 		dismissed.emit()
 	elif not in_menu:
-		_close_recipe_menu()
+		_close_side_menu()
 
-func _close_recipe_menu() -> void:
-	if _recipe_menu:
-		_recipe_menu.queue_free()
-		_recipe_menu = null
+func _close_side_menu() -> void:
+	if _side_menu:
+		_side_menu.queue_free()
+		_side_menu = null
 	if _click_blocker:
 		_click_blocker.queue_free()
 		_click_blocker = null
@@ -293,8 +315,8 @@ func _update_position() -> void:
 	target_y = clampf(target_y, SCREEN_MARGIN, viewport_size.y - popup_size.y - SCREEN_MARGIN)
 	position = Vector2(target_x, target_y)
 	# Reposition menu if open
-	if _recipe_menu:
-		_position_recipe_menu()
+	if _side_menu:
+		_position_side_menu()
 
 # ── Content ────────────────────────────────────────────────────────────────
 
@@ -310,6 +332,7 @@ func _update_content() -> void:
 	visible = true
 	var recipe = logic.get_popup_recipe()
 	_update_recipe_section(recipe, logic)
+	_update_custom_section(logic)
 	_update_energy_row(logic.energy)
 	var items: Array = logic.get_inventory_items()
 	_update_inventory_row(items)
@@ -328,6 +351,25 @@ func _update_recipe_section(recipe, logic) -> void:
 	if recipe != _current_recipe:
 		_current_recipe = recipe
 		_populate_recipe_row(recipe)
+
+func _update_custom_section(logic) -> void:
+	if not logic.has_custom_popup_row():
+		custom_section.visible = false
+		return
+	custom_section.visible = true
+	var items: Array = logic.get_custom_row_items()
+	if items == _current_custom_items:
+		return
+	_current_custom_items = items.duplicate()
+	_populate_custom_row(items)
+
+func _populate_custom_row(items: Array) -> void:
+	for child in custom_row.get_children():
+		custom_row.remove_child(child)
+		child.queue_free()
+	for entry in items:
+		var icon: Control = ItemIcon.create(entry.id, ICON_SIZE)
+		custom_row.add_child(icon)
 
 func _populate_recipe_row(recipe) -> void:
 	for child in recipe_row.get_children():

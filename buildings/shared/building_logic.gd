@@ -191,6 +191,21 @@ func get_info_stats() -> Array:
 func get_popup_recipe():
 	return null
 
+## Return true if this building has a custom clickable popup row with a side menu.
+## Override in buildings with custom popup UI (e.g. source item selector).
+func has_custom_popup_row() -> bool:
+	return false
+
+## Return items to display in the custom popup row as [{id: StringName}].
+## Only called when has_custom_popup_row() is true.
+func get_custom_row_items() -> Array:
+	return []
+
+## Create and return a fully populated side menu Control.
+## Called when the custom popup row is clicked.
+func create_side_menu() -> Control:
+	return null
+
 ## Return craft progress 0.0–1.0 for the popup segmented bar.
 ## Override in converter-like buildings.
 func get_popup_progress() -> float:
