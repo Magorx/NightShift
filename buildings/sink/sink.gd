@@ -3,9 +3,17 @@ extends BuildingLogic
 
 var items_consumed: int = 0
 var _pull_index: int = 0
+var _code_anims: Array = []
 
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, _rotation: int) -> void:
 	super.configure(_def, p_grid_pos, _rotation)
+	var rotatable = get_parent().get_node_or_null("Rotatable")
+	if rotatable:
+		for child in rotatable.get_children():
+			if child is Node2D and String(child.name).begins_with("CodeAnim"):
+				_code_anims.append(child)
+				if child.has_method("set_active"):
+					child.set_active(true)
 
 const MAX_PULLS_PER_TICK := 4
 

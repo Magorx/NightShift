@@ -106,6 +106,7 @@ func _serialize_run() -> Dictionary:
 		"research": ResearchManager.serialize(),
 		"contracts": ContractManager.serialize(),
 		"creative_mode": GameManager.creative_mode,
+		"tutorial": TutorialManager.serialize(),
 		"deposit_stocks": _serialize_deposit_stocks(),
 		"ui_panels": _serialize_ui_panels(),
 	}
@@ -284,6 +285,11 @@ func _deserialize_run(data: Dictionary) -> void:
 	var contract_data: Dictionary = data.get("contracts", {})
 	if not contract_data.is_empty():
 		ContractManager.deserialize(contract_data)
+
+	# Restore tutorial state
+	var tutorial_data: Dictionary = data.get("tutorial", {})
+	if not tutorial_data.is_empty():
+		TutorialManager.deserialize(tutorial_data)
 
 	# Load hotkeys from account meta (not from run save)
 	AccountManager.load_hotkeys()

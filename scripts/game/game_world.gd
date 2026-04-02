@@ -110,6 +110,13 @@ func _ready() -> void:
 		SaveManager.pending_load = false
 		SaveManager.load_run()
 
+	# Load tutorial state from account (works for both new and loaded games)
+	var meta := AccountManager.load_meta(AccountManager.active_slot)
+	if meta.has("tutorial_step"):
+		TutorialManager.load_from_account()
+	else:
+		TutorialManager.start()
+
 	# Build terrain MultiMesh visuals (tile_types + variants are set by gen or deserialize)
 	if GameManager.terrain_tile_types.size() > 0:
 		GameManager.terrain_visual_manager.build(

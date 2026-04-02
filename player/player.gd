@@ -1,6 +1,8 @@
 class_name Player
 extends CharacterBody2D
 
+signal item_mined(item_id: StringName)
+
 const TILE_SIZE := 32
 
 # ── Movement ─────────────────────────────────────────────────────────────────
@@ -377,6 +379,7 @@ func _handle_hand_mining(delta: float) -> void:
 		if leftover > 0:
 			_stop_mining()  # inventory full
 		else:
+			item_mined.emit(_mine_item_id)
 			_spawn_pickup_float(tile_center, _mine_item_id)
 	queue_redraw()
 

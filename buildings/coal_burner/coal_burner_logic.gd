@@ -15,15 +15,20 @@ var fuel_inv: Inventory = Inventory.new()
 var _burn_timer: float = 0.0
 var _is_burning: bool = false
 var _input_rr: RoundRobin = RoundRobin.new()
+var _code_anims: Array = []
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	super.configure(def, p_grid_pos, p_rotation)
 	rotation = p_rotation
 	input_points = def.get_rotated_inputs(p_rotation)
 	fuel_inv.set_capacity(FUEL_ID, 5)
-	# Set up energy component: capacity 200, no base demand, 25 energy/s generation
 	energy = BuildingEnergy.new(200.0, 0.0, 0.0)
-	# generation_rate is dynamic — set when burning
+	# Find all CodeAnim* nodes for procedural animation
+	var rotatable = get_parent().get_node_or_null("Rotatable")
+	if rotatable:
+		for child in rotatable.get_children():
+			if child is Node2D and String(child.name).begins_with("CodeAnim"):
+				_code_anims.append(child)
 
 func _physics_process(delta: float) -> void:
 	_try_pull_fuel()
@@ -55,6 +60,9 @@ func _physics_process(delta: float) -> void:
 			_burn_timer = 0.0
 
 	_update_building_sprites(_is_burning, delta)
+	for anim in _code_anims:
+		if anim and anim.has_method("set_active"):
+			anim.set_active(_is_burning)
 
 func _try_pull_fuel() -> void:
 	if not fuel_inv.has_space(FUEL_ID):

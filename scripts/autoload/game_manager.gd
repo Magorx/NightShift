@@ -1,5 +1,8 @@
 extends Node
 
+signal building_placed(building_id: StringName, grid_pos: Vector2i)
+signal item_delivered(item_id: StringName)
+
 const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
@@ -324,6 +327,7 @@ func record_delivery(item_id: StringName, value: int = 0) -> void:
 	items_delivered[item_id] += 1
 	total_currency += value
 	ContractManager.on_item_delivered(item_id)
+	item_delivered.emit(item_id)
 
 func get_building_def(id: StringName):
 	return building_defs.get(id)
@@ -485,6 +489,7 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	else:
 		_update_neighbor_conveyor_sprites(grid_pos)
 
+	building_placed.emit(id, grid_pos)
 	return building
 
 ## Find the first BuildingLogic child of a building node.

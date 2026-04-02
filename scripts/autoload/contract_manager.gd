@@ -85,6 +85,11 @@ func _ready():
 func _generate_initial_contracts():
 	if not active_contracts.is_empty():
 		return  # Already have contracts (loaded from save)
+	if TutorialManager.active:
+		return  # Tutorial manages its own contract
+	_generate_normal_contracts()
+
+func _generate_normal_contracts():
 	# Start with 2 simple side contracts
 	_add_contract(_generate_side_contract(0))
 	_add_contract(_generate_side_contract(0))

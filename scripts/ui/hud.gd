@@ -1,6 +1,10 @@
 extends Control
 
 signal building_selected(id: StringName)
+signal buildings_opened
+signal inventory_opened
+signal research_opened
+signal recipes_opened
 
 const SPEED_STEPS: Array[float] = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0]
 const SPEED_LABELS := ["x0.25", "x0.5", "x1", "x1.5", "x2", "x3"]
@@ -33,6 +37,7 @@ var _contracts_collapsed: bool = false
 var _menu_expanded: bool = false
 
 func _ready() -> void:
+	add_to_group("hud")
 	get_tree().node_added.connect(_on_node_added)
 	_disable_focus_recursive(get_tree().root)
 	slow_button.pressed.connect(_on_slow_pressed)
@@ -46,6 +51,10 @@ func _ready() -> void:
 	recipes_button.gui_input.connect(_on_recipes_button_gui_input)
 	debug_button.pressed.connect(_on_debug_pressed)
 	$Hotbar.inventory_panel = inventory_panel
+	# Tutorial button locking
+	TutorialManager.button_unlocked.connect(_on_tutorial_button_unlocked)
+	TutorialManager.tutorial_finished.connect(_refresh_tutorial_buttons)
+	_refresh_tutorial_buttons()
 
 func _on_node_added(node: Node) -> void:
 	if node is BaseButton:
@@ -107,12 +116,12 @@ func _on_building_selected(id: StringName) -> void:
 func _on_buildings_button_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		if event.double_click:
-			# Double-click: show and snap to center
 			buildings_panel.visible = true
 			buildings_panel.move_to_center()
 		else:
-			# Single click: toggle visibility
 			buildings_panel.visible = not buildings_panel.visible
+		if buildings_panel.visible:
+			buildings_opened.emit()
 
 func _on_inventory_button_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -121,6 +130,8 @@ func _on_inventory_button_gui_input(event: InputEvent) -> void:
 			inventory_panel.move_to_center()
 		else:
 			inventory_panel.visible = not inventory_panel.visible
+		if inventory_panel.visible:
+			inventory_opened.emit()
 
 func _on_research_button_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -129,6 +140,8 @@ func _on_research_button_gui_input(event: InputEvent) -> void:
 			research_panel.move_to_center()
 		else:
 			research_panel.visible = not research_panel.visible
+		if research_panel.visible:
+			research_opened.emit()
 
 func _on_recipes_button_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -137,6 +150,8 @@ func _on_recipes_button_gui_input(event: InputEvent) -> void:
 			recipe_browser.move_to_center()
 		else:
 			recipe_browser.visible = not recipe_browser.visible
+		if recipe_browser.visible:
+			recipes_opened.emit()
 
 func open_recipe_browser_for_item(item_id: StringName) -> void:
 	recipe_browser.show_centered_on_item(item_id)
@@ -306,3 +321,21 @@ func deserialize_ui_panels(data: Dictionary) -> void:
 
 func _get_item_def(item_id: StringName):
 	return GameManager.get_item_def(item_id)
+
+# ── Tutorial Button Locking ──────────────────────────────────────────────────
+
+const _TUTORIAL_BUTTON_MAP := {
+	&"buildings": "BuildingsButton",
+	&"inventory": "InventoryButton",
+	&"research": "ResearchButton",
+	&"recipes": "RecipesButton",
+}
+
+func _on_tutorial_button_unlocked(_btn_name: StringName) -> void:
+	_refresh_tutorial_buttons()
+
+func _refresh_tutorial_buttons() -> void:
+	for btn_key in _TUTORIAL_BUTTON_MAP:
+		var btn: Button = button_row.get_node(_TUTORIAL_BUTTON_MAP[btn_key])
+		if btn:
+			btn.visible = TutorialManager.is_button_unlocked(btn_key)
