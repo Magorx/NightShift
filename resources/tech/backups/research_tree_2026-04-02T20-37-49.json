@@ -1,0 +1,815 @@
+{
+  "description": "Research tree definition. Each node is a technology with ring, cost, effects, and visual position.",
+  "nodes": [
+    {
+      "id": "tech_research_lab",
+      "display_name": "Research Lab",
+      "description": "Research Lab for consuming science packs.",
+      "ring": 0,
+      "type": "instant",
+      "cost": [
+        {
+          "item": "iron_ore",
+          "quantity": 5
+        },
+        {
+          "item": "copper_ore",
+          "quantity": 5
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "research_lab"
+        }
+      ],
+      "position": {
+        "x": -6.5,
+        "y": 0
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_press",
+      "display_name": "Press",
+      "description": "Press for stamping plates into gears, tubes, and more.",
+      "ring": 1,
+      "cost": [
+        {
+          "item": "iron_plate",
+          "quantity": 4
+        },
+        {
+          "item": "copper_ring",
+          "quantity": 4
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "press"
+        }
+      ],
+      "position": {
+        "x": -3,
+        "y": -1.5
+      },
+      "unlocks": [],
+      "type": "instant"
+    },
+    {
+      "id": "tech_wire_drawer",
+      "display_name": "Wire Drawer",
+      "description": "Wire Drawer for drawing plates into wire.",
+      "ring": 1,
+      "cost": [
+        {
+          "item": "gear",
+          "quantity": 3
+        },
+        {
+          "item": "tube",
+          "quantity": 3
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "wire_drawer"
+        }
+      ],
+      "position": {
+        "x": -3,
+        "y": -0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_solar",
+      "display_name": "Solar Panel",
+      "description": "Solar Panel for passive energy generation.",
+      "ring": 2,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 10
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "solar_panel"
+        }
+      ],
+      "position": {
+        "x": 0,
+        "y": 2.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_coke_oven",
+      "display_name": "Coke Oven",
+      "description": "Coke Oven for baking coal into coke.",
+      "ring": 1,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 10
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "coke_oven"
+        }
+      ],
+      "position": {
+        "x": -3,
+        "y": 1.5
+      }
+    },
+    {
+      "id": "tech_conveyor_mk2",
+      "display_name": "Conveyor Mk2",
+      "description": "Faster conveyors with 2x speed.",
+      "ring": 1,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 10
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "conveyor_mk2"
+        }
+      ],
+      "position": {
+        "x": -3,
+        "y": 0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_cartography_1",
+      "display_name": "Cartography I",
+      "description": "Improved mapping techniques allow a wider camera view.",
+      "ring": 1,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 10
+        },
+        {
+          "item": "glass",
+          "quantity": 5
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "cartography_1"
+        }
+      ],
+      "position": {
+        "x": -3,
+        "y": 2.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_assembler",
+      "display_name": "Assembler Mk1",
+      "description": "Assembler Mk1 for automated assembly.",
+      "ring": 2,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 20
+        },
+        {
+          "item": "gold_ingot",
+          "quantity": 10
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "assembler"
+        }
+      ],
+      "position": {
+        "x": 0,
+        "y": -1.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_fuel_generator",
+      "display_name": "Fuel Generator",
+      "description": "Fuel Generator for burning coke into energy.",
+      "ring": 2,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "fuel_generator"
+        }
+      ],
+      "position": {
+        "x": 0,
+        "y": 1.5
+      }
+    },
+    {
+      "id": "tech_drill_mk2",
+      "display_name": "Drill Mk2",
+      "description": "Drill Mk2 for faster resource extraction.",
+      "ring": 2,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 15
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 15
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "drill_mk2"
+        }
+      ],
+      "position": {
+        "x": 0,
+        "y": -0.5
+      }
+    },
+    {
+      "id": "tech_cartography_2",
+      "display_name": "Cartography II",
+      "description": "Advanced surveying allows an even wider camera view.",
+      "ring": 2,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 15
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 15
+        },
+        {
+          "item": "glass_lens",
+          "quantity": 10
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "cartography_2"
+        }
+      ],
+      "position": {
+        "x": 0,
+        "y": 3.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_conveyor_mk3",
+      "display_name": "Conveyor Mk3",
+      "description": "Fastest conveyors with 3x speed.",
+      "ring": 3,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 15
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 15
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 10
+        },
+        {
+          "item": "tube",
+          "quantity": 100
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "conveyor_mk3"
+        }
+      ],
+      "position": {
+        "x": 4,
+        "y": 0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_assembler_mk2",
+      "display_name": "Assembler Mk2",
+      "description": "Advanced 3x2 Assembler Mk2.",
+      "ring": 3,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 50
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 50
+        },
+        {
+          "item": "science_pack_1",
+          "quantity": 10
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "assembler_mk2"
+        }
+      ],
+      "position": {
+        "x": 4,
+        "y": -0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_cartography_3",
+      "display_name": "Cartography III",
+      "description": "Full satellite mapping \u2014 maximum camera zoom out.",
+      "ring": 3,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 20
+        },
+        {
+          "item": "robo_frame",
+          "quantity": 5
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "cartography_3"
+        }
+      ],
+      "position": {
+        "x": 4,
+        "y": 2.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_pump",
+      "display_name": "Pump",
+      "description": "Pump for extracting oil from seeps.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 10
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "pump"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": -2.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_chemical_plant",
+      "display_name": "Chemical Plant",
+      "description": "Chemical Plant for processing oil into plastics, rubber, acid, and more.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "chemical_plant"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": -1.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_centrifuge",
+      "display_name": "Centrifuge",
+      "description": "Centrifuge for refining uranium and producing fusion cells.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 30
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "centrifuge"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": -0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_greenhouse",
+      "display_name": "Greenhouse",
+      "description": "Greenhouse for growing renewable biomass from bio compounds.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "greenhouse"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": 0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_pipeline",
+      "display_name": "Pipeline",
+      "description": "Long-range item transport \u2014 place input and output endpoints up to 10 tiles apart.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_1",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_2",
+          "quantity": 20
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "pipeline_input"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": 1.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_cartography_4",
+      "display_name": "Cartography IV",
+      "description": "Orbital surveying \u2014 reveals the entire map.",
+      "ring": 4,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 30
+        },
+        {
+          "item": "engine",
+          "quantity": 5
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "cartography_4"
+        }
+      ],
+      "position": {
+        "x": 8,
+        "y": 2.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_particle_accelerator",
+      "display_name": "Particle Accelerator",
+      "description": "L-shaped particle accelerator for producing quantum chips.",
+      "ring": 5,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_4",
+          "quantity": 20
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "particle_accelerator"
+        }
+      ],
+      "position": {
+        "x": 12,
+        "y": -1.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_fabricator",
+      "display_name": "Fabricator",
+      "description": "T-shaped fabricator for pinnacle-tier items: quantum computers, power armor, terraformers.",
+      "ring": 5,
+      "cost": [
+        {
+          "item": "science_pack_2",
+          "quantity": 40
+        },
+        {
+          "item": "science_pack_3",
+          "quantity": 40
+        },
+        {
+          "item": "science_pack_4",
+          "quantity": 30
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "fabricator"
+        }
+      ],
+      "position": {
+        "x": 12,
+        "y": -0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_nuclear_reactor",
+      "display_name": "Nuclear Reactor",
+      "description": "Cross-shaped nuclear reactor \u2014 massive power generation from fusion cells.",
+      "ring": 5,
+      "cost": [
+        {
+          "item": "science_pack_3",
+          "quantity": 40
+        },
+        {
+          "item": "science_pack_4",
+          "quantity": 30
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "nuclear_reactor"
+        }
+      ],
+      "position": {
+        "x": 12,
+        "y": 0.5
+      },
+      "unlocks": []
+    },
+    {
+      "id": "tech_cartography_5",
+      "display_name": "Cartography V",
+      "description": "Quantum cartography \u2014 ultimate map control with terraformer integration.",
+      "ring": 5,
+      "cost": [
+        {
+          "item": "science_pack_3",
+          "quantity": 30
+        },
+        {
+          "item": "science_pack_4",
+          "quantity": 20
+        },
+        {
+          "item": "quantum_computer",
+          "quantity": 2
+        }
+      ],
+      "effects": [
+        {
+          "unlock_tag": "cartography_5"
+        }
+      ],
+      "position": {
+        "x": 12,
+        "y": 2.5
+      },
+      "unlocks": []
+    }
+  ],
+  "edges": [
+    {
+      "from": "tech_research_lab",
+      "to": "tech_press",
+      "note": "Research lab needed first"
+    },
+    {
+      "from": "tech_research_lab",
+      "to": "tech_wire_drawer"
+    },
+    {
+      "from": "tech_press",
+      "to": "tech_assembler"
+    },
+    {
+      "from": "tech_wire_drawer",
+      "to": "tech_assembler"
+    },
+    {
+      "from": "tech_coke_oven",
+      "to": "tech_fuel_generator"
+    },
+    {
+      "from": "tech_conveyor_mk2",
+      "to": "tech_conveyor_mk3"
+    },
+    {
+      "from": "tech_assembler",
+      "to": "tech_assembler_mk2"
+    },
+    {
+      "from": "tech_research_lab",
+      "to": "tech_conveyor_mk2"
+    },
+    {
+      "from": "tech_research_lab",
+      "to": "tech_coke_oven"
+    },
+    {
+      "from": "tech_coke_oven",
+      "to": "tech_solar"
+    },
+    {
+      "from": "tech_drill_mk2",
+      "to": "tech_conveyor_mk3"
+    },
+    {
+      "from": "tech_research_lab",
+      "to": "tech_cartography_1"
+    },
+    {
+      "from": "tech_cartography_1",
+      "to": "tech_cartography_2"
+    },
+    {
+      "from": "tech_cartography_2",
+      "to": "tech_cartography_3"
+    },
+    {
+      "from": "tech_assembler_mk2",
+      "to": "tech_pump"
+    },
+    {
+      "from": "tech_assembler_mk2",
+      "to": "tech_chemical_plant"
+    },
+    {
+      "from": "tech_pump",
+      "to": "tech_chemical_plant"
+    },
+    {
+      "from": "tech_assembler_mk2",
+      "to": "tech_centrifuge"
+    },
+    {
+      "from": "tech_fuel_generator",
+      "to": "tech_greenhouse"
+    },
+    {
+      "from": "tech_assembler_mk2",
+      "to": "tech_greenhouse"
+    },
+    {
+      "from": "tech_conveyor_mk3",
+      "to": "tech_pipeline"
+    },
+    {
+      "from": "tech_cartography_3",
+      "to": "tech_cartography_4"
+    },
+    {
+      "from": "tech_chemical_plant",
+      "to": "tech_particle_accelerator"
+    },
+    {
+      "from": "tech_centrifuge",
+      "to": "tech_particle_accelerator"
+    },
+    {
+      "from": "tech_particle_accelerator",
+      "to": "tech_fabricator"
+    },
+    {
+      "from": "tech_chemical_plant",
+      "to": "tech_fabricator"
+    },
+    {
+      "from": "tech_centrifuge",
+      "to": "tech_nuclear_reactor"
+    },
+    {
+      "from": "tech_cartography_4",
+      "to": "tech_cartography_5"
+    }
+  ],
+  "rings": {
+    "0": {
+      "name": "Starting",
+      "color": "#808080",
+      "description": "Available from the start"
+    },
+    "1": {
+      "name": "Ring 1",
+      "color": "#E64D4D",
+      "description": "Unlocked by completing Gate: Ring 1"
+    },
+    "2": {
+      "name": "Ring 2",
+      "color": "#4DCC4D",
+      "description": "Unlocked by completing Gate: Ring 2"
+    },
+    "3": {
+      "name": "Ring 3",
+      "color": "#4D80E6",
+      "description": "Unlocked by completing Gate: Ring 3"
+    },
+    "4": {
+      "name": "Ring 4",
+      "color": "#CC8833",
+      "description": "Unlocked by completing Gate: Ring 4"
+    },
+    "5": {
+      "name": "Ring 5",
+      "color": "#9933CC",
+      "description": "Unlocked by completing Gate: Ring 5"
+    }
+  }
+}

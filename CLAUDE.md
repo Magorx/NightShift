@@ -39,15 +39,21 @@ $GODOT --path .
 - **Design doc**: `docs/design.md` -- single source of truth for game design decisions
 
 ### Session workflow
-1. At session start: read the kanban board and progress log to understand current state
+1. **At session start**: run `date` to record the start time, read the kanban board and progress log
 2. Pick the highest-priority unblocked task (or let the user direct)
 3. Do the work (code, art, or both)
 4. Run tests/simulations to verify
 5. **Git commit after each completed kanban card** (or after each major step within a complex card). Don't batch commits -- commit as you go.
 6. **MANDATORY at session end:**
+   - Run `date` again and calculate elapsed time for the progress log
    - Update BOARD.md (move cards between columns)
-   - Append to progress.md (date, hours, work done, blockers, next goal)
+   - Append to progress.md (date, **actual measured hours**, work done, blockers, next goal)
    - Update business.md timeline if estimates change
+
+### Time tracking
+- Use `date` (bash) at session start and end to measure real elapsed time
+- Never guess or copy hours from previous sessions -- always measure
+- Report the actual time of day (morning/afternoon/evening) based on `date` output
 
 These tracking updates are the main session's responsibility -- always do them before the session ends, even if the user doesn't ask.
 

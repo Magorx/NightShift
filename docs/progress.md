@@ -70,7 +70,7 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 
 ### Session 3 -- Phase 2: Elemental Resource System
 - **Date**: 2026-04-04
-- **Hours**: ~3h (evening session)
+- **Hours**: ~0.5h (morning session, 12:30-12:58 MSK)
 - **Work done**:
   - P2.1: Created 3 elemental resources (pyromite, crystalline, biovine) + 3 combo items (steam_burst, verdant_compound, frozen_flame). New item atlas with 6 pixel art sprites (unique silhouettes). Deleted 63 Factor items
   - P2.2: Created 3 smelter recipes (2-input elemental combinations). Deleted 58 Factor recipes
@@ -87,6 +87,24 @@ Updates appended after each work session. Tracks velocity for timeline projectio
   - Combo names: steam_burst (fire+ice), verdant_compound (ice+nature), frozen_flame (fire+nature)
 - **Blockers**: None
 - **Next session goal**: P3.1-P3.6 -- RoundManager, phase HUD, build/fight cycle, day/night visuals
+
+### Session 4 -- Isometric Conversion Planning
+- **Date**: 2026-04-04
+- **Hours**: ~0.3h (afternoon session, 13:05-13:26 MSK)
+- **Work done**:
+  - Researched Godot 4.x isometric approaches: isometric TileMapLayer, 3D billboard sprites, oblique 3/4 view
+  - Evaluated 3 options: oblique 3/4 (Graveyard Keeper style), dimetric isometric (Factorio style), 3D+billboard (Don't Starve style)
+  - Decision: dimetric isometric (Option B) for strongest visual hook / viral potential
+  - Full codebase audit: found 80+ coordinate conversions across 26 files, 16 duplicate TILE_SIZE constants, hardcoded 32 values in shaders and tests
+  - Created 9-card Isometric Phase (ISO.1-ISO.9) on kanban board, inserted before Phase 3
+  - Critical path: centralize coord math → switch projection → (art + code fixes parallel) → integration test
+- **Decisions made**:
+  - Dimetric 2:1 diamond grid (64x32 tiles) over oblique rectangular or 3D billboard
+  - De-risk via GridUtils centralization before any visual changes
+  - Y-sort replaces manual z_index layering
+  - 4 rotation sprite variants per building (isometric shows different faces)
+- **Blockers**: None
+- **Next session goal**: ISO.1 -- centralize all coordinate math into GridUtils autoload
 
 ---
 
