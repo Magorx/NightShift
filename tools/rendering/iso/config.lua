@@ -37,10 +37,12 @@ Iso._vz  = 1
 function Iso._update()
   Iso._det = Iso.XX * Iso.YY - Iso.YX * Iso.XY
   assert(math.abs(Iso._det) > 1e-9, "Degenerate projection matrix (det ≈ 0)")
-  -- View direction: cross product of the two row-vectors of the 2×3 matrix
-  Iso._vx = Iso.YX * Iso.ZY - Iso.ZX * Iso.YY
-  Iso._vy = Iso.ZX * Iso.XY - Iso.XX * Iso.ZY
-  Iso._vz = Iso.XX * Iso.YY - Iso.YX * Iso.XY  -- = _det
+  -- View direction: negated cross product of the two row-vectors of the 2×3 matrix
+  -- Negated so that objects at higher Z (closer to camera) get LOWER depth values,
+  -- matching the z-buffer convention where lower depth = drawn on top.
+  Iso._vx = -(Iso.YX * Iso.ZY - Iso.ZX * Iso.YY)
+  Iso._vy = -(Iso.ZX * Iso.XY - Iso.XX * Iso.ZY)
+  Iso._vz = -(Iso.XX * Iso.YY - Iso.YX * Iso.XY)  -- = -_det
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════

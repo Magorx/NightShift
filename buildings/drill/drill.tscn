@@ -40,11 +40,11 @@ region = Rect2(192, 288, 64, 72)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd0"]
 atlas = ExtResource("7_sheet")
-region = Rect2(0, 432, 64, 72)
+region = Rect2(0, 0, 64, 72)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd1"]
 atlas = ExtResource("7_sheet")
-region = Rect2(64, 432, 64, 72)
+region = Rect2(0, 0, 64, 72)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{
@@ -68,9 +68,6 @@ animations = [{
 "frames": [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_bi0")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_bi1")
 }],
 "loop": true,
 "name": &"idle",
@@ -105,7 +102,7 @@ region = Rect2(0, 72, 64, 72)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ti1"]
 atlas = ExtResource("7_sheet")
-region = Rect2(0, 72, 64, 72)
+region = Rect2(64, 72, 64, 72)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_tw0"]
 atlas = ExtResource("7_sheet")
@@ -125,19 +122,19 @@ region = Rect2(64, 360, 64, 72)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta2"]
 atlas = ExtResource("7_sheet")
-region = Rect2(0, 360, 64, 72)
+region = Rect2(128, 360, 64, 72)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ta3"]
 atlas = ExtResource("7_sheet")
-region = Rect2(64, 360, 64, 72)
+region = Rect2(192, 360, 64, 72)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_td0"]
 atlas = ExtResource("7_sheet")
-region = Rect2(0, 72, 64, 72)
+region = Rect2(0, 432, 64, 72)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_td1"]
 atlas = ExtResource("7_sheet")
-region = Rect2(0, 72, 64, 72)
+region = Rect2(64, 432, 64, 72)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{
@@ -161,9 +158,6 @@ animations = [{
 "frames": [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_ti0")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_ti1")
 }],
 "loop": true,
 "name": &"idle",
