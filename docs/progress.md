@@ -135,22 +135,25 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 
 ### Session 6 -- Art Pass: Elevation & Depth (ART.1-ART.4)
 - **Date**: 2026-04-04
-- **Hours**: ~0.4h (evening session, 18:56-19:21 MSK)
+- **Hours**: ~2h (evening session, 18:56-20:57 MSK)
 - **Work done**:
-  - ART.1: Rewrote terrain atlas with front-edge depth shading, raised ore formations (rocks, crystals, vine clusters), textured walls with mortar lines. All 17 terrain types improved. Atlas layout unchanged (512x480, 8x15 grid)
-  - ART.2: Converted all 7 building sprites from top-down 32x32 to isometric 64x48 with vertical extension. Created new generate.lua for splitter, junction, tunnel (previously had no scripts). Smelter kept at 64x96 with depth shading
-  - ART.3: Rewrote conveyor atlas with raised track structure, visible side walls, support struts, directional lighting. Atlas layout unchanged (256x192, 4x6 grid)
-  - ART.4: Rewrote item atlas with volumetric 3D shading -- 8 tones per item (up from 6), specular highlights, anti-aliased shadow edges. All 6 items improved
-  - Updated all 8 building .tscn files: AtlasTexture regions (32x32→64x48), sprite positions (16,16→32,32), tunnel switched from main-Sheet.png to main.png
-  - Parse check passes, all tests pass (51 unit tests, conveyor_visuals + elemental_flow sims)
-- **Stats**: 4 artist agents ran concurrently, 1 programmer agent for code updates. 11 Lua scripts written/rewritten, 8 .tscn files updated
+  - ART.1: Rewrote terrain atlas with front-edge depth, raised ore formations, textured walls
+  - ART.2: Converted all 7 buildings to isometric. Created new generate.lua for splitter, junction, tunnel
+  - ART.3: Rewrote conveyor atlas, fixed tiling (removed ELEV side walls), added UV rotation in shader for correct ridge direction
+  - ART.4: Item atlas with volumetric 3D shading, 8 tones per item
+  - Created shared tools/iso_box.lua module for 3D isometric box geometry
+  - Multiple iteration rounds on drill+source: flat diamond → 3D box → critic review → brown palette + derrick/hopper
+  - Fixed building sprite positions: (32,32) → (0,-8) → (0,-11) → (0,-19) as canvas grew
+  - Fixed conveyor shader: added direction-based UV rotation so ridges flow correctly
+- **Stats**: 48 files changed, +4274 / -1525 lines. ~12 agent runs (artists, programmers, critic)
 - **Decisions made**:
-  - 1x1 buildings: 64x48 canvas (diamond + 16px elevation)
-  - Smelter: kept 64x96 to avoid breaking multi-tile code
-  - Terrain/conveyor/item atlas dimensions unchanged (code-compatible)
-  - Building shape cells remain 32x32 (SCENE_CELL_SIZE for grid math, not visual)
-- **Blockers**: None
-- **Next session goal**: P3.1-P3.6 -- RoundManager, phase HUD, build/fight cycle
+  - 3D isometric box approach: roof + left wall + right wall, no diamond platform
+  - Brown shared palette for structure, identity colors as accents only
+  - Silhouette-breaking features extend above roofline (derrick, hopper)
+  - Base layer = shadow only (transparent, terrain shows through)
+  - iso_box.lua shared module for geometry reuse
+- **Blockers**: Art quality still unsatisfactory -- buildings look like crude boxes despite correct 3D structure. Need better pixel art technique or different approach (3D renders?)
+- **Next session goal**: Revisit art approach (possibly 3D pre-renders), then P3.1-P3.6
 
 ---
 
