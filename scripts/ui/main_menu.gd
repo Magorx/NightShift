@@ -2,7 +2,7 @@ extends Control
 
 @onready var continue_button: Button = $CenterMargin/VBox/ContinueButton
 @onready var new_run_button: Button = $CenterMargin/VBox/NewRunButton
-@onready var test_button: Button = $CenterMargin/VBox/TestButton
+@onready var settings_button: Button = $CenterMargin/VBox/SettingsButton
 @onready var stress_test_button: Button = $CenterMargin/VBox/StressTestButton
 @onready var quit_button: Button = $CenterMargin/VBox/QuitButton
 @onready var account_button: Button = $AccountButton
@@ -22,7 +22,7 @@ var _confirm_action: Callable
 func _ready() -> void:
 	continue_button.pressed.connect(_on_continue_pressed)
 	new_run_button.pressed.connect(_on_new_run_pressed)
-	test_button.pressed.connect(_on_test_pressed)
+	settings_button.pressed.connect(_on_settings_pressed)
 	stress_test_button.pressed.connect(_on_stress_test_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	account_button.pressed.connect(_on_account_button_pressed)
@@ -80,15 +80,8 @@ func _start_new_run() -> void:
 	GameManager.stress_test_pending = false
 	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
 
-func _on_test_pressed() -> void:
-	if SaveManager.has_run_save():
-		_show_confirm("You have a saved run. Test scene won't save progress. Continue?", _start_test_scene)
-	else:
-		_start_test_scene()
-
-func _start_test_scene() -> void:
-	confirm_overlay.visible = false
-	get_tree().change_scene_to_file("res://scenes/game/test_world.tscn")
+func _on_settings_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/ui/settings_menu.tscn")
 
 func _on_stress_test_pressed() -> void:
 	if SaveManager.has_run_save():

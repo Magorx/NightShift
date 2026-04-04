@@ -21,9 +21,6 @@ func adjacent_cell(dir_idx: int) -> Vector2i:
 static func opposite_dir(dir_idx: int) -> int:
 	return (dir_idx + 2) % 4
 
-## Energy component (BuildingEnergy or null). null = building does not participate in energy grid.
-var energy = null
-
 # ── Animation state management ────────────────────────────────────────────────
 ## Hold timer prevents active→idle flicker between craft cycles.
 var _active_hold_timer: float = 0.0
@@ -63,33 +60,6 @@ func take_item_for(_target_pos: Vector2i) -> StringName:
 
 func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 	return false
-
-# ── Energy helpers ─────────────────────────────────────────────────────────
-
-## Find child EnergyNode if present. Returns null if none.
-## Uses duck-typing to avoid compile-time dependency on EnergyNode class.
-## Result is cached after first call.
-var _cached_energy_node = null
-var _energy_node_looked_up: bool = false
-
-func get_energy_node():
-	if _energy_node_looked_up:
-		return _cached_energy_node
-	_energy_node_looked_up = true
-	var building = get_parent()
-	var rotatable = building.find_child("Rotatable", false, false)
-	var container = rotatable if rotatable else building
-	for child in container.get_children():
-		if child is Node2D and child.has_method("can_connect_to"):
-			_cached_energy_node = child
-			return child
-	return null
-
-## Return the energy_cost of the most expensive recipe this building can
-## currently craft (has all input resources). Used by the energy network to
-## compute the building's energy floor. Override in converter-like buildings.
-func get_max_affordable_recipe_cost() -> float:
-	return 0.0
 
 # ── Visual origin ──────────────────────────────────────────────────────────
 

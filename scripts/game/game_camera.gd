@@ -5,20 +5,9 @@ const TILE_SIZE := 32
 
 # ── Zoom ────────────────────────────────────────────────────────────────────
 const ZOOM_SPEED := 0.1
-const DEFAULT_MIN_ZOOM := 3.0
+const MIN_ZOOM := 0.5
 const MAX_ZOOM := 3.0
 const ZOOM_SMOOTH_SPEED := 8.0
-
-# Cartography tags and their zoom-out levels (lower = more zoomed out)
-const CARTOGRAPHY_ZOOM := {
-	&"cartography_1": 2.4,
-	&"cartography_2": 1.2,
-	&"cartography_3": 0.75,
-	&"cartography_4": 0.5,
-	&"cartography_5": 0.35,
-}
-
-var min_zoom: float = DEFAULT_MIN_ZOOM
 
 # ── Follow ──────────────────────────────────────────────────────────────────
 const FOLLOW_SPEED := 8.0
@@ -30,25 +19,12 @@ var _target_zoom: float = 1.0
 
 func _ready() -> void:
 	_target_zoom = zoom.x
-	ResearchManager.tag_unlocked.connect(_on_tag_unlocked)
-	ResearchManager.tags_reset.connect(_on_tags_reset)
-
-func _on_tag_unlocked(tag: StringName) -> void:
-	if CARTOGRAPHY_ZOOM.has(tag):
-		var value: float = CARTOGRAPHY_ZOOM[tag]
-		if value < min_zoom:
-			min_zoom = value
-			_target_zoom = clampf(_target_zoom, min_zoom, MAX_ZOOM)
-
-func _on_tags_reset() -> void:
-	min_zoom = DEFAULT_MIN_ZOOM
-	_target_zoom = clampf(_target_zoom, min_zoom, MAX_ZOOM)
 
 func snap_to(pos: Vector2) -> void:
 	position = pos
 
 func set_target_zoom(z: float) -> void:
-	_target_zoom = clampf(z, min_zoom, MAX_ZOOM)
+	_target_zoom = clampf(z, MIN_ZOOM, MAX_ZOOM)
 
 func update_camera(real_delta: float) -> void:
 	_follow(real_delta)
@@ -57,11 +33,11 @@ func update_camera(real_delta: float) -> void:
 func handle_zoom_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT]:
-			_target_zoom = clampf(_target_zoom + ZOOM_SPEED, min_zoom, MAX_ZOOM)
+			_target_zoom = clampf(_target_zoom + ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM)
 		elif event.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT]:
-			_target_zoom = clampf(_target_zoom - ZOOM_SPEED, min_zoom, MAX_ZOOM)
+			_target_zoom = clampf(_target_zoom - ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM)
 	elif event is InputEventPanGesture:
-		_target_zoom = clampf(_target_zoom - event.delta.y * ZOOM_SPEED, min_zoom, MAX_ZOOM)
+		_target_zoom = clampf(_target_zoom - event.delta.y * ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM)
 
 # ── Follow ──────────────────────────────────────────────────────────────────
 

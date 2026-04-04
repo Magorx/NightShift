@@ -7,16 +7,7 @@
       "description": "Research Lab for consuming science packs.",
       "ring": 0,
       "type": "instant",
-      "cost": [
-        {
-          "item": "iron_ore",
-          "quantity": 5
-        },
-        {
-          "item": "copper_ore",
-          "quantity": 5
-        }
-      ],
+      "cost": [],
       "effects": [
         {
           "unlock_tag": "research_lab"
@@ -52,8 +43,7 @@
         "x": -3,
         "y": -1.5
       },
-      "unlocks": [],
-      "type": "instant"
+      "unlocks": []
     },
     {
       "id": "tech_wire_drawer",
@@ -112,6 +102,10 @@
         {
           "item": "science_pack_1",
           "quantity": 10
+        },
+        {
+          "item": "coal",
+          "quantity": 10
         }
       ],
       "effects": [
@@ -122,7 +116,8 @@
       "position": {
         "x": -3,
         "y": 1.5
-      }
+      },
+      "unlocks": []
     },
     {
       "id": "tech_conveyor_mk2",
@@ -345,7 +340,7 @@
     {
       "id": "tech_cartography_3",
       "display_name": "Cartography III",
-      "description": "Full satellite mapping \u2014 maximum camera zoom out.",
+      "description": "Full satellite mapping — maximum camera zoom out.",
       "ring": 3,
       "cost": [
         {
@@ -491,7 +486,7 @@
     {
       "id": "tech_pipeline",
       "display_name": "Pipeline",
-      "description": "Long-range item transport \u2014 place input and output endpoints up to 10 tiles apart.",
+      "description": "Long-range item transport — place input and output endpoints up to 10 tiles apart.",
       "ring": 4,
       "cost": [
         {
@@ -521,7 +516,7 @@
     {
       "id": "tech_cartography_4",
       "display_name": "Cartography IV",
-      "description": "Orbital surveying \u2014 reveals the entire map.",
+      "description": "Orbital surveying — reveals the entire map.",
       "ring": 4,
       "cost": [
         {
@@ -611,7 +606,7 @@
     {
       "id": "tech_nuclear_reactor",
       "display_name": "Nuclear Reactor",
-      "description": "Cross-shaped nuclear reactor \u2014 massive power generation from fusion cells.",
+      "description": "Cross-shaped nuclear reactor — massive power generation from fusion cells.",
       "ring": 5,
       "cost": [
         {
@@ -637,7 +632,7 @@
     {
       "id": "tech_cartography_5",
       "display_name": "Cartography V",
-      "description": "Quantum cartography \u2014 ultimate map control with terraformer integration.",
+      "description": "Quantum cartography — ultimate map control with terraformer integration.",
       "ring": 5,
       "cost": [
         {

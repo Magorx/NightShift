@@ -15,7 +15,7 @@ const CATEGORY_DISPLAY_NAMES := {
 }
 
 # Categories hidden from the building panel (placed via multi-phase, not directly)
-const HIDDEN_CATEGORIES := ["tunnel_output", "pipeline_output", "biomass_extractor_output"]
+const HIDDEN_CATEGORIES := ["tunnel_output"]
 
 # Preferred display order; categories not listed here are appended alphabetically.
 const _PREFERRED_ORDER := ["Transportation", "Extractors", "Converters", "Outputs", "Sources"]
@@ -55,13 +55,9 @@ func _ready() -> void:
 	if order.size() > 0:
 		_select_category(order[0])
 	_clear_info()
-	ResearchManager.research_completed.connect(_on_research_completed)
 	SaveManager.load_completed.connect(_on_load_completed)
 
 func _on_load_completed(_success: bool) -> void:
-	_refresh_buildings()
-
-func _on_research_completed(_tech_id: StringName) -> void:
 	_refresh_buildings()
 
 func _refresh_buildings() -> void:
@@ -79,8 +75,6 @@ func _group_buildings() -> void:
 	for id in GameManager.building_defs:
 		var def = GameManager.building_defs[id]
 		if def.category in HIDDEN_CATEGORIES:
-			continue
-		if not ResearchManager.is_tag_unlocked(def.research_tag):
 			continue
 		var cat_name: String = CATEGORY_DISPLAY_NAMES.get(def.category, def.category.capitalize())
 		if not _by_category.has(cat_name):

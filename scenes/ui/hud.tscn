@@ -1,13 +1,10 @@
-[gd_scene load_steps=9 format=3 uid="uid://hud"]
+[gd_scene load_steps=6 format=3 uid="uid://hud"]
 
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/minimap.gd" id="2"]
 [ext_resource type="PackedScene" uid="uid://buildings_panel" path="res://scenes/ui/buildings_panel.tscn" id="3"]
 [ext_resource type="Script" path="res://scripts/ui/hotbar.gd" id="4"]
 [ext_resource type="PackedScene" uid="uid://inventory_panel" path="res://scenes/ui/inventory_panel.tscn" id="5"]
-[ext_resource type="PackedScene" uid="uid://research_panel" path="res://scenes/ui/research_panel.tscn" id="6"]
-[ext_resource type="PackedScene" uid="uid://recipe_browser" path="res://scenes/ui/recipe_browser.tscn" id="7"]
-[ext_resource type="PackedScene" uid="uid://tutorial_panel" path="res://scenes/ui/tutorial_panel.tscn" id="8"]
 
 [node name="HUD" type="Control"]
 layout_mode = 3
@@ -32,70 +29,30 @@ theme_override_colors/font_color = Color(1, 1, 1, 0.5)
 text = "FPS: 0"
 mouse_filter = 2
 
-[node name="DeliveryPanel" type="PanelContainer" parent="."]
+[node name="CurrencyValue" type="Label" parent="."]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -180.0
+offset_left = -120.0
 offset_top = 8.0
 offset_right = -8.0
+offset_bottom = 28.0
 grow_horizontal = 0
-
-[node name="MarginContainer" type="MarginContainer" parent="DeliveryPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 6
-
-[node name="VBox" type="VBoxContainer" parent="DeliveryPanel/MarginContainer"]
-layout_mode = 2
-
-[node name="TitleRow" type="HBoxContainer" parent="DeliveryPanel/MarginContainer/VBox"]
-layout_mode = 2
-
-[node name="Title" type="Label" parent="DeliveryPanel/MarginContainer/VBox/TitleRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 14
-text = "Contracts"
-
-[node name="CollapseButton" type="Button" parent="DeliveryPanel/MarginContainer/VBox/TitleRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(24, 24)
-layout_mode = 2
-theme_override_font_sizes/font_size = 12
-text = "▼"
-flat = true
-
-[node name="ContractContent" type="VBoxContainer" parent="DeliveryPanel/MarginContainer/VBox"]
-layout_mode = 2
-
-[node name="HSeparator" type="HSeparator" parent="DeliveryPanel/MarginContainer/VBox/ContractContent"]
-layout_mode = 2
-
-[node name="CurrencyRow" type="HBoxContainer" parent="DeliveryPanel/MarginContainer/VBox/ContractContent"]
-layout_mode = 2
-
-[node name="PointsLabel" type="Label" parent="DeliveryPanel/MarginContainer/VBox/ContractContent/CurrencyRow"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "Points:"
-
-[node name="CurrencyValue" type="Label" parent="DeliveryPanel/MarginContainer/VBox/ContractContent/CurrencyRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 10
 theme_override_font_sizes/font_size = 13
 text = "0"
+horizontal_alignment = 2
+mouse_filter = 2
 
-[node name="HSeparator2" type="HSeparator" parent="DeliveryPanel/MarginContainer/VBox/ContractContent"]
-layout_mode = 2
-
-[node name="ItemList" type="VBoxContainer" parent="DeliveryPanel/MarginContainer/VBox/ContractContent"]
+[node name="ItemList" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
-layout_mode = 2
+visible = false
+layout_mode = 1
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
 
 [node name="BottomRight" type="HBoxContainer" parent="."]
 layout_mode = 1
@@ -122,20 +79,6 @@ custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 theme_override_font_sizes/font_size = 10
 text = "DEBUG"
-
-[node name="ResearchButton" type="Button" parent="BottomRight/ButtonRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 28)
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-text = "Research"
-
-[node name="RecipesButton" type="Button" parent="BottomRight/ButtonRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 28)
-layout_mode = 2
-theme_override_font_sizes/font_size = 10
-text = "Recipes"
 
 [node name="InventoryButton" type="Button" parent="BottomRight/ButtonRow"]
 unique_name_in_owner = true
@@ -215,19 +158,3 @@ visible = false
 
 [node name="InventoryPanel" parent="." instance=ExtResource("5")]
 visible = false
-
-[node name="ResearchPanel" parent="." instance=ExtResource("6")]
-visible = false
-
-[node name="RecipeBrowser" parent="." instance=ExtResource("7")]
-visible = false
-
-[node name="TutorialPanel" parent="." instance=ExtResource("8")]
-layout_mode = 1
-anchors_preset = 0
-anchor_right = 0.0
-anchor_bottom = 0.0
-offset_left = 8.0
-offset_top = 24.0
-offset_right = 288.0
-offset_bottom = 160.0

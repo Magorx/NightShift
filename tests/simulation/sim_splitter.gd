@@ -56,7 +56,7 @@ func run_simulation() -> void:
 
 	# === Test 2: No U-turn — item should not go back where it came from ===
 	# Clear and rebuild: input from left, only output is also left (should block)
-	GameManager.clear_all()
+	sim_clear_all()
 	await sim_advance_ticks(2)
 
 	# Conveyor pointing right into splitter
@@ -83,7 +83,7 @@ func run_simulation() -> void:
 	# Two items heading for the same output should both advance to progress 1.0
 	# independently and exit promptly when a free output appears. With the old
 	# clamped advancement, item 2 would be stuck at progress 0.5 behind item 1.
-	GameManager.clear_all()
+	sim_clear_all()
 	await sim_advance_ticks(2)
 
 	# Input and splitter only — no outputs so items buffer internally

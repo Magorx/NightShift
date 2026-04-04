@@ -2,7 +2,7 @@
 ## Reads the building library and recipes at runtime — no hardcoded building IDs.
 ## Each deposit cluster gets: extractors → varied conveyor paths (tunnels, L-turns,
 ## junctions) → horizontal bus → splitter → multiple converters → sinks,
-## plus energy infrastructure (solar panels, poles, batteries, coal burners).
+## and sinks.
 
 const TILE_SIZE := 32
 const BLOCK_SPACING := 28   # tiles between factory block centers
@@ -42,7 +42,6 @@ func generate(tile_map: TileMapLayer, map_size: int) -> void:
 	for cluster in clusters:
 		_build_factory_line(cluster, chains, map_size, rng)
 
-	_link_energy_nodes()
 	print("StressTest: placed %d factory blocks across %dx%d map" % [clusters.size(), map_size, map_size])
 
 # ── Building discovery ────────────────────────────────────────────────────────
@@ -52,13 +51,10 @@ func _discover_buildings() -> Dictionary:
 		extractor = &"",
 		conveyor = &"",
 		sink = &"",
-		solar = &"",
-		fuel_gen = &"",
 		junction = &"",
 		splitter = &"",
 		tunnel_in = &"",
 		tunnel_out = &"",
-		energy_ids = [],   # all "energy" category building IDs
 		converters = {},   # converter_type (String) → building id
 	}
 	# First pass: collect only unlocked (no research_tag) buildings
@@ -73,13 +69,6 @@ func _discover_buildings() -> Dictionary:
 				if result.conveyor.is_empty(): result.conveyor = id
 			"sink":
 				if result.sink.is_empty(): result.sink = id
-			"generator":
-				if def.inputs.size() == 0 and result.solar.is_empty():
-					result.solar = id
-				elif def.inputs.size() > 0 and result.fuel_gen.is_empty():
-					result.fuel_gen = id
-			"energy":
-				result.energy_ids.append(id)
 			"converter":
 				result.converters[str(id)] = id
 			"junction":
@@ -92,7 +81,7 @@ func _discover_buildings() -> Dictionary:
 				if result.tunnel_out.is_empty(): result.tunnel_out = id
 	return result
 
-## Maps item_id → {converter_id, recipe} for the first matching recipe with no energy cost.
+## Maps item_id → {converter_id, recipe} for the first matching recipe.
 func _build_processing_chains() -> Dictionary:
 	var chains := {}
 	for conv_type: String in GameManager.recipes_by_type:
@@ -101,8 +90,6 @@ func _build_processing_chains() -> Dictionary:
 			continue
 		var recipes: Array = GameManager.recipes_by_type[conv_type]
 		for recipe in recipes:
-			if recipe.energy_cost > 0:
-				continue
 			for inp_stack in recipe.inputs:
 				var item_id: StringName = inp_stack.item.id
 				if not chains.has(item_id):
@@ -237,14 +224,6 @@ func _build_factory_line(cluster: Dictionary, chains: Dictionary, map_size: int,
 			_try_place(_bids.conveyor, Vector2i(splitter_x, bus_y), map_size, 0)
 			_place_single_line(chain, splitter_x + 1, bus_y, map_size)
 
-	elif is_coal and not _bids.fuel_gen.is_empty() and not _bids.splitter.is_empty() and splitter_x + 8 < map_size:
-		# Coal → splitter → coal burner + sink
-		if _try_place(_bids.splitter, Vector2i(splitter_x, bus_y), map_size, 0):
-			_place_coal_processing(splitter_x, bus_y, map_size)
-		else:
-			_try_place(_bids.conveyor, Vector2i(splitter_x, bus_y), map_size, 0)
-			_place_simple_sink(splitter_x + 1, bus_y, map_size)
-
 	else:
 		# Fallback: bus → sink
 		_try_place(_bids.conveyor, Vector2i(splitter_x, bus_y), map_size, 0)
@@ -293,7 +272,6 @@ func _place_dual_converter_lines(chain: Dictionary, splitter_x: int, bus_y: int,
 		GameManager.place_building(conv_id, conv1_pos, 0)
 		var relay := _place_output_relay(conv_id, conv1_pos, 0, map_size)
 		_place_output_chain(relay.x + 1, bus_y, map_size)
-		_place_energy_near(conv1_pos, map_size)
 	else:
 		_place_simple_sink(conv_x, bus_y, map_size)
 
@@ -317,7 +295,6 @@ func _place_dual_converter_lines(chain: Dictionary, splitter_x: int, bus_y: int,
 		GameManager.place_building(conv_id, conv2_pos, 0)
 		var relay := _place_output_relay(conv_id, conv2_pos, 0, map_size)
 		_place_output_chain(relay.x + 1, branch2_y, map_size)
-		_place_energy_near(conv2_pos, map_size)
 	else:
 		_place_simple_sink(conv_x, branch2_y, map_size)
 
@@ -332,27 +309,8 @@ func _place_single_line(chain: Dictionary, start_x: int, bus_y: int, map_size: i
 		GameManager.place_building(conv_id, conv_pos, 0)
 		var relay := _place_output_relay(conv_id, conv_pos, 0, map_size)
 		_place_output_chain(relay.x + 1, bus_y, map_size)
-		_place_energy_near(conv_pos, map_size)
 	else:
 		_place_simple_sink(conv_x, bus_y, map_size)
-
-## Coal: RIGHT → conveyors → coal burner, DOWN → conveyors → sink.
-func _place_coal_processing(splitter_x: int, bus_y: int, map_size: int) -> void:
-	# RIGHT: conveyors → coal burner
-	var burner_x := splitter_x + 3
-	for x in range(splitter_x + 1, burner_x):
-		_try_place(_bids.conveyor, Vector2i(x, bus_y), map_size, 0)
-	var burner_pos := Vector2i(burner_x, bus_y)
-	if GameManager.can_place_building(_bids.fuel_gen, burner_pos, map_size, 0):
-		GameManager.place_building(_bids.fuel_gen, burner_pos, 0)
-		_place_energy_near(burner_pos, map_size)
-
-	# DOWN: conveyors → L-turn → sink
-	for y in range(bus_y + 1, bus_y + 3):
-		_try_place(_bids.conveyor, Vector2i(splitter_x, y), map_size, 1)
-	_try_place(_bids.conveyor, Vector2i(splitter_x, bus_y + 3), map_size, 0)
-	if not _bids.sink.is_empty():
-		_try_place(_bids.sink, Vector2i(splitter_x + 1, bus_y + 3), map_size)
 
 ## Simple sink: a couple conveyors then sink.
 func _place_simple_sink(x: int, y: int, map_size: int) -> void:
@@ -392,52 +350,6 @@ func _place_output_relay(conv_id: StringName, conv_pos: Vector2i, rotation: int,
 			break
 	_try_place(_bids.conveyor, output_pos, map_size, conv_rot)
 	return output_pos
-
-# ── Energy infrastructure ─────────────────────────────────────────────────────
-
-## Place solar panels + energy buildings (poles, batteries) near a building.
-func _place_energy_near(ref_pos: Vector2i, map_size: int) -> void:
-	# Solar panels — try close offsets first (work for 1x1/2x1), then further (for smelter)
-	if not _bids.solar.is_empty():
-		var spots := [
-			ref_pos + Vector2i(0, -1), ref_pos + Vector2i(1, -1),
-			ref_pos + Vector2i(0, -2), ref_pos + Vector2i(1, -2),
-			ref_pos + Vector2i(-1, 0), ref_pos + Vector2i(-1, 1),
-			ref_pos + Vector2i(0, 2), ref_pos + Vector2i(1, 2),
-		]
-		var placed := 0
-		for pos: Vector2i in spots:
-			if placed >= 3:
-				break
-			if _try_place(_bids.solar, pos, map_size):
-				placed += 1
-
-	# Energy buildings (poles, batteries) — paired spots so consecutive IDs are adjacent
-	var energy_spots := [
-		ref_pos + Vector2i(2, -1), ref_pos + Vector2i(3, -1),
-		ref_pos + Vector2i(-1, -1), ref_pos + Vector2i(-2, -1),
-		ref_pos + Vector2i(2, 2), ref_pos + Vector2i(3, 2),
-		ref_pos + Vector2i(-1, 2), ref_pos + Vector2i(-2, 0),
-	]
-	var eidx := 0
-	for eid: StringName in _bids.energy_ids:
-		while eidx < energy_spots.size():
-			var pos: Vector2i = energy_spots[eidx]
-			eidx += 1
-			if _try_place(eid, pos, map_size):
-				break
-
-## Link all energy nodes that are within connection range.
-func _link_energy_nodes() -> void:
-	if not GameManager.energy_system:
-		return
-	var nodes: Array = GameManager.energy_system.energy_nodes
-	for i in range(nodes.size()):
-		for j in range(i + 1, nodes.size()):
-			var a = nodes[i]
-			var b = nodes[j]
-			if a.can_connect_to(b):
-				a.connect_to(b)
 
 # ── Placement helpers ─────────────────────────────────────────────────────────
 

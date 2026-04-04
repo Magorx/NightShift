@@ -3,7 +3,7 @@ extends Node
 signal save_completed
 signal load_completed(success: bool)
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 
 ## Set to true when "Continue" is clicked; game_world reads and clears this in _ready.
 var pending_load: bool = false
@@ -13,11 +13,14 @@ var autosave_enabled: bool = true
 
 var _saved_max_physics_steps: int = 8
 
+func _get_slot_dir() -> String:
+	return AccountManager.get_slot_dir(AccountManager.active_slot)
+
 ## Save the current run state to the active account slot.
 func save_run() -> void:
 	if not autosave_enabled:
 		return
-	var slot_dir := AccountManager.get_slot_dir(AccountManager.active_slot)
+	var slot_dir := _get_slot_dir()
 	var data := _serialize_run()
 
 	# Rotate: current autosave becomes backup
@@ -37,13 +40,9 @@ func save_run() -> void:
 	if f:
 		f.store_string(JSON.stringify(data, "\t"))
 
-	# Update meta last_played and hotkeys
+	# Update meta last_played
 	var meta := AccountManager.load_meta(AccountManager.active_slot)
 	meta["last_played"] = Time.get_datetime_string_from_system(true)
-	var hotkeys := {}
-	for keycode in GameManager.building_hotkeys:
-		hotkeys[str(keycode)] = str(GameManager.building_hotkeys[keycode])
-	meta["building_hotkeys"] = hotkeys
 	AccountManager.save_meta(AccountManager.active_slot, meta)
 
 	save_completed.emit()
@@ -51,7 +50,7 @@ func save_run() -> void:
 
 ## Load a run from the active account slot. Returns true on success.
 func load_run() -> bool:
-	var slot_dir := AccountManager.get_slot_dir(AccountManager.active_slot)
+	var slot_dir := _get_slot_dir()
 	var autosave_path := slot_dir + "run_autosave.json"
 	var backup_path := slot_dir + "run_backup.json"
 
@@ -71,7 +70,7 @@ func load_run() -> bool:
 
 ## Peek at save data without doing a full load (used for world seed on startup).
 func peek_save_data() -> Dictionary:
-	var slot_dir := AccountManager.get_slot_dir(AccountManager.active_slot)
+	var slot_dir := _get_slot_dir()
 	var data := _read_json(slot_dir + "run_autosave.json")
 	if data.is_empty():
 		data = _read_json(slot_dir + "run_backup.json")
@@ -83,7 +82,7 @@ func has_run_save() -> bool:
 
 ## Delete run save for the active slot.
 func delete_run_save() -> void:
-	var slot_dir := AccountManager.get_slot_dir(AccountManager.active_slot)
+	var slot_dir := _get_slot_dir()
 	for filename: String in ["run_autosave.json", "run_backup.json"]:
 		var path: String = slot_dir + filename
 		if FileAccess.file_exists(path):
@@ -101,14 +100,8 @@ func _serialize_run() -> Dictionary:
 		"currency": GameManager.total_currency,
 		"buildings": _serialize_buildings(),
 		"items_delivered": _serialize_items_delivered(),
-		"time_speed": _serialize_time_speed(),
-		"hud_state": _serialize_hud_state(),
-		"research": ResearchManager.serialize(),
-		"contracts": ContractManager.serialize(),
 		"creative_mode": GameManager.creative_mode,
-		"tutorial": TutorialManager.serialize(),
 		"deposit_stocks": _serialize_deposit_stocks(),
-		"ui_panels": _serialize_ui_panels(),
 	}
 	var gw := _get_game_world()
 	if gw:
@@ -144,27 +137,6 @@ func _serialize_items_delivered() -> Dictionary:
 	for item_id in GameManager.items_delivered:
 		result[str(item_id)] = GameManager.items_delivered[item_id]
 	return result
-
-func _serialize_time_speed() -> Dictionary:
-	var hud = _get_hud()
-	if hud:
-		return {"speed_index": hud.speed_index, "paused": hud.paused}
-	return {"speed_index": 2, "paused": false}
-
-func _serialize_hud_state() -> Dictionary:
-	var hud = _get_hud()
-	if hud:
-		return {
-			"contracts_collapsed": hud._contracts_collapsed,
-			"menu_expanded": hud._menu_expanded,
-		}
-	return {}
-
-func _serialize_ui_panels() -> Dictionary:
-	var hud = _get_hud()
-	if hud and hud.has_method("serialize_ui_panels"):
-		return hud.serialize_ui_panels()
-	return {}
 
 func _serialize_camera() -> Dictionary:
 	var gw := _get_game_world()
@@ -223,10 +195,6 @@ func _deserialize_run(data: Dictionary) -> void:
 				# Legacy save without variants: generate them fresh
 				_regenerate_terrain_variants()
 
-	# Suppress energy auto-linking while placing saved buildings
-	if GameManager.energy_system:
-		GameManager.energy_system.begin_batch_load()
-
 	# Restore buildings
 	var building_list: Array = data.get("buildings", [])
 	for entry in building_list:
@@ -243,17 +211,8 @@ func _deserialize_run(data: Dictionary) -> void:
 		if building.logic and not state.is_empty():
 			building.logic.deserialize_state(state)
 
-	if GameManager.energy_system:
-		GameManager.energy_system.end_batch_load()
-
 	# Deferred pass: link tunnel pairs using saved partner positions
 	_link_tunnels_deferred(building_list)
-
-	# Deferred pass: link biomass extractor pairs
-	_link_biomass_extractors_deferred(building_list)
-
-	# Deferred pass: restore energy node connections
-	_link_energy_nodes_deferred(building_list)
 
 	# Restore deposit stocks (finite stocks only; infinite are default)
 	var stocks_data: Dictionary = data.get("deposit_stocks", {})
@@ -269,52 +228,12 @@ func _deserialize_run(data: Dictionary) -> void:
 		else:
 			GameLogger.warn("Items delivered: skipped invalid item '%s'" % iid)
 
-	# Migrate old run-level hotkeys to account meta if present
-	if data.has("building_hotkeys") and not data["building_hotkeys"].is_empty():
-		var meta := AccountManager.load_meta(AccountManager.active_slot)
-		if not meta.has("building_hotkeys"):
-			meta["building_hotkeys"] = data["building_hotkeys"]
-			AccountManager.save_meta(AccountManager.active_slot, meta)
-
-	# Restore research state
-	var research_data: Dictionary = data.get("research", {})
-	if not research_data.is_empty():
-		ResearchManager.deserialize(research_data)
-
-	# Restore contract state
-	var contract_data: Dictionary = data.get("contracts", {})
-	if not contract_data.is_empty():
-		ContractManager.deserialize(contract_data)
-
-	# Restore tutorial state
-	var tutorial_data: Dictionary = data.get("tutorial", {})
-	if not tutorial_data.is_empty():
-		TutorialManager.deserialize(tutorial_data)
-
-	# Load hotkeys from account meta (not from run save)
-	AccountManager.load_hotkeys()
-
 	# Prevent physics catch-up: loading takes real time, so Godot would run
 	# multiple physics ticks on the first frame, making items jump forward.
 	# Limit to 1 tick, then restore on the next frame.
 	_saved_max_physics_steps = Engine.max_physics_steps_per_frame
 	Engine.max_physics_steps_per_frame = 1
 	call_deferred("_reset_max_physics_steps")
-
-	# Restore time speed (deferred so HUD is ready)
-	var time_data: Dictionary = data.get("time_speed", {})
-	if not time_data.is_empty():
-		call_deferred("_restore_time_speed", time_data)
-
-	# Restore HUD collapse states (deferred so HUD is ready)
-	var hud_state: Dictionary = data.get("hud_state", {})
-	if not hud_state.is_empty():
-		call_deferred("_restore_hud_state", hud_state)
-
-	# Restore UI panel states (deferred so panels are ready)
-	var ui_panels: Dictionary = data.get("ui_panels", {})
-	if not ui_panels.is_empty():
-		call_deferred("_restore_ui_panels", ui_panels)
 
 	# Restore player state
 	var player_data: Dictionary = data.get("player", {})
@@ -353,79 +272,12 @@ func _link_tunnels_deferred(building_list: Array) -> void:
 
 ## Restore finite deposit stocks from saved data.
 func _deserialize_deposit_stocks(data: Dictionary) -> void:
-	# First, set all existing deposits to their default stock
-	# (world gen already set stocks for new games; for loaded games we override)
-	for pos: Vector2i in GameManager.deposits:
-		if not GameManager.deposit_stocks.has(pos):
-			# Biomass deposits without saved stock data get default 5
-			if GameManager.deposits[pos] == &"biomass":
-				GameManager.deposit_stocks[pos] = 5
-			else:
-				GameManager.deposit_stocks[pos] = -1
-	# Override with saved finite stocks
 	for key: String in data:
 		var parts := key.split(",")
 		if parts.size() != 2:
 			continue
 		var pos := Vector2i(int(parts[0]), int(parts[1]))
 		GameManager.deposit_stocks[pos] = int(data[key])
-
-## Re-link biomass extractor pairs after all buildings are deserialized.
-func _link_biomass_extractors_deferred(building_list: Array) -> void:
-	for entry in building_list:
-		var state: Dictionary = entry.get("state", {})
-		if not state.has("output_x"):
-			continue
-		var grid_pos := Vector2i(int(entry["grid_x"]), int(entry["grid_y"]))
-		var output_pos := Vector2i(int(state["output_x"]), int(state["output_y"]))
-		var ext_building = GameManager.buildings.get(grid_pos)
-		var out_building = GameManager.buildings.get(output_pos)
-		if not ext_building or not out_building:
-			continue
-		if not ext_building.logic is BiomassExtractorLogic:
-			continue
-		if not out_building.logic is BiomassExtractorOutputLogic:
-			continue
-		ext_building.logic.output_device = out_building.logic
-		out_building.logic.extractor = ext_building.logic
-	# Initialize cluster drain manager
-	if not GameManager.cluster_drain_manager:
-		var CDM = load("res://scripts/game/cluster_drain_manager.gd")
-		GameManager.cluster_drain_manager = CDM.new()
-	GameManager.cluster_drain_manager.invalidate_cache()
-
-## Re-link energy node connections after all buildings are deserialized.
-func _link_energy_nodes_deferred(building_list: Array) -> void:
-	if not GameManager.energy_system:
-		return
-	for entry in building_list:
-		var state: Dictionary = entry.get("state", {})
-		if not state.has("energy_node"):
-			continue
-		var en_data: Dictionary = state["energy_node"]
-		if not en_data.has("connections"):
-			continue
-		var grid_pos := Vector2i(int(entry["grid_x"]), int(entry["grid_y"]))
-		var building = GameManager.buildings.get(grid_pos)
-		if not building or not building.logic:
-			continue
-		var enode = building.logic.get_energy_node()
-		if not enode:
-			continue
-		var conn_list: Array = en_data["connections"]
-		for conn in conn_list:
-			var target_pos := Vector2i(int(conn["x"]), int(conn["y"]))
-			var target_building = GameManager.buildings.get(target_pos)
-			if not target_building or not target_building.logic:
-				continue
-			var target_node = target_building.logic.get_energy_node()
-			if not target_node:
-				continue
-			# Only connect if not already connected (avoid duplicates from both sides)
-			if not enode.is_connected_to(target_node):
-				enode.connect_to(target_node)
-	# Mark networks dirty so they rebuild with restored connections
-	GameManager.energy_system.mark_dirty()
 
 func _deserialize_ground_items(items_data: Array) -> void:
 	var gw := _get_game_world()
@@ -477,33 +329,6 @@ func _read_json(path: String) -> Dictionary:
 		return json.data
 	return {}
 
-func _restore_time_speed(data: Dictionary) -> void:
-	var hud = _get_hud()
-	if hud:
-		hud.speed_index = int(data.get("speed_index", 2))
-		var was_paused: bool = data.get("paused", false)
-		if was_paused:
-			hud.paused = false # Ensure toggle works
-			hud._toggle_pause()
-		else:
-			Engine.time_scale = hud.SPEED_STEPS[hud.speed_index]
-			hud.speed_label.text = hud.SPEED_LABELS[hud.speed_index]
-			hud._update_speed_buttons()
-
-func _restore_ui_panels(data: Dictionary) -> void:
-	var hud = _get_hud()
-	if hud and hud.has_method("deserialize_ui_panels"):
-		hud.deserialize_ui_panels(data)
-
-func _restore_hud_state(data: Dictionary) -> void:
-	var hud = _get_hud()
-	if not hud:
-		return
-	if data.get("contracts_collapsed", false) and not hud._contracts_collapsed:
-		hud._on_collapse_pressed()
-	if data.get("menu_expanded", false) and not hud._menu_expanded:
-		hud._on_menu_toggle_pressed()
-
 ## Generate terrain variants for legacy saves that don't have them.
 func _regenerate_terrain_variants() -> void:
 	var map_size := GameManager.map_size
@@ -525,12 +350,3 @@ func _get_game_world() -> Node:
 		if child.name == "GameWorld":
 			return child
 	return null
-
-func _get_hud() -> Control:
-	var gw := _get_game_world()
-	if not gw:
-		return null
-	var ui = gw.find_child("UI", false, false)
-	if not ui:
-		return null
-	return ui.find_child("HUD", false, false)

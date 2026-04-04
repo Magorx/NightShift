@@ -34,7 +34,6 @@ func _ready() -> void:
 	GameManager.building_layer = $BuildingLayer
 	GameManager.item_layer = $ItemLayer
 	GameManager.conveyor_system = $ConveyorSystem
-	GameManager.energy_system = $EnergySystem
 	# Initialize MultiMesh item visual system
 	GameManager.item_visual_manager = _visual_mgr_script.new()
 	GameManager.item_visual_manager.attach_to($ItemLayer)
@@ -109,13 +108,6 @@ func _ready() -> void:
 	if SaveManager.pending_load:
 		SaveManager.pending_load = false
 		SaveManager.load_run()
-
-	# Load tutorial state from account (works for both new and loaded games)
-	var meta := AccountManager.load_meta(AccountManager.active_slot)
-	if meta.has("tutorial_step"):
-		TutorialManager.load_from_account()
-	else:
-		TutorialManager.start()
 
 	# Build terrain MultiMesh visuals (tile_types + variants are set by gen or deserialize)
 	if GameManager.terrain_tile_types.size() > 0:
@@ -263,10 +255,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("toggle_inventory"):
 		hud.toggle_inventory_panel()
 	elif event.is_action_pressed("ui_cancel"):
-		# ESC cascade: link mode → buildings panel → info panel → building mode → destroy mode → pause menu
-		if build_system.energy_link_mode:
-			build_system._exit_energy_link_mode()
-		elif hud.is_buildings_panel_open():
+		# ESC cascade: buildings panel → info panel → building mode → destroy mode → pause menu
+		if hud.is_buildings_panel_open():
 			hud.close_buildings_panel()
 		elif _popup and _popup.visible:
 			_popup.hide_popup()

@@ -333,7 +333,7 @@ func _handle_hand_mining(delta: float) -> void:
 
 	# Don't mine while in build/destroy mode
 	var build_system = get_parent().get_node_or_null("BuildSystem")
-	if build_system and (build_system.building_mode or build_system.destroy_mode or build_system.energy_link_mode):
+	if build_system and (build_system.building_mode or build_system.destroy_mode):
 		_stop_mining()
 		return
 

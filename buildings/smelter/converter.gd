@@ -37,27 +37,6 @@ var _input_rr: RoundRobin = RoundRobin.new()
 var _code_anim: Node2D
 var _code_anims: Array = []
 
-## Energy configuration per converter type.
-## capacity, base_demand — set in configure based on building type.
-const ENERGY_CONFIG := {
-	"smelter": {capacity = 100.0, demand = 0.0},
-	"press": {capacity = 50.0, demand = 0.0},
-	"wire_drawer": {capacity = 50.0, demand = 0.0},
-	"coke_oven": {capacity = 0.0, demand = 0.0},
-	"hand_assembler": {capacity = 0.0, demand = 0.0},
-	"assembler": {capacity = 80.0, demand = 5.0},
-	"assembler_mk2": {capacity = 200.0, demand = 10.0},
-	"fuel_generator": {capacity = 300.0, demand = 0.0},
-	"chemical_plant": {capacity = 120.0, demand = 8.0},
-	"coal_burner": {capacity = 200.0, demand = 0.0},
-	"research_lab": {capacity = 50.0, demand = 5.0},
-	"centrifuge": {capacity = 200.0, demand = 15.0},
-	"greenhouse": {capacity = 80.0, demand = 5.0},
-	"particle_accelerator": {capacity = 300.0, demand = 20.0},
-	"fabricator": {capacity = 400.0, demand = 25.0},
-	"nuclear_reactor": {capacity = 1200.0, demand = 0.0},
-}
-
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	super.configure(def, p_grid_pos, p_rotation)
 	rotation = p_rotation
@@ -74,10 +53,6 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 				_code_anims.append(child)
 		if not _code_anims.is_empty():
 			_code_anim = _code_anims[0]
-	# Set up energy for converters that participate in the energy grid
-	if ENERGY_CONFIG.has(converter_type):
-		var cfg = ENERGY_CONFIG[converter_type]
-		energy = BuildingEnergy.new(cfg.capacity, cfg.demand, 0.0)
 
 func _build_recipe_configs(default_enabled: bool = true) -> void:
 	recipe_configs.clear()
@@ -104,20 +79,6 @@ func _build_capacities() -> void:
 				output_inv.set_capacity(out.item.id, out.quantity * OUTPUT_CAPACITY_MULTIPLIER)
 
 func _physics_process(delta: float) -> void:
-	# Always signal energy demand so redistribution delivers energy proactively
-	_update_energy_demand()
-
-	# If building requires power and is unpowered, stop all processing
-	if energy and energy.base_energy_demand > 0.0 and not energy.is_powered:
-		return
-
-	# Pause energy-generating recipes when the grid is full to avoid wasting fuel
-	var is_generating: bool = _active_recipe != null and _active_recipe.energy_output > 0.0
-	if is_generating and energy and energy.grid_full:
-		energy.generation_rate = 0.0
-		_update_building_sprites(false, delta)
-		return
-
 	_try_pull_inputs()
 
 	if _active_recipe:
@@ -126,13 +87,6 @@ func _physics_process(delta: float) -> void:
 			_try_finish_craft()
 	else:
 		_try_start_craft()
-
-	# Set generation_rate for energy-producing recipes
-	if energy:
-		if _active_recipe and _active_recipe.energy_output > 0.0:
-			energy.generation_rate = _active_recipe.energy_output / _active_recipe.craft_time
-		else:
-			energy.generation_rate = 0.0
 
 	_update_building_sprites(_active_recipe != null, delta)
 	for anim in _code_anims:
@@ -155,15 +109,6 @@ func _try_pull_inputs() -> void:
 			if input_inv.has_space(peek_id):
 				GameManager.pull_item(world_cell, dir_idx)
 				input_inv.add(peek_id)
-				_demand_dirty = true
-
-var _demand_dirty: bool = true
-
-func _update_energy_demand() -> void:
-	if not energy or not _demand_dirty:
-		return
-	energy.energy_demand = get_max_affordable_recipe_cost()
-	_demand_dirty = false
 
 func mark_configs_dirty() -> void:
 	_configs_dirty = true
@@ -178,9 +123,6 @@ func _try_start_craft() -> void:
 			continue
 		if not _can_craft(config.recipe):
 			continue
-		if config.recipe.energy_cost > 0.0:
-			if not energy or energy.energy_stored < config.recipe.energy_cost:
-				continue
 		_start_craft(config.recipe)
 		return
 
@@ -193,24 +135,12 @@ func _can_craft(recipe) -> bool:
 			return false
 	return true
 
-func get_max_affordable_recipe_cost() -> float:
-	var max_cost := 0.0
-	for config in recipe_configs:
-		if not config.enabled:
-			continue
-		if config.recipe.energy_cost > max_cost and _can_craft(config.recipe):
-			max_cost = config.recipe.energy_cost
-	return max_cost
-
 func _start_craft(recipe) -> void:
-	# Consume energy cost locally
-	if recipe.energy_cost > 0.0 and energy:
-		energy.energy_stored = maxf(energy.energy_stored - recipe.energy_cost, 0.0)
 	for inp in recipe.inputs:
 		input_inv.remove(inp.item.id, inp.quantity)
 	_active_recipe = recipe
 	_craft_timer = 0.0
-	_demand_dirty = true
+
 
 func _try_finish_craft() -> void:
 	for out in _active_recipe.outputs:
@@ -221,7 +151,7 @@ func _try_finish_craft() -> void:
 	_last_recipe = _active_recipe
 	_active_recipe = null
 	_craft_timer = 0.0
-	_demand_dirty = true
+
 
 func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
 	var remaining := quantity
@@ -282,7 +212,7 @@ func take_item_for(target_pos: Vector2i) -> StringName:
 			for iid in output_inv.get_item_ids():
 				if output_inv.has(iid):
 					output_inv.remove(iid)
-					_demand_dirty = true
+				
 					return iid
 	return &""
 
@@ -303,8 +233,6 @@ func serialize_state() -> Dictionary:
 	state["last_recipe_id"] = str(_last_recipe.id) if _last_recipe else ""
 	state["input_inv"] = input_inv.serialize()
 	state["output_inv"] = output_inv.serialize()
-	if energy:
-		state["energy"] = energy.serialize()
 	var configs_data: Array = []
 	for config in recipe_configs:
 		configs_data.append(config.serialize())
@@ -330,8 +258,6 @@ func deserialize_state(state: Dictionary) -> void:
 			if recipe.id == recipe_id:
 				_last_recipe = recipe
 				break
-	if state.has("energy") and energy:
-		energy.deserialize(state["energy"])
 	if state.has("recipe_configs"):
 		RecipeConfig.deserialize_into(recipe_configs, state["recipe_configs"])
 		_configs_dirty = true

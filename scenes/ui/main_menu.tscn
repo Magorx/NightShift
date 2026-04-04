@@ -60,11 +60,11 @@ size_flags_vertical = 3
 theme_override_font_sizes/font_size = 28
 text = "New Run"
 
-[node name="TestButton" type="Button" parent="CenterMargin/VBox"]
+[node name="SettingsButton" type="Button" parent="CenterMargin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 28
-text = "Test Scene"
+text = "Settings"
 
 [node name="StressTestButton" type="Button" parent="CenterMargin/VBox"]
 layout_mode = 2

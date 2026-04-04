@@ -15,34 +15,18 @@ func configure(_def: BuildingDef, p_grid_pos: Vector2i, _rotation: int) -> void:
 				if child.has_method("set_active"):
 					child.set_active(true)
 
-const MAX_PULLS_PER_TICK := 4
-
 func _physics_process(_delta: float) -> void:
-	# Pull up to MAX_PULLS_PER_TICK items per frame
-	var pulls := 0
-	var keep_pulling := true
-	while keep_pulling and pulls < MAX_PULLS_PER_TICK:
-		keep_pulling = false
-		for i in range(4):
-			var dir_idx = (_pull_index + i) % 4
-			var result = GameManager.pull_item(grid_pos, dir_idx)
-			if not result.is_empty():
-				items_consumed += 1
-				var item_def = GameManager.get_item_def(result.id)
-				var export_val: int = item_def.export_value if item_def else 1
-				GameManager.record_delivery(result.id, export_val)
-				_pull_index = (dir_idx + 1) % 4
-				pulls += 1
-				keep_pulling = true
-				break
-
-func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
-	for i in quantity:
-		items_consumed += 1
-		var item_def = GameManager.get_item_def(item_id)
-		var export_val: int = item_def.export_value if item_def else 1
-		GameManager.record_delivery(item_id, export_val)
-	return 0
+	# Pull items from neighbors (accept anything)
+	for i in range(4):
+		var dir_idx = (_pull_index + i) % 4
+		var result = GameManager.pull_item(grid_pos, dir_idx)
+		if not result.is_empty():
+			items_consumed += 1
+			var item_def = GameManager.get_item_def(result.id)
+			var export_val: int = item_def.export_value if item_def else 1
+			GameManager.record_delivery(result.id, export_val)
+			_pull_index = (dir_idx + 1) % 4
+			break
 
 # ── Pull interface ─────────────────────────────────────────────────────────────
 
@@ -51,6 +35,11 @@ func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
 
 func can_accept_from(_from_dir_idx: int) -> bool:
 	return true
+
+# ── Popup interface ────────────────────────────────────────────────────────────
+
+func get_inventory_items() -> Array:
+	return []
 
 # ── Serialization ──────────────────────────────────────────────────────────────
 
@@ -65,5 +54,5 @@ func deserialize_state(state: Dictionary) -> void:
 
 func get_info_stats() -> Array:
 	return [
-		{type = "stat", text = "Items consumed: %d" % items_consumed},
+		{type = "stat", text = "Items delivered: %d" % items_consumed},
 	]

@@ -82,9 +82,6 @@ const DEFAULT_HOTKEYS: Dictionary = {
 	KEY_5: &"sink",
 	KEY_6: &"smelter",
 	KEY_7: &"drill",
-	KEY_8: &"coal_burner",
-	KEY_9: &"energy_pole",
-	KEY_0: &"solar_panel",
 }
 var building_hotkeys: Dictionary = DEFAULT_HOTKEYS.duplicate()
 
@@ -95,7 +92,6 @@ var last_selected_building: StringName = &"conveyor"
 var building_layer: Node2D
 var item_layer: Node2D
 var conveyor_system: Node
-var energy_system: Node  # EnergySystem
 var building_tick_system: Node  # BuildingTickSystem
 var conveyor_visual_manager  # ConveyorVisualManager (MultiMesh rendering)
 var building_collision  # BuildingCollision (StaticBody2D for player collision)
@@ -113,20 +109,6 @@ func _register_placement_phases() -> void:
 			{building_id = &"tunnel_output", max_distance = 5, count_match = true},
 		],
 		link_fn = &"_link_underground_transport",
-	}
-	placement_phases[&"pipeline_input"] = {
-		phases = [
-			{building_id = &"pipeline_input"},
-			{building_id = &"pipeline_output", max_distance = 10, count_match = true},
-		],
-		link_fn = &"_link_underground_transport",
-	}
-	placement_phases[&"biomass_extractor"] = {
-		phases = [
-			{building_id = &"biomass_extractor"},
-			{building_id = &"biomass_extractor_output", max_distance = 4, count_match = true},
-		],
-		link_fn = &"_link_biomass_extractor",
 	}
 
 ## Link underground transport (tunnel/pipeline) inputs and outputs after multi-phase placement.
@@ -148,49 +130,6 @@ func _link_underground_transport(phase_placements: Array) -> void:
 		in_building.logic.setup_pair(out_building.logic, dist)
 		out_building.logic.setup_pair(in_building.logic, dist)
 
-## Link biomass extractor to its output device after multi-phase placement.
-## Validates the 1-cell gap constraint in any cardinal direction from extractor.
-func _link_biomass_extractor(phase_placements: Array) -> void:
-	var extractors: Array = phase_placements[0]
-	var outputs: Array = phase_placements[1]
-	var count := mini(extractors.size(), outputs.size())
-	for i in range(count):
-		var ext_building = buildings.get(extractors[i].pos)
-		var out_building = buildings.get(outputs[i].pos)
-		if not ext_building or not out_building:
-			continue
-		var ext_logic = ext_building.logic
-		var out_logic = out_building.logic
-		if not ext_logic or not out_logic:
-			continue
-		# Validate: output must be exactly 1 cell gap from extractor footprint
-		# in a cardinal direction
-		var ext_def = get_building_def(ext_building.building_id)
-		if not ext_def:
-			continue
-		var ext_shape: Array = ext_def.get_rotated_shape(ext_building.rotation_index)
-		var valid := false
-		for cell in ext_shape:
-			var ext_cell: Vector2i = ext_building.grid_pos + Vector2i(cell)
-			for dir in DIRECTION_VECTORS:
-				# 1 cell gap means: ext_cell + dir (gap) + dir (output)
-				var expected_output: Vector2i = ext_cell + dir * 2
-				if expected_output == outputs[i].pos:
-					valid = true
-					break
-			if valid:
-				break
-		if not valid:
-			# Invalid position — remove the output
-			remove_building(outputs[i].pos)
-			continue
-		ext_logic.output_device = out_logic
-		out_logic.extractor = ext_logic
-	# Initialize cluster drain manager if needed
-	if not cluster_drain_manager:
-		var CDM = load("res://scripts/game/cluster_drain_manager.gd")
-		cluster_drain_manager = CDM.new()
-	cluster_drain_manager.invalidate_cache()
 
 func _load_building_defs() -> void:
 	var root_dir := DirAccess.open("res://buildings/")
@@ -326,7 +265,6 @@ func record_delivery(item_id: StringName, value: int = 0) -> void:
 		items_delivered[item_id] = 0
 	items_delivered[item_id] += 1
 	total_currency += value
-	ContractManager.on_item_delivered(item_id)
 	item_delivered.emit(item_id)
 
 func get_building_def(id: StringName):
@@ -378,8 +316,6 @@ func refund_building_cost(id: StringName) -> void:
 func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotation: int = 0) -> bool:
 	var def = get_building_def(id)
 	if not def:
-		return false
-	if not ResearchManager.is_tag_unlocked(def.research_tag):
 		return false
 	var rotated_shape: Array = def.get_rotated_shape(rotation)
 	for cell in rotated_shape:
@@ -464,17 +400,6 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		# Hide guide ColorRects (Shape/Input/Output cells) to reduce draw calls
 		_hide_guide_nodes(building)
 
-		# Register energy-capable buildings with EnergySystem
-		if energy_system and logic.energy:
-			energy_system.register_building(logic)
-			var enode = logic.get_energy_node()
-			if enode:
-				enode.owner_grid_pos = grid_pos
-				enode.owner_logic = logic
-				# Add node's inner_capacity to building's effective capacity
-				logic.energy.energy_capacity += enode.inner_capacity
-				energy_system.register_node(enode)
-
 	# Update collision for player
 	if building_collision and not def.is_ground_level:
 		for cell in rotated_shape:
@@ -508,14 +433,6 @@ func remove_building(grid_pos: Vector2i) -> void:
 
 	# Refund partial build cost to player
 	refund_building_cost(building.building_id)
-
-	# Unregister from EnergySystem before cleanup
-	if building.logic and energy_system:
-		if building.logic.energy:
-			var enode = building.logic.get_energy_node()
-			if enode:
-				energy_system.unregister_node(enode)
-			energy_system.unregister_building(building.logic)
 
 	# Unregister from BuildingTickSystem
 	if building.logic and building_tick_system:
@@ -675,14 +592,10 @@ func clear_all() -> void:
 	if conveyor_system:
 		conveyor_system.conveyors.clear()
 		conveyor_system._pull_rr.clear()
-	if energy_system:
-		energy_system.clear_all()
 	if building_tick_system:
 		building_tick_system.clear_all()
 	if building_collision:
 		building_collision.clear_all()
-	ResearchManager.reset()
-	ContractManager.reset()
 
 # ── Unified pull system ──────────────────────────────────────────────────────
 
