@@ -49,7 +49,7 @@ func _disable_focus_recursive(node: Node) -> void:
 	for child in node.get_children():
 		_disable_focus_recursive(child)
 
-func set_camera(cam: Camera2D) -> void:
+func set_camera(cam) -> void:
 	minimap_display.set_camera(cam)
 
 func _process(_delta: float) -> void:

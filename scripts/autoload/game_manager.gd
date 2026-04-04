@@ -5,13 +5,11 @@ signal item_delivered(item_id: StringName)
 
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
-## Z-index layers for isometric depth ordering.
-## MultiMesh renderers (conveyors, items) can't y-sort individual instances,
-## so they use fixed z_index values within the ObjectLayer.
-## Buildings get z_index = Z_BUILDING + y-based offset for coarse depth.
-const Z_CONVEYOR := 0        # conveyor belt MultiMesh (ground level)
-const Z_ITEM := 1            # item dot MultiMesh (just above conveyors)
-const Z_BUILDING := 2        # buildings (coarse layer; y-sort within ObjectLayer handles fine ordering)
+## Z-index layers for isometric depth ordering (legacy 2D, used by MultiMesh2D renderers).
+## Will be removed once visual managers are converted to 3D.
+const Z_CONVEYOR := 0
+const Z_ITEM := 1
+const Z_BUILDING := 2
 
 # Building registry: id -> BuildingDef
 var building_defs: Dictionary = {}
@@ -88,8 +86,8 @@ var building_hotkeys: Dictionary = DEFAULT_HOTKEYS.duplicate()
 var last_selected_building: StringName = &"conveyor"
 
 # Reference to scene layer nodes (set by game_world on ready)
-var building_layer: Node2D
-var item_layer: Node2D
+var building_layer: Node
+var item_layer: Node
 var conveyor_system: Node
 var building_tick_system: Node  # BuildingTickSystem
 var conveyor_visual_manager  # ConveyorVisualManager (MultiMesh rendering)
@@ -97,6 +95,7 @@ var building_collision  # BuildingCollision (StaticBody2D for player collision)
 var player  # Player (CharacterBody2D)
 
 func _ready() -> void:
+	GridUtils.recalculate()
 	_load_building_defs()
 	_load_recipes()
 	_register_placement_phases()

@@ -1,15 +1,13 @@
 class_name GameWorld
-extends Node2D
+extends Node3D
 
 const AUTOSAVE_INTERVAL := 60.0
 
-@onready var camera: GameCamera = $Camera2D
-@onready var tile_map: TileMapLayer = $TileMapLayer
-@onready var grid_overlay: Node2D = $GridOverlay
+@onready var camera: GameCamera = $Camera3D
 @onready var build_system: Node2D = $BuildSystem
 @onready var hud: Control = $UI/HUD
 
-var player  # Player (CharacterBody2D)
+var player  # Player (CharacterBody2D — will become CharacterBody3D in 3D.4)
 var building_collision  # BuildingCollision (StaticBody2D)
 
 var _autosave_timer: float = 0.0
@@ -64,8 +62,6 @@ func _ready() -> void:
 	elif GameManager.world_seed == 0:
 		GameManager.world_seed = randi()
 
-	_setup_tileset()
-
 	# Initialize MultiMesh terrain visual system
 	GameManager.terrain_visual_manager = _terrain_visual_mgr_script.new()
 	GameManager.terrain_visual_manager.attach_to(self, -1)  # z_index below buildings
@@ -73,7 +69,7 @@ func _ready() -> void:
 	# Skip world generation if terrain will be restored from save
 	if not has_saved_terrain:
 		var gen = _world_gen_script.new()
-		var result: Array = gen.generate(tile_map, GameManager.map_size, GameManager.world_seed)
+		var result: Array = gen.generate(null, GameManager.map_size, GameManager.world_seed)
 		GameManager.terrain_tile_types = result[0]
 		GameManager.terrain_variants = result[1]
 
@@ -81,7 +77,7 @@ func _ready() -> void:
 	if GameManager.stress_test_pending:
 		GameManager.stress_test_pending = false
 		var stress_gen = _stress_gen_script.new()
-		stress_gen.generate(tile_map, GameManager.map_size)
+		stress_gen.generate(null, GameManager.map_size)
 
 	# Wire HUD signals
 	hud.building_selected.connect(_on_building_selected)
@@ -115,8 +111,15 @@ func _ready() -> void:
 			GameManager.terrain_tile_types,
 			GameManager.terrain_variants
 		)
-		# Hide TileMapLayer visual rendering — keep for wall physics collision
-		tile_map.visible = false
+
+	# Scale ground plane to match map size
+	var ground_plane: MeshInstance3D = $GroundPlane
+	if ground_plane:
+		var map_sz := float(GameManager.map_size)
+		ground_plane.position = Vector3(map_sz / 2.0, -0.01, map_sz / 2.0)
+		var mesh: PlaneMesh = ground_plane.mesh
+		if mesh:
+			mesh.size = Vector2(map_sz, map_sz)
 
 	camera.target_node = player
 
@@ -220,13 +223,12 @@ func _process(delta: float) -> void:
 		_ground_tooltip_timer -= delta
 		if _ground_tooltip_timer <= 0:
 			_hide_ground_tooltip()
-		else:
-			var canvas_xform := get_viewport().get_canvas_transform()
-			var tile_top := GridUtils.grid_to_center(_ground_tooltip_grid) + GridUtils.diamond_top()
-			var screen_pos: Vector2 = canvas_xform * tile_top
+		elif camera:
+			var tile_world := GridUtils.grid_to_world_3d(_ground_tooltip_grid)
+			var screen_pos := camera.unproject_position(tile_world)
 			var popup_size := _ground_tooltip.size
 			_ground_tooltip.position = Vector2(
-				clampf(screen_pos.x - popup_size.x * 0.5, 4, get_viewport_rect().size.x - popup_size.x - 4),
+				clampf(screen_pos.x - popup_size.x * 0.5, 4, get_viewport().get_visible_rect().size.x - popup_size.x - 4),
 				screen_pos.y - popup_size.y - 4
 			)
 
@@ -278,6 +280,7 @@ func _spawn_player() -> void:
 	player = _player_scene.instantiate()
 	# Spawn at map center (grid midpoint)
 	var center_grid := Vector2i(GameManager.map_size / 2, GameManager.map_size / 2)
+	# Player is still Node2D for now — use 2D position
 	var center := GridUtils.grid_to_center(center_grid)
 	player.position = center
 	player.spawn_position = center
@@ -302,47 +305,6 @@ const WALL_NAMES = TileDatabase.WALL_NAMES
 const DEPOSIT_ITEMS = TileDatabase.DEPOSIT_ITEMS
 const WALL_ITEMS = TileDatabase.WALL_ITEMS
 
-func _create_tile_source(tile_set: TileSet, source_id: int, color: Color, has_collision: bool = false) -> void:
-	var img := Image.create(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT, false, Image.FORMAT_RGBA8)
-	# Fill with diamond shape (transparent outside the isometric tile)
-	for y in range(GridUtils.TILE_HEIGHT):
-		for x in range(GridUtils.TILE_WIDTH):
-			var dx := absf(x - GridUtils.HALF_W + 0.5)
-			var dy := absf(y - GridUtils.HALF_H + 0.5)
-			if dx / GridUtils.HALF_W + dy / GridUtils.HALF_H <= 1.0:
-				img.set_pixel(x, y, color)
-	var tex := ImageTexture.create_from_image(img)
-	var source := TileSetAtlasSource.new()
-	source.texture = tex
-	source.texture_region_size = Vector2i(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT)
-	source.create_tile(Vector2i(0, 0))
-	# Must add source to tileset before accessing TileData physics layers
-	tile_set.add_source(source, source_id)
-	if has_collision:
-		var td: TileData = source.get_tile_data(Vector2i(0, 0), 0)
-		td.set_collision_polygons_count(0, 1)
-		# Diamond collision shape
-		td.set_collision_polygon_points(0, 0, GridUtils.get_diamond_points(Vector2.ZERO))
-
-func _setup_tileset() -> void:
-	var tile_set := TileSet.new()
-	tile_set.tile_size = Vector2i(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT)
-	tile_set.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
-	tile_set.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
-	# Physics layer for wall collision (layer 2 = building collision layer)
-	tile_set.add_physics_layer()
-	tile_set.set_physics_layer_collision_layer(0, 1 << 1)
-	tile_set.set_physics_layer_collision_mask(0, 0)
-	_create_tile_source(tile_set, TILE_GROUND, Color(0.28, 0.36, 0.24))
-	for id in DEPOSIT_COLORS:
-		_create_tile_source(tile_set, id, DEPOSIT_COLORS[id])
-	for id in WALL_COLORS:
-		_create_tile_source(tile_set, id, WALL_COLORS[id], true)
-	_create_tile_source(tile_set, TILE_GROUND_DARK, Color(0.24, 0.30, 0.20))
-	_create_tile_source(tile_set, TILE_GROUND_LIGHT, Color(0.32, 0.40, 0.28))
-	_create_tile_source(tile_set, TILE_ASH, ASH_COLOR)
-	tile_map.tile_set = tile_set
-
 
 # ── Terrain Serialization ────────────────────────────────────────────────────
 
@@ -350,21 +312,15 @@ func _setup_tileset() -> void:
 func serialize_terrain() -> String:
 	var map_size := GameManager.map_size
 	var cell_count := map_size * map_size
-	# Use terrain_tile_types directly if available (already byte-per-cell)
+	# Use terrain_tile_types directly (already byte-per-cell)
 	if GameManager.terrain_tile_types.size() == cell_count:
 		return Marshalls.raw_to_base64(GameManager.terrain_tile_types)
+	# Fallback: empty terrain
 	var bytes := PackedByteArray()
 	bytes.resize(cell_count)
-	for y in range(map_size):
-		for x in range(map_size):
-			var idx := y * map_size + x
-			var source_id := tile_map.get_cell_source_id(Vector2i(x, y))
-			if source_id < 0:
-				source_id = TILE_GROUND
-			bytes[idx] = source_id
 	return Marshalls.raw_to_base64(bytes)
 
-## Restore tile map and GameManager.deposits/walls from base64 terrain data.
+## Restore terrain data from base64 terrain data.
 ## Also populates GameManager.terrain_tile_types for MultiMesh rendering.
 ## Supports both legacy nibble-packed format and new byte-per-cell format.
 func deserialize_terrain(data: String) -> void:
@@ -389,7 +345,6 @@ func deserialize_terrain(data: String) -> void:
 			else:
 				source_id = bytes[idx]
 			var pos := Vector2i(x, y)
-			tile_map.set_cell(pos, source_id, Vector2i(0, 0))
 			tile_types[idx] = source_id
 			if WALL_COLORS.has(source_id):
 				GameManager.walls[pos] = source_id
@@ -397,4 +352,3 @@ func deserialize_terrain(data: String) -> void:
 				GameManager.deposits[pos] = DEPOSIT_ITEMS[source_id]
 			# TILE_ASH: no deposit, no wall — just terrain
 	GameManager.terrain_tile_types = tile_types
-

@@ -1,28 +1,44 @@
 class_name GameCamera
-extends Camera2D
+extends Camera3D
 
 # ── Zoom ────────────────────────────────────────────────────────────────────
-const ZOOM_SPEED := 0.1
-const MIN_ZOOM := 0.5
-const MAX_ZOOM := 3.0
+const ZOOM_SPEED := 1.0
+const MIN_SIZE := 10.0
+const MAX_SIZE := 80.0
 const ZOOM_SMOOTH_SPEED := 8.0
 
 # ── Follow ──────────────────────────────────────────────────────────────────
 const FOLLOW_SPEED := 8.0
-const CURSOR_DEADZONE := 1.1       # fraction of window — cursor inside this = no offset
-const CURSOR_WEIGHT := 0.2          # max offset strength when cursor is at window edge
+const CURSOR_DEADZONE := 1.1
+const CURSOR_WEIGHT := 0.2
 
-var target_node: Node2D              # the node to follow (player)
-var _target_zoom: float = 1.0
+## Isometric camera angles (true isometric: atan(sin(45°)) ≈ 35.264°)
+const ISO_ROTATION_X := -0.6155  # -35.264 degrees in radians
+const ISO_ROTATION_Y := PI / 4.0 # 45 degrees
+
+## Height above the ground plane the camera orbits at
+const CAMERA_HEIGHT_RATIO := 1.1547  # 1/cos(35.264°) ≈ distance multiplier
+
+var target_node: Node  # the node to follow (player)
+var _target_size: float = 40.0
 
 func _ready() -> void:
-	_target_zoom = zoom.x
+	projection = PROJECTION_ORTHOGONAL
+	_target_size = size
 
-func snap_to(pos: Vector2) -> void:
-	position = pos
+func snap_to_3d(pos: Vector3) -> void:
+	var offset := _camera_offset()
+	global_position = pos + offset
+
+## Backward-compatible snap for 2D position (maps to XZ plane).
+func snap_to(pos) -> void:
+	if pos is Vector3:
+		snap_to_3d(pos)
+	elif pos is Vector2:
+		snap_to_3d(Vector3(pos.x, 0.0, pos.y))
 
 func set_target_zoom(z: float) -> void:
-	_target_zoom = clampf(z, MIN_ZOOM, MAX_ZOOM)
+	_target_size = clampf(z, MIN_SIZE, MAX_SIZE)
 
 func update_camera(real_delta: float) -> void:
 	_follow(real_delta)
@@ -31,22 +47,29 @@ func update_camera(real_delta: float) -> void:
 func handle_zoom_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_LEFT]:
-			_target_zoom = clampf(_target_zoom + ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM)
+			_target_size = clampf(_target_size - ZOOM_SPEED, MIN_SIZE, MAX_SIZE)
 		elif event.button_index in [MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_RIGHT]:
-			_target_zoom = clampf(_target_zoom - ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM)
+			_target_size = clampf(_target_size + ZOOM_SPEED, MIN_SIZE, MAX_SIZE)
 	elif event is InputEventPanGesture:
-		_target_zoom = clampf(_target_zoom - event.delta.y * ZOOM_SPEED, MIN_ZOOM, MAX_ZOOM)
+		_target_size = clampf(_target_size + event.delta.y * ZOOM_SPEED, MIN_SIZE, MAX_SIZE)
 
 # ── Follow ──────────────────────────────────────────────────────────────────
 
 func _follow(real_delta: float) -> void:
 	if not target_node or not is_instance_valid(target_node):
 		return
-	var viewport_size := get_viewport_rect().size
+	var target_pos: Vector3
+	if target_node is Node3D:
+		target_pos = target_node.global_position
+	elif target_node is Node2D:
+		# Backward compat: map 2D position to XZ plane
+		target_pos = Vector3(target_node.position.x, 0.0, target_node.position.y)
+	else:
+		return
+
+	var viewport_size := get_viewport().get_visible_rect().size
 	var mouse_screen := get_viewport().get_mouse_position()
-	# Offset from screen center in normalized [-1, 1] range per axis
 	var screen_offset := (mouse_screen - viewport_size / 2.0) / (viewport_size / 2.0)
-	# Apply dead zone: no offset while cursor is within the inner third of the window
 	var cursor_offset := Vector2.ZERO
 	for i in 2:
 		var axis: float = screen_offset[i]
@@ -54,47 +77,62 @@ func _follow(real_delta: float) -> void:
 		var abs_v: float = absf(axis)
 		if abs_v > CURSOR_DEADZONE:
 			cursor_offset[i] = sign_v * (abs_v - CURSOR_DEADZONE) / (1.0 - CURSOR_DEADZONE)
-	# Convert normalized offset to world-space shift
-	var world_shift := cursor_offset * (viewport_size / 2.0) / zoom.x * CURSOR_WEIGHT
-	var target: Vector2 = target_node.position + world_shift
+
+	# Convert screen offset to world XZ shift (approximate for ortho)
+	var world_shift := Vector3(cursor_offset.x, 0.0, cursor_offset.y) * size * CURSOR_WEIGHT
+
+	var follow_target := target_pos + world_shift
 	# Clamp to world bounds
 	var bounds := _get_bounds()
-	target.x = clampf(target.x, bounds.position.x, bounds.end.x)
-	target.y = clampf(target.y, bounds.position.y, bounds.end.y)
-	position = position.lerp(target, 1.0 - exp(-FOLLOW_SPEED * real_delta))
+	follow_target.x = clampf(follow_target.x, bounds.position.x, bounds.end.x)
+	follow_target.z = clampf(follow_target.z, bounds.position.y, bounds.end.y)
+
+	# Current look-at point on the ground plane
+	var current_ground := global_position - _camera_offset()
+	var new_ground := current_ground.lerp(follow_target, 1.0 - exp(-FOLLOW_SPEED * real_delta))
+	global_position = new_ground + _camera_offset()
 
 # ── Zoom ────────────────────────────────────────────────────────────────────
 
 func _smooth_zoom(real_delta: float) -> void:
-	if is_equal_approx(zoom.x, _target_zoom):
+	if is_equal_approx(size, _target_size):
 		return
-	var new_zoom := lerpf(zoom.x, _target_zoom, 1.0 - exp(-ZOOM_SMOOTH_SPEED * real_delta))
-	if absf(new_zoom - _target_zoom) < 0.001:
-		new_zoom = _target_zoom
-	var mouse_screen := get_viewport().get_mouse_position()
-	var viewport_size := get_viewport_rect().size
-	var mouse_offset := mouse_screen - viewport_size / 2.0
-	var world_before := position + mouse_offset / zoom.x
-	zoom = Vector2(new_zoom, new_zoom)
-	var world_after := position + mouse_offset / zoom.x
-	position += world_before - world_after
+	var new_size := lerpf(size, _target_size, 1.0 - exp(-ZOOM_SMOOTH_SPEED * real_delta))
+	if absf(new_size - _target_size) < 0.01:
+		new_size = _target_size
+	size = new_size
 
-# ── Bounds ──────────────────────────────────────────────────────────────────
+# ── Helpers ─────────────────────────────────────────────────────────────────
+
+## Camera offset from the ground-plane target point.
+## The camera looks down at ISO angle, so it sits above and behind.
+func _camera_offset() -> Vector3:
+	# Place camera along the isometric view direction, at a distance that
+	# keeps the ground target centered. For orthographic this is arbitrary
+	# distance, but needs to be far enough to not clip.
+	var dist := 100.0
+	# View direction: the -Z axis of the camera in world space
+	var view_dir := -global_transform.basis.z
+	return -view_dir * dist
 
 func _get_bounds() -> Rect2:
-	var viewport_size := get_viewport_rect().size
-	var half_view := viewport_size / (2.0 * zoom.x)
 	var n := GameManager.map_size
-	var origin := GridUtils.map_origin(n)
-	var world_size := GridUtils.map_world_size(n)
-	var min_pos := origin + half_view
-	var max_pos := origin + world_size - half_view
+	var map_size_3d := GridUtils.map_world_size_3d(n)
+	var origin := GridUtils.map_origin_3d(n)
+	# Half-view in world units (ortho size is vertical extent)
+	var half_view := size * 0.5
+	var min_pos := Vector2(origin.x + half_view, origin.z + half_view)
+	var max_pos := Vector2(origin.x + map_size_3d.x - half_view, origin.z + map_size_3d.z - half_view)
 	if min_pos.x > max_pos.x:
-		var mid := origin.x + world_size.x * 0.5
+		var mid := origin.x + map_size_3d.x * 0.5
 		min_pos.x = mid
 		max_pos.x = mid
 	if min_pos.y > max_pos.y:
-		var mid := origin.y + world_size.y * 0.5
+		var mid := origin.z + map_size_3d.z * 0.5
 		min_pos.y = mid
 		max_pos.y = mid
 	return Rect2(min_pos, max_pos - min_pos)
+
+## Project a 3D world position to screen coordinates (for UI positioning).
+func world_to_screen(world_pos: Vector3) -> Vector2:
+	return unproject_position(world_pos)

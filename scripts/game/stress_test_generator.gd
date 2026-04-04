@@ -26,7 +26,7 @@ var _bids: Dictionary  # discovered building IDs by role
 
 # ── Public entry point ────────────────────────────────────────────────────────
 
-func generate(tile_map: TileMapLayer, map_size: int) -> void:
+func generate(tile_map, map_size: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = GameManager.world_seed + 54321
 
@@ -97,7 +97,7 @@ func _build_processing_chains() -> Dictionary:
 
 # ── Deposit cluster creation ──────────────────────────────────────────────────
 
-func _create_deposit_clusters(tile_map: TileMapLayer, map_size: int, rng: RandomNumberGenerator) -> Array:
+func _create_deposit_clusters(tile_map, map_size: int, rng: RandomNumberGenerator) -> Array:
 	var clusters: Array = []
 	var margin := 10
 	var center := map_size / 2
@@ -131,7 +131,8 @@ func _create_deposit_clusters(tile_map: TileMapLayer, map_size: int, rng: Random
 					if GameManager.walls.has(pos):
 						continue
 					if rng.randf() < 0.6:
-						tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
+						if tile_map:
+							tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
 						GameManager.deposits[pos] = item_id
 						positions.append(pos)
 

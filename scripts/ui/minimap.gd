@@ -1,6 +1,6 @@
 extends Control
 
-var _camera: Camera2D
+var _camera  # GameCamera (Camera3D)
 var _last_cam_pos := Vector2.ZERO
 var _last_cam_zoom := 1.0
 var _redraw_timer: float = 0.0
@@ -11,16 +11,18 @@ var _cache_dirty: bool = true
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-func set_camera(cam: Camera2D) -> void:
+func set_camera(cam) -> void:
 	_camera = cam
 
 func _process(delta: float) -> void:
 	if not _camera:
 		return
 	# Always redraw if camera moved (lightweight — just camera rect on cached texture)
-	if _camera.position != _last_cam_pos or _camera.zoom.x != _last_cam_zoom:
-		_last_cam_pos = _camera.position
-		_last_cam_zoom = _camera.zoom.x
+	var cam_pos := _camera.global_position if _camera is Node3D else _camera.position
+	var cam_zoom: float = _camera.size if _camera is Camera3D else _camera.zoom.x
+	if Vector2(cam_pos.x, cam_pos.z if _camera is Node3D else cam_pos.y) != _last_cam_pos or cam_zoom != _last_cam_zoom:
+		_last_cam_pos = Vector2(cam_pos.x, cam_pos.z if _camera is Node3D else cam_pos.y)
+		_last_cam_zoom = cam_zoom
 		queue_redraw()
 	# Periodic check for building changes
 	_redraw_timer += delta
@@ -48,10 +50,18 @@ func _draw() -> void:
 	if _camera:
 		var scale_x := display_size.x / map_tiles
 		var scale_y := display_size.y / map_tiles
-		var cam_grid := Vector2(GridUtils.world_to_grid(_camera.position))
-		var viewport_size := get_viewport_rect().size
-		# Approximate visible grid radius (tiles visible in each direction)
-		var visible_half := viewport_size / (_camera.zoom.x * float(GridUtils.TILE_HEIGHT) * 2.0)
+		var cam_grid: Vector2
+		var visible_half: Vector2
+		if _camera is Camera3D:
+			var cam_pos: Vector3 = _camera.global_position
+			cam_grid = Vector2(GridUtils.world_to_grid_3d(cam_pos))
+			# Ortho camera: size is vertical extent in world units
+			var half_size: float = _camera.size * 0.5
+			visible_half = Vector2(half_size, half_size)
+		else:
+			cam_grid = Vector2(GridUtils.world_to_grid(_camera.position))
+			var viewport_size := get_viewport_rect().size
+			visible_half = viewport_size / (_camera.zoom.x * float(GridUtils.TILE_HEIGHT) * 2.0)
 		var tl := (cam_grid - visible_half) * Vector2(scale_x, scale_y)
 		var br := (cam_grid + visible_half) * Vector2(scale_x, scale_y)
 		draw_rect(Rect2(tl, br - tl), Color(1, 1, 1, 0.6), false, 1.0)

@@ -10,7 +10,7 @@ extends Node
 var sim_mode: String = "fast"
 var sim_name: String = ""
 var sim_map_size: int = 64  # smaller map for fast tests; override in subclass if needed
-var game_world: Node2D
+var game_world: Node
 var tick_count: int = 0
 var _failed: bool = false
 
@@ -95,10 +95,7 @@ func run_simulation() -> void:
 
 ## Clear all walls so simulations have a clean grid for building placement.
 func _sim_clear_walls() -> void:
-	var tm = game_world.find_child("TileMapLayer", false, false)
-	if tm:
-		for pos in GameManager.walls:
-			tm.set_cell(pos, 0, Vector2i(0, 0))  # TILE_GROUND = 0
+	# TileMapLayer removed in 3D transition — just clear the wall data
 	GameManager.walls.clear()
 
 ## Register a deposit at a position so drills can be placed there.

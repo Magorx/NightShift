@@ -38,7 +38,7 @@ var _seed: int
 ## Returns [tile_types: PackedByteArray, variants: PackedByteArray]
 ## tile_types: flat row-major array of tile type IDs per cell
 ## variants:   flat row-major array, low nibble = fg variant, high nibble = misc variant
-func generate(tile_map: TileMapLayer, map_size: int, world_seed: int) -> Array:
+func generate(tile_map, map_size: int, world_seed: int) -> Array:
 	_seed = world_seed
 	_rng = RandomNumberGenerator.new()
 	_rng.seed = world_seed
@@ -510,32 +510,37 @@ func _carve_line(walls: Dictionary, from: Vector2i, to: Vector2i, reachable: Dic
 
 # ── Apply to World ──────────────────────────────────────────────────────────
 
-func _apply(tile_map: TileMapLayer, map_size: int, walls: Dictionary, deposits: Dictionary, ground_variant: Dictionary, tile_types: PackedByteArray) -> void:
+func _apply(tile_map, map_size: int, walls: Dictionary, deposits: Dictionary, ground_variant: Dictionary, tile_types: PackedByteArray) -> void:
 	for x in range(map_size):
 		for y in range(map_size):
 			var pos := Vector2i(x, y)
 			var idx := y * map_size + x
 			if walls.has(pos):
 				var wall_tile: int = walls[pos]
-				tile_map.set_cell(pos, wall_tile, Vector2i(0, 0))
+				if tile_map:
+					tile_map.set_cell(pos, wall_tile, Vector2i(0, 0))
 				GameManager.walls[pos] = wall_tile
 				tile_types[idx] = wall_tile
 			elif deposits.has(pos):
 				var tile_id: int = deposits[pos]
-				tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
+				if tile_map:
+					tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
 				GameManager.deposits[pos] = DEPOSIT_ITEMS[tile_id]
 				GameManager.deposit_stocks[pos] = -1  # all deposits are infinite
 				tile_types[idx] = tile_id
 			elif ground_variant.has(pos):
 				var variant: int = ground_variant[pos]
 				if variant == 1:
-					tile_map.set_cell(pos, TILE_GROUND_DARK, Vector2i(0, 0))
+					if tile_map:
+						tile_map.set_cell(pos, TILE_GROUND_DARK, Vector2i(0, 0))
 					tile_types[idx] = TILE_GROUND_DARK
 				else:
-					tile_map.set_cell(pos, TILE_GROUND_LIGHT, Vector2i(0, 0))
+					if tile_map:
+						tile_map.set_cell(pos, TILE_GROUND_LIGHT, Vector2i(0, 0))
 					tile_types[idx] = TILE_GROUND_LIGHT
 			else:
-				tile_map.set_cell(pos, TILE_GROUND, Vector2i(0, 0))
+				if tile_map:
+					tile_map.set_cell(pos, TILE_GROUND, Vector2i(0, 0))
 				tile_types[idx] = TILE_GROUND
 
 
