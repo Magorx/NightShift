@@ -84,13 +84,22 @@ func _smooth_zoom(real_delta: float) -> void:
 func _get_bounds() -> Rect2:
 	var viewport_size := get_viewport_rect().size
 	var half_view := viewport_size / (2.0 * zoom.x)
-	var world_size := float(GridUtils.map_world_size(GameManager.map_size).x)
-	var min_pos := half_view
-	var max_pos := Vector2(world_size, world_size) - half_view
+	var n := GameManager.map_size
+	# Diamond bounding box:
+	# Top: grid(0,0) -> screen (0, 0)
+	# Bottom: grid(n-1, n-1) -> screen (0, (2n-2)*HALF_H)
+	# Left: grid(0, n-1) -> screen (-(n-1)*HALF_W, (n-1)*HALF_H)
+	# Right: grid(n-1, 0) -> screen ((n-1)*HALF_W, (n-1)*HALF_H)
+	var left := -(n - 1) * GridUtils.HALF_W
+	var right := (n - 1) * GridUtils.HALF_W
+	var top := 0.0
+	var bottom := (2 * n - 2) * GridUtils.HALF_H
+	var min_pos := Vector2(left + half_view.x, top + half_view.y)
+	var max_pos := Vector2(right - half_view.x, bottom - half_view.y)
 	if min_pos.x > max_pos.x:
-		min_pos.x = world_size / 2.0
-		max_pos.x = world_size / 2.0
+		min_pos.x = (left + right) * 0.5
+		max_pos.x = min_pos.x
 	if min_pos.y > max_pos.y:
-		min_pos.y = world_size / 2.0
-		max_pos.y = world_size / 2.0
+		min_pos.y = (top + bottom) * 0.5
+		max_pos.y = min_pos.y
 	return Rect2(min_pos, max_pos - min_pos)

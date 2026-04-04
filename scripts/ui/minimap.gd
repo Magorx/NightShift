@@ -32,30 +32,31 @@ func _process(delta: float) -> void:
 			queue_redraw()
 
 func _draw() -> void:
-	var map_px := GridUtils.map_world_size(GameManager.map_size).x
+	var map_tiles := float(GameManager.map_size)
 	var display_size := size
 
 	if _cache_dirty or not _cached_image:
-		_rebuild_cache(map_px, display_size)
+		_rebuild_cache(map_tiles, display_size)
 		_cache_dirty = false
 
 	# Draw cached texture
 	if _cached_image:
 		draw_texture_rect(_cached_image, Rect2(Vector2.ZERO, display_size), false)
 
-	# Camera viewport rectangle (drawn every frame — very cheap)
+	# Camera viewport rectangle (drawn every frame -- very cheap)
+	# Minimap shows logical grid top-down, so convert camera world pos to grid
 	if _camera:
-		var scale_x := display_size.x / map_px
-		var scale_y := display_size.y / map_px
+		var scale_x := display_size.x / map_tiles
+		var scale_y := display_size.y / map_tiles
+		var cam_grid := Vector2(GridUtils.world_to_grid(_camera.position))
 		var viewport_size := get_viewport_rect().size
-		var cam_half := viewport_size / (2.0 * _camera.zoom.x)
-		var cam_tl := _camera.position - cam_half
-		var cam_br := _camera.position + cam_half
-		var rect_tl := Vector2(cam_tl.x * scale_x, cam_tl.y * scale_y)
-		var rect_size := Vector2((cam_br.x - cam_tl.x) * scale_x, (cam_br.y - cam_tl.y) * scale_y)
-		draw_rect(Rect2(rect_tl, rect_size), Color(1, 1, 1, 0.6), false, 1.0)
+		# Approximate visible grid radius (tiles visible in each direction)
+		var visible_half := viewport_size / (_camera.zoom.x * float(GridUtils.TILE_HEIGHT) * 2.0)
+		var tl := (cam_grid - visible_half) * Vector2(scale_x, scale_y)
+		var br := (cam_grid + visible_half) * Vector2(scale_x, scale_y)
+		draw_rect(Rect2(tl, br - tl), Color(1, 1, 1, 0.6), false, 1.0)
 
-func _rebuild_cache(map_px: float, display_size: Vector2) -> void:
+func _rebuild_cache(map_tiles: float, display_size: Vector2) -> void:
 	var w := int(display_size.x)
 	var h := int(display_size.y)
 	if w <= 0 or h <= 0:
@@ -65,10 +66,10 @@ func _rebuild_cache(map_px: float, display_size: Vector2) -> void:
 	var bg := Color(0.08, 0.08, 0.1)
 	img.fill(bg)
 
-	var scale_x := display_size.x / map_px
-	var scale_y := display_size.y / map_px
+	var scale_x := display_size.x / map_tiles
+	var scale_y := display_size.y / map_tiles
 
-	# Deposits
+	# Deposits -- grid pos maps directly to minimap pixel position
 	for pos in GameManager.deposits:
 		var item_id: StringName = GameManager.deposits[pos]
 		var color := Color(0.4, 0.4, 0.4, 0.4)
@@ -76,10 +77,10 @@ func _rebuild_cache(map_px: float, display_size: Vector2) -> void:
 		if item_def:
 			color = item_def.color
 			color.a = 0.35
-		var x1 := int(pos.x * GridUtils.TILE_WIDTH * scale_x)
-		var y1 := int(pos.y * GridUtils.TILE_HEIGHT * scale_y)
-		var x2 := int((pos.x + 1) * GridUtils.TILE_WIDTH * scale_x)
-		var y2 := int((pos.y + 1) * GridUtils.TILE_HEIGHT * scale_y)
+		var x1 := int(pos.x * scale_x)
+		var y1 := int(pos.y * scale_y)
+		var x2 := int((pos.x + 1) * scale_x)
+		var y2 := int((pos.y + 1) * scale_y)
 		_fill_rect_on_image(img, x1, y1, maxi(x2 - x1, 1), maxi(y2 - y1, 1), color, w, h)
 
 	# Buildings
@@ -96,10 +97,10 @@ func _rebuild_cache(map_px: float, display_size: Vector2) -> void:
 		var color := Color.WHITE
 		if def:
 			color = def.color
-		var bx1 := int(pos.x * GridUtils.TILE_WIDTH * scale_x)
-		var by1 := int(pos.y * GridUtils.TILE_HEIGHT * scale_y)
-		var bx2 := int((pos.x + 1) * GridUtils.TILE_WIDTH * scale_x)
-		var by2 := int((pos.y + 1) * GridUtils.TILE_HEIGHT * scale_y)
+		var bx1 := int(pos.x * scale_x)
+		var by1 := int(pos.y * scale_y)
+		var bx2 := int((pos.x + 1) * scale_x)
+		var by2 := int((pos.y + 1) * scale_y)
 		_fill_rect_on_image(img, bx1, by1, maxi(bx2 - bx1, 2), maxi(by2 - by1, 2), color, w, h)
 
 	_cached_building_count = GameManager.unique_buildings.size()
@@ -125,10 +126,10 @@ func _gui_input(event: InputEvent) -> void:
 func _pan_camera_to(local_pos: Vector2) -> void:
 	if not _camera:
 		return
-	var map_px := GridUtils.map_world_size(GameManager.map_size).x
-	var world_x := (local_pos.x / size.x) * map_px
-	var world_y := (local_pos.y / size.y) * map_px
-	_camera.position = Vector2(world_x, world_y)
+	var map_tiles := float(GameManager.map_size)
+	var grid_x := local_pos.x / size.x * map_tiles
+	var grid_y := local_pos.y / size.y * map_tiles
+	_camera.position = GridUtils.grid_to_center(Vector2i(int(grid_x), int(grid_y)))
 
 func _get_item_def(item_id: StringName):
 	return GameManager.get_item_def(item_id)

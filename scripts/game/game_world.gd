@@ -222,7 +222,7 @@ func _process(delta: float) -> void:
 			_hide_ground_tooltip()
 		else:
 			var canvas_xform := get_viewport().get_canvas_transform()
-			var tile_top := GridUtils.grid_to_world(_ground_tooltip_grid) + Vector2(GridUtils.HALF_W, 0)
+			var tile_top := GridUtils.grid_to_center(_ground_tooltip_grid) + Vector2(0, -GridUtils.HALF_H)
 			var screen_pos: Vector2 = canvas_xform * tile_top
 			var popup_size := _ground_tooltip.size
 			_ground_tooltip.position = Vector2(
@@ -276,8 +276,9 @@ func _open_pause_menu() -> void:
 
 func _spawn_player() -> void:
 	player = _player_scene.instantiate()
-	# Spawn at map center
-	var center := GridUtils.map_world_size(GameManager.map_size) * 0.5
+	# Spawn at map center (grid midpoint)
+	var center_grid := Vector2i(GameManager.map_size / 2, GameManager.map_size / 2)
+	var center := GridUtils.grid_to_center(center_grid)
 	player.position = center
 	player.spawn_position = center
 	add_child(player)
@@ -303,7 +304,13 @@ const WALL_ITEMS = TileDatabase.WALL_ITEMS
 
 func _create_tile_source(tile_set: TileSet, source_id: int, color: Color, has_collision: bool = false) -> void:
 	var img := Image.create(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT, false, Image.FORMAT_RGBA8)
-	img.fill(color)
+	# Fill with diamond shape (transparent outside the isometric tile)
+	for y in range(GridUtils.TILE_HEIGHT):
+		for x in range(GridUtils.TILE_WIDTH):
+			var dx := absf(x - GridUtils.HALF_W + 0.5)
+			var dy := absf(y - GridUtils.HALF_H + 0.5)
+			if dx / GridUtils.HALF_W + dy / GridUtils.HALF_H <= 1.0:
+				img.set_pixel(x, y, color)
 	var tex := ImageTexture.create_from_image(img)
 	var source := TileSetAtlasSource.new()
 	source.texture = tex
@@ -313,15 +320,19 @@ func _create_tile_source(tile_set: TileSet, source_id: int, color: Color, has_co
 	tile_set.add_source(source, source_id)
 	if has_collision:
 		var td: TileData = source.get_tile_data(Vector2i(0, 0), 0)
-		var hs := GridUtils.HALF_W
+		var hw := GridUtils.HALF_W
+		var hh := GridUtils.HALF_H
 		td.set_collision_polygons_count(0, 1)
+		# Diamond collision shape
 		td.set_collision_polygon_points(0, 0, PackedVector2Array([
-			Vector2(-hs, -hs), Vector2(hs, -hs), Vector2(hs, hs), Vector2(-hs, hs)
+			Vector2(0, -hh), Vector2(hw, 0), Vector2(0, hh), Vector2(-hw, 0)
 		]))
 
 func _setup_tileset() -> void:
 	var tile_set := TileSet.new()
 	tile_set.tile_size = Vector2i(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT)
+	tile_set.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
+	tile_set.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
 	# Physics layer for wall collision (layer 2 = building collision layer)
 	tile_set.add_physics_layer()
 	tile_set.set_physics_layer_collision_layer(0, 1 << 1)
