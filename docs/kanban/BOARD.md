@@ -2,6 +2,206 @@
 
 ## Backlog
 
+### **3D.1** GridUtils 3D API + dual-API bridge `2h`
+
+  - tags: [3d-transition, foundation, de-risk]
+  - priority: critical
+  - steps:
+      - [ ] Add `grid_to_world_3d(grid_pos) -> Vector3` — maps grid X,Y to world X,Z (Y=0 ground plane)
+      - [ ] Add `world_to_grid_3d(world_pos: Vector3) -> Vector2i` — projects XZ back to grid
+      - [ ] Add `grid_offset_3d()`, `grid_dir_to_world_3d()`, `tile_transform_3d() -> Transform3D`
+      - [ ] Rename existing functions to `*_2d` aliases (backward compat, nothing breaks)
+      - [ ] Keep `grid_to_world()` as alias to `grid_to_world_2d()` temporarily
+      - [ ] Add unit tests for all 3D functions in `tests/unit/test_grid_utils.gd`
+    ```md
+    Dependency root — every rendering/placement system calls GridUtils.
+    Purely additive: existing 2D code keeps working via aliases.
+    Grid coordinate system (Vector2i) is unchanged.
+    ```
+
+### **3D.2** Game world scene tree: Node2D → Node3D `3h`
+
+  - tags: [3d-transition, scene-tree, high-risk]
+  - priority: critical
+  - depends: 3D.1
+  - steps:
+      - [ ] Recreate `game_world.tscn`: root Node3D, Camera3D (orthographic), remove TileMapLayer
+      - [ ] Add temporary MeshInstance3D ground plane (flat green) for visual reference
+      - [ ] Rewrite `game_camera.gd` as Camera3D: orthographic projection, follow player, zoom via `size`
+      - [ ] Mouse-to-world via `project_ray_origin` + ground plane intersection
+      - [ ] Update `game_world.gd`: extends Node3D, stub out `_setup_tileset()`, remove tile_map refs
+      - [ ] Update `game_manager.gd`: building_layer/item_layer → Node3D, remove z_index constants
+      - [ ] Temporarily disable `grid_overlay.gd`
+      - [ ] Verify: game launches, camera shows 3D scene, HUD renders, headless sims pass
+    ```md
+    Highest-risk card. Converts the scene container so all subsequent cards
+    plug into a 3D context. Game logic (pull system, conveyors) operates on
+    Vector2i grid coords and doesn't care about node types.
+    ```
+
+### **3D.3** BuildSystem 3D input (mouse → grid via raycast) `2h`
+
+  - tags: [3d-transition, input]
+  - priority: critical
+  - depends: 3D.2
+  - steps:
+      - [ ] Rewrite `_get_grid_pos_under_mouse()`: Camera3D raycast to Y=0 plane → `world_to_grid_3d()`
+      - [ ] Ghost preview positioning: `grid_to_world_3d()` for Vector3 placement
+      - [ ] Convert `_draw()` overlays: project 3D positions to CanvasLayer overlay (or stub initially)
+      - [ ] Update `building_popup.gd`: use `camera.unproject_position()` for screen positioning
+      - [ ] Update `minimap.gd`: map grid positions directly to minimap pixels
+    ```md
+    Without working mouse-to-grid, you can't place buildings or test interactively.
+    Overlay drawing (_draw calls) can be stubbed — functional placement is the priority.
+    ```
+
+### **3D.4** Player CharacterBody2D → CharacterBody3D `2h`
+
+  - tags: [3d-transition, player]
+  - priority: critical
+  - depends: 3D.2
+  - steps:
+      - [ ] Rewrite `player.gd`: extends CharacterBody3D, velocity Vector3 (XZ movement, Y for jump)
+      - [ ] Replace fake z_height/z_velocity with real Y-axis physics
+      - [ ] WASD moves along world X and Z axes
+      - [ ] `_handle_conveyor_push()`: direction from `grid_dir_to_world_3d()`
+      - [ ] `_get_grid_pos()`: uses `world_to_grid_3d(global_position)`
+      - [ ] Recreate `player.tscn`: CharacterBody3D + CollisionShape3D + placeholder mesh (colored capsule)
+      - [ ] Convert `building_collision.gd`: StaticBody3D + BoxShape3D per tile
+      - [ ] Convert `ground_item.gd/tscn`: Node3D, items sit on ground plane
+      - [ ] Stub mining visuals (_draw calls) for now
+    ```md
+    Can be done in parallel with 3D.3 and 3D.5 — all depend on 3D.2 but not each other.
+    Inventory/pickup/stamina logic stays untouched.
+    ```
+
+### **3D.5** Terrain rendering: MultiMesh3D ground plane `2h`
+
+  - tags: [3d-transition, terrain]
+  - priority: critical
+  - depends: 3D.2
+  - steps:
+      - [ ] Create `BaseMultiMeshManager3D`: TRANSFORM_3D, MultiMeshInstance3D, unit quad in XZ plane
+      - [ ] Rewrite `terrain_visual_manager.gd` for 3D: spatial shader (unshaded), atlas UVs unchanged
+      - [ ] Use existing diamond atlas on diamond-shaped quads initially (switch to square tiles later)
+      - [ ] Wire up in `game_world.gd` (replaces TileMapLayer)
+      - [ ] Wall collision: StaticBody3D + BoxShape3D at wall grid positions
+    ```md
+    Can be done in parallel with 3D.3 and 3D.4. Replaces TileMapLayer removed in 3D.2.
+    World generation logic and terrain data format unchanged.
+    ```
+
+### **3D.6** Building base Node3D + placeholder meshes `2h`
+
+  - tags: [3d-transition, buildings]
+  - priority: critical
+  - depends: 3D.2
+  - steps:
+      - [ ] Change `building_base.gd`: extends Node3D, position is Vector3
+      - [ ] Rotation: `building.rotation.y = rotation * PI / 2.0` (replaces 2D rotation system)
+      - [ ] Add `scene_3d: PackedScene` field to BuildingDef (optional, for future real models)
+      - [ ] Keep 2D .tscn files for data extraction (shape/IO) — never rendered, just read and freed
+      - [ ] Generate CSGBox3D placeholder for each building type (colored by building identity)
+      - [ ] Stub `_update_building_sprites()` (no AnimatedSprite2D in 3D; animation comes later)
+      - [ ] Verify: buildings can be placed, removed, rotated; pull system works
+    ```md
+    Buildings appear as colored boxes. All building logic (pull, recipes, IO) stays intact.
+    BuildingDef.extract_from_scene() keeps reading 2D scenes for data only.
+    ```
+
+### **3D.7** Conveyor + item visual manager 3D `3h`
+
+  - tags: [3d-transition, conveyors, high-risk]
+  - priority: critical
+  - depends: 3D.5, 3D.6
+  - steps:
+      - [ ] Rewrite `conveyor_visual_manager.gd`: extends BaseMultiMeshManager3D, spatial shader
+      - [ ] Port conveyor stripe animation shader to `shader_type spatial; render_mode unshaded`
+      - [ ] Atlas UV logic unchanged, instance_custom_data encoding unchanged
+      - [ ] Rewrite `item_visual_manager.gd`: items as small billboard quads above conveyor surface
+      - [ ] Update `conveyor.gd` `_position_item()`: `grid_to_center_3d()`, `grid_offset_3d()` for bezier path
+      - [ ] Update `conveyor_system.gd` `_pickup_ground_items()`: `world_to_grid_3d()`
+      - [ ] Test: straight conveyor line, items flow, atlas variants correct
+    ```md
+    Most complex visual system. Conveyor logic (buffer, pull, speed tiers) is untouched.
+    The spatial shader rewrite needs careful UV mapping — test incrementally.
+    ```
+
+### **3D.8** Simulation + test infrastructure update `1.5h`
+
+  - tags: [3d-transition, testing]
+  - priority: high
+  - depends: 3D.7
+  - steps:
+      - [ ] Update `simulation_base.gd`: game_world type → Node3D, remove TileMapLayer refs
+      - [ ] Run all simulations headless — verify logic tests pass
+      - [ ] Update screenshot baselines (everything looks different in 3D)
+      - [ ] Verify GridUtils 3D unit tests comprehensive
+    ```md
+    Most simulation code operates at the GameManager API level.
+    Logic tests should pass; visual baselines need refresh.
+    ```
+
+### **3D.9** GridUtils 2D API removal (cleanup) `1h`
+
+  - tags: [3d-transition, cleanup]
+  - priority: medium
+  - depends: 3D.8
+  - steps:
+      - [ ] Remove all `*_2d` aliases from GridUtils
+      - [ ] Rename `grid_to_world_3d` → `grid_to_world` (returns Vector3)
+      - [ ] Remove isometric math: TILE_WIDTH/HEIGHT, basis vectors, diamond helpers, ROTATION
+      - [ ] Grep all files for remaining 2D API calls, update
+      - [ ] Remove `grid_overlay.gd` if not replaced
+    ```md
+    Mechanical cleanup. GridUtils becomes much simpler: just grid↔3D math.
+    ```
+
+### **3D.10** Save/load migration `1h`
+
+  - tags: [3d-transition, save-system]
+  - priority: medium
+  - depends: 3D.8
+  - steps:
+      - [ ] Add version field to save format in `save_manager.gd`
+      - [ ] Detect 2D saves, migrate player position (screen-space → 3D world)
+      - [ ] Building positions stored as Vector2i grid coords — no change needed
+      - [ ] Terrain stored as tile type bytes — no change needed
+      - [ ] Player serialization: position_x → world X, position_y → world Z, add position_y_height
+    ```md
+    Grid-based data (buildings, terrain) survives unchanged.
+    Only player position needs coordinate space migration.
+    ```
+
+### **3D.11** 3D grid overlay + debug visualization `1.5h`
+
+  - tags: [3d-transition, polish]
+  - priority: low
+  - depends: 3D.9
+  - steps:
+      - [ ] Rewrite grid_overlay using ImmediateMesh or ArrayMesh on ground plane
+      - [ ] Add debug visualization for building footprints, IO directions
+      - [ ] 3D destroy highlight (shader on MeshInstance3D or decal)
+    ```md
+    Polish card. Not required for gameplay but useful for development.
+    ```
+
+### **3D.12** Real building models via Blender pipeline `3h+`
+
+  - tags: [3d-transition, art, ongoing]
+  - priority: low
+  - depends: 3D.6
+  - steps:
+      - [ ] Set up Blender Python infrastructure (`tools/blender/render.py`, materials)
+      - [ ] Create prefab generators: cog, pipe, box (see `docs/blender_transition.md`)
+      - [ ] Build drill scene script, export as .glb, import into Godot
+      - [ ] Set `BuildingDef.scene_3d` for each building to use real model
+      - [ ] Implement AnimationPlayer-based building animations (replacing AnimatedSprite2D)
+    ```md
+    Ongoing art task. Replaces CSG placeholders with real models one by one.
+    See docs/blender_transition.md for full pipeline design.
+    ```
+
 ### **P3.1** RoundManager autoload singleton `2h`
 
   - tags: [phase-3, core]
