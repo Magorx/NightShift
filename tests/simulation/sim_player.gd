@@ -68,7 +68,8 @@ func run_simulation() -> void:
 	sim_assert(player.collision_mask == 0, "Elevated collision mask is 0 (no building collision)")
 
 	# Move off building → ground height should be 0
-	player.position = GridUtils.grid_to_world(smelter_pos) + Vector2(-48, GridUtils.HALF_H)
+	# Move to a grid cell well away from the smelter
+	player.position = GridUtils.grid_to_center(smelter_pos + Vector2i(-5, 0))
 	sim_assert(player._get_ground_height() < 0.01, "Empty tile has ground height 0")
 
 	# Reset to grounded on ground

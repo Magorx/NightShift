@@ -21,10 +21,11 @@ static func grid_to_center(grid_pos: Vector2i) -> Vector2:
 	return grid_to_world(grid_pos)
 
 ## Convert world position to grid coordinates (isometric diamond picking).
+## Uses +0.5 offset because grid_to_world returns tile centers (not corners).
 static func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var gx := (world_pos.x / HALF_W + world_pos.y / HALF_H) * 0.5
 	var gy := (world_pos.y / HALF_H - world_pos.x / HALF_W) * 0.5
-	return Vector2i(floori(gx), floori(gy))
+	return Vector2i(floori(gx + 0.5), floori(gy + 0.5))
 
 ## Get a point offset from grid cell center along a GRID direction.
 ## direction should be a grid-space direction like Vector2(1,0), Vector2(0,1), etc.
