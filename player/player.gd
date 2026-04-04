@@ -119,16 +119,33 @@ func _unhandled_input(event: InputEvent) -> void:
 # -- Movement ----------------------------------------------------------------
 
 func _handle_movement(delta: float) -> void:
-	# WASD maps to world X/Z axes (screen-space movement)
-	var input_dir := Vector3.ZERO
+	# Screen-space WASD: project input through the isometric camera orientation.
+	# Camera is 45° Y-rotated, so screen-up = world (-X, -Z), screen-right = world (+X, -Z).
+	var input_2d := Vector2.ZERO
 	if Input.is_action_pressed(&"pan_up"):
-		input_dir.z -= 1
+		input_2d.y -= 1
 	if Input.is_action_pressed(&"pan_down"):
-		input_dir.z += 1
+		input_2d.y += 1
 	if Input.is_action_pressed(&"pan_left"):
-		input_dir.x -= 1
+		input_2d.x -= 1
 	if Input.is_action_pressed(&"pan_right"):
-		input_dir.x += 1
+		input_2d.x += 1
+	# Rotate screen input by camera Y angle to get world XZ direction
+	var cam := get_viewport().get_camera_3d()
+	var input_dir := Vector3.ZERO
+	if cam and input_2d != Vector2.ZERO:
+		var cam_basis := cam.global_transform.basis
+		var forward := -cam_basis.z
+		var right := cam_basis.x
+		# Project onto XZ plane and normalize
+		forward.y = 0
+		right.y = 0
+		forward = forward.normalized()
+		right = right.normalized()
+		input_dir = (right * input_2d.x + forward * -input_2d.y)
+		input_dir.y = 0
+		if input_dir.length() > 0.01:
+			input_dir = input_dir.normalized()
 
 	if input_dir != Vector3.ZERO:
 		input_dir = input_dir.normalized()
