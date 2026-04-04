@@ -2,167 +2,6 @@
 
 ## Backlog
 
-### **ISO.1** Centralize all coordinate math into GridUtils `3h`
-
-  - tags: [isometric, refactor, critical-path]
-  - priority: critical
-  - steps:
-      - [ ] Create `scripts/autoload/grid_utils.gd` with `grid_to_world(grid_pos)`, `world_to_grid(world_pos)`, `grid_to_center(grid_pos)` functions
-      - [ ] Register as autoload in Project Settings
-      - [ ] Replace all 16 duplicate `TILE_SIZE` constants -- single source of truth in GridUtils
-      - [ ] Replace all `floori(pos.x / TILE_SIZE)` patterns (build_system, conveyor_system, player, ground_item, building_def) with `GridUtils.world_to_grid()`
-      - [ ] Replace all `Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE/2, TILE_SIZE/2)` patterns with `GridUtils.grid_to_center()`
-      - [ ] Replace all `Vector2(grid_pos) * TILE_SIZE` (top-left) with `GridUtils.grid_to_world()`
-      - [ ] Fix hardcoded `32` literals in ground_item.gd, sim_stress_test.gd, sim_conveyor_visuals.gd, sim_player.gd
-      - [ ] Add `grid_offset(grid_pos, direction, fraction)` for conveyor entry/exit point math
-      - [ ] Run all simulations -- zero visual change, pure refactor
-    ```md
-    De-risk step: 80+ coordinate conversions across 26 files funneled through one utility.
-    After this, switching to isometric is a single-point change in GridUtils.
-    Hardcoded 32 in shaders (conveyor_visual_manager.gd GLSL) noted but handled in ISO.4.
-    ```
-
-### **ISO.2** Switch GridUtils to isometric diamond projection `2h`
-
-  - tags: [isometric, engine]
-  - priority: critical
-  - depends: ISO.1
-  - steps:
-      - [ ] Change TileSet tile_shape to Isometric, tile_layout to Diamond Downward
-      - [ ] Set tile_size to `Vector2i(64, 32)` (2:1 dimetric ratio)
-      - [ ] Update GridUtils: `grid_to_world()` and `grid_to_center()` use `tilemap.map_to_local()`
-      - [ ] Update GridUtils: `world_to_grid()` uses `tilemap.local_to_map()`
-      - [ ] Adjust texture_origin in TileSet to fix mouse picking alignment
-      - [ ] Update camera bounds calculation in game_camera.gd for diamond world extents
-      - [ ] Update minimap.gd coordinate scaling for diamond projection
-      - [ ] Run parse check + basic sim to verify grid math works
-    ```md
-    The actual projection switch. Because ISO.1 centralized everything, this changes
-    two functions and the TileSet config. Sprites will look wrong (still top-down art)
-    but placement/logic should work on the diamond grid.
-    ```
-
-### **ISO.3** Y-sort scene hierarchy + depth sorting `1.5h`
-
-  - tags: [isometric, engine]
-  - priority: critical
-  - depends: ISO.2
-  - steps:
-      - [ ] Restructure GameWorld.tscn: separate GroundLayer (no sort) from ObjectLayer (y_sort_enabled)
-      - [ ] Move BuildingLayer, ConveyorVisualManager, ItemVisualManager under ObjectLayer
-      - [ ] Remove manual z_index constants (Z_BUILDING_BASE, Z_CONVEYOR, Z_ITEM, etc.) from GameManager
-      - [ ] Set y_sort_origin on buildings to their southernmost cell (lowest grid_y)
-      - [ ] For MultiMesh renderers (conveyors, items): sort instances by y-position or split into per-row batches
-      - [ ] Test: buildings closer to camera (higher grid_y) draw on top of buildings further away
-    ```md
-    Replace the flat z_index layering with proper isometric depth sorting.
-    MultiMesh y-sorting is the tricky part -- may need custom sort or shader discard.
-    ```
-
-### **ISO.4** Update BuildSystem for diamond grid `2.5h`
-
-  - tags: [isometric, gameplay]
-  - priority: critical
-  - depends: ISO.2
-  - steps:
-      - [ ] Update `_get_grid_pos_under_mouse()` to use `GridUtils.world_to_grid(get_global_mouse_position())`
-      - [ ] Fix drag placement axis detection -- mouse movement is diagonal relative to grid axes in diamond view
-      - [ ] Update ghost preview positioning to use `GridUtils.grid_to_world()`
-      - [ ] Update destroy rectangle visualization for diamond shape (not screen-axis-aligned rectangle)
-      - [ ] Fix building rotation preview -- isometric shows different faces per rotation
-      - [ ] Update grid_overlay.gd to draw diamond grid lines instead of square
-      - [ ] Test: place, rotate, drag-place, and destroy buildings on diamond grid
-    ```md
-    Most complex code change. Drag detection needs rethinking because
-    "horizontal drag" in screen space crosses both grid axes in diamond projection.
-    ```
-
-### **ISO.5** Update ConveyorSystem + item rendering for isometric `2h`
-
-  - tags: [isometric, engine]
-  - priority: critical
-  - depends: ISO.2
-  - steps:
-      - [ ] Update conveyor_visual_manager.gd: mesh quad size to 64x32, position via GridUtils
-      - [ ] Update item path calculations in conveyor.gd, junction.gd, splitter.gd, underground_transport_logic.gd to use `GridUtils.grid_offset()`
-      - [ ] Fix conveyor rotation math -- direction-to-radians mapping changes for diamond grid
-      - [ ] Update GLSL shader: fix hardcoded 32.0 values for new tile dimensions
-      - [ ] Update item_visual_manager.gd positioning for isometric coordinates
-      - [ ] Test: items flow correctly along conveyors in diamond view
-    ```md
-    Conveyor entry/exit points and item lerp paths must follow diamond-projected directions.
-    Shader stripe frequency needs recalculation for 64x32 tiles.
-    ```
-
-### **ISO.6** Isometric terrain art `3h`
-
-  - tags: [isometric, art]
-  - priority: high
-  - depends: ISO.2
-  - steps:
-      - [ ] Design isometric terrain palette (ground, stone, walls) at 64x32 diamond tiles
-      - [ ] Redraw terrain_atlas.png with isometric variants (8 cols x 15 rows, now 64x32 per tile)
-      - [ ] Redraw deposit sprites (pyromite, crystalline, biovine) in isometric
-      - [ ] Update terrain_visual_manager.gd atlas UVs and mesh size for new tile dimensions
-      - [ ] Update TileSet texture regions for wall collision tiles
-    ```md
-    First art pass. Terrain sets the visual foundation -- everything else sits on top.
-    Diamond tiles show top face + slight front edge for depth.
-    ```
-
-### **ISO.7** Isometric building sprites `4h`
-
-  - tags: [isometric, art]
-  - priority: high
-  - depends: ISO.6
-  - steps:
-      - [ ] Redraw drill sprite: isometric perspective showing top + two visible faces
-      - [ ] Redraw smelter sprite: isometric with visible furnace opening
-      - [ ] Redraw splitter sprite: isometric with visible split paths
-      - [ ] Redraw junction sprite: isometric crossroads view
-      - [ ] Redraw sink/source sprites: isometric
-      - [ ] Each building needs 4 rotation variants (isometric rotations show different faces)
-      - [ ] Update building .tscn scenes with new sprite dimensions and offsets
-      - [ ] Update BuildingDef sprite offset handling for taller isometric sprites
-    ```md
-    Biggest art task. Each rotation looks different in isometric (you see different faces),
-    so we need 4 distinct rotation sprites per building instead of programmatic rotation.
-    ```
-
-### **ISO.8** Isometric conveyor + item art `2h`
-
-  - tags: [isometric, art]
-  - priority: high
-  - depends: ISO.6
-  - steps:
-      - [ ] Redraw conveyor atlas (straight, turn, side_input, crossroad, start) in isometric
-      - [ ] 6 variants x 4 frames animation x isometric = new atlas layout
-      - [ ] Redraw item sprites at isometric angle (or keep top-down at 16x16 -- many games do this)
-      - [ ] Update conveyor_visual_manager.gd atlas UV mapping for new layout
-      - [ ] Update player sprite for isometric perspective
-    ```md
-    Conveyor atlas is the most complex spritesheet. Items may stay top-down (small enough
-    that perspective doesn't matter). Player sprite is placeholder for M1.
-    ```
-
-### **ISO.9** Integration test: full isometric verification `1.5h`
-
-  - tags: [isometric, test]
-  - priority: high
-  - depends: ISO.3, ISO.4, ISO.5, ISO.7, ISO.8
-  - steps:
-      - [ ] Run all existing simulations -- all must pass
-      - [ ] Visual mode test: place buildings, run conveyors, verify depth sorting
-      - [ ] Screenshot baseline: capture isometric factory for regression
-      - [ ] Test edge cases: map boundaries, large buildings, tunnel connections
-      - [ ] Fix any remaining hardcoded coordinates or visual glitches
-    ```md
-    Final verification before moving to Phase 3 gameplay systems.
-    Everything built after this (rounds, combat, monsters) inherits the isometric view.
-    ```
-
----
-
 ### **P3.1** RoundManager autoload singleton `2h`
 
   - tags: [phase-3, core]
@@ -535,6 +374,80 @@
     ```md
     New sim_elemental_flow.gd: tests drill→conveyor→smelter→sink with 2-input recipes.
     Fixed simulation exit hang (reset time_scale before quit). All 8 sims pass.
+    ```
+
+### **ISO.1** Centralize all coordinate math into GridUtils (2026-04-04)
+
+  - tags: [isometric, refactor, critical-path]
+    ```md
+    De-risk step: 80+ coordinate conversions across 26 files funneled through one utility.
+    After this, switching to isometric is a single-point change in GridUtils.
+    Hardcoded 32 in shaders (conveyor_visual_manager.gd GLSL) noted but handled in ISO.4.
+    ```
+
+### **ISO.2** Switch GridUtils to isometric diamond projection (2026-04-04)
+
+  - tags: [isometric, engine]
+    ```md
+    The actual projection switch. Because ISO.1 centralized everything, this changes
+    two functions and the TileSet config. Sprites will look wrong (still top-down art)
+    but placement/logic should work on the diamond grid.
+    ```
+
+### **ISO.3** Y-sort scene hierarchy + depth sorting (2026-04-04)
+
+  - tags: [isometric, engine]
+    ```md
+    Replace the flat z_index layering with proper isometric depth sorting.
+    MultiMesh y-sorting is the tricky part -- may need custom sort or shader discard.
+    ```
+
+### **ISO.4** Update BuildSystem for diamond grid (2026-04-04)
+
+  - tags: [isometric, gameplay]
+    ```md
+    Most complex code change. Drag detection needs rethinking because
+    "horizontal drag" in screen space crosses both grid axes in diamond projection.
+    ```
+
+### **ISO.5** Update ConveyorSystem + item rendering for isometric (2026-04-04)
+
+  - tags: [isometric, engine]
+    ```md
+    Conveyor entry/exit points and item lerp paths must follow diamond-projected directions.
+    Shader stripe frequency needs recalculation for 64x32 tiles.
+    ```
+
+### **ISO.6** Isometric terrain art (2026-04-04)
+
+  - tags: [isometric, art]
+    ```md
+    First art pass. Terrain sets the visual foundation -- everything else sits on top.
+    Diamond tiles show top face + slight front edge for depth.
+    ```
+
+### **ISO.7** Isometric building sprites (2026-04-04)
+
+  - tags: [isometric, art]
+    ```md
+    Biggest art task. Each rotation looks different in isometric (you see different faces),
+    so we need 4 distinct rotation sprites per building instead of programmatic rotation.
+    ```
+
+### **ISO.8** Isometric conveyor + item art (2026-04-04)
+
+  - tags: [isometric, art]
+    ```md
+    Conveyor atlas is the most complex spritesheet. Items may stay top-down (small enough
+    that perspective doesn't matter). Player sprite is placeholder for M1.
+    ```
+
+### **ISO.9** Integration test: full isometric verification (2026-04-04)
+
+  - tags: [isometric, test]
+    ```md
+    Final verification before moving to Phase 3 gameplay systems.
+    Everything built after this (rounds, combat, monsters) inherits the isometric view.
     ```
 
 ## Post-M1 Backlog
