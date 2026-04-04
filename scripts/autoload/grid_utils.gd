@@ -82,6 +82,15 @@ static func map_origin(map_tiles: int) -> Vector2:
 static func tile_size_vec() -> Vector2:
 	return Vector2(TILE_WIDTH, TILE_HEIGHT)
 
+## Transform2D that maps a unit quad (-0.5..0.5) to a tile at grid_pos.
+## Used for MultiMesh instances so art stretches/rotates to match the grid.
+static func tile_transform(grid_pos: Vector2i) -> Transform2D:
+	return Transform2D(
+		Vector2(TILE_WIDTH, 0).rotated(ROTATION),
+		Vector2(0, TILE_HEIGHT).rotated(ROTATION),
+		grid_to_center(grid_pos)
+	)
+
 ## Convert a grid-space direction to screen-space direction (normalized).
 static func grid_dir_to_screen(grid_dir: Vector2) -> Vector2:
 	return (_basis_x * grid_dir.x + _basis_y * grid_dir.y).normalized()

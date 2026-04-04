@@ -33,6 +33,11 @@ func _grow(new_capacity: int) -> void:
 static func create_quad_mesh(tile_size: float) -> Mesh:
 	return create_rect_mesh(tile_size, tile_size)
 
+## Create a 1x1 unit quad centered at origin. Use instance transforms to
+## scale/rotate/position. Useful when tiles have non-axis-aligned shapes.
+static func create_unit_quad() -> Mesh:
+	return create_rect_mesh(1.0, 1.0)
+
 ## Create a rectangular quad mesh centered at the origin.
 static func create_rect_mesh(width: float, height: float) -> Mesh:
 	var arr_mesh := ArrayMesh.new()

@@ -19,7 +19,7 @@ func _init() -> void:
 	multimesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_2D
 	multimesh.use_custom_data = true
-	multimesh.mesh = BaseMultiMeshManager.create_rect_mesh(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT)
+	multimesh.mesh = BaseMultiMeshManager.create_unit_quad()
 
 	_material = _create_material()
 
@@ -38,9 +38,8 @@ func attach_to(parent: Node) -> void:
 func register(grid_pos: Vector2i, conv) -> void:
 	var idx := _allocate()
 	_idx_map[grid_pos] = idx
-	var center := GridUtils.grid_to_center(grid_pos)
-	multimesh.set_instance_transform_2d(idx, Transform2D(0, center))
-	# custom_data: r=variant_row, g=flip_v, b=highlight, a=direction (for future iso sprites)
+	multimesh.set_instance_transform_2d(idx, GridUtils.tile_transform(grid_pos))
+	# custom_data: r=variant_row, g=flip_v, b=highlight, a=direction
 	multimesh.set_instance_custom_data(idx, Color(5.0, 0.0, 0.0, float(conv.direction)))
 
 func unregister(grid_pos: Vector2i) -> void:
@@ -82,8 +81,7 @@ func update_variant(conv) -> void:
 	elif has_back:
 		variant_row = 0.0  # straight
 
-	var center := GridUtils.grid_to_center(conv.grid_pos)
-	multimesh.set_instance_transform_2d(idx, Transform2D(0, center))
+	multimesh.set_instance_transform_2d(idx, GridUtils.tile_transform(conv.grid_pos))
 	multimesh.set_instance_custom_data(idx, Color(variant_row, flip_v, 0.0, float(conv.direction)))
 
 func update_animation() -> void:

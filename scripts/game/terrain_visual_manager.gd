@@ -132,8 +132,7 @@ func build(map_size: int, tile_types: PackedByteArray, variants: PackedByteArray
 			var fg_var: int = v & 0x0F
 			var misc_var: int = (v >> 4) & 0x0F
 
-			var center := GridUtils.grid_to_center(Vector2i(x, y))
-			var xform := Transform2D(0, center)
+			var xform := GridUtils.tile_transform(Vector2i(x, y))
 
 			if not ATLAS.has(tile_type):
 				# Fallback: use grass
@@ -176,7 +175,11 @@ func update_cell(map_size: int, x: int, y: int, tile_type: int, fg_var: int, mis
 	if GRASS_TINTS.has(actual_type):
 		tint = GRASS_TINTS[actual_type]
 	var center := GridUtils.grid_to_center(Vector2i(x, y))
-	var xform := Transform2D(0, center)
+	var xform := Transform2D(
+		Vector2(GridUtils.TILE_WIDTH, 0).rotated(GridUtils.ROTATION),
+		Vector2(0, GridUtils.TILE_HEIGHT).rotated(GridUtils.ROTATION),
+		center
+	)
 	_set_instance(_bg_mm, idx, xform, entry["bg"], tint)
 	var fg_arr: Array = entry["fg"]
 	_set_instance(_fg_mm, idx, xform, fg_arr[fg_var % fg_arr.size()], tint)
@@ -200,7 +203,7 @@ func _create_layer(texture: Texture2D, shader: Shader, z: int) -> Array:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_2D
 	mm.use_custom_data = true
-	mm.mesh = BaseMultiMeshManager.create_rect_mesh(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT)
+	mm.mesh = BaseMultiMeshManager.create_unit_quad()
 
 	var inst := MultiMeshInstance2D.new()
 	inst.multimesh = mm
