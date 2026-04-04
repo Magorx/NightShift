@@ -1,11 +1,11 @@
-extends BaseMultiMeshManager
+extends RefCounted
 
-## Renders terrain via three MultiMeshInstance2D layers (bg, fg, misc) using
-## an atlas texture.  Each tile has a base type, a foreground variant index,
-## and a misc variant index.  The shader selects the correct atlas cell via
-## INSTANCE_CUSTOM data encoding (atlas_col, atlas_row).
+## Renders terrain via three MultiMeshInstance3D layers (bg, fg, misc) using
+## an atlas texture and a spatial shader.  Each tile is a PlaneMesh quad on
+## the XZ ground plane (Y=0).  Atlas cell selection uses INSTANCE_CUSTOM data
+## encoding (atlas_col, atlas_row, tint_r, tint_g).
 ##
-## Atlas layout (8 cols × 15 rows of 64×32 isometric tiles):
+## Atlas layout (8 cols x 15 rows of 64x32 isometric tiles):
 ##   See ATLAS_INDEX below for the mapping from (tile_type, layer, variant)
 ##   to flat atlas index.  Row = index / 8, Col = index % 8.
 
@@ -14,7 +14,7 @@ const ATLAS_ROWS := 15
 
 # ── Atlas index table ───────────────────────────────────────────────────────
 # Maps tile_type -> { "bg": int, "fg": [int...], "misc": [int...] }
-# Indices are flat (row * 8 + col) into the 8×10 atlas.
+# Indices are flat (row * 8 + col) into the 8x15 atlas.
 
 # Tile type constants (match game_world.gd)
 const T_GROUND := 0
@@ -83,29 +83,30 @@ const ATLAS := {
 var _bg_mm: MultiMesh
 var _fg_mm: MultiMesh
 var _misc_mm: MultiMesh
-var _bg_inst: MultiMeshInstance2D
-var _fg_inst: MultiMeshInstance2D
-var _misc_inst: MultiMeshInstance2D
+var _bg_inst: MultiMeshInstance3D
+var _fg_inst: MultiMeshInstance3D
+var _misc_inst: MultiMeshInstance3D
 var _map_size: int = 0
 
 
-func attach_to(parent: Node, z_below_buildings: int = -1) -> void:
+func attach_to(parent: Node, _z_unused: int = -1) -> void:
 	var texture: Texture2D = load("res://resources/sprites/terrain/terrain_atlas.png")
 	var shader := _create_shader()
+	var mesh := _create_plane_mesh()
 
-	var bg_result := _create_layer(texture, shader, z_below_buildings)
+	var bg_result := _create_layer(texture, shader, mesh)
 	_bg_mm = bg_result[0]
 	_bg_inst = bg_result[1]
 	_bg_inst.name = "TerrainBG"
 	parent.add_child(_bg_inst)
 
-	var fg_result := _create_layer(texture, shader, z_below_buildings)
+	var fg_result := _create_layer(texture, shader, mesh)
 	_fg_mm = fg_result[0]
 	_fg_inst = fg_result[1]
 	_fg_inst.name = "TerrainFG"
 	parent.add_child(_fg_inst)
 
-	var misc_result := _create_layer(texture, shader, z_below_buildings)
+	var misc_result := _create_layer(texture, shader, mesh)
 	_misc_mm = misc_result[0]
 	_misc_inst = misc_result[1]
 	_misc_inst.name = "TerrainMisc"
@@ -132,7 +133,7 @@ func build(map_size: int, tile_types: PackedByteArray, variants: PackedByteArray
 			var fg_var: int = v & 0x0F
 			var misc_var: int = (v >> 4) & 0x0F
 
-			var xform := GridUtils.tile_transform(Vector2i(x, y))
+			var xform := GridUtils.tile_transform_3d(Vector2i(x, y))
 
 			if not ATLAS.has(tile_type):
 				# Fallback: use grass
@@ -174,12 +175,7 @@ func update_cell(map_size: int, x: int, y: int, tile_type: int, fg_var: int, mis
 	var tint := Color(1, 1, 1, 1)
 	if GRASS_TINTS.has(actual_type):
 		tint = GRASS_TINTS[actual_type]
-	var center := GridUtils.grid_to_center(Vector2i(x, y))
-	var xform := Transform2D(
-		Vector2(GridUtils.TILE_WIDTH, 0).rotated(GridUtils.ROTATION),
-		Vector2(0, GridUtils.TILE_HEIGHT).rotated(GridUtils.ROTATION),
-		center
-	)
+	var xform := GridUtils.tile_transform_3d(Vector2i(x, y))
 	_set_instance(_bg_mm, idx, xform, entry["bg"], tint)
 	var fg_arr: Array = entry["fg"]
 	_set_instance(_fg_mm, idx, xform, fg_arr[fg_var % fg_arr.size()], tint)
@@ -199,21 +195,26 @@ func clear() -> void:
 
 # ── Private ──────────────────────────────────────────────────────────────────
 
-func _create_layer(texture: Texture2D, shader: Shader, z: int) -> Array:
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_2D
-	mm.use_custom_data = true
-	mm.mesh = BaseMultiMeshManager.create_unit_quad()
+## Create a 1x1 PlaneMesh lying flat on XZ (Y=0), facing up.
+func _create_plane_mesh() -> Mesh:
+	var mesh := PlaneMesh.new()
+	mesh.size = Vector2(1, 1)
+	return mesh
 
-	var inst := MultiMeshInstance2D.new()
+
+func _create_layer(texture: Texture2D, shader: Shader, mesh: Mesh) -> Array:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_custom_data = true
+	mm.mesh = mesh
+
+	var inst := MultiMeshInstance3D.new()
 	inst.multimesh = mm
-	inst.texture = texture
-	inst.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	inst.z_index = z
 
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
-	inst.material = mat
+	mat.set_shader_parameter("atlas", texture)
+	inst.material_override = mat
 
 	return [mm, inst]
 
@@ -222,8 +223,8 @@ func _init_multimesh(mm: MultiMesh, count: int) -> void:
 	mm.instance_count = count
 
 
-func _set_instance(mm: MultiMesh, idx: int, xform: Transform2D, atlas_idx: int, tint: Color) -> void:
-	mm.set_instance_transform_2d(idx, xform)
+func _set_instance(mm: MultiMesh, idx: int, xform: Transform3D, atlas_idx: int, tint: Color) -> void:
+	mm.set_instance_transform(idx, xform)
 	@warning_ignore("integer_division")
 	var col: float = float(atlas_idx % ATLAS_COLS)
 	@warning_ignore("integer_division")
@@ -232,31 +233,37 @@ func _set_instance(mm: MultiMesh, idx: int, xform: Transform2D, atlas_idx: int, 
 	mm.set_instance_custom_data(idx, Color(col, row, tint.r, tint.g))
 
 
-
-
 func _create_shader() -> Shader:
 	var shader := Shader.new()
-	shader.code = "shader_type canvas_item;
+	shader.code = "shader_type spatial;
+render_mode unshaded, cull_disabled;
+
+uniform sampler2D atlas : source_color, filter_nearest;
+
 // Terrain atlas: 8 columns x 15 rows of 64x32 isometric tiles
 const float COLS = 8.0;
 const float ROWS = 15.0;
+
 varying flat float v_col;
 varying flat float v_row;
 varying flat float v_tint_r;
 varying flat float v_tint_g;
+
 void vertex() {
 	v_col = INSTANCE_CUSTOM.r;
 	v_row = INSTANCE_CUSTOM.g;
 	v_tint_r = INSTANCE_CUSTOM.b;
 	v_tint_g = INSTANCE_CUSTOM.a;
 }
+
 void fragment() {
 	vec2 atlas_uv = vec2((v_col + UV.x) / COLS, (v_row + UV.y) / ROWS);
-	vec4 tex = texture(TEXTURE, atlas_uv);
+	vec4 tex = texture(atlas, atlas_uv);
 	if (tex.a < 0.01) discard;
 	// Apply grass tint (non-grass tiles pass 1.0, 1.0 = no change)
 	tex.rgb *= vec3(v_tint_r, v_tint_g, v_tint_r);
-	COLOR = tex;
+	ALBEDO = tex.rgb;
+	ALPHA = tex.a;
 }
 "
 	return shader
