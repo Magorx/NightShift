@@ -4,6 +4,10 @@
 -- occlusion via the depth buffer, applies shading and textures, then
 -- draws outlines.
 --
+-- Lighting: scenes have a light list. If no lights are added explicitly,
+-- the default setup (ambient 0.35 + directional 0.65) is used, matching
+-- the old Iso.shade_color behavior.
+--
 -- Injected via: dofile("scene.lua")(Iso)
 
 return function(Iso)
@@ -29,13 +33,14 @@ return function(Iso)
       w = w, h = h,
       ox = origin_x, oy = origin_y,
       items = {},
+      lights = {},
     }
 
     --- Add a shape to the scene.
     -- @param shape   a primitive from Iso.box(), Iso.cylinder(), etc.
     -- @param pos     {x, y, z} position in model space (default {0,0,0})
     -- @param colors  color table: { base=..., outline=..., [face_name]=... }
-    -- @param opts    optional: { texture=fn, shading={ambient,diffuse,...} }
+    -- @param opts    optional: { texture=fn, shading={specular,...} }
     function scene:add(shape, pos, colors, opts)
       pos = pos or {0, 0, 0}
       table.insert(self.items, {
@@ -44,6 +49,37 @@ return function(Iso)
         colors  = colors or {},
         opts    = opts or {},
       })
+    end
+
+    --- Add a light to the scene.
+    -- @param light  a light from Iso.light_ambient(), Iso.light_directional(), Iso.light_point()
+    function scene:add_light(light)
+      table.insert(self.lights, light)
+    end
+
+    --- Resolve the final color for a hit, using the scene's light list.
+    -- Handles explicit face colors, auto-shading from base color, and textures.
+    local function resolve_lit(colors, face, hit, world_pos, lights, shading_opts)
+      -- Explicit face color — use as-is (no lighting)
+      if colors[face] then
+        return colors[face]
+      end
+
+      -- Need a base color to light
+      local base = colors.base or colors.top or colors.body
+      if not base then return 0 end
+
+      -- Compute world-space position of the hit point
+      local wmx = hit.mx + world_pos[1]
+      local wmy = hit.my + world_pos[2]
+      local wmz = hit.mz + world_pos[3]
+
+      -- Accumulate light
+      local lr, lg, lb = Iso.accumulate_light(
+        lights, hit.nx, hit.ny, hit.nz, wmx, wmy, wmz, shading_opts
+      )
+
+      return Iso.apply_light(base, lr, lg, lb)
     end
 
     --- Render all shapes onto an Aseprite Image.
@@ -55,6 +91,9 @@ return function(Iso)
       if not H then error("Iso._set_helper() not called — load aseprite_helper first") end
 
       zbuf = zbuf or Iso.zbuffer(self.w, self.h)
+
+      -- Use default lights if none added
+      local lights = #self.lights > 0 and self.lights or Iso.default_lights()
 
       for _, item in ipairs(self.items) do
         local shape  = item.shape
@@ -82,10 +121,9 @@ return function(Iso)
               local world_depth = hit.depth + Iso.depth(pos[1], pos[2], pos[3])
 
               if Iso.ztest(zbuf, sx, sy, world_depth) then
-                -- Resolve color
-                local c = Iso.resolve_color(
-                  colors, hit.face, hit.nx, hit.ny, hit.nz,
-                  opts.shading
+                -- Resolve color with scene lighting
+                local c = resolve_lit(
+                  colors, hit.face, hit, pos, lights, opts.shading
                 )
 
                 -- Apply texture if provided
@@ -125,11 +163,12 @@ return function(Iso)
   end
 
   -- ═════════════════════════════════════════════════════════════════════
-  -- QUICK RENDER (no scene setup needed)
+  -- QUICK RENDER (no scene setup needed — uses legacy shading for compat)
   -- ═════════════════════════════════════════════════════════════════════
 
   --- Render a single shape onto an image at a given screen position.
-  -- Convenience for simple cases where you don't need a full scene.
+  -- Uses the old resolve_color path (global Iso.light direction).
+  -- For lit rendering, use a scene with add_light().
   function Iso.render_shape(img, shape, sx, sy, colors, opts)
     H = Iso._H
     if not H then error("Iso._set_helper() not called") end

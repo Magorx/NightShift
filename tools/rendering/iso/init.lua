@@ -25,6 +25,7 @@ dofile(dir .. "/shading.lua")(Iso)
 dofile(dir .. "/primitives.lua")(Iso)
 dofile(dir .. "/mechanical.lua")(Iso)
 dofile(dir .. "/texture.lua")(Iso)
+dofile(dir .. "/lighting.lua")(Iso)
 dofile(dir .. "/animation.lua")(Iso)
 dofile(dir .. "/scene.lua")(Iso)
 

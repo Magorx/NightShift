@@ -133,6 +133,7 @@ Iso._set_helper(H)  -- pass aseprite_helper instance
 - **Mechanical parts**: `Iso.gear()` (animated rotation), `Iso.pipe()`, `Iso.piston()`, `Iso.fan()`
 - **CSG**: `Iso.union()`, `Iso.subtract()`, `Iso.intersect()`
 - **12 textures**: brick, metal plate, grate, rivets, wood, corrugated, hex mesh, etc.
+- **Scene lighting**: `Iso.light_ambient()`, `Iso.light_directional()`, `Iso.light_point()` — scene-level lights with colored tinting and attenuation
 - **Scene builder**: `Iso.scene(w, h)` — compose multiple shapes with automatic depth sorting
 - **Animation**: `Iso.anim_gear()`, `Iso.particle_emitter()`, oscillation, shake
 - See `tools/rendering/iso/README.md` for full API, `examples/` for visual reference

@@ -9,6 +9,9 @@
 --   04_mechanical.png  — Compound mechanical parts
 --   05_textures.png    — Surface texture catalog
 --   06_scene.png       — Full building scene with multiple shapes
+--   07_projections.png  — Same box in different projection presets
+--   08_csg.png          — Boolean operations (union, subtract, intersect)
+--   09_lighting.png     — Ambient, directional, and point lights
 
 local REPO = "/Users/gorishniymax/Repos/factor"
 local OUT  = REPO .. "/tools/rendering/iso/examples"
@@ -197,39 +200,55 @@ end
 -- ═══════════════════════════════════════════════════════════════════════
 
 local function gen_05_textures()
-  local cell_w, cell_h = 80, 80
+  local cell_w, cell_h = 96, 96
   local cols, rows = 4, 3
   local img = Image(cell_w * cols, cell_h * rows, ColorMode.RGB)
 
-  local box = Iso.box(18, 18, 14)
+  -- Larger box so texture patterns are clearly visible
+  local box = Iso.box(28, 28, 20)
 
   local textures = {
     { nil,                                    BROWN,  "Plain" },
-    { Iso.tex_noise(0.2),                     BROWN,  "Noise" },
-    { Iso.tex_brick(4, 3),                    RED,    "Brick" },
-    { Iso.tex_metal_plate(8, 8),              METAL,  "Metal Plate" },
-    { Iso.tex_grate(3, 1.5, "u"),             METAL,  "Grate" },
-    { Iso.tex_wood_grain(2),                  BROWN,  "Wood" },
-    { Iso.tex_corrugated(2.5),                METAL,  "Corrugated" },
-    { Iso.tex_diamond_plate(3),               METAL,  "Diamond" },
-    { Iso.tex_hex_mesh(4),                    STONE,  "Hex Mesh" },
-    { Iso.tex_compose(Iso.tex_noise(0.1),
-        Iso.tex_brick(5, 3)),                 BROWN,  "Noisy Brick" },
-    { Iso.tex_compose(Iso.tex_metal_plate(6,6),
-        Iso.tex_noise(0.08)),                 METAL,  "Worn Metal" },
-    { Iso.tex_rivets(4, 1),                   COPPER, "Rivets" },
+    { Iso.tex_noise(0.3),                     BROWN,  "Noise" },
+    { Iso.tex_brick(5, 3),                    RED,    "Brick" },
+    { Iso.tex_metal_plate(10, 10),            METAL,  "Metal Plate" },
+    { Iso.tex_grate(4, 2, "u"),               METAL,  "Grate" },
+    { Iso.tex_wood_grain(3),                  BROWN,  "Wood" },
+    { Iso.tex_corrugated(3),                  METAL,  "Corrugated" },
+    { Iso.tex_diamond_plate(4),               METAL,  "Diamond" },
+    { Iso.tex_hex_mesh(5),                    STONE,  "Hex Mesh" },
+    { Iso.tex_compose(Iso.tex_noise(0.15),
+        Iso.tex_brick(6, 4)),                 BROWN,  "Noisy Brick" },
+    { Iso.tex_compose(Iso.tex_metal_plate(8,8),
+        Iso.tex_noise(0.1)),                  METAL,  "Worn Metal" },
+    { Iso.tex_rivets(5, 2),                   COPPER, "Rivets" },
   }
 
   for i, entry in ipairs(textures) do
     local tex, base, _label = entry[1], entry[2], entry[3]
     local col = ((i - 1) % cols)
     local row = math.floor((i - 1) / cols)
-    local ox = col * cell_w + math.floor(cell_w / 2)
-    local oy = row * cell_h + math.floor(cell_h * 0.65)
 
-    local colors = { base = base, outline = OUTLINE }
-    local opts = tex and { texture = tex } or {}
-    Iso.render_shape(img, box, ox, oy, colors, opts)
+    -- Use a mini scene per cell so we get proper lighting
+    local sc = Iso.scene(cell_w, cell_h, math.floor(cell_w / 2), math.floor(cell_h * 0.7))
+    sc:add(box, {0, 0, 0}, { base = base, outline = OUTLINE },
+      tex and { texture = tex } or {})
+
+    -- Render into a temp image, then blit into the grid
+    local cell_img = Image(cell_w, cell_h, ColorMode.RGB)
+    sc:draw(cell_img, OUTLINE)
+
+    -- Copy cell into the grid
+    local gx = col * cell_w
+    local gy = row * cell_h
+    for py = 0, cell_h - 1 do
+      for px = 0, cell_w - 1 do
+        local pix = cell_img:getPixel(px, py)
+        if pix ~= 0 then
+          img:drawPixel(gx + px, gy + py, pix)
+        end
+      end
+    end
   end
 
   local spr = Sprite(img.width, img.height, ColorMode.RGB)
@@ -349,6 +368,102 @@ local function gen_08_csg()
 end
 
 -- ═══════════════════════════════════════════════════════════════════════
+-- 09: LIGHTING — ambient, directional, point lights comparison
+-- ═══════════════════════════════════════════════════════════════════════
+
+local function gen_09_lighting()
+  local cell_w, cell_h = 128, 128
+  local cols, rows = 3, 2
+  local img = Image(cell_w * cols, cell_h * rows, ColorMode.RGB)
+
+  -- Shared geometry: a box + cylinder on top + sphere
+  local function make_scene_shapes(sc)
+    sc:add(Iso.box(20, 20, 12), {0, 0, 0},
+      { base = STONE, outline = OUTLINE })
+    sc:add(Iso.cylinder(5, 10), {4, 4, 12},
+      { base = COPPER, outline = OUTLINE })
+    sc:add(Iso.sphere(6), {16, 16, 6},
+      { base = METAL, outline = OUTLINE })
+  end
+
+  local configs = {
+    -- Row 1: basic light types
+    {
+      label = "Ambient only",
+      lights = { Iso.light_ambient(0.6) },
+    },
+    {
+      label = "Directional only",
+      lights = { Iso.light_directional(-0.5, -0.5, 0.7, 0.8) },
+    },
+    {
+      label = "Ambient + Directional",
+      lights = {
+        Iso.light_ambient(0.25),
+        Iso.light_directional(-0.5, -0.5, 0.7, 0.7),
+      },
+    },
+    -- Row 2: point lights
+    {
+      label = "Point light (warm)",
+      lights = {
+        Iso.light_ambient(0.15),
+        Iso.light_point(10, 10, 30, 1.5, 40, {1.0, 0.85, 0.6}),
+      },
+    },
+    {
+      label = "Two point lights",
+      lights = {
+        Iso.light_ambient(0.1),
+        Iso.light_point(-5, 10, 25, 1.2, 35, {0.6, 0.8, 1.0}),
+        Iso.light_point(25, 5, 20, 1.0, 35, {1.0, 0.6, 0.4}),
+      },
+    },
+    {
+      label = "Colored lights",
+      lights = {
+        Iso.light_ambient(0.08),
+        Iso.light_point(0, 0, 30, 1.5, 40, {0.3, 0.5, 1.0}),
+        Iso.light_point(25, 25, 20, 1.2, 35, {1.0, 0.3, 0.2}),
+        Iso.light_directional(0, -1, 0.5, 0.3, {0.4, 1.0, 0.4}),
+      },
+    },
+  }
+
+  for i, cfg in ipairs(configs) do
+    local col = ((i - 1) % cols)
+    local row = math.floor((i - 1) / cols)
+
+    local sc = Iso.scene(cell_w, cell_h, math.floor(cell_w / 2), math.floor(cell_h * 0.7))
+    make_scene_shapes(sc)
+
+    for _, light in ipairs(cfg.lights) do
+      sc:add_light(light)
+    end
+
+    local cell_img = Image(cell_w, cell_h, ColorMode.RGB)
+    sc:draw(cell_img, OUTLINE)
+
+    local gx = col * cell_w
+    local gy = row * cell_h
+    for py = 0, cell_h - 1 do
+      for px = 0, cell_w - 1 do
+        local pix = cell_img:getPixel(px, py)
+        if pix ~= 0 then
+          img:drawPixel(gx + px, gy + py, pix)
+        end
+      end
+    end
+  end
+
+  local spr = Sprite(img.width, img.height, ColorMode.RGB)
+  spr.cels[1].image = img
+  spr:saveCopyAs(OUT .. "/09_lighting.png")
+  spr:close()
+  print("[example] 09_lighting.png")
+end
+
+-- ═══════════════════════════════════════════════════════════════════════
 -- RUN ALL
 -- ═══════════════════════════════════════════════════════════════════════
 
@@ -361,4 +476,5 @@ gen_05_textures()
 gen_06_scene()
 gen_07_projections()
 gen_08_csg()
+gen_09_lighting()
 print("=== Done! ===")

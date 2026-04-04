@@ -292,6 +292,26 @@
 
 ## In Progress
 
+### **LIB.2** Scene lighting: ambient + point lights `1.5h`
+
+  - tags: [art-pipeline, tooling]
+  - priority: medium
+  - steps:
+      - [ ] Refactor shading.lua: scene-level light list (ambient + point lights)
+      - [ ] Ambient light: flat intensity applied uniformly to all surfaces
+      - [ ] Point light: position, color, intensity, attenuation (1/d²)
+      - [ ] Scene API: `scene:add_light(type, opts)` alongside `scene:add(shape, ...)`
+      - [ ] Render loop accumulates contributions from all lights per pixel
+      - [ ] Fix 05_textures example (textures not visually distinguishable)
+      - [ ] Add 09_lighting.png example showing ambient vs point light
+      - [ ] Update iso CLAUDE.md docs
+    ```md
+    The library has directional shading but no scene-level light objects.
+    Add ambient light (uniform base) and point lights (positional with falloff).
+    Lights are scene-level objects added like shapes. Also fix the textures
+    example which isn't showing visible texture patterns.
+    ```
+
 ## Done
 
 ### **LIB.1** Isometric 3D Geometry Library (2026-04-04)
