@@ -136,10 +136,12 @@ func _position_item(item: Dictionary) -> void:
 	if not item.visual:
 		return
 	var entry_dir := Vector2(DIRECTION_VECTORS[item.from_dir_idx])
-	var entry_point := GridUtils.grid_offset(grid_pos, entry_dir, 0.5)
+	var entry_point := GridUtils.grid_offset_3d(grid_pos, entry_dir, 0.5)
 	var exit_dir := Vector2(DIRECTION_VECTORS[item.output_dir_idx])
-	var exit_point := GridUtils.grid_offset(grid_pos, exit_dir, 0.5)
-	item.visual.position = entry_point.lerp(exit_point, item.progress)
+	var exit_point := GridUtils.grid_offset_3d(grid_pos, exit_dir, 0.5)
+	var pos := entry_point.lerp(exit_point, item.progress)
+	pos.y = 0.05
+	item.visual.position = pos
 
 func cleanup_visuals() -> void:
 	for axis in 2:

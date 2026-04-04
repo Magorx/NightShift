@@ -391,6 +391,8 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		# Register conveyors with ConveyorSystem, others with BuildingTickSystem
 		if logic is ConveyorBelt and conveyor_system:
 			conveyor_system.register_conveyor(logic)
+			if conveyor_visual_manager:
+				conveyor_visual_manager.register(grid_pos, logic)
 		elif building_tick_system:
 			building_tick_system.register(logic)
 

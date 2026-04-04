@@ -1,34 +1,37 @@
-extends BaseMultiMeshManager
+extends RefCounted
 
-## Renders all conveyor sprites via a single MultiMeshInstance2D instead of
+## Renders all conveyor sprites via a single MultiMeshInstance3D instead of
 ## individual AnimatedSprite2D nodes. Drastically reduces draw calls.
+## Conveyors render as quads on the XZ ground plane (Y=0) using a spatial shader.
 
 const INITIAL_CAPACITY := 512
 const ANIM_FPS := 10.0
 const FRAME_COUNT := 4
+const HIDDEN_POS := Vector3(-9999.0, -9999.0, -9999.0)
 
-# Atlas: 4 cols × 6 rows of 64×32 in straight.png (256×192)
+# Atlas: 4 cols x 6 rows of 64x32 in straight.png (256x192)
 # Columns 0-3 are animation frames, rows 0-5 are variants:
 #   Row 0: straight, Row 1: turn, Row 2: dual_side_input,
 #   Row 3: side_input, Row 4: crossroad, Row 5: start
 
+var multimesh: MultiMesh
+var instance: MultiMeshInstance3D
 var _material: ShaderMaterial
-var _idx_map: Dictionary = {}  # Vector2i → int (multimesh index)
+var _idx_map: Dictionary = {}  # Vector2i -> int (multimesh index)
+var _free_list: PackedInt32Array = []
+var _capacity: int = 0
 
 func _init() -> void:
 	multimesh = MultiMesh.new()
-	multimesh.transform_format = MultiMesh.TRANSFORM_2D
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.use_custom_data = true
-	multimesh.mesh = BaseMultiMeshManager.create_unit_quad()
+	multimesh.mesh = _create_plane_mesh()
 
 	_material = _create_material()
 
-	instance = MultiMeshInstance2D.new()
+	instance = MultiMeshInstance3D.new()
 	instance.multimesh = multimesh
-	instance.texture = load("res://buildings/conveyor/sprites/straight.png")
-	instance.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	instance.material = _material
-	instance.z_index = GameManager.Z_CONVEYOR  # ground level, below buildings
+	instance.material_override = _material
 
 	_grow(INITIAL_CAPACITY)
 
@@ -38,7 +41,7 @@ func attach_to(parent: Node) -> void:
 func register(grid_pos: Vector2i, conv) -> void:
 	var idx := _allocate()
 	_idx_map[grid_pos] = idx
-	multimesh.set_instance_transform_2d(idx, GridUtils.tile_transform(grid_pos))
+	multimesh.set_instance_transform(idx, GridUtils.tile_transform_3d(grid_pos))
 	# custom_data: r=variant_row, g=flip_v, b=highlight, a=direction
 	multimesh.set_instance_custom_data(idx, Color(5.0, 0.0, 0.0, float(conv.direction)))
 
@@ -81,7 +84,7 @@ func update_variant(conv) -> void:
 	elif has_back:
 		variant_row = 0.0  # straight
 
-	multimesh.set_instance_transform_2d(idx, GridUtils.tile_transform(conv.grid_pos))
+	multimesh.set_instance_transform(idx, GridUtils.tile_transform_3d(conv.grid_pos))
 	multimesh.set_instance_custom_data(idx, Color(variant_row, flip_v, 0.0, float(conv.direction)))
 
 func update_animation() -> void:
@@ -99,7 +102,7 @@ func set_highlight(grid_pos: Vector2i, enabled: bool) -> void:
 	multimesh.set_instance_custom_data(idx, c)
 
 func clear_all() -> void:
-	_free_list.clear()
+	_free_list = PackedInt32Array()
 	_idx_map.clear()
 	_capacity = 0
 	multimesh.instance_count = 0
@@ -107,16 +110,31 @@ func clear_all() -> void:
 
 # ── Private ──────────────────────────────────────────────────────────────────
 
+func _create_plane_mesh() -> Mesh:
+	var mesh := PlaneMesh.new()
+	mesh.size = Vector2(1, 1)
+	return mesh
+
 func _allocate() -> int:
 	if _free_list.is_empty():
 		_grow(maxi(_capacity * 2, INITIAL_CAPACITY))
-	return _free_list.pop_back()
+	var idx: int = _free_list[-1]
+	_free_list.resize(_free_list.size() - 1)
+	return idx
 
 func _release(idx: int) -> void:
 	if idx < 0:
 		return
-	multimesh.set_instance_transform_2d(idx, Transform2D(0, HIDDEN_POS))
+	multimesh.set_instance_transform(idx, Transform3D(Basis(), HIDDEN_POS))
 	_free_list.append(idx)
+
+func _grow(new_capacity: int) -> void:
+	var old := _capacity
+	_capacity = new_capacity
+	multimesh.instance_count = _capacity
+	for i in range(old, _capacity):
+		multimesh.set_instance_transform(i, Transform3D(Basis(), HIDDEN_POS))
+		_free_list.append(i)
 
 func _is_feeding(grid_pos: Vector2i, dir_offset: Vector2i) -> bool:
 	var dir_idx: int
@@ -135,8 +153,12 @@ func _is_feeding(grid_pos: Vector2i, dir_offset: Vector2i) -> bool:
 
 func _create_material() -> ShaderMaterial:
 	var shader := Shader.new()
-	shader.code = "shader_type canvas_item;
+	shader.code = "shader_type spatial;
+render_mode unshaded, cull_disabled;
+
+uniform sampler2D atlas : source_color, filter_nearest;
 uniform float frame_idx = 0.0;
+
 // Atlas layout: 4 columns (frames) x 6 rows (variants), each cell 64x32
 // Total texture: 256x192
 const float COLS = 4.0;
@@ -146,16 +168,19 @@ const float STRIPE_FREQ = 0.3 / 64.0;
 const vec3 STRIPE_RGB = vec3(1.0, 0.3, 0.25);
 const float STRIPE_A = 0.15;
 const vec4 OUTLINE_COL = vec4(0.8, 0.1, 0.07, 0.85);
+
 varying flat float v_row;
 varying flat float v_flip;
 varying flat float v_highlight;
 varying flat float v_direction;
+
 void vertex() {
 	v_row = INSTANCE_CUSTOM.r;
 	v_flip = INSTANCE_CUSTOM.g;
 	v_highlight = INSTANCE_CUSTOM.b;
 	v_direction = INSTANCE_CUSTOM.a;
 }
+
 void fragment() {
 	float u = UV.x;
 	float v = UV.y;
@@ -181,8 +206,9 @@ void fragment() {
 	float col = floor(frame_idx);
 	float row = v_row;
 	vec2 atlas_uv = vec2((col + u) / COLS, (row + v) / ROWS);
-	vec4 base = texture(TEXTURE, atlas_uv);
-	if (v_highlight > 0.5 && base.a > 0.0) {
+	vec4 base = texture(atlas, atlas_uv);
+	if (base.a < 0.01) discard;
+	if (v_highlight > 0.5) {
 		vec3 result = base.rgb * (1.0 - DARKEN);
 		float w = (FRAGCOORD.x + FRAGCOORD.y) * STRIPE_FREQ + TIME * 2.0;
 		float stripe = step(0.5, fract(w));
@@ -203,7 +229,7 @@ void fragment() {
 			if (s.x < cell_min.x || s.x > cell_max.x || s.y < cell_min.y || s.y > cell_max.y) {
 				n += 0.0; // out-of-cell = transparent
 			} else {
-				n += step(0.01, texture(TEXTURE, s).a);
+				n += step(0.01, texture(atlas, s).a);
 			}
 		}
 		if (n < 7.99) {
@@ -211,10 +237,12 @@ void fragment() {
 		}
 		base = vec4(result, base.a);
 	}
-	COLOR = base;
+	ALBEDO = base.rgb;
+	ALPHA = base.a;
 }
 "
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	mat.set_shader_parameter("frame_idx", 0.0)
+	mat.set_shader_parameter("atlas", load("res://buildings/conveyor/sprites/straight.png"))
 	return mat
