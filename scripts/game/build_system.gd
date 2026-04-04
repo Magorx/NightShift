@@ -783,10 +783,9 @@ func _draw() -> void:
 	if _phase_index > 0 and not _phase_placements.is_empty():
 		_draw_phase_area()
 	if destroy_mode:
-		var cell_size := GridUtils.tile_size_vec()
-		_draw_destroy(cell_size)
+		_draw_destroy()
 
-func _draw_destroy(_cell_size: Vector2) -> void:
+func _draw_destroy() -> void:
 	if _destroy_dragging:
 		# Draw transparent red diamonds over the entire drag rectangle
 		var min_pos := Vector2i(
@@ -814,7 +813,7 @@ func _draw_phase_area() -> void:
 	var origins: Array = []
 	for entry in prev_placements:
 		origins.append(entry.pos as Vector2i)
-	DrawUtils.draw_manhattan_area(self, origins, max_dist, GridUtils.TILE_WIDTH, GameManager.map_size, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
+	DrawUtils.draw_manhattan_area(self, origins, max_dist, GameManager.map_size, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 ## Draw a filled isometric diamond for a single grid cell.
 func _draw_diamond(grid_pos: Vector2i, color: Color) -> void:

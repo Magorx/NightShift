@@ -11,7 +11,6 @@ static func draw_manhattan_area(
 	canvas: CanvasItem,
 	origins: Array,
 	max_distance: int,
-	tile_size: int,
 	map_size: int,
 	fill_color: Color,
 	outline_color: Color,

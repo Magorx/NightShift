@@ -250,12 +250,12 @@ func _handle_conveyor_push() -> void:
 	var old_progress := _conv_progress
 	_conv_progress += conv.push_speed * dt
 
-	var exit_point := tile_center + conv_dir * GridUtils.HALF_W  # TODO ISO.5: use per-axis half when tiles are non-square
+	var exit_point := GridUtils.grid_offset(grid_pos, conv_dir, 0.5)
 
 	if _conv_progress >= 1.0:
-		# Past the exit edge — push straight in the conveyor direction so we
-		# cross the tile boundary and _get_grid_pos detects the next tile.
-		_conveyor_push = conv_dir * conv.push_speed * GridUtils.TILE_WIDTH
+		# Past the exit edge — push in screen-space conveyor direction
+		var screen_dir := GridUtils.grid_dir_to_screen(conv_dir)
+		_conveyor_push = screen_dir * conv.push_speed * GridUtils.TILE_WIDTH
 	elif dt > 0:
 		var old_pos := _bezier_eval(_conv_entry_point, tile_center, exit_point, old_progress)
 		var new_pos := _bezier_eval(_conv_entry_point, tile_center, exit_point, _conv_progress)

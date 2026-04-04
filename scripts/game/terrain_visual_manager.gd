@@ -5,7 +5,7 @@ extends BaseMultiMeshManager
 ## and a misc variant index.  The shader selects the correct atlas cell via
 ## INSTANCE_CUSTOM data encoding (atlas_col, atlas_row).
 ##
-## Atlas layout (8 cols × 14 rows of 32×32):
+## Atlas layout (8 cols × 15 rows of 64×32 isometric tiles):
 ##   See ATLAS_INDEX below for the mapping from (tile_type, layer, variant)
 ##   to flat atlas index.  Row = index / 8, Col = index % 8.
 
