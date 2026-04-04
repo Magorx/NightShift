@@ -142,11 +142,10 @@ func _serialize_camera() -> Dictionary:
 	var gw := _get_game_world()
 	if not gw:
 		return {"zoom": 1.0}
-	var cam: Camera2D = gw.find_child("Camera2D", false, false)
-	if not cam:
-		return {"zoom": 1.0}
-	# Only save zoom — camera position follows the player on load
-	return {"zoom": cam.zoom.x}
+	var cam = gw.find_child("Camera3D", false, false)
+	if cam and cam is Camera3D:
+		return {"zoom": cam.size}
+	return {"zoom": 1.0}
 
 func _serialize_buildings() -> Array:
 	var result: Array = []
@@ -309,11 +308,13 @@ func _restore_camera(cam_data: Dictionary) -> void:
 		cam = gw.find_child("Camera2D", false, false)
 	if cam:
 		# Position follows the player; only restore zoom
-		var z: float = cam_data.get("zoom", 1.0)
+		var z: float = cam_data.get("zoom", 40.0)
 		if cam is Camera3D:
-			cam.size = z * 40.0  # map old zoom to ortho size
+			# Legacy saves stored zoom as 0.5-3.0; new saves store ortho size directly
+			var ortho_size: float = z if z > 5.0 else z * 40.0
+			cam.size = ortho_size
 			if cam.has_method("set_target_zoom"):
-				cam.set_target_zoom(z * 40.0)
+				cam.set_target_zoom(ortho_size)
 		else:
 			cam.zoom = Vector2(z, z)
 			if cam.has_method("set_target_zoom"):
