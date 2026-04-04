@@ -46,11 +46,13 @@ func run_simulation() -> void:
 	# -- Test 6: Collision mask changes with elevation ------------------------
 	player.position.y = 0.0
 	player._update_collision_for_height()
-	sim_assert(player.collision_mask == (1 << (Player.BUILDING_COLLISION_LAYER - 1)), "Ground-level collision mask includes buildings")
+	var ground_bit := (1 << (Player.PLAYER_COLLISION_LAYER - 1))
+	var building_bit := (1 << (Player.BUILDING_COLLISION_LAYER - 1))
+	sim_assert(player.collision_mask == (ground_bit | building_bit), "Ground-level collision mask includes ground + buildings")
 
 	player.position.y = 1.0
 	player._update_collision_for_height()
-	sim_assert(player.collision_mask == 0, "Elevated collision mask is 0 (no building collision)")
+	sim_assert(player.collision_mask == ground_bit, "Elevated collision mask is ground only (no building collision)")
 
 	player.position.y = 0.0
 	player._update_collision_for_height()

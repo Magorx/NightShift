@@ -194,13 +194,14 @@ func _get_ground_height() -> float:
 	return BUILDING_Z_HEIGHT
 
 func _update_collision_for_height() -> void:
-	# In 3D, collision layers are managed via the physics engine.
-	# When elevated (on top of buildings), disable building collision so
-	# the player can walk over them.
+	# Always collide with ground (layer 1). Toggle building collision (layer 2)
+	# based on elevation — when on top of buildings, disable so player walks over.
+	var ground_bit := (1 << (PLAYER_COLLISION_LAYER - 1))
+	var building_bit := (1 << (BUILDING_COLLISION_LAYER - 1))
 	if is_on_floor() and position.y < 0.01:
-		collision_mask = (1 << (BUILDING_COLLISION_LAYER - 1))
+		collision_mask = ground_bit | building_bit
 	else:
-		collision_mask = 0
+		collision_mask = ground_bit
 
 # -- Conveyor Push (bezier curve, same path as items) -------------------------
 
