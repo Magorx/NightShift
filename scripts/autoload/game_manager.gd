@@ -332,7 +332,7 @@ func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotat
 		return false
 	return true
 
-func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> Node2D:
+func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> Node:
 	var def = get_building_def(id)
 	if not def or not building_layer:
 		return null
@@ -351,26 +351,31 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	for replace_pos in to_replace:
 		remove_building(replace_pos)
 
-	var building: Node2D
-	if def.scene:
-		building = def.scene.instantiate()
-	else:
-		var base_script = load("res://buildings/shared/building_base.gd")
-		building = base_script.new()
+	# Create Node3D building (no longer instantiates 2D scene for runtime)
+	var base_script = load("res://buildings/shared/building_base.gd")
+	var building: Node3D = base_script.new()
 	building.init(id, grid_pos, rotation)
-	# Position so the anchor cell aligns with grid_pos
-	building.position = GridUtils.grid_to_world(grid_pos - def.anchor_cell)
-	# Isometric depth: buildings sit above conveyor/item MultiMesh layers
-	building.z_index = Z_BUILDING
+	# Position so the anchor cell aligns with grid_pos (3D: grid X -> world X, grid Y -> world Z)
+	building.position = GridUtils.grid_to_world_3d(grid_pos - def.anchor_cell)
+	# Rotation: Y-axis rotation (0=right, 1=down, 2=left, 3=up)
+	# Negative because Godot's Y rotation is counter-clockwise viewed from above
+	building.rotation.y = -rotation * PI / 2.0
 
 	building_layer.add_child(building)
 
 	# Deduct build cost from player inventory
 	deduct_building_cost(id)
 
-	# Apply all visual rotation (ColorRects, sprites, arrow) after add_child
-	# so _ready defaults are overridden
-	def.apply_rotation(building, rotation)
+	# Add placeholder mesh for visibility
+	_add_placeholder_mesh(building, def, rotation)
+
+	# Create and attach the logic node from the cached logic script
+	var logic_script: GDScript = def.get_logic_script()
+	if logic_script:
+		var logic_node := Node.new()
+		logic_node.set_script(logic_script)
+		logic_node.name = def.get_logic_node_name()
+		building.add_child(logic_node)
 
 	# Register all occupied cells (rotated)
 	for cell in rotated_shape:
@@ -386,19 +391,8 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		# Register conveyors with ConveyorSystem, others with BuildingTickSystem
 		if logic is ConveyorBelt and conveyor_system:
 			conveyor_system.register_conveyor(logic)
-			# Register with MultiMesh visual manager and hide scene sprite
-			if conveyor_visual_manager:
-				conveyor_visual_manager.register(grid_pos, logic)
-				var rotatable = building.find_child("Rotatable", false, false)
-				if rotatable:
-					rotatable.visible = false
-				var sprite = building.find_child("ConveyorSprite", true, false)
-				if sprite:
-					sprite.stop()
 		elif building_tick_system:
 			building_tick_system.register(logic)
-		# Hide guide ColorRects (Shape/Input/Output cells) to reduce draw calls
-		_hide_guide_nodes(building)
 
 	# Update collision for player
 	if building_collision and not def.is_ground_level:
@@ -417,8 +411,45 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	building_placed.emit(id, grid_pos)
 	return building
 
+## Add a placeholder colored box mesh to a building for visual identification.
+func _add_placeholder_mesh(building: Node3D, def: BuildingDef, rotation: int) -> void:
+	var placeholder := MeshInstance3D.new()
+	placeholder.name = "Placeholder"
+	var box := BoxMesh.new()
+	# Size based on building shape footprint
+	var rotated_shape: Array = def.get_rotated_shape(rotation)
+	var min_cell := Vector2i(999, 999)
+	var max_cell := Vector2i(-999, -999)
+	for cell in rotated_shape:
+		min_cell = min_cell.min(cell)
+		max_cell = max_cell.max(cell)
+	var w := float(max_cell.x - min_cell.x + 1) * GridUtils.TILE_UNIT_3D * 0.9
+	var d := float(max_cell.y - min_cell.y + 1) * GridUtils.TILE_UNIT_3D * 0.9
+	# Ground-level buildings (conveyors, junctions) get flat boxes; others get taller ones
+	var h := 0.1 if def.is_ground_level else 0.8
+	box.size = Vector3(w, h, d)
+	placeholder.mesh = box
+	# Center above origin (origin is at anchor cell corner, mesh centered in footprint)
+	# Rotation is handled by the parent node, so position in local (unrotated) space
+	# For rotated buildings, we use the unrotated shape to compute local offset
+	var unrotated_shape: Array = def.shape
+	var un_min := Vector2i(999, 999)
+	var un_max := Vector2i(-999, -999)
+	for cell in unrotated_shape:
+		un_min = un_min.min(cell)
+		un_max = un_max.max(cell)
+	var uw := float(un_max.x - un_min.x + 1) * GridUtils.TILE_UNIT_3D
+	var ud := float(un_max.y - un_min.y + 1) * GridUtils.TILE_UNIT_3D
+	placeholder.position = Vector3(uw / 2.0, h / 2.0, ud / 2.0)
+	# Color by building identity
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = def.color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	placeholder.material_override = mat
+	building.add_child(placeholder)
+
 ## Find the first BuildingLogic child of a building node.
-func _find_logic_node(building: Node2D) -> BuildingLogic:
+func _find_logic_node(building: Node) -> BuildingLogic:
 	for child in building.get_children():
 		if child is BuildingLogic:
 			return child
@@ -638,7 +669,8 @@ func pull_item(target_pos: Vector2i, from_dir_idx: int) -> Dictionary:
 
 ## Hide guide ColorRect nodes (Shape/Input/Output cells) to reduce draw calls.
 ## These nodes have alpha=0 but are still processed by the renderer.
-func _hide_guide_nodes(building: Node2D) -> void:
+## No-op for Node3D buildings (they don't have 2D guide nodes).
+func _hide_guide_nodes(building: Node) -> void:
 	var rotatable = building.find_child("Rotatable", false, false)
 	if not rotatable:
 		return

@@ -195,7 +195,7 @@ animations = [{
 "speed": 6.0
 }]
 
-[node name="Smelter" type="Node2D"]
+[node name="Smelter" type="Node3D"]
 script = ExtResource("1")
 
 [node name="Rotatable" type="Node2D" parent="."]

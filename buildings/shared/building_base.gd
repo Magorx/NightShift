@@ -1,5 +1,5 @@
 class_name BuildingBase
-extends Node2D
+extends Node3D
 
 var grid_pos: Vector2i
 var building_id: StringName

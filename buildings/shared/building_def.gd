@@ -34,6 +34,15 @@ var outputs: Array = []
 
 ## Logic script cached for placement validation (extracted from scene).
 var _logic_script: GDScript = null
+var _logic_node_name: StringName = &"Logic"
+
+## Return the cached logic script (for creating logic nodes without instantiating the scene).
+func get_logic_script() -> GDScript:
+	return _logic_script
+
+## Return the original node name of the logic node in the scene.
+func get_logic_node_name() -> StringName:
+	return _logic_node_name
 
 # ── Scene extraction (called once at load time) ────────────────────────────
 
@@ -103,6 +112,7 @@ func _extract_logic_script() -> void:
 	for child in instance.get_children():
 		if child is BuildingLogic:
 			_logic_script = child.get_script() as GDScript
+			_logic_node_name = child.name
 			break
 	instance.free()
 
