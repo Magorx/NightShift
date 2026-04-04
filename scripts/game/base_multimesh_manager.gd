@@ -31,13 +31,18 @@ func _grow(new_capacity: int) -> void:
 		_free_list.append(i)
 
 static func create_quad_mesh(tile_size: float) -> Mesh:
+	return create_rect_mesh(tile_size, tile_size)
+
+## Create a rectangular quad mesh centered at the origin.
+static func create_rect_mesh(width: float, height: float) -> Mesh:
 	var arr_mesh := ArrayMesh.new()
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
-	var h := tile_size * 0.5
+	var hw := width * 0.5
+	var hh := height * 0.5
 	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
-		Vector3(-h, -h, 0), Vector3(h, -h, 0),
-		Vector3(h, h, 0), Vector3(-h, h, 0),
+		Vector3(-hw, -hh, 0), Vector3(hw, -hh, 0),
+		Vector3(hw, hh, 0), Vector3(-hw, hh, 0),
 	])
 	arrays[Mesh.ARRAY_TEX_UV] = PackedVector2Array([
 		Vector2(0, 0), Vector2(1, 0),

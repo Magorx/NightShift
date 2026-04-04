@@ -5,13 +5,13 @@ signal item_delivered(item_id: StringName)
 
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
-## Z-index layers for draw ordering within BuildingLayer.
-## Building scenes use these values in their .tscn z_index properties.
-const Z_BUILDING_BASE := 0   # bottom sprite of multi-layer buildings
-const Z_CONVEYOR := 1        # conveyor belt MultiMesh
-const Z_ITEM := 2            # item dot MultiMesh (resources on belts)
-const Z_BUILDING_OVERLAY := 5 # mid-layer overlays (smelter progress bars)
-const Z_BUILDING_TOP := 10   # top sprite of multi-layer buildings
+## Z-index layers for isometric depth ordering.
+## MultiMesh renderers (conveyors, items) can't y-sort individual instances,
+## so they use fixed z_index values within the ObjectLayer.
+## Buildings get z_index = Z_BUILDING + y-based offset for coarse depth.
+const Z_CONVEYOR := 0        # conveyor belt MultiMesh (ground level)
+const Z_ITEM := 1            # item dot MultiMesh (just above conveyors)
+const Z_BUILDING := 2        # buildings (coarse layer; y-sort within ObjectLayer handles fine ordering)
 
 # Building registry: id -> BuildingDef
 var building_defs: Dictionary = {}
@@ -361,6 +361,8 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	building.init(id, grid_pos, rotation)
 	# Position so the anchor cell aligns with grid_pos
 	building.position = GridUtils.grid_to_world(grid_pos - def.anchor_cell)
+	# Isometric depth: buildings sit above conveyor/item MultiMesh layers
+	building.z_index = Z_BUILDING
 
 	building_layer.add_child(building)
 

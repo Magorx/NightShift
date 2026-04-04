@@ -135,11 +135,10 @@ func can_accept_from(from_dir_idx: int) -> bool:
 func _position_item(item: Dictionary) -> void:
 	if not item.visual:
 		return
-	var center := GridUtils.grid_to_center(grid_pos)
 	var entry_dir := Vector2(DIRECTION_VECTORS[item.from_dir_idx])
-	var entry_point := center + entry_dir * GridUtils.HALF_W  # TODO ISO.5: use per-axis half when tiles are non-square
+	var entry_point := GridUtils.grid_offset(grid_pos, entry_dir, 0.5)
 	var exit_dir := Vector2(DIRECTION_VECTORS[item.output_dir_idx])
-	var exit_point := center + exit_dir * GridUtils.HALF_W  # TODO ISO.5: use per-axis half when tiles are non-square
+	var exit_point := GridUtils.grid_offset(grid_pos, exit_dir, 0.5)
 	item.visual.position = entry_point.lerp(exit_point, item.progress)
 
 func cleanup_visuals() -> void:

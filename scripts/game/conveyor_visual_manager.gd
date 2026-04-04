@@ -19,7 +19,7 @@ func _init() -> void:
 	multimesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_2D
 	multimesh.use_custom_data = true
-	multimesh.mesh = BaseMultiMeshManager.create_quad_mesh(GridUtils.TILE_WIDTH)
+	multimesh.mesh = BaseMultiMeshManager.create_rect_mesh(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT)
 
 	_material = _create_material()
 
@@ -28,7 +28,7 @@ func _init() -> void:
 	instance.texture = load("res://buildings/conveyor/sprites/straight.png")
 	instance.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	instance.material = _material
-	instance.z_index = GameManager.Z_CONVEYOR
+	instance.z_index = GameManager.Z_CONVEYOR  # ground level, below buildings
 
 	_grow(INITIAL_CAPACITY)
 
@@ -39,8 +39,9 @@ func register(grid_pos: Vector2i, conv) -> void:
 	var idx := _allocate()
 	_idx_map[grid_pos] = idx
 	var center := GridUtils.grid_to_center(grid_pos)
-	multimesh.set_instance_transform_2d(idx, Transform2D(conv.direction * PI / 2.0, center))
-	multimesh.set_instance_custom_data(idx, Color(5.0, 0.0, 0.0, 1.0))  # default: "start"
+	multimesh.set_instance_transform_2d(idx, Transform2D(0, center))
+	# custom_data: r=variant_row, g=flip_v, b=highlight, a=direction (for future iso sprites)
+	multimesh.set_instance_custom_data(idx, Color(5.0, 0.0, 0.0, float(conv.direction)))
 
 func unregister(grid_pos: Vector2i) -> void:
 	if _idx_map.has(grid_pos):
@@ -82,8 +83,8 @@ func update_variant(conv) -> void:
 		variant_row = 0.0  # straight
 
 	var center := GridUtils.grid_to_center(conv.grid_pos)
-	multimesh.set_instance_transform_2d(idx, Transform2D(conv.direction * PI / 2.0, center))
-	multimesh.set_instance_custom_data(idx, Color(variant_row, flip_v, 0.0, 1.0))
+	multimesh.set_instance_transform_2d(idx, Transform2D(0, center))
+	multimesh.set_instance_custom_data(idx, Color(variant_row, flip_v, 0.0, float(conv.direction)))
 
 func update_animation() -> void:
 	var cycle_time := FRAME_COUNT / ANIM_FPS

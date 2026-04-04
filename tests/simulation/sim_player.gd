@@ -11,9 +11,9 @@ func run_simulation() -> void:
 		return
 
 	# ── Test 1: Player spawn position ────────────────────────────────────────
-	var expected_center: float = GridUtils.map_world_size(GameManager.map_size).x * 0.5
-	sim_assert(absf(player.position.x - expected_center) < GridUtils.TILE_WIDTH, "Player spawned near map center X")
-	sim_assert(absf(player.position.y - expected_center) < GridUtils.TILE_HEIGHT, "Player spawned near map center Y")
+	var expected_center := GridUtils.grid_to_center(Vector2i(GameManager.map_size / 2, GameManager.map_size / 2))
+	sim_assert(absf(player.position.x - expected_center.x) < GridUtils.TILE_WIDTH, "Player spawned near map center X")
+	sim_assert(absf(player.position.y - expected_center.y) < GridUtils.TILE_HEIGHT, "Player spawned near map center Y")
 
 	# ── Test 2: Building collision — blocking buildings ──────────────────────
 	# Place a smelter (2x2, blocking) near the player

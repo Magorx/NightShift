@@ -200,7 +200,7 @@ func _create_layer(texture: Texture2D, shader: Shader, z: int) -> Array:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_2D
 	mm.use_custom_data = true
-	mm.mesh = BaseMultiMeshManager.create_quad_mesh(GridUtils.TILE_WIDTH)
+	mm.mesh = BaseMultiMeshManager.create_rect_mesh(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT)
 
 	var inst := MultiMeshInstance2D.new()
 	inst.multimesh = mm

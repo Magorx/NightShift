@@ -786,20 +786,20 @@ func _draw() -> void:
 		var cell_size := GridUtils.tile_size_vec()
 		_draw_destroy(cell_size)
 
-func _draw_destroy(cell_size: Vector2) -> void:
+func _draw_destroy(_cell_size: Vector2) -> void:
 	if _destroy_dragging:
-		# Draw transparent red over the entire drag rectangle
+		# Draw transparent red diamonds over the entire drag rectangle
 		var min_pos := Vector2i(
 			mini(_destroy_drag_start.x, cursor_grid_pos.x),
 			mini(_destroy_drag_start.y, cursor_grid_pos.y))
 		var max_pos := Vector2i(
 			maxi(_destroy_drag_start.x, cursor_grid_pos.x),
 			maxi(_destroy_drag_start.y, cursor_grid_pos.y))
-		var rect_pos := GridUtils.grid_to_world(min_pos)
-		var rect_size := Vector2(max_pos - min_pos + Vector2i.ONE) * GridUtils.TILE_WIDTH
-		draw_rect(Rect2(rect_pos, rect_size), DESTROY_AREA_COLOR)
+		for gx in range(min_pos.x, max_pos.x + 1):
+			for gy in range(min_pos.y, max_pos.y + 1):
+				_draw_diamond(Vector2i(gx, gy), DESTROY_AREA_COLOR)
 	else:
-		draw_rect(Rect2(GridUtils.grid_to_world(cursor_grid_pos), cell_size), DESTROY_CURSOR_COLOR)
+		_draw_diamond(cursor_grid_pos, DESTROY_CURSOR_COLOR)
 
 
 
@@ -816,46 +816,53 @@ func _draw_phase_area() -> void:
 		origins.append(entry.pos as Vector2i)
 	DrawUtils.draw_manhattan_area(self, origins, max_dist, GridUtils.TILE_WIDTH, GameManager.map_size, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
 
-## Read actual Shape ColorRect positions from the placed building node.
+## Draw a filled isometric diamond for a single grid cell.
+func _draw_diamond(grid_pos: Vector2i, color: Color) -> void:
+	var c := GridUtils.grid_to_center(grid_pos)
+	var hw := GridUtils.HALF_W
+	var hh := GridUtils.HALF_H
+	var points := PackedVector2Array([
+		c + Vector2(0, -hh),  # top
+		c + Vector2(hw, 0),   # right
+		c + Vector2(0, hh),   # bottom
+		c + Vector2(-hw, 0),  # left
+	])
+	draw_colored_polygon(points, color)
+
+## Get the grid cells occupied by a building, using its BuildingDef shape.
 func _get_building_visual_cells(building: Node2D) -> Array:
 	var cells: Array = []
-	var bpos := GridUtils.world_to_grid(building.position)
-	var bx := bpos.x
-	var by := bpos.y
-	var rotatable = building.find_child("Rotatable", false, false)
-	var container = rotatable if rotatable else building
-	var shape_node = container.find_child("Shape", false, false)
-	if shape_node:
-		for child in shape_node.get_children():
-			if child is ColorRect:
-				var gx := floori(child.offset_left / GridUtils.TILE_WIDTH)
-				var gy := floori(child.offset_top / GridUtils.TILE_HEIGHT)
-				cells.append(Vector2i(bx + gx, by + gy))
-	if cells.is_empty():
-		var def = GameManager.get_building_def(building.building_id)
-		if def:
-			for cell in def.get_rotated_shape(building.rotation_index):
-				cells.append(building.grid_pos + cell)
-		else:
-			cells.append(building.grid_pos)
+	var def = GameManager.get_building_def(building.building_id)
+	if def:
+		for cell in def.get_rotated_shape(building.rotation_index):
+			cells.append(building.grid_pos + cell)
+	else:
+		cells.append(building.grid_pos)
 	return cells
 
-## Draw outline around outer edges of a cell set.
+## Draw outline around outer edges of a cell set (isometric diamond edges).
 func _draw_shape_outline(cells: Array) -> void:
 	var cell_set: Dictionary = {}
 	for cell in cells:
 		cell_set[cell] = true
-	var s := float(GridUtils.TILE_WIDTH)
+	var hw := GridUtils.HALF_W
+	var hh := GridUtils.HALF_H
 	for cell in cells:
-		var wp := Vector2(cell) * s
+		var c := GridUtils.grid_to_center(cell)
+		var top := c + Vector2(0, -hh)
+		var right := c + Vector2(hw, 0)
+		var bottom := c + Vector2(0, hh)
+		var left := c + Vector2(-hw, 0)
+		# Draw edges where neighbor is absent.
+		# Grid (+1,0) shares right-bottom edge; (0,+1) shares left-bottom; etc.
 		if not cell_set.has(cell + Vector2i(1, 0)):
-			draw_line(Vector2(wp.x + s, wp.y), Vector2(wp.x + s, wp.y + s), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
+			draw_line(right, bottom, DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
 		if not cell_set.has(cell + Vector2i(0, 1)):
-			draw_line(Vector2(wp.x, wp.y + s), Vector2(wp.x + s, wp.y + s), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
+			draw_line(bottom, left, DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
 		if not cell_set.has(cell + Vector2i(-1, 0)):
-			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x, wp.y + s), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
+			draw_line(left, top, DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
 		if not cell_set.has(cell + Vector2i(0, -1)):
-			draw_line(Vector2(wp.x, wp.y), Vector2(wp.x + s, wp.y), DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
+			draw_line(top, right, DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -27,16 +27,28 @@ static func draw_manhattan_area(
 				var cell := Vector2i(origin.x + dx, origin.y + dy)
 				if cell.x >= 0 and cell.x < map_size and cell.y >= 0 and cell.y < map_size:
 					cell_set[cell] = true
-	var s := float(tile_size)
+	var hw := GridUtils.HALF_W
+	var hh := GridUtils.HALF_H
+	# Draw filled diamonds
 	for cell: Vector2i in cell_set:
-		canvas.draw_rect(Rect2(Vector2(cell) * s, Vector2(s, s)), fill_color)
+		var c := GridUtils.grid_to_center(cell)
+		var points := PackedVector2Array([
+			c + Vector2(0, -hh), c + Vector2(hw, 0),
+			c + Vector2(0, hh), c + Vector2(-hw, 0),
+		])
+		canvas.draw_colored_polygon(points, fill_color)
+	# Draw outline edges where a neighbor is absent
 	for cell: Vector2i in cell_set:
-		var wp := Vector2(cell) * s
+		var c := GridUtils.grid_to_center(cell)
+		var top := c + Vector2(0, -hh)
+		var right := c + Vector2(hw, 0)
+		var bottom := c + Vector2(0, hh)
+		var left := c + Vector2(-hw, 0)
 		if not cell_set.has(cell + Vector2i(1, 0)):
-			canvas.draw_line(Vector2(wp.x + s, wp.y), Vector2(wp.x + s, wp.y + s), outline_color, outline_width)
+			canvas.draw_line(right, bottom, outline_color, outline_width)
 		if not cell_set.has(cell + Vector2i(0, 1)):
-			canvas.draw_line(Vector2(wp.x, wp.y + s), Vector2(wp.x + s, wp.y + s), outline_color, outline_width)
+			canvas.draw_line(bottom, left, outline_color, outline_width)
 		if not cell_set.has(cell + Vector2i(-1, 0)):
-			canvas.draw_line(Vector2(wp.x, wp.y), Vector2(wp.x, wp.y + s), outline_color, outline_width)
+			canvas.draw_line(left, top, outline_color, outline_width)
 		if not cell_set.has(cell + Vector2i(0, -1)):
-			canvas.draw_line(Vector2(wp.x, wp.y), Vector2(wp.x + s, wp.y), outline_color, outline_width)
+			canvas.draw_line(top, right, outline_color, outline_width)

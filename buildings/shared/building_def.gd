@@ -1,6 +1,9 @@
 class_name BuildingDef
 extends Resource
 
+## Scene files encode grid cells at 32px intervals regardless of display tile size.
+const SCENE_CELL_SIZE := 32
+
 @export var id: StringName
 @export var display_name: String
 @export var color: Color = Color.GRAY
@@ -59,9 +62,9 @@ func _extract_shape() -> void:
 	var anchor_node = container.find_child("BuildAnchor", false, false)
 	if anchor_node and anchor_node is Node2D:
 		@warning_ignore("integer_division")
-		a_cell.x = int(round(anchor_node.position.x)) / GridUtils.TILE_WIDTH
+		a_cell.x = int(round(anchor_node.position.x)) / SCENE_CELL_SIZE
 		@warning_ignore("integer_division")
-		a_cell.y = int(round(anchor_node.position.y)) / GridUtils.TILE_WIDTH
+		a_cell.y = int(round(anchor_node.position.y)) / SCENE_CELL_SIZE
 	anchor_cell = a_cell
 
 	# Read shape cells, make anchor-relative
@@ -71,9 +74,9 @@ func _extract_shape() -> void:
 		for child in shape_node.get_children():
 			if child is ColorRect:
 				@warning_ignore("integer_division")
-				var gx := int(round(child.offset_left)) / GridUtils.TILE_WIDTH
+				var gx := int(round(child.offset_left)) / SCENE_CELL_SIZE
 				@warning_ignore("integer_division")
-				var gy := int(round(child.offset_top)) / GridUtils.TILE_WIDTH
+				var gy := int(round(child.offset_top)) / SCENE_CELL_SIZE
 				cells.append(Vector2i(gx, gy) - anchor_cell)
 	instance.free()
 
@@ -125,9 +128,9 @@ func _read_io_group(container: Node, group_name: String) -> Array:
 	for child in group_node.get_children():
 		if child is ColorRect:
 			@warning_ignore("integer_division")
-			var gx := int(round(child.offset_left)) / GridUtils.TILE_WIDTH
+			var gx := int(round(child.offset_left)) / SCENE_CELL_SIZE
 			@warning_ignore("integer_division")
-			var gy := int(round(child.offset_top)) / GridUtils.TILE_WIDTH
+			var gy := int(round(child.offset_top)) / SCENE_CELL_SIZE
 			var mask: Array
 			if child.has_method("get_mask"):
 				mask = child.get_mask()
@@ -234,24 +237,24 @@ func _rotate_group(container: Node, group_name: String, rotation: int) -> void:
 	for child in group_node.get_children():
 		if child is ColorRect:
 			@warning_ignore("integer_division")
-			var gx := int(round(child.offset_left)) / GridUtils.TILE_WIDTH
+			var gx := int(round(child.offset_left)) / SCENE_CELL_SIZE
 			@warning_ignore("integer_division")
-			var gy := int(round(child.offset_top)) / GridUtils.TILE_WIDTH
+			var gy := int(round(child.offset_top)) / SCENE_CELL_SIZE
 			var rel := Vector2i(gx, gy) - anchor_cell
 			var rotated_rel := rotate_cell(rel, rotation)
 			var new_cell := rotated_rel + anchor_cell
-			child.offset_left = new_cell.x * GridUtils.TILE_WIDTH
-			child.offset_top = new_cell.y * GridUtils.TILE_HEIGHT
-			child.offset_right = child.offset_left + GridUtils.TILE_WIDTH
-			child.offset_bottom = child.offset_top + GridUtils.TILE_HEIGHT
+			child.offset_left = new_cell.x * SCENE_CELL_SIZE
+			child.offset_top = new_cell.y * SCENE_CELL_SIZE
+			child.offset_right = child.offset_left + SCENE_CELL_SIZE
+			child.offset_bottom = child.offset_top + SCENE_CELL_SIZE
 
 ## Rotate sprite children and EnergyNode positions inside the Rotatable container.
 func _rotate_visuals(container: Node, rotation: int) -> void:
 	var rot_rad := rotation * PI / 2.0
 
 	# Compute unrotated scene pixel bounding box from shape
-	var scene_w: float = GridUtils.TILE_WIDTH
-	var scene_h: float = GridUtils.TILE_HEIGHT
+	var scene_w: float = SCENE_CELL_SIZE
+	var scene_h: float = SCENE_CELL_SIZE
 	if not shape.is_empty():
 		var min_c := Vector2i(999, 999)
 		var max_c := Vector2i(-999, -999)
@@ -261,8 +264,8 @@ func _rotate_visuals(container: Node, rotation: int) -> void:
 			min_c.y = mini(min_c.y, sc.y)
 			max_c.x = maxi(max_c.x, sc.x + 1)
 			max_c.y = maxi(max_c.y, sc.y + 1)
-		scene_w = float((max_c.x - min_c.x) * GridUtils.TILE_WIDTH)
-		scene_h = float((max_c.y - min_c.y) * GridUtils.TILE_HEIGHT)
+		scene_w = float((max_c.x - min_c.x) * SCENE_CELL_SIZE)
+		scene_h = float((max_c.y - min_c.y) * SCENE_CELL_SIZE)
 
 	# Position offset so the rotated drawing aligns with the rotated cell area
 	var offset: Vector2
@@ -272,8 +275,8 @@ func _rotate_visuals(container: Node, rotation: int) -> void:
 		3: offset = Vector2(0, scene_w)
 		_: offset = Vector2.ZERO
 
-	# Pivot for rotating individual point positions (anchor cell center)
-	var pivot := GridUtils.grid_to_center(anchor_cell)
+	# Pivot for rotating individual point positions (anchor cell center in scene space)
+	var pivot := Vector2(anchor_cell.x * SCENE_CELL_SIZE + SCENE_CELL_SIZE * 0.5, anchor_cell.y * SCENE_CELL_SIZE + SCENE_CELL_SIZE * 0.5)
 
 	for child in container.get_children():
 		if child is AnimatedSprite2D:

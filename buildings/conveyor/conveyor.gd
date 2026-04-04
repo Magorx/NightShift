@@ -78,9 +78,9 @@ func _position_item(item_data: Dictionary) -> void:
 
 	# Entry edge: where the item enters the tile (0.5 = tile edge, 1.0 = source center)
 	var entry_dist: float = item_data.get("entry_dist", 0.5)
-	var entry_point := center + entry_dir * entry_dist * GridUtils.TILE_WIDTH  # TODO ISO.5: use per-axis half when tiles are non-square
+	var entry_point := GridUtils.grid_offset(grid_pos, entry_dir, entry_dist)
 	# Exit edge: where the item leaves the tile
-	var exit_point := center + exit_dir * GridUtils.HALF_W  # TODO ISO.5: use per-axis half when tiles are non-square
+	var exit_point := GridUtils.grid_offset(grid_pos, exit_dir, 0.5)
 
 	# Quadratic bezier: entry -> center -> exit for a curved path on side entries
 	var t: float = item_data.progress

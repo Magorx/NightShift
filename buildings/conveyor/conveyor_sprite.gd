@@ -10,7 +10,7 @@ var _flip: bool = false
 
 func _ready() -> void:
 	centered = true
-	position = Vector2(GridUtils.HALF_W, GridUtils.HALF_H)
+	position = Vector2.ZERO  # Isometric: parent is positioned at tile center
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	play()
 	_sync_to_global_clock()

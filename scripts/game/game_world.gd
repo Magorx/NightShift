@@ -30,12 +30,12 @@ var _ground_tooltip_grid: Vector2i = Vector2i.ZERO  # world grid pos for reposit
 var _last_time_usec: int = 0
 
 func _ready() -> void:
-	GameManager.building_layer = $BuildingLayer
-	GameManager.item_layer = $ItemLayer
+	GameManager.building_layer = $ObjectLayer/BuildingLayer
+	GameManager.item_layer = $ObjectLayer/ItemLayer
 	GameManager.conveyor_system = $ConveyorSystem
 	# Initialize MultiMesh item visual system
 	GameManager.item_visual_manager = _visual_mgr_script.new()
-	GameManager.item_visual_manager.attach_to($ItemLayer)
+	GameManager.item_visual_manager.attach_to($ObjectLayer/ItemLayer)
 	# Initialize batched building tick system
 	var tick_system = _tick_system_script.new()
 	tick_system.name = "BuildingTickSystem"
@@ -43,7 +43,7 @@ func _ready() -> void:
 	GameManager.building_tick_system = tick_system
 	# Initialize MultiMesh conveyor visual system
 	GameManager.conveyor_visual_manager = _conv_visual_mgr_script.new()
-	GameManager.conveyor_visual_manager.attach_to($BuildingLayer)
+	GameManager.conveyor_visual_manager.attach_to($ObjectLayer/BuildingLayer)
 	GameManager.clear_all()
 	GameManager.deposits.clear()
 	GameManager.walls.clear()
