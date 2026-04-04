@@ -75,6 +75,46 @@ H.save_and_export(spr, "buildings/smelter/sprites", "main")
 -- produces: main.aseprite, main.png (spritesheet), main.json (metadata)
 ```
 
+### 3D Geometry Library: `tools/rendering/iso/`
+
+**For buildings and complex 3D objects, prefer iso_geo over hand-coded perspective math.** It handles projection, depth sorting, shading, and outlines automatically.
+
+```lua
+local Iso = dofile("/Users/gorishniymax/Repos/factor/tools/rendering/iso/init.lua")
+Iso._set_helper(H)
+```
+
+**Shapes** (all with automatic shading + outlines):
+- `Iso.box(w, d, h)`, `Iso.cylinder(r, h)`, `Iso.cone(r, h)`, `Iso.sphere(r)`
+- `Iso.hemisphere(r)`, `Iso.wedge(w, d, hf, hb)`, `Iso.prism(w, d, h)`
+- `Iso.torus(R, r)`, `Iso.arch(w, d, h, ar)`
+
+**Mechanical parts** (for industrial buildings):
+- `Iso.gear(outer_r, inner_r, hole_r, teeth, thickness, angle)` — animated rotation!
+- `Iso.pipe(axis, length, outer_r, wall)`, `Iso.pipe_elbow(bend_r, pipe_r)`
+- `Iso.piston(sleeve_r, rod_r, sleeve_h, rod_extend)`, `Iso.fan(blades, r, ...)`
+
+**CSG booleans**: `Iso.union(a, b)`, `Iso.subtract(a, b)`, `Iso.intersect(a, b)`
+
+**Textures**: `Iso.tex_brick()`, `Iso.tex_metal_plate()`, `Iso.tex_grate()`, `Iso.tex_noise()`, `Iso.tex_wood_grain()`, `Iso.tex_corrugated()`, `Iso.tex_rivets()`, etc.
+
+**Scene composition** (automatic depth sorting):
+```lua
+local sc = Iso.scene(64, 72, 32, 56)  -- canvas w, h, origin x, y
+sc:add(Iso.box(24, 24, 16), {0,0,0}, { base = pal.body, outline = pal.outline })
+sc:add(Iso.cylinder(4, 10), {4, 4, 16}, { base = pal.pipe, outline = pal.outline })
+sc:add(Iso.gear(6, 4, 1.5, 6, 3, angle), {20, 12, 8}, { base = pal.rim, outline = pal.outline })
+sc:draw(img, pal.outline)
+```
+
+**Projection is configurable** — not hardcoded to 2:1. Call `Iso.configure({ tile_ratio = 2 })` or use presets like `Iso.preset_2_1()`. Shapes must be created AFTER configuring projection.
+
+**When to use iso_geo vs raw H.px():**
+- iso_geo: buildings, machines, structural elements, anything with 3D form
+- raw H.px()/H.line(): fine details added ON TOP of iso_geo output (labels, indicator lights, hand-placed accents)
+
+See `tools/rendering/iso/README.md` for full API, `tools/rendering/iso/examples/` for visual reference PNGs.
+
 ### Palettes: `tools/palettes/`
 
 Shared palettes live in `tools/palettes/<name>.lua` and return a table of named hex colors:
@@ -109,6 +149,11 @@ Always use shared palettes for consistency across related sprites. Create new pa
 ## Art direction
 
 - **Style**: 16x16 pixel art for items and building components. Buildings are tile-based (16x16 per tile, multi-tile for larger buildings).
+- **Elevation rule (Factorio-style)**: **No object should ever look flat.** Sprites must extend vertically beyond their isometric diamond footprint to show height and volume:
+  - **Ore deposits**: Ground texture at the base PLUS rocks, veins, crystals rising above the diamond to show elevation.
+  - **Buildings**: Vertical structure extending above their tile footprint -- rooftops, chimneys, machinery, pipes, etc.
+  - **Ground tiles**: Subtle height variation -- grass tufts, pebbles, surface detail that catches light.
+  - The diamond footprint is just the base; the sprite canvas extends upward to accommodate the height portion.
 - **Day palette**: Clean industrial -- grays, browns, metallic. Warm lighting.
 - **Night palette**: Psychedelic shift -- saturated neons, pulsing glows, color distortion. NOT horror -- surreal, vibrant, fever-dream.
 - **Monsters**: Impossible geometry, pulsating forms, vibrant colors. Unsettling but not scary.

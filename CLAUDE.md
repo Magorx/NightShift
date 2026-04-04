@@ -38,6 +38,18 @@ $GODOT --path .
 - **Business tracker**: `docs/business.md` -- revenue projections, wishlist targets, timeline, costs
 - **Design doc**: `docs/design.md` -- single source of truth for game design decisions
 
+### Quota tracking
+Run `/check-quota` every ~15 tool calls to fetch live usage data. This invokes `bash ~/.claude/hooks/fetch-quota.sh`, which sends a minimal CLI message to get fresh rate limits and writes them to `~/.claude/session-usage.txt`.
+
+The output contains `Status:` and `Sleep:` fields:
+- `Status: OK` -- continue normally
+- `Status: PAUSE` -- **STOP all work immediately**. Tell the user quota is at 97%+, then run `sleep <N>` where N is the `Sleep:` value (seconds until reset). Resume work after the sleep completes.
+
+Pacing guidelines:
+- **> 80%**: use `/compact`, be concise, batch related reads, avoid unnecessary tool calls
+- **> 90%**: warn the user, finish only the current task, skip nice-to-haves
+- **> 97%**: PAUSE -- sleep until reset (mandatory, see above)
+
 ### Session workflow
 1. **At session start**: run `date` to record the start time, read the kanban board and progress log
 2. Pick the highest-priority unblocked task (or let the user direct)
@@ -51,9 +63,10 @@ $GODOT --path .
    - Update business.md timeline if estimates change
 
 ### Time tracking
-- Use `date` (bash) at session start and end to measure real elapsed time
+- Use `date` (bash) at session start, after each completed kanban card, and at session end
 - Never guess or copy hours from previous sessions -- always measure
 - Report the actual time of day (morning/afternoon/evening) based on `date` output
+- Each kanban card should track two times: **planned** (the estimate) and **actual** (measured with `date`). Use the difference to calibrate future estimates.
 
 These tracking updates are the main session's responsibility -- always do them before the session ends, even if the user doesn't ask.
 
@@ -106,6 +119,23 @@ Five specialized agents available. Use them selectively -- not every session nee
 - Use `remove_child()` before `queue_free()` when measuring layout immediately
 - UI popups use `MOUSE_FILTER_PASS`; only interactive elements use `STOP`
 - Direction system: `DIRECTION_VECTORS = [RIGHT, DOWN, LEFT, UP]` (indices 0-3)
+
+### Art Pipeline: `tools/rendering/iso/`
+Isometric 3D geometry library for building sprite generation. Replaces hand-coded perspective math with a proper 3D→2D pipeline. Load in Aseprite Lua scripts:
+
+```lua
+local Iso = dofile(REPO .. "/tools/rendering/iso/init.lua")
+Iso._set_helper(H)  -- pass aseprite_helper instance
+```
+
+- **Configurable projection**: `Iso.configure({ tile_ratio = 2, z_scale = 1 })` — not hardcoded to 2:1
+- **9 primitives**: `Iso.box()`, `Iso.cylinder()`, `Iso.cone()`, `Iso.sphere()`, `Iso.hemisphere()`, `Iso.wedge()`, `Iso.prism()`, `Iso.torus()`, `Iso.arch()`
+- **Mechanical parts**: `Iso.gear()` (animated rotation), `Iso.pipe()`, `Iso.piston()`, `Iso.fan()`
+- **CSG**: `Iso.union()`, `Iso.subtract()`, `Iso.intersect()`
+- **12 textures**: brick, metal plate, grate, rivets, wood, corrugated, hex mesh, etc.
+- **Scene builder**: `Iso.scene(w, h)` — compose multiple shapes with automatic depth sorting
+- **Animation**: `Iso.anim_gear()`, `Iso.particle_emitter()`, oscillation, shake
+- See `tools/rendering/iso/README.md` for full API, `examples/` for visual reference
 
 ### Building Organization
 Each building type lives in `buildings/<name>/` with `.tscn` scene + `.tres` BuildingDef + logic script extending `BuildingLogic`. No changes to GameManager needed to add new buildings.
