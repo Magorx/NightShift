@@ -17,13 +17,11 @@ func _draw() -> void:
 	var n := GameManager.map_size
 	min_grid = min_grid.clamp(Vector2i.ZERO, Vector2i(n, n))
 	max_grid = max_grid.clamp(Vector2i.ZERO, Vector2i(n, n))
-	var hw := GridUtils.HALF_W
-	var hh := GridUtils.HALF_H
 	# Draw only the top two edges of each diamond (top-right and top-left).
 	# The bottom edges are the top edges of adjacent tiles, so this avoids double-drawing.
 	for gx in range(min_grid.x, max_grid.x + 1):
 		for gy in range(min_grid.y, max_grid.y + 1):
 			var c := GridUtils.grid_to_center(Vector2i(gx, gy))
-			var top := c + Vector2(0, -hh)
-			draw_line(top, c + Vector2(hw, 0), GRID_COLOR)
-			draw_line(top, c + Vector2(-hw, 0), GRID_COLOR)
+			var top := c + GridUtils.diamond_top()
+			draw_line(top, c + GridUtils.diamond_right(), GRID_COLOR)
+			draw_line(top, c + GridUtils.diamond_left(), GRID_COLOR)

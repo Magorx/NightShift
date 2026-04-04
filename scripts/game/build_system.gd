@@ -818,14 +818,7 @@ func _draw_phase_area() -> void:
 ## Draw a filled isometric diamond for a single grid cell.
 func _draw_diamond(grid_pos: Vector2i, color: Color) -> void:
 	var c := GridUtils.grid_to_center(grid_pos)
-	var hw := GridUtils.HALF_W
-	var hh := GridUtils.HALF_H
-	var points := PackedVector2Array([
-		c + Vector2(0, -hh),  # top
-		c + Vector2(hw, 0),   # right
-		c + Vector2(0, hh),   # bottom
-		c + Vector2(-hw, 0),  # left
-	])
+	var points := GridUtils.get_diamond_points(c)
 	draw_colored_polygon(points, color)
 
 ## Get the grid cells occupied by a building, using its BuildingDef shape.
@@ -844,14 +837,12 @@ func _draw_shape_outline(cells: Array) -> void:
 	var cell_set: Dictionary = {}
 	for cell in cells:
 		cell_set[cell] = true
-	var hw := GridUtils.HALF_W
-	var hh := GridUtils.HALF_H
 	for cell in cells:
 		var c := GridUtils.grid_to_center(cell)
-		var top := c + Vector2(0, -hh)
-		var right := c + Vector2(hw, 0)
-		var bottom := c + Vector2(0, hh)
-		var left := c + Vector2(-hw, 0)
+		var top := c + GridUtils.diamond_top()
+		var right := c + GridUtils.diamond_right()
+		var bottom := c + GridUtils.diamond_bottom()
+		var left := c + GridUtils.diamond_left()
 		# Draw edges where neighbor is absent.
 		# Grid (+1,0) shares right-bottom edge; (0,+1) shares left-bottom; etc.
 		if not cell_set.has(cell + Vector2i(1, 0)):

@@ -26,23 +26,18 @@ static func draw_manhattan_area(
 				var cell := Vector2i(origin.x + dx, origin.y + dy)
 				if cell.x >= 0 and cell.x < map_size and cell.y >= 0 and cell.y < map_size:
 					cell_set[cell] = true
-	var hw := GridUtils.HALF_W
-	var hh := GridUtils.HALF_H
 	# Draw filled diamonds
 	for cell: Vector2i in cell_set:
 		var c := GridUtils.grid_to_center(cell)
-		var points := PackedVector2Array([
-			c + Vector2(0, -hh), c + Vector2(hw, 0),
-			c + Vector2(0, hh), c + Vector2(-hw, 0),
-		])
+		var points := GridUtils.get_diamond_points(c)
 		canvas.draw_colored_polygon(points, fill_color)
 	# Draw outline edges where a neighbor is absent
 	for cell: Vector2i in cell_set:
 		var c := GridUtils.grid_to_center(cell)
-		var top := c + Vector2(0, -hh)
-		var right := c + Vector2(hw, 0)
-		var bottom := c + Vector2(0, hh)
-		var left := c + Vector2(-hw, 0)
+		var top := c + GridUtils.diamond_top()
+		var right := c + GridUtils.diamond_right()
+		var bottom := c + GridUtils.diamond_bottom()
+		var left := c + GridUtils.diamond_left()
 		if not cell_set.has(cell + Vector2i(1, 0)):
 			canvas.draw_line(right, bottom, outline_color, outline_width)
 		if not cell_set.has(cell + Vector2i(0, 1)):

@@ -222,7 +222,7 @@ func _process(delta: float) -> void:
 			_hide_ground_tooltip()
 		else:
 			var canvas_xform := get_viewport().get_canvas_transform()
-			var tile_top := GridUtils.grid_to_center(_ground_tooltip_grid) + Vector2(0, -GridUtils.HALF_H)
+			var tile_top := GridUtils.grid_to_center(_ground_tooltip_grid) + GridUtils.diamond_top()
 			var screen_pos: Vector2 = canvas_xform * tile_top
 			var popup_size := _ground_tooltip.size
 			_ground_tooltip.position = Vector2(
@@ -320,13 +320,9 @@ func _create_tile_source(tile_set: TileSet, source_id: int, color: Color, has_co
 	tile_set.add_source(source, source_id)
 	if has_collision:
 		var td: TileData = source.get_tile_data(Vector2i(0, 0), 0)
-		var hw := GridUtils.HALF_W
-		var hh := GridUtils.HALF_H
 		td.set_collision_polygons_count(0, 1)
 		# Diamond collision shape
-		td.set_collision_polygon_points(0, 0, PackedVector2Array([
-			Vector2(0, -hh), Vector2(hw, 0), Vector2(0, hh), Vector2(-hw, 0)
-		]))
+		td.set_collision_polygon_points(0, 0, GridUtils.get_diamond_points(Vector2.ZERO))
 
 func _setup_tileset() -> void:
 	var tile_set := TileSet.new()

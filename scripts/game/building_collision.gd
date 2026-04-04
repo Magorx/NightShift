@@ -14,11 +14,7 @@ func _ready() -> void:
 	collision_layer = (1 << (BUILDING_COLLISION_LAYER - 1))
 	collision_mask = 0  # Static body doesn't need to detect others
 	_shared_diamond_shape = ConvexPolygonShape2D.new()
-	var hw := GridUtils.HALF_W
-	var hh := GridUtils.HALF_H
-	_shared_diamond_shape.points = PackedVector2Array([
-		Vector2(0, -hh), Vector2(hw, 0), Vector2(0, hh), Vector2(-hw, 0)
-	])
+	_shared_diamond_shape.points = GridUtils.get_diamond_points(Vector2.ZERO)
 
 func add_tile(grid_pos: Vector2i) -> void:
 	if _shapes.has(grid_pos):
