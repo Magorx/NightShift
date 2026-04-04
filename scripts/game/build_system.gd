@@ -435,8 +435,9 @@ func _create_ghost_node(building_id: StringName, rotation: int) -> Node:
 	add_child(ghost)
 	# Disable processing after add_child to override any _ready re-enables
 	_disable_processing_recursive(ghost)
-	# Apply all visual rotation after add_child so _ready defaults are overridden
-	def.apply_rotation(ghost, rotation)
+	# In 3D, rotation is handled by the parent node transform — apply_rotation is 2D-only
+	if ghost is Node3D:
+		ghost.rotation.y = -rotation * PI / 2.0
 	return ghost
 
 func _disable_processing_recursive(node: Node) -> void:
@@ -874,4 +875,3 @@ func _show_floating_text(text: String) -> void:
 	tween.tween_property(label, "position:y", start_y - 40, 2.0).set_ease(Tween.EASE_OUT)
 	tween.tween_property(label, "modulate:a", 0.0, 2.0).set_ease(Tween.EASE_IN).set_delay(0.5)
 	tween.chain().tween_callback(label.queue_free)
-
