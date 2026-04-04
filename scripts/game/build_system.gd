@@ -780,46 +780,10 @@ func _get_visual_nodes(building: Node2D) -> Array:
 # ── Drawing ──────────────────────────────────────────────────────────────────
 
 func _draw() -> void:
-	if _phase_index > 0 and not _phase_placements.is_empty():
-		_draw_phase_area()
-	if destroy_mode:
-		_draw_destroy()
-
-func _draw_destroy() -> void:
-	if _destroy_dragging:
-		# Draw transparent red diamonds over the entire drag rectangle
-		var min_pos := Vector2i(
-			mini(_destroy_drag_start.x, cursor_grid_pos.x),
-			mini(_destroy_drag_start.y, cursor_grid_pos.y))
-		var max_pos := Vector2i(
-			maxi(_destroy_drag_start.x, cursor_grid_pos.x),
-			maxi(_destroy_drag_start.y, cursor_grid_pos.y))
-		for gx in range(min_pos.x, max_pos.x + 1):
-			for gy in range(min_pos.y, max_pos.y + 1):
-				_draw_diamond(Vector2i(gx, gy), DESTROY_AREA_COLOR)
-	else:
-		_draw_diamond(cursor_grid_pos, DESTROY_CURSOR_COLOR)
-
-
-
-func _draw_phase_area() -> void:
-	var phase_def: Dictionary = _phase_config.phases[_phase_index]
-	var max_dist: int = phase_def.get("max_distance", 0)
-	if max_dist <= 0:
-		return
-	var prev_placements: Array = _phase_placements[_phase_placements.size() - 1]
-	if prev_placements.is_empty():
-		return
-	var origins: Array = []
-	for entry in prev_placements:
-		origins.append(entry.pos as Vector2i)
-	DrawUtils.draw_manhattan_area(self, origins, max_dist, GameManager.map_size, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
-
-## Draw a filled isometric diamond for a single grid cell.
-func _draw_diamond(grid_pos: Vector2i, color: Color) -> void:
-	var c := GridUtils.grid_to_center(grid_pos)
-	var points := GridUtils.get_diamond_points(c)
-	draw_colored_polygon(points, color)
+	# TODO 3D.11: Rewrite overlays for 3D (ImmediateMesh or CanvasLayer projection).
+	# The 2D _draw() calls (draw_colored_polygon, draw_line) don't render correctly
+	# in the 3D scene. Stubbed until the grid overlay card.
+	pass
 
 ## Get the grid cells occupied by a building, using its BuildingDef shape.
 func _get_building_visual_cells(building: Node2D) -> Array:
@@ -832,33 +796,21 @@ func _get_building_visual_cells(building: Node2D) -> Array:
 		cells.append(building.grid_pos)
 	return cells
 
-## Draw outline around outer edges of a cell set (isometric diamond edges).
-func _draw_shape_outline(cells: Array) -> void:
-	var cell_set: Dictionary = {}
-	for cell in cells:
-		cell_set[cell] = true
-	for cell in cells:
-		var c := GridUtils.grid_to_center(cell)
-		var top := c + GridUtils.diamond_top()
-		var right := c + GridUtils.diamond_right()
-		var bottom := c + GridUtils.diamond_bottom()
-		var left := c + GridUtils.diamond_left()
-		# Draw edges where neighbor is absent.
-		# Grid (+1,0) shares right-bottom edge; (0,+1) shares left-bottom; etc.
-		if not cell_set.has(cell + Vector2i(1, 0)):
-			draw_line(right, bottom, DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
-		if not cell_set.has(cell + Vector2i(0, 1)):
-			draw_line(bottom, left, DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
-		if not cell_set.has(cell + Vector2i(-1, 0)):
-			draw_line(left, top, DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
-		if not cell_set.has(cell + Vector2i(0, -1)):
-			draw_line(top, right, DESTROY_OUTLINE_COLOR, OUTLINE_WIDTH)
-
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 func _get_grid_pos_under_mouse() -> Vector2i:
-	var mouse_world := get_global_mouse_position()
-	return GridUtils.world_to_grid(mouse_world)
+	var camera := get_viewport().get_camera_3d()
+	if not camera:
+		return Vector2i.ZERO
+	var mouse_pos := get_viewport().get_mouse_position()
+	var ray_origin := camera.project_ray_origin(mouse_pos)
+	var ray_dir := camera.project_ray_normal(mouse_pos)
+	# Intersect with Y=0 ground plane
+	if absf(ray_dir.y) < 0.0001:
+		return Vector2i.ZERO
+	var t := -ray_origin.y / ray_dir.y
+	var hit := ray_origin + ray_dir * t
+	return GridUtils.world_to_grid_3d(hit)
 
 func _try_remove(pos: Vector2i) -> void:
 	GameManager.remove_building(pos)
