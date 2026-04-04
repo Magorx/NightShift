@@ -423,11 +423,11 @@ func _filter_placeable_blueprints() -> void:
 
 # ── Ghost preview ─────────────────────────────────────────────────────────────
 
-func _create_ghost_node(building_id: StringName, rotation: int) -> Node2D:
+func _create_ghost_node(building_id: StringName, rotation: int) -> Node:
 	var def = GameManager.get_building_def(building_id)
 	if not def or not def.scene:
 		return null
-	var ghost: Node2D = def.scene.instantiate()
+	var ghost: Node = def.scene.instantiate()
 	# Hide direction arrow
 	var arrow = ghost.find_child("Arrow", true, false)
 	if arrow:
@@ -484,8 +484,7 @@ func _update_ghosts() -> void:
 				can_place = GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation)
 			can_place = can_place and can_afford
 			var world_3d := GridUtils.grid_to_world(pos - def.anchor_cell)
-			_ghost_nodes[i].position = Vector2(world_3d.x, world_3d.z)
-			_ghost_nodes[i].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
+			_ghost_nodes[i].position = world_3d
 			_ghost_nodes[i].visible = true
 			_update_ghost_conveyor_variant(_ghost_nodes[i], pos, rotation, _placeable_blueprints)
 		# Hide excess
@@ -505,8 +504,7 @@ func _update_ghosts() -> void:
 				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, GameManager.map_size, current_rotation)
 			can_place = can_place and can_afford
 			var world_3d := GridUtils.grid_to_world(cursor_grid_pos - def.anchor_cell)
-			_ghost_nodes[0].position = Vector2(world_3d.x, world_3d.z)
-			_ghost_nodes[0].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
+			_ghost_nodes[0].position = world_3d
 			_ghost_nodes[0].visible = true
 			_update_ghost_conveyor_variant(_ghost_nodes[0], cursor_grid_pos, rotation, [])
 			for i in range(1, _ghost_nodes.size()):
