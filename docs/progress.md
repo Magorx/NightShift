@@ -242,7 +242,15 @@ Updates appended after each work session. Tracks velocity for timeline projectio
   - MultiMesh visual managers stay 2D — they'll render in their own canvas (3D.5, 3D.7 convert)
   - TileMapLayer removed entirely — terrain data managed via byte arrays + MultiMesh (no wall collision until 3D.5)
 - **Blockers**: None
-- **Next session goal**: 3D.3 (BuildSystem input), 3D.4 (player), or 3D.5 (terrain) — these three can be done in parallel
+
+**Session 9 continued** — parallel agent execution for 3D.3, 3D.4, 3D.5 (23:25-23:46 MSK, +0.35h):
+  - **3D.3**: BuildSystem mouse input rewritten — Camera3D raycast to Y=0 ground plane → `world_to_grid_3d()`. `_draw()` overlays stubbed (return in 3D.11). 1 file changed.
+  - **3D.4**: Player fully converted to CharacterBody3D — WASD on XZ plane, real Y gravity/jump, CapsuleShape3D collision, placeholder capsule mesh. building_collision.gd → StaticBody3D + BoxShape3D. ground_item → Node3D. WorldBoundaryShape3D ground collision. save_manager Vector3 serialization. 9 files changed.
+  - **3D.5**: Terrain rendering → MultiMesh3D with spatial shader. PlaneMesh quads on XZ, atlas UV encoding preserved. 1 file changed.
+  - Fixed: conveyor_system.gd ground item pickup for Node3D items, sim_player.gd type inference
+  - All 85 unit tests + all 8 sims pass (including sim_player with 3D physics).
+- **Stats total**: 7 commits, ~25 files changed. Planned: 11h (3D.1-3D.5) → Actual: 0.55h
+- **Next session goal**: 3D.6 (building Node3D), 3D.7 (conveyor/item 3D), 3D.8 (test infra)
 
 ---
 
@@ -251,7 +259,7 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 | Metric | Value | Notes |
 |--------|-------|-------|
 | Total sessions | 9 | |
-| Total hours | 10.4 | |
+| Total hours | 10.75 | |
 | Factor baseline | ~42h over 2 weeks | 3h/day evenings |
 | Estimated M1 hours | 40-60h | ~2-3 weeks at 3h/day |
 | Estimated M2 hours | 40-60h | ~2-3 weeks at 3h/day |

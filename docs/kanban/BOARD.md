@@ -6,59 +6,13 @@
 
 ### **3D.2** Game world scene tree: Node2D → Node3D `3h` ✓ `0.2h actual`
 
+### **3D.3** BuildSystem 3D input (mouse → grid via raycast) `2h` ✓ `0.1h actual`
+
+### **3D.4** Player CharacterBody2D → CharacterBody3D `2h` ✓ `0.2h actual`
+
+### **3D.5** Terrain rendering: MultiMesh3D ground plane `2h` ✓ `0.1h actual`
+
 ## Backlog
-
-### **3D.3** BuildSystem 3D input (mouse → grid via raycast) `2h`
-
-  - tags: [3d-transition, input]
-  - priority: critical
-  - depends: 3D.2
-  - steps:
-      - [ ] Rewrite `_get_grid_pos_under_mouse()`: Camera3D raycast to Y=0 plane → `world_to_grid_3d()`
-      - [ ] Ghost preview positioning: `grid_to_world_3d()` for Vector3 placement
-      - [ ] Convert `_draw()` overlays: project 3D positions to CanvasLayer overlay (or stub initially)
-      - [ ] Update `building_popup.gd`: use `camera.unproject_position()` for screen positioning
-      - [ ] Update `minimap.gd`: map grid positions directly to minimap pixels
-    ```md
-    Without working mouse-to-grid, you can't place buildings or test interactively.
-    Overlay drawing (_draw calls) can be stubbed — functional placement is the priority.
-    ```
-
-### **3D.4** Player CharacterBody2D → CharacterBody3D `2h`
-
-  - tags: [3d-transition, player]
-  - priority: critical
-  - depends: 3D.2
-  - steps:
-      - [ ] Rewrite `player.gd`: extends CharacterBody3D, velocity Vector3 (XZ movement, Y for jump)
-      - [ ] Replace fake z_height/z_velocity with real Y-axis physics
-      - [ ] WASD moves along world X and Z axes
-      - [ ] `_handle_conveyor_push()`: direction from `grid_dir_to_world_3d()`
-      - [ ] `_get_grid_pos()`: uses `world_to_grid_3d(global_position)`
-      - [ ] Recreate `player.tscn`: CharacterBody3D + CollisionShape3D + placeholder mesh (colored capsule)
-      - [ ] Convert `building_collision.gd`: StaticBody3D + BoxShape3D per tile
-      - [ ] Convert `ground_item.gd/tscn`: Node3D, items sit on ground plane
-      - [ ] Stub mining visuals (_draw calls) for now
-    ```md
-    Can be done in parallel with 3D.3 and 3D.5 — all depend on 3D.2 but not each other.
-    Inventory/pickup/stamina logic stays untouched.
-    ```
-
-### **3D.5** Terrain rendering: MultiMesh3D ground plane `2h`
-
-  - tags: [3d-transition, terrain]
-  - priority: critical
-  - depends: 3D.2
-  - steps:
-      - [ ] Create `BaseMultiMeshManager3D`: TRANSFORM_3D, MultiMeshInstance3D, unit quad in XZ plane
-      - [ ] Rewrite `terrain_visual_manager.gd` for 3D: spatial shader (unshaded), atlas UVs unchanged
-      - [ ] Use existing diamond atlas on diamond-shaped quads initially (switch to square tiles later)
-      - [ ] Wire up in `game_world.gd` (replaces TileMapLayer)
-      - [ ] Wall collision: StaticBody3D + BoxShape3D at wall grid positions
-    ```md
-    Can be done in parallel with 3D.3 and 3D.4. Replaces TileMapLayer removed in 3D.2.
-    World generation logic and terrain data format unchanged.
-    ```
 
 ### **3D.6** Building base Node3D + placeholder meshes `2h`
 
