@@ -7,7 +7,7 @@ const INITIAL_CAPACITY := 512
 const ANIM_FPS := 10.0
 const FRAME_COUNT := 4
 
-# Atlas: 4 cols × 6 rows of 32×32 in straight.png (128×192)
+# Atlas: 4 cols × 6 rows of 64×32 in straight.png (256×192)
 # Columns 0-3 are animation frames, rows 0-5 are variants:
 #   Row 0: straight, Row 1: turn, Row 2: dual_side_input,
 #   Row 3: side_input, Row 4: crossroad, Row 5: start
@@ -139,12 +139,12 @@ func _create_material() -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = "shader_type canvas_item;
 uniform float frame_idx = 0.0;
-// Atlas layout: 4 columns (frames) x 6 rows (variants), each cell 32x32
-// Total texture: 128x192
+// Atlas layout: 4 columns (frames) x 6 rows (variants), each cell 64x32
+// Total texture: 256x192
 const float COLS = 4.0;
 const float ROWS = 6.0;
 const float DARKEN = 0.3;
-const float STRIPE_FREQ = 0.3 / 32.0;
+const float STRIPE_FREQ = 0.3 / 64.0;
 const vec3 STRIPE_RGB = vec3(1.0, 0.3, 0.25);
 const float STRIPE_A = 0.15;
 const vec4 OUTLINE_COL = vec4(0.8, 0.1, 0.07, 0.85);
@@ -172,7 +172,7 @@ void fragment() {
 		// Edge outline: sample 8 neighbors, treat out-of-cell as transparent
 		vec2 cell_min = vec2(col / COLS, row / ROWS);
 		vec2 cell_max = vec2((col + 1.0) / COLS, (row + 1.0) / ROWS);
-		vec2 ps = vec2(1.0 / (COLS * 32.0), 1.0 / (ROWS * 32.0));
+		vec2 ps = vec2(1.0 / (COLS * 64.0), 1.0 / (ROWS * 32.0));
 		vec2 offsets[8] = {
 			vec2(-ps.x, 0.0), vec2(ps.x, 0.0),
 			vec2(0.0, -ps.y), vec2(0.0, ps.y),

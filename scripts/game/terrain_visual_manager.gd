@@ -234,7 +234,7 @@ func _set_instance(mm: MultiMesh, idx: int, xform: Transform2D, atlas_idx: int, 
 func _create_shader() -> Shader:
 	var shader := Shader.new()
 	shader.code = "shader_type canvas_item;
-// Terrain atlas: 8 columns x 14 rows of 32x32 tiles
+// Terrain atlas: 8 columns x 15 rows of 64x32 isometric tiles
 const float COLS = 8.0;
 const float ROWS = 15.0;
 varying flat float v_col;
