@@ -292,7 +292,8 @@ func _deserialize_ground_items(items_data: Array) -> void:
 		var item = ground_item_scene.instantiate()
 		item.item_id = iid
 		item.quantity = int(entry.get("quantity", 1))
-		item.position = Vector2(float(entry.get("x", 0)), float(entry.get("y", 0)))
+		# x = world X, y = world Z (grid Y axis), items sit slightly above ground
+		item.position = Vector3(float(entry.get("x", 0)), 0.1, float(entry.get("y", 0)))
 		item.despawn_timer = float(entry.get("despawn", 120))
 		gw.add_child(item)
 
@@ -303,16 +304,26 @@ func _restore_camera(cam_data: Dictionary) -> void:
 	var gw := _get_game_world()
 	if not gw:
 		return
-	var cam: Camera2D = gw.find_child("Camera2D", false, false)
+	var cam = gw.find_child("Camera3D", false, false)
+	if not cam:
+		cam = gw.find_child("Camera2D", false, false)
 	if cam:
 		# Position follows the player; only restore zoom
 		var z: float = cam_data.get("zoom", 1.0)
-		cam.zoom = Vector2(z, z)
-		if cam.has_method("set_target_zoom"):
-			cam.set_target_zoom(z)
+		if cam is Camera3D:
+			cam.size = z * 40.0  # map old zoom to ortho size
+			if cam.has_method("set_target_zoom"):
+				cam.set_target_zoom(z * 40.0)
+		else:
+			cam.zoom = Vector2(z, z)
+			if cam.has_method("set_target_zoom"):
+				cam.set_target_zoom(z)
 		# Snap camera to player position if available
 		if GameManager.player and is_instance_valid(GameManager.player):
-			cam.position = GameManager.player.position
+			if cam.has_method("snap_to"):
+				cam.snap_to(GameManager.player.position)
+			else:
+				cam.position = GameManager.player.position
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

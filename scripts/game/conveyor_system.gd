@@ -65,7 +65,11 @@ func _pickup_ground_items() -> void:
 	for item in ground_items:
 		if not is_instance_valid(item) or item.quantity <= 0:
 			continue
-		var grid_pos := GridUtils.world_to_grid(item.position)
+		var grid_pos: Vector2i
+		if item is Node3D:
+			grid_pos = GridUtils.world_to_grid_3d(item.position)
+		else:
+			grid_pos = GridUtils.world_to_grid(item.position)
 		if not conveyors.has(grid_pos):
 			continue
 		var conv = conveyors[grid_pos]

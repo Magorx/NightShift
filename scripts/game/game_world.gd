@@ -7,8 +7,8 @@ const AUTOSAVE_INTERVAL := 60.0
 @onready var build_system: Node2D = $BuildSystem
 @onready var hud: Control = $UI/HUD
 
-var player  # Player (CharacterBody2D — will become CharacterBody3D in 3D.4)
-var building_collision  # BuildingCollision (StaticBody2D)
+var player  # Player (CharacterBody3D)
+var building_collision  # BuildingCollision (StaticBody3D)
 
 var _autosave_timer: float = 0.0
 var _pause_menu_scene: PackedScene = preload("res://scenes/ui/pause_menu.tscn")
@@ -51,6 +51,14 @@ func _ready() -> void:
 	building_collision.name = "BuildingCollision"
 	add_child(building_collision)
 	GameManager.building_collision = building_collision
+
+	# Create ground collision plane for CharacterBody3D floor detection
+	var ground_body := StaticBody3D.new()
+	ground_body.name = "GroundCollision"
+	var ground_shape := CollisionShape3D.new()
+	ground_shape.shape = WorldBoundaryShape3D.new()  # infinite Y=0 plane
+	ground_body.add_child(ground_shape)
+	add_child(ground_body)
 
 	# Determine world seed: use saved seed when loading, random for new game
 	var has_saved_terrain := false
@@ -280,8 +288,7 @@ func _spawn_player() -> void:
 	player = _player_scene.instantiate()
 	# Spawn at map center (grid midpoint)
 	var center_grid := Vector2i(GameManager.map_size / 2, GameManager.map_size / 2)
-	# Player is still Node2D for now — use 2D position
-	var center := GridUtils.grid_to_center(center_grid)
+	var center := GridUtils.grid_to_world_3d(center_grid)
 	player.position = center
 	player.spawn_position = center
 	add_child(player)

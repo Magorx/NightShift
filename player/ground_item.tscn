@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" path="res://player/ground_item.gd" id="1"]
 
-[node name="GroundItem" type="Node2D"]
+[node name="GroundItem" type="Node3D"]
 script = ExtResource("1")
