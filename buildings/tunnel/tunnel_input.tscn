@@ -4,23 +4,23 @@
 [ext_resource type="Script" uid="uid://t32yw383pufq" path="res://buildings/tunnel/tunnel.gd" id="3"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="4"]
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="5"]
-[ext_resource type="Texture2D" uid="uid://bsu1lw7br6xkq" path="res://buildings/tunnel/sprites/main-Sheet.png" id="6"]
+[ext_resource type="Texture2D" path="res://buildings/tunnel/sprites/main.png" id="6"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b1"]
 atlas = ExtResource("6")
-region = Rect2(0, 0, 32, 32)
+region = Rect2(0, 0, 64, 48)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b2"]
 atlas = ExtResource("6")
-region = Rect2(32, 0, 32, 32)
+region = Rect2(64, 0, 64, 48)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b3"]
 atlas = ExtResource("6")
-region = Rect2(64, 0, 32, 32)
+region = Rect2(128, 0, 64, 48)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b4"]
 atlas = ExtResource("6")
-region = Rect2(96, 0, 32, 32)
+region = Rect2(192, 0, 64, 48)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_bottom"]
 animations = [{
@@ -39,24 +39,24 @@ animations = [{
 }],
 "loop": true,
 "name": &"default",
-"speed": 5.0
+"speed": 3.0
 }]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t1"]
 atlas = ExtResource("6")
-region = Rect2(0, 64, 32, 32)
+region = Rect2(0, 48, 64, 48)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t2"]
 atlas = ExtResource("6")
-region = Rect2(32, 64, 32, 32)
+region = Rect2(64, 48, 64, 48)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t3"]
 atlas = ExtResource("6")
-region = Rect2(64, 64, 32, 32)
+region = Rect2(0, 48, 64, 48)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_t4"]
 atlas = ExtResource("6")
-region = Rect2(96, 64, 32, 32)
+region = Rect2(64, 48, 64, 48)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_top"]
 animations = [{
@@ -75,7 +75,7 @@ animations = [{
 }],
 "loop": true,
 "name": &"default",
-"speed": 5.0
+"speed": 3.0
 }]
 
 [node name="TunnelInput" type="Node2D"]
@@ -108,14 +108,14 @@ allow_up = false
 
 [node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
 texture_filter = 1
-position = Vector2(16, 16)
+position = Vector2(0, -8)
 sprite_frames = SubResource("SpriteFrames_bottom")
 autoplay = "default"
 
 [node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
 z_index = 10
 texture_filter = 1
-position = Vector2(16, 16)
+position = Vector2(0, -8)
 sprite_frames = SubResource("SpriteFrames_top")
 autoplay = "default"
 

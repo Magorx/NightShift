@@ -1,4 +1,4 @@
--- generate_conveyor.lua — Isometric conveyor belt atlas
+-- generate_conveyor.lua — Isometric conveyor belt atlas (flat surface, depth via shading)
 -- Grid: 4 columns (anim frames) x 6 rows (variants)
 -- Cell: 64x32 pixels (isometric diamond)
 -- Total: 256x192 px
@@ -12,12 +12,13 @@ local H = dofile("/Users/gorishniymax/Repos/factor/tools/aseprite_helper.lua")
 local BELT_DARK    = H.hex("#44444C")
 local BELT_MID     = H.hex("#515158")
 local BELT_LIGHT   = H.hex("#5E5E66")
-local RIDGE_DIM    = H.hex("#C8A028")
-local RIDGE_BRT    = H.hex("#E8C040")
 local EDGE_OUTER   = H.hex("#2E2E32")
 local EDGE_RAIL    = H.hex("#3A3A3E")
-local EDGE_HI      = H.hex("#50505A")  -- highlight on top edges
+local EDGE_HI      = H.hex("#50505A")
+local RIDGE_DIM    = H.hex("#C8A028")
+local RIDGE_BRT    = H.hex("#E8C040")
 local ROLLER_COL   = H.hex("#72727A")
+local ROLLER_DARK  = H.hex("#585860")
 local RAIL_INNER   = H.hex("#38383E")
 local TRANS        = H.TRANSPARENT
 
@@ -26,9 +27,8 @@ local CW, CH = 64, 32
 local COLS, ROWS = 4, 6
 local W, HTOT = CW * COLS, CH * ROWS
 
--- Center of a cell in local coords
+-- Diamond center in local coords
 local CX, CY = 31.5, 15.5
--- Half-extents of diamond
 local HX, HY = 31, 15
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -42,8 +42,7 @@ local function diamond_sdf(px, py)
   return 1.0 - dx - dy
 end
 
--- Classify pixel: "outside", "outline", "rail", "surface"
--- Returns zone name and the sdf value
+-- Classify pixel into zones: outside, outline, rail, surface
 local function classify(px, py)
   local d = diamond_sdf(px, py)
   if d < 0 then return "outside", d end
@@ -53,7 +52,7 @@ local function classify(px, py)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- BASE TILE DRAWING
+-- BASE TILE DRAWING (flat surface, depth via shading)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function draw_base_tile(img, ox, oy)
@@ -61,7 +60,6 @@ local function draw_base_tile(img, ox, oy)
     for x = 0, CW - 1 do
       local zone, d = classify(x, y)
       if zone == "outline" then
-        -- Top half gets highlight, bottom half gets shadow
         if y <= CY then
           H.px(img, ox + x, oy + y, EDGE_HI)
         else
@@ -70,7 +68,6 @@ local function draw_base_tile(img, ox, oy)
       elseif zone == "rail" then
         H.px(img, ox + x, oy + y, EDGE_RAIL)
       elseif zone == "surface" then
-        -- Subtle vertical gradient for depth (top = lit, bottom = shadow)
         local t = y / (CH - 1)
         local c = H.lerp_color(BELT_MID, BELT_DARK, t)
         H.px(img, ox + x, oy + y, c)
@@ -80,30 +77,41 @@ local function draw_base_tile(img, ox, oy)
 end
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- ROLLERS: small bright dots along each diamond edge
+-- ROLLERS: mechanical components along the rail edges
 -- ═══════════════════════════════════════════════════════════════════════════
 
 local function draw_rollers(img, ox, oy)
-  -- Each edge of the diamond: interpolate between corner points
-  -- Corners: top(31,0), right(63,15), bottom(31,31), left(0,15)
+  -- Place rollers along each of the 4 edges of the diamond
   local corners = {
-    {31, 0},   -- top
-    {62, 15},  -- right
-    {31, 31},  -- bottom
-    {0, 15},   -- left
+    {CX, CY - HY + 2},    -- top
+    {CX + HX - 2, CY},    -- right
+    {CX, CY + HY - 2},    -- bottom
+    {CX - HX + 2, CY},    -- left
   }
-  local edges = {{1,2},{2,3},{3,4},{4,1}}  -- TR, BR, BL, TL
-  for _, e in ipairs(edges) do
+
+  local edges = {{1,2},{2,3},{3,4},{4,1}}
+  for ei, e in ipairs(edges) do
     local ax, ay = corners[e[1]][1], corners[e[1]][2]
     local bx, by = corners[e[2]][1], corners[e[2]][2]
-    for i = 1, 5 do
-      local t = i / 6
+    local num_rollers = 3
+    for i = 1, num_rollers do
+      local t = i / (num_rollers + 1)
       local rx = math.floor(ax + (bx - ax) * t + 0.5)
       local ry = math.floor(ay + (by - ay) * t + 0.5)
-      -- Offset 1px inward
-      local inx = (rx > CX) and -1 or (rx < CX and 1 or 0)
-      local iny = (ry > CY) and -1 or (ry < CY and 1 or 0)
-      H.px(img, ox + rx + inx, oy + ry + iny, ROLLER_COL)
+      -- Offset inward toward surface center
+      local inx = 0
+      local iny = 0
+      if rx > CX + 2 then inx = -1 elseif rx < CX - 2 then inx = 1 end
+      if ry > CY + 1 then iny = -1 elseif ry < CY - 1 then iny = 1 end
+      local rpx = rx + inx
+      local rpy = ry + iny
+      -- Only draw if within bounds
+      if rpx >= 0 and rpx < CW and rpy >= 0 and rpy < CH then
+        -- Roller: bright center with dark sides
+        H.px(img, ox + rpx, oy + rpy, ROLLER_COL)
+        H.px(img, ox + rpx - 1, oy + rpy, ROLLER_DARK)
+        H.px(img, ox + rpx + 1, oy + rpy, ROLLER_DARK)
+      end
     end
   end
 end
@@ -113,19 +121,18 @@ end
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- Movement direction in pixel space: grid +X = screen down-right = (2, 1) in iso
--- Normalized: (0.894, 0.447)
 local MX, MY = 0.894, 0.447
--- Perpendicular (for ridge lines): (-0.447, 0.894) or (0.447, -0.894)
 
 local RIDGE_SPACING = 7
-local RIDGE_WIDTH = 1.8
+local RIDGE_WIDTH = 2.0  -- slightly wider for visibility
 
+-- Check if pixel is on the belt surface
 local function is_surface(px, py)
   local zone = classify(px, py)
   return zone == "surface"
 end
 
--- Project pixel onto movement axis
+-- Project pixel onto movement axis (relative to diamond center)
 local function proj_move(px, py)
   return (px - CX) * MX + (py - CY) * MY
 end
@@ -148,22 +155,17 @@ local function draw_straight(img, ox, oy, phase)
   end
 end
 
--- ROW 1: TURN (from grid-left = screen up-right entry, to grid-down = screen down-right exit)
--- Belt curves: use angle around a pivot near the entry corner
+-- ROW 1: TURN (from grid-left entry to grid-down exit)
 local function draw_turn(img, ox, oy, phase)
-  -- Pivot at the top-left area (where entry and exit edges meet conceptually)
-  -- Entry comes from screen-left (grid-left), exits screen-down-right (grid-down)
-  -- Pivot near left corner of diamond
-  local pvx, pvy = 6, 16
-  local shift = phase * (math.pi / 2 / 4)  -- rotate ridges through quarter-turn in 4 frames
+  local pvx, pvy = 6, CY  -- pivot near left corner
+  local shift = phase * (math.pi / 2 / 4)
 
   for y = 0, CH - 1 do
     for x = 0, CW - 1 do
       if is_surface(x, y) then
         local dx = x - pvx
-        local dy = (y - pvy) * 2  -- stretch Y to make arcs more circular in iso
+        local dy = (y - pvy) * 2
         local dist = math.sqrt(dx * dx + dy * dy)
-        -- Ridges as concentric arcs from pivot
         local p = dist + shift * 12
         local m = p % RIDGE_SPACING
         if m < 0 then m = m + RIDGE_SPACING end
@@ -187,7 +189,6 @@ local function draw_dual_side(img, ox, oy, phase)
         local dy = y - CY
         local proj_fwd = proj_move(x, y)
 
-        -- In the output half (forward), use straight ridges
         if proj_fwd > 2 then
           local p = proj_fwd + shift
           local m = p % RIDGE_SPACING
@@ -197,10 +198,8 @@ local function draw_dual_side(img, ox, oy, phase)
             H.px(img, ox + x, oy + y, bright and RIDGE_BRT or RIDGE_DIM)
           end
         else
-          -- Input half: converging from sides toward center
-          -- Use distance from center horizontal axis
           local dist_to_center = math.abs(dx) * 0.6 + math.abs(dy) * 0.3
-          local p = dist_to_center - shift  -- animate inward
+          local p = dist_to_center - shift
           local m = p % 6
           if m < 0 then m = m + 6 end
           if m < RIDGE_WIDTH then
@@ -208,7 +207,7 @@ local function draw_dual_side(img, ox, oy, phase)
           end
         end
 
-        -- Center divider line (subtle)
+        -- Center divider line
         if math.abs(proj_fwd) < 1 and math.abs(dx) < 16 then
           H.px(img, ox + x, oy + y, RAIL_INNER)
         end
@@ -224,19 +223,15 @@ local function draw_side_input(img, ox, oy, phase)
   for y = 0, CH - 1 do
     for x = 0, CW - 1 do
       if is_surface(x, y) then
-        -- Main straight ridges everywhere
         local p = proj_move(x, y) + shift
         local m = p % RIDGE_SPACING
         if m < 0 then m = m + RIDGE_SPACING end
 
-        -- Upper-right quadrant: blend with diagonal merge ridges
         local dx = x - CX
         local dy = y - CY
         local in_merge_zone = (dx > 0 and dy < -2)
 
         if in_merge_zone then
-          -- Diagonal ridges coming from upper-right
-          -- Direction from top-right: (-1, 2) in screen = entering from right side
           local merge_proj = -dx * 0.447 + dy * 0.894
           local mp = merge_proj + shift
           local mm = mp % 6
@@ -262,7 +257,6 @@ local function draw_side_input(img, ox, oy, phase)
       if is_surface(x, y) then
         local dx = x - CX
         local dy = y - CY
-        -- Diagonal line from center to upper-right edge
         if dx > 0 and math.abs(dy + dx * 0.5) < 1.0 and dy < 0 then
           H.px(img, ox + x, oy + y, RAIL_INNER)
         end
@@ -282,7 +276,6 @@ local function draw_crossroad(img, ox, oy, phase)
         local dy = y - CY
         local proj_fwd = proj_move(x, y)
 
-        -- Output quadrant (down-right from center): straight ridges
         if proj_fwd > 3 then
           local p = proj_fwd + shift
           local m = p % RIDGE_SPACING
@@ -292,7 +285,6 @@ local function draw_crossroad(img, ox, oy, phase)
             H.px(img, ox + x, oy + y, bright and RIDGE_BRT or RIDGE_DIM)
           end
         else
-          -- Input area: concentric rings converging toward center
           local dist = math.sqrt(dx * dx + (dy * 2) * (dy * 2))
           local p = dist - shift
           local m = p % 6
@@ -305,7 +297,7 @@ local function draw_crossroad(img, ox, oy, phase)
     end
   end
 
-  -- Cross divider lines separating the 3 input lanes
+  -- Cross divider lines
   for y = 0, CH - 1 do
     for x = 0, CW - 1 do
       if is_surface(x, y) then
@@ -313,16 +305,10 @@ local function draw_crossroad(img, ox, oy, phase)
         local dy = y - CY
         local proj_fwd = proj_move(x, y)
         if proj_fwd <= 3 then
-          -- Three dividers radiating from center at 120 degree spacing
-          -- Back direction: -MX, -MY
-          -- Left: perpendicular up
-          -- Right: perpendicular down
-          local perp_proj = -dx * MY + dy * MX  -- perpendicular axis
-          -- Horizontal divider through center
+          local perp_proj = -dx * MY + dy * MX
           if math.abs(perp_proj) < 0.8 and proj_fwd < -2 then
             H.px(img, ox + x, oy + y, RAIL_INNER)
           end
-          -- Two angled dividers from center
           if math.abs(dx + dy * 0.5) < 0.8 and dy < 0 and proj_fwd <= 3 then
             H.px(img, ox + x, oy + y, RAIL_INNER)
           end
@@ -344,13 +330,11 @@ local function draw_start(img, ox, oy, phase)
       if is_surface(x, y) then
         local proj_fwd = proj_move(x, y)
 
-        -- Only ridges in forward half
         if proj_fwd > -2 then
           local p = proj_fwd + shift
           local m = p % RIDGE_SPACING
           if m < 0 then m = m + RIDGE_SPACING end
           if m < RIDGE_WIDTH then
-            -- Fade in: dimmer near the start cap
             local intensity = math.min(1.0, (proj_fwd + 2) / 8)
             local bright = (math.floor(p / RIDGE_SPACING) % 2 == 0)
             local base_c = bright and RIDGE_BRT or RIDGE_DIM
@@ -362,7 +346,7 @@ local function draw_start(img, ox, oy, phase)
     end
   end
 
-  -- Start cap: a bright line perpendicular to movement through the center-ish
+  -- Start cap
   for y = 0, CH - 1 do
     for x = 0, CW - 1 do
       if is_surface(x, y) then
@@ -370,7 +354,6 @@ local function draw_start(img, ox, oy, phase)
         if math.abs(proj_fwd + 2) < 1.0 then
           H.px(img, ox + x, oy + y, EDGE_HI)
         end
-        -- Inner cap highlight
         if math.abs(proj_fwd + 2) < 0.5 then
           H.px(img, ox + x, oy + y, ROLLER_COL)
         end
@@ -378,9 +361,8 @@ local function draw_start(img, ox, oy, phase)
     end
   end
 
-  -- Forward arrow indicator at center
-  local acx, acy = 38, 18  -- slightly forward of center
-  -- Chevron pointing down-right
+  -- Forward arrow
+  local acx, acy = 38, CY + 3
   H.px(img, ox + acx, oy + acy, RIDGE_BRT)
   H.px(img, ox + acx - 1, oy + acy - 1, RIDGE_BRT)
   H.px(img, ox + acx - 1, oy + acy + 1, RIDGE_BRT)
@@ -414,7 +396,7 @@ for row = 0, ROWS - 1 do
     -- Base tile (edges, rails, belt surface)
     draw_base_tile(img, ox, oy)
 
-    -- Rollers along edges
+    -- Rollers along diamond edges
     draw_rollers(img, ox, oy)
 
     -- Variant-specific ridges

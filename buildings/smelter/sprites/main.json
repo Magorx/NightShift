@@ -10,7 +10,7 @@
    },
    {
     "filename": "main (base) #idle 1.aseprite",
-    "frame": { "x": 64, "y": 0, "w": 64, "h": 96 },
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 96 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 96 },
@@ -37,7 +37,7 @@
    },
    {
     "filename": "main (base) #windup 0.aseprite",
-    "frame": { "x": 64, "y": 0, "w": 64, "h": 96 },
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 96 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 96 },
@@ -46,7 +46,7 @@
    },
    {
     "filename": "main (base) #windup 1.aseprite",
-    "frame": { "x": 64, "y": 0, "w": 64, "h": 96 },
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 96 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 96 },
@@ -73,7 +73,7 @@
    },
    {
     "filename": "main (base) #active 0.aseprite",
-    "frame": { "x": 64, "y": 0, "w": 64, "h": 96 },
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 96 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 96 },
@@ -82,7 +82,7 @@
    },
    {
     "filename": "main (base) #active 1.aseprite",
-    "frame": { "x": 64, "y": 0, "w": 64, "h": 96 },
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 96 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 96 },
@@ -91,7 +91,7 @@
    },
    {
     "filename": "main (base) #active 2.aseprite",
-    "frame": { "x": 64, "y": 0, "w": 64, "h": 96 },
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 96 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 96 },
@@ -100,7 +100,7 @@
    },
    {
     "filename": "main (base) #active 3.aseprite",
-    "frame": { "x": 64, "y": 0, "w": 64, "h": 96 },
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 96 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 96 },
@@ -145,7 +145,7 @@
    },
    {
     "filename": "main (base) #winddown 0.aseprite",
-    "frame": { "x": 64, "y": 0, "w": 64, "h": 96 },
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 96 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 96 },
@@ -154,7 +154,7 @@
    },
    {
     "filename": "main (base) #winddown 1.aseprite",
-    "frame": { "x": 64, "y": 0, "w": 64, "h": 96 },
+    "frame": { "x": 0, "y": 0, "w": 64, "h": 96 },
     "rotated": false,
     "trimmed": false,
     "spriteSourceSize": { "x": 0, "y": 0, "w": 64, "h": 96 },

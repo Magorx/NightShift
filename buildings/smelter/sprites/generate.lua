@@ -1,11 +1,12 @@
--- smelter_sprite.lua
--- Top-down smelter: warm copper/brass identity, large crucible with molten metal.
--- 2x3 tiles (64x96 per frame), 2 layers, 10 frames:
--- idle(2) + windup(2) + active(4) + winddown(2).
+-- generate.lua -- Isometric smelter with depth shading
+-- 2x3 tiles (64x96 per frame), same canvas size as original
+-- IMPORTANT: Canvas stays 64x96 to avoid code refactoring.
+-- 2 layers (base, top), 10 frames:
+-- idle(2) + windup(2) + active(4) + winddown(2)
 --
--- Base layer (z=0): minimal — mold interiors for code-animated bars, output cell floor.
--- Top layer (z=10): nearly everything structural — items render UNDER this.
--- Cell (1,1) has an opening in the top layer so items flow visibly through.
+-- Adds isometric depth: top faces lit, front edges dark, chimney detail.
+-- Base layer: mold interiors, output cell floor
+-- Top layer: structural housing, crucible, chimney, hoppers
 
 local H = dofile("/Users/gorishniymax/Repos/factor/tools/aseprite_helper.lua")
 local C = H.load_palette("buildings")
@@ -13,13 +14,14 @@ local C = H.load_palette("buildings")
 local W, FH = 64, 96
 local LAYERS = {"base", "top"}
 local TAGS = {
-  {name="idle",     from=1, to=2, duration=0.5},
-  {name="windup",   from=3, to=4, duration=0.15},
-  {name="active",   from=5, to=8, duration=0.15},
-  {name="winddown", from=9, to=10, duration=0.15},
+  {name="idle",     from=1,  to=2,  duration=0.5},
+  {name="windup",   from=3,  to=4,  duration=0.15},
+  {name="active",   from=5,  to=8,  duration=0.15},
+  {name="winddown", from=9,  to=10, duration=0.15},
 }
+local DIR = "/Users/gorishniymax/Repos/factor/buildings/smelter/sprites"
 
--- Smelter identity: warm copper/brass, bright molten
+-- Smelter identity: warm copper/brass
 local COPPER    = H.hex("#B87333")
 local COPPER_DK = H.hex("#8B5A2B")
 local COPPER_RM = H.hex("#A06830")
@@ -28,82 +30,88 @@ local MOLTEN    = H.hex("#FF8C00")
 local MOLTEN_BR = H.hex("#FFB347")
 local MOLTEN_DM = H.hex("#A05A10")
 
--- ═══════════════════════════════════════════════════════════════════════════
--- BASE LAYER: only recessed interiors visible through top-layer openings
--- ═══════════════════════════════════════════════════════════════════════════
+-- Isometric depth shading helper
+local function shaded_box(img, x1, y1_top, x2, y_mid, y_bottom, top_col, fl_col, fr_col, out_col)
+  -- Top face
+  H.rect(img, x1, y1_top, x2, y_mid, top_col)
+  -- Front-left face
+  local mid_x = math.floor((x1 + x2) / 2)
+  H.rect(img, x1, y_mid + 1, mid_x, y_bottom, fl_col)
+  -- Front-right face (darker)
+  H.rect(img, mid_x + 1, y_mid + 1, x2, y_bottom, fr_col)
+  -- Outlines
+  H.rect_outline(img, x1, y1_top, x2, y_bottom, out_col)
+  H.line(img, x1, y_mid, x2, y_mid, out_col)
+end
+
+-- =========================================================================
+-- BASE LAYER: recessed interiors visible through top-layer openings
+-- =========================================================================
 local function draw_base(img, tag, phase)
-  -- Mold interiors (dark background for code-animated bars at z=5)
+  -- Mold interiors (dark background for code-animated bars)
   H.rect(img, 8, 73, 24, 87, C.shadow)
   H.rect(img, 39, 73, 55, 87, C.shadow)
 
-  -- Output cell floor (visible through top layer opening; conveyor overlays this)
+  -- Output cell floor
   H.rect(img, 34, 34, 62, 62, C.panel)
   H.rect(img, 35, 43, 63, 52, C.panel_inner)
-
-  -- Diagonal channel from crucible to mold area (idle frame 0 only)
-  if tag == "idle" and phase == 0 then
-    local ch = {
-      {60,0,2},{61,2,6},{62,7,9},{63,10,12},{64,12,14},{65,14,15},
-      {66,16,17},{67,17,19},{68,19,21},{69,21,22},{70,23,24},
-      {71,24,26},{72,26,27},{73,27,29},{74,29,29},
-    }
-    for _, r in ipairs(ch) do
-      H.line(img, r[2], r[1], r[3], r[1], C.conv_light)
-    end
-  end
 end
 
--- ═══════════════════════════════════════════════════════════════════════════
--- TOP LAYER: all structural elements — renders above items
--- ═══════════════════════════════════════════════════════════════════════════
+-- =========================================================================
+-- TOP LAYER: structural elements with isometric depth shading
+-- =========================================================================
 local function draw_top(img, tag, phase)
   local cx, cy = 15, 47
 
-  -- ── Section fills ────────────────────────────────────────────────────
-  -- Top row (full)
-  H.rect(img, 1, 1, 62, 30, C.body_light)
-  H.rect(img, 2, 2, 61, 29, C.panel)
-  -- Middle-left (full)
-  H.rect(img, 1, 33, 30, 62, C.body_light)
-  H.rect(img, 2, 34, 29, 61, C.panel)
-  -- Middle-right: frame strips only — center open for item visibility
-  H.rect(img, 33, 33, 62, 37, C.body)       -- top strip
-  H.rect(img, 34, 34, 61, 36, C.panel)
-  H.rect(img, 33, 58, 62, 62, C.body)       -- bottom strip
-  H.rect(img, 34, 59, 61, 61, C.panel)
-  H.rect(img, 33, 38, 36, 57, C.body)       -- left strip (crucible connection)
-  H.rect(img, 34, 38, 35, 57, C.panel)
-  -- Bottom row (full)
-  H.rect(img, 1, 65, 62, 94, C.body_light)
-  H.rect(img, 2, 66, 61, 93, C.panel)
-
-  -- ── Section outlines ─────────────────────────────────────────────────
+  -- ── Top row: input hoppers section (3D depth) ───────────────────────
+  -- Top face (lit from above)
+  H.rect(img, 1, 1, 62, 10, C.body_light)
+  -- Front face (darker gradient for depth)
+  H.gradient_v(img, 1, 11, 62, 30, C.body, C.panel)
+  -- Outline
   H.rect_outline(img, 0, 0, 63, 31, C.outline)
+  -- Edge between top face and front face
+  H.line(img, 1, 10, 62, 10, C.rim)
+
+  -- Copper accent on top face
+  for x = 4, 59 do H.px(img, x, 3, COPPER) end
+  -- Shadow strip at bottom of front face
+  for x = 4, 59 do H.px(img, x, 29, COPPER_DK) end
+
+  -- ── Input hopper A (left, 3D recessed) ──────────────────────────────
+  shaded_box(img, 5, 4, 27, 9, 27, C.panel_inner, C.chamber, C.chamber_deep, COPPER_RM)
+  H.rect(img, 9, 5, 23, 8, C.chamber_deep)  -- opening
+  H.rect(img, 9, 14, 23, 24, C.chamber)      -- front face pit
+  H.rect_outline(img, 9, 14, 23, 24, COPPER_DK)
+  H.rect_outline(img, 5, 4, 27, 27, COPPER)
+
+  -- ── Input hopper B (right, 3D recessed) ─────────────────────────────
+  shaded_box(img, 36, 4, 58, 9, 27, C.panel_inner, C.chamber, C.chamber_deep, COPPER_RM)
+  H.rect(img, 40, 5, 54, 8, C.chamber_deep)
+  H.rect(img, 40, 14, 54, 24, C.chamber)
+  H.rect_outline(img, 40, 14, 54, 24, COPPER_DK)
+  H.rect_outline(img, 36, 4, 58, 27, COPPER)
+
+  -- ── Middle-left: crucible section (3D) ──────────────────────────────
+  -- Top face
+  H.rect(img, 1, 33, 30, 40, C.body_light)
+  -- Front face
+  H.gradient_v(img, 1, 41, 30, 62, C.body, C.panel)
   H.rect_outline(img, 0, 32, 31, 63, C.outline)
+  H.line(img, 1, 40, 30, 40, C.rim)
+
+  -- ── Middle-right: output channel ────────────────────────────────────
+  -- Frame strips (center open for items)
+  H.rect(img, 33, 33, 62, 37, C.body_light)
+  H.rect(img, 33, 58, 62, 62, C.panel)
+  H.rect(img, 33, 38, 36, 57, C.body)
   H.rect_outline(img, 32, 32, 63, 63, C.outline)
-  H.rect_outline(img, 0, 64, 63, 95, C.outline)
+  -- Channel walls with depth
+  H.line(img, 37, 38, 62, 38, COPPER_DK)
+  H.line(img, 37, 57, 62, 57, COPPER_DK)
+  H.line(img, 37, 38, 37, 57, COPPER_DK)
 
-  -- ── Copper accent strips ─────────────────────────────────────────────
-  for x = 4, 59 do
-    H.px(img, x, 3, COPPER_DK)
-    H.px(img, x, 28, COPPER_DK)
-    H.px(img, x, 68, COPPER_DK)
-    H.px(img, x, 92, COPPER_DK)
-  end
-  for y = 4, 60 do H.px(img, 3, y, COPPER_DK) end
-  for y = 68, 91 do H.px(img, 3, y, COPPER_DK) end
-
-  -- ── Input hoppers ────────────────────────────────────────────────────
-  H.bordered_rect(img, 5, 5, 27, 27, C.panel_inner, COPPER_RM)
-  H.bordered_rect(img, 8, 8, 24, 24, C.chamber, COPPER_DK)
-  H.bordered_rect(img, 11, 11, 21, 21, C.chamber_deep, C.shadow)
-  H.rect_outline(img, 5, 5, 27, 27, COPPER)
-  H.bordered_rect(img, 36, 5, 58, 27, C.panel_inner, COPPER_RM)
-  H.bordered_rect(img, 39, 8, 55, 24, C.chamber, COPPER_DK)
-  H.bordered_rect(img, 42, 11, 52, 21, C.chamber_deep, C.shadow)
-  H.rect_outline(img, 36, 5, 58, 27, COPPER)
-
-  -- ── Crucible ─────────────────────────────────────────────────────────
+  -- ── Crucible ────────────────────────────────────────────────────────
   H.circle(img, cx, cy, 13, COPPER_DK)
   H.circle(img, cx, cy, 12, C.chamber)
 
@@ -146,56 +154,88 @@ local function draw_top(img, tag, phase)
     for _, p in ipairs(em) do H.px(img, p[1], p[2], C.ember) end
   end
 
-  -- Crucible rim (on top of contents)
-  H.circle_outline(img, cx, cy, 12, COPPER)
+  -- Crucible rim (highlight on top, shadow on bottom)
+  for a = 0, 359 do
+    local rad = math.rad(a)
+    local rx = math.floor(cx + 12 * math.cos(rad) + 0.5)
+    local ry = math.floor(cy + 12 * math.sin(rad) + 0.5)
+    local col = (a >= 180 and a <= 360) and COPPER or COPPER_DK
+    H.px(img, rx, ry, col)
+  end
   H.circle_outline(img, cx, cy, 13, COPPER_DK)
 
-  -- ── Output opening frame detail ──────────────────────────────────────
-  -- Channel walls at opening edges
-  H.line(img, 37, 38, 62, 38, COPPER_DK)    -- top wall
-  H.line(img, 37, 57, 62, 57, COPPER_DK)    -- bottom wall
-  H.line(img, 37, 38, 37, 57, COPPER_DK)    -- left wall (at crucible)
+  -- ── Bottom row: casting molds (3D depth) ────────────────────────────
+  -- Top face
+  H.rect(img, 1, 65, 62, 72, C.body_light)
+  -- Front face
+  H.gradient_v(img, 1, 73, 62, 94, C.body, C.panel)
+  H.rect_outline(img, 0, 64, 63, 95, C.outline)
+  H.line(img, 1, 72, 62, 72, C.rim)
 
-  -- ── Casting mold frames (covers bar overflow) ────────────────────────
-  -- Left mold frame strips
-  H.rect(img, 5, 70, 27, 72, C.panel_inner)
-  H.rect(img, 5, 88, 27, 90, C.panel_inner)
-  H.rect(img, 5, 73, 7, 87, C.panel_inner)
-  H.rect(img, 25, 73, 27, 87, C.panel_inner)
-  H.rect_outline(img, 5, 70, 27, 90, C.rim)
-  H.rect_outline(img, 8, 73, 24, 87, C.panel_inner)
-  -- Right mold frame strips
-  H.rect(img, 36, 70, 58, 72, C.panel_inner)
-  H.rect(img, 36, 88, 58, 90, C.panel_inner)
-  H.rect(img, 36, 73, 38, 87, C.panel_inner)
-  H.rect(img, 56, 73, 58, 87, C.panel_inner)
-  H.rect_outline(img, 36, 70, 58, 90, C.rim)
-  H.rect_outline(img, 39, 73, 55, 87, C.panel_inner)
-  -- Mold separators (bars slide underneath)
+  -- Copper accents
+  for x = 4, 59 do H.px(img, x, 68, COPPER) end
+  for x = 4, 59 do H.px(img, x, 92, COPPER_DK) end
+
+  -- Left mold (3D)
+  shaded_box(img, 5, 70, 27, 73, 90, C.panel_inner, C.shadow, C.shadow, C.rim)
+  H.rect_outline(img, 8, 74, 24, 87, C.panel_inner)
+  -- Right mold (3D)
+  shaded_box(img, 36, 70, 58, 73, 90, C.panel_inner, C.shadow, C.shadow, C.rim)
+  H.rect_outline(img, 39, 74, 55, 87, C.panel_inner)
+  -- Mold separators
   H.line(img, 8, 80, 24, 80, C.panel_inner)
   H.line(img, 39, 80, 55, 80, C.panel_inner)
 
-  -- Clear mold interiors so base layer bars/items show through
-  local CLEAR = H.rgba(0, 0, 0, 0)
+  -- Clear mold interiors so base layer shows through
+  local CLEAR = H.TRANSPARENT
   H.rect(img, 9, 74, 23, 79, CLEAR)
   H.rect(img, 9, 81, 23, 86, CLEAR)
   H.rect(img, 40, 74, 54, 79, CLEAR)
   H.rect(img, 40, 81, 54, 86, CLEAR)
 
-  -- ── Pipes: hoppers → crucible ────────────────────────────────────────
+  -- ── Pipes: hoppers to crucible ──────────────────────────────────────
   H.line(img, 15, 28, 15, 35, C.pipe)
+  H.line(img, 16, 28, 16, 35, C.pipe_inner)
   H.px(img, 14, 28, C.pipe)
   H.px(img, 16, 28, C.pipe)
   H.line(img, 47, 28, 47, 40, C.pipe)
+  H.line(img, 48, 28, 48, 40, C.pipe_inner)
   H.line(img, 28, 40, 47, 40, C.pipe)
+  H.line(img, 28, 41, 47, 41, C.pipe_inner)
   H.px(img, 46, 28, C.pipe)
   H.px(img, 48, 28, C.pipe)
+  -- Pipe flanges
   H.px(img, 14, 31, COPPER_DK)
   H.px(img, 16, 31, COPPER_DK)
   H.px(img, 46, 34, COPPER_DK)
   H.px(img, 48, 34, COPPER_DK)
 
-  -- ── Copper bolts ─────────────────────────────────────────────────────
+  -- ── Chimney/smokestack (extends above top section) ──────────────────
+  local chx = 54
+  -- Chimney body (left face lit, right face shadow)
+  for y = 0, 5 do
+    local t = y / 5
+    H.px(img, chx - 2, y, H.lerp_color(C.body_light, C.body, t))
+    H.px(img, chx - 1, y, H.lerp_color(C.body_light, C.body, t))
+    H.px(img, chx, y, C.body)
+    H.px(img, chx + 1, y, H.lerp_color(C.body, C.panel, t))
+    H.px(img, chx + 2, y, H.lerp_color(C.body, C.panel, t))
+  end
+  H.rect_outline(img, chx - 3, 0, chx + 3, 6, C.outline)
+  -- Chimney cap
+  H.line(img, chx - 3, 0, chx + 3, 0, C.rim)
+  -- Chimney soot
+  H.line(img, chx - 1, 1, chx + 1, 1, C.soot)
+
+  -- Smoke when active
+  if tag == "active" or (tag == "windup" and phase == 1) then
+    local offsets = {{-1,-1},{1,-1},{0,1},{-1,0}}
+    local o = offsets[(phase % 4) + 1]
+    H.px(img, chx + o[1], 0 + o[2], C.smoke_light)
+    H.px(img, chx - o[1], -1, C.smoke_mid)
+  end
+
+  -- ── Copper bolts ────────────────────────────────────────────────────
   for _, p in ipairs({
     {4,4},{59,4},{4,27},{59,27},
     {4,69},{59,69},{4,91},{59,91},
@@ -204,7 +244,7 @@ local function draw_top(img, tag, phase)
     H.px(img, p[1], p[2], COPPER)
   end
 
-  -- ── Heat shimmer ─────────────────────────────────────────────────────
+  -- ── Heat shimmer near crucible ──────────────────────────────────────
   if tag == "active" or (tag == "windup" and phase == 1) then
     local offsets = {{-2,-1},{2,-1},{0,1},{-1,0}}
     local o = offsets[(phase % 4) + 1]
@@ -218,6 +258,5 @@ H.render_frames(spr, lm, TAGS, function(img, layer, fi, tag, phase)
   if layer == "base" then draw_base(img, tag, phase)
   else draw_top(img, tag, phase) end
 end)
-H.save_and_export(spr,
-  "/Users/gorishniymax/Repos/factor/buildings/smelter/sprites", "main")
+H.save_and_export(spr, DIR, "main")
 print("[smelter] done")

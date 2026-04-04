@@ -1,6 +1,9 @@
--- Isometric terrain atlas generator for Night Shift
+-- Isometric terrain atlas generator for Night Shift (v2 - with elevation/depth)
 -- Generates an 8x15 grid of 64x32 isometric diamond tiles (512x480 total)
 -- Run: aseprite -b --script generate_terrain.lua
+--
+-- Atlas layout matches terrain_visual_manager.gd ATLAS indices exactly.
+-- Each flat index = row * 8 + col.
 
 local CELL_W = 64
 local CELL_H = 32
@@ -53,7 +56,12 @@ end
 -- ── Color helpers ───────────────────────────────────────────────────────
 
 local function rgba(r, g, b, a)
-    return app.pixelColor.rgba(r, g, b, a or 255)
+    return app.pixelColor.rgba(
+        math.max(0, math.min(255, math.floor(r + 0.5))),
+        math.max(0, math.min(255, math.floor(g + 0.5))),
+        math.max(0, math.min(255, math.floor(b + 0.5))),
+        math.max(0, math.min(255, math.floor((a or 255) + 0.5)))
+    )
 end
 
 local TRANSPARENT = app.pixelColor.rgba(0, 0, 0, 0)
@@ -67,22 +75,21 @@ local function decompose(c)
     return app.pixelColor.rgbaR(c), app.pixelColor.rgbaG(c), app.pixelColor.rgbaB(c), app.pixelColor.rgbaA(c)
 end
 
-local function lerp(c1, c2, t)
+local function lerp_color(c1, c2, t)
     t = math.max(0, math.min(1, t))
     local r1, g1, b1, a1 = decompose(c1)
     local r2, g2, b2, a2 = decompose(c2)
     return rgba(
-        math.floor(r1 + (r2 - r1) * t + 0.5),
-        math.floor(g1 + (g2 - g1) * t + 0.5),
-        math.floor(b1 + (b2 - b1) * t + 0.5),
-        math.floor(a1 + (a2 - a1) * t + 0.5)
+        r1 + (r2 - r1) * t,
+        g1 + (g2 - g1) * t,
+        b1 + (b2 - b1) * t,
+        a1 + (a2 - a1) * t
     )
 end
 
 local function brighten(c, factor)
     local r, g, b, a = decompose(c)
-    local function cl(v) return math.max(0, math.min(255, math.floor(v * factor + 0.5))) end
-    return rgba(cl(r), cl(g), cl(b), a)
+    return rgba(r * factor, g * factor, b * factor, a)
 end
 
 local function with_alpha(c, alpha)
@@ -90,33 +97,16 @@ local function with_alpha(c, alpha)
     return rgba(r, g, b, alpha)
 end
 
-local function add_color(c1, c2, strength)
-    strength = strength or 1.0
-    local r1, g1, b1, a1 = decompose(c1)
-    local r2, g2, b2 = decompose(c2)
-    local function cl(v) return math.max(0, math.min(255, math.floor(v + 0.5))) end
-    return rgba(
-        cl(r1 + r2 * strength),
-        cl(g1 + g2 * strength),
-        cl(b1 + b2 * strength),
-        a1
-    )
-end
-
--- ── Isometric diamond check ─────────────────────────────────────────────
--- Returns true if (px, py) is inside the isometric diamond in a 64x32 cell
--- Also returns normalized u,v coords within the diamond (0-1 range)
+-- ── Isometric diamond helpers ───────────────────────────────────────────
 
 local function in_diamond(px, py)
-    -- Diamond vertices: top(32,0) right(63,16) bottom(32,31) left(0,16)
-    local cx = 31.5  -- center x
-    local cy = 15.5  -- center y
+    local cx = 31.5
+    local cy = 15.5
     local dx = math.abs(px - cx) / 32.0
     local dy = math.abs(py - cy) / 16.0
-    return (dx + dy) <= 1.0, (px - cx) / 32.0, (py - cy) / 16.0
+    return (dx + dy) <= 1.0
 end
 
--- Distance from diamond edge (0 = edge, 1 = center)
 local function diamond_depth(px, py)
     local cx = 31.5
     local cy = 15.5
@@ -127,37 +117,204 @@ local function diamond_depth(px, py)
     return 1.0 - d
 end
 
--- Edge detection for iso shading
-local function iso_shade(px, py, base_color, highlight_factor, shadow_factor)
-    local depth = diamond_depth(px, py)
-    if depth < 0 then return TRANSPARENT end
-
-    -- Top-right edge gets highlight, bottom-left gets shadow
+-- Which quadrant of the diamond: "tl", "tr", "bl", "br"
+local function diamond_quadrant(px, py)
     local cx = 31.5
     local cy = 15.5
-    local nx = (px - cx) / 32.0  -- -1 to 1
-    local ny = (py - cy) / 16.0  -- -1 to 1
-
-    -- Light comes from top-right
-    local light = (-ny * 0.8 + nx * 0.4)  -- -1 to 1
-    light = light * 0.5 + 0.5  -- 0 to 1
-
-    -- Edge darkening (strong outline effect)
-    local edge_dark = 1.0
-    if depth < 0.06 then
-        edge_dark = 0.65 + 0.35 * (depth / 0.06)
-    elseif depth < 0.12 then
-        edge_dark = 0.85 + 0.15 * ((depth - 0.06) / 0.06)
-    end
-
-    local factor = 1.0
-    if light > 0.5 then
-        factor = 1.0 + (light - 0.5) * 2.0 * (highlight_factor - 1.0)
+    if py < cy then
+        return px < cx and "tl" or "tr"
     else
-        factor = 1.0 - (0.5 - light) * 2.0 * (1.0 - shadow_factor)
+        return px < cx and "bl" or "br"
     end
+end
 
-    return brighten(base_color, factor * edge_dark)
+-- ── Core tile rendering with front-face depth ───────────────────────────
+
+local function render_diamond(col, row, base, dark, light, seed, opts)
+    opts = opts or {}
+    local ox = col * CELL_W
+    local oy = row * CELL_H
+    local edge_band = opts.edge_thickness or 0.12
+    local edge_darken = opts.edge_darken or 0.60
+
+    for py = 0, CELL_H - 1 do
+        for px = 0, CELL_W - 1 do
+            if not in_diamond(px, py) then goto continue end
+
+            local depth = diamond_depth(px, py)
+            local quad = diamond_quadrant(px, py)
+
+            -- Base noise color
+            local n = fbm(px + ox, py + oy, 3, seed)
+            local c
+            if n < 0.4 then
+                c = lerp_color(dark, base, n / 0.4)
+            else
+                c = lerp_color(base, light, (n - 0.4) / 0.6)
+            end
+
+            -- Top-face lighting: upper-left is bright, lower-right is darker
+            local cx_n = (px - 31.5) / 32.0
+            local cy_n = (py - 15.5) / 16.0
+            local light_val = 1.0 + (-cy_n * 0.5 - cx_n * 0.25) * 0.14
+
+            -- Front-face depth band on bottom two edges
+            if (quad == "bl" or quad == "br") and depth < edge_band then
+                local t = depth / edge_band  -- 0 at edge, 1 at interior
+                local front = edge_darken + (1.0 - edge_darken) * t
+                -- Bottom-right is darkest (away from upper-left light)
+                if quad == "br" then front = front * 0.88 end
+                c = brighten(c, front * light_val)
+            else
+                c = brighten(c, light_val)
+            end
+
+            -- Thin dark outline at the very edge
+            if depth < 0.04 then
+                c = brighten(c, 0.50 + 0.50 * (depth / 0.04))
+            end
+
+            img:drawPixel(ox + px, oy + py, c)
+            ::continue::
+        end
+    end
+end
+
+-- ── Drawing primitives ──────────────────────────────────────────────────
+
+local function dpx(col, row, px, py, c)
+    if px < 0 or px >= CELL_W or py < 0 or py >= CELL_H then return end
+    if not in_diamond(px, py) then return end
+    img:drawPixel(col * CELL_W + px, row * CELL_H + py, c)
+end
+
+local function dpx_free(col, row, px, py, c)
+    if px < 0 or px >= CELL_W or py < 0 or py >= CELL_H then return end
+    img:drawPixel(col * CELL_W + px, row * CELL_H + py, c)
+end
+
+local function dpx_blend(col, row, px, py, c, alpha)
+    if px < 0 or px >= CELL_W or py < 0 or py >= CELL_H then return end
+    if not in_diamond(px, py) then return end
+    local ox = col * CELL_W
+    local oy = row * CELL_H
+    local existing = img:getPixel(ox + px, oy + py)
+    local blended = lerp_color(existing, c, alpha / 255.0)
+    img:drawPixel(ox + px, oy + py, blended)
+end
+
+-- ── Detail drawing functions ────────────────────────────────────────────
+
+local function draw_grass_tuft(col, row, cx, cy, c_base, c_tip, size, seed)
+    size = size or 2
+    local blades = 1 + math.floor(hash(cx, cy, seed) * size)
+    for b = 0, blades - 1 do
+        local bx = cx + b - math.floor(blades / 2)
+        local height = 1 + math.floor(hash(bx, cy, seed + 10) * 2)
+        for h = 0, height do
+            local t = h / math.max(1, height)
+            local c = lerp_color(c_base, c_tip, t)
+            if b == 0 then c = brighten(c, 1.15) end
+            dpx(col, row, bx, cy - h, c)
+        end
+    end
+end
+
+local function draw_pebble(col, row, cx, cy, c_light, c_dark)
+    dpx(col, row, cx, cy, c_dark)
+    dpx(col, row, cx + 1, cy, c_light)
+    if hash(cx, cy, 999) > 0.5 then
+        dpx(col, row, cx, cy - 1, brighten(c_light, 1.1))
+    end
+end
+
+local function draw_crack(col, row, sx, sy, length, c, seed)
+    local x, y = sx, sy
+    for i = 0, length - 1 do
+        dpx(col, row, math.floor(x), math.floor(y), c)
+        x = x + 1.0 + (hash(math.floor(x), math.floor(y), seed) - 0.3) * 0.5
+        y = y + (hash(math.floor(x) + 1, math.floor(y), seed + 1) - 0.5) * 1.5
+    end
+end
+
+-- Crystal shard with lit left, dark right, bright tip
+local function draw_crystal_shard(col, row, cx, cy, height, width, c_body, c_light, c_dark, c_tip)
+    for dy = 0, height - 1 do
+        local t = dy / math.max(1, height - 1)
+        local w = math.max(1, math.floor(width * (1.0 - t * 0.7) + 0.5))
+        local half = math.floor(w / 2)
+        for dx = -half, half do
+            local c
+            if dy == height - 1 then c = c_tip
+            elseif dx < 0 then c = c_light
+            elseif dx > 0 then c = c_dark
+            else c = c_body end
+            c = brighten(c, 1.0 - t * 0.12)
+            dpx(col, row, cx + dx, cy - dy, c)
+        end
+    end
+end
+
+-- Hexagonal prism for crystalline ore
+local function draw_hex_prism(col, row, cx, cy, height, width, c_face_l, c_face_r, c_top)
+    for dy = 0, height - 1 do
+        local half = math.floor(width / 2)
+        for dx = -half, half do
+            local c = dx <= 0 and c_face_l or c_face_r
+            dpx(col, row, cx + dx, cy - dy, c)
+        end
+    end
+    local half = math.floor(width / 2)
+    for dx = -half, half do
+        dpx(col, row, cx + dx, cy - height, c_top)
+        if width > 2 then
+            dpx(col, row, cx + dx, cy - height - 1, brighten(c_top, 1.1))
+        end
+    end
+end
+
+-- Organic vine/tendril
+local function draw_vine(col, row, sx, sy, length, c_base, c_tip, seed)
+    local x, y = sx, sy
+    for i = 0, length - 1 do
+        local t = i / math.max(1, length - 1)
+        dpx(col, row, math.floor(x), math.floor(y), lerp_color(c_base, c_tip, t))
+        local angle = hash(math.floor(x), math.floor(y), seed) * 3.14159 * 2
+        x = x + math.cos(angle) * 1.2
+        y = y - 0.8 + math.sin(angle) * 0.4
+    end
+end
+
+-- Mushroom
+local function draw_mushroom(col, row, cx, cy, cap_c, stem_c, cap_w)
+    cap_w = cap_w or 3
+    dpx(col, row, cx, cy, stem_c)
+    dpx(col, row, cx, cy - 1, stem_c)
+    local half = math.floor(cap_w / 2)
+    for dx = -half, half do
+        local c = cap_c
+        if dx == -half then c = brighten(cap_c, 1.2)
+        elseif dx == half then c = brighten(cap_c, 0.8) end
+        dpx(col, row, cx + dx, cy - 2, c)
+    end
+    for dx = -half + 1, half - 1 do
+        dpx(col, row, cx + dx, cy - 3, brighten(cap_c, 1.15))
+    end
+end
+
+-- Rock formation for walls/ores
+local function draw_rock(col, row, cx, cy, w, h, c_top, c_front, c_dark)
+    for dy = 0, h - 1 do
+        for dx = 0, w - 1 do
+            local c = c_front
+            if dx == w - 1 then c = c_dark end
+            if dx == 0 then c = brighten(c_front, 1.1) end
+            dpx(col, row, cx + dx, cy - dy, c)
+        end
+    end
+    for dx = 0, w - 1 do
+        dpx(col, row, cx + dx, cy - h, c_top)
+    end
 end
 
 -- ── Palettes ────────────────────────────────────────────────────────────
@@ -165,942 +322,1015 @@ end
 local pal = {
     grass = {
         base = hex("#475C3B"),
-        highlight = hex("#556E46"),
+        highlight = hex("#607A50"),
         shadow = hex("#3B4D31"),
         dark = hex("#344828"),
-        light = hex("#607A50"),
+        light = hex("#6B8558"),
         tuft = hex("#5A7848"),
+        tuft_tip = hex("#78A060"),
         tuft_dark = hex("#3E5432"),
         dirt = hex("#6B5D4A"),
         dirt_dark = hex("#574B3C"),
         stone = hex("#7A7A72"),
+        stone_dark = hex("#5A5A55"),
+        crack = hex("#2E3B24"),
         flower_r = hex("#B84848"),
         flower_y = hex("#C8B848"),
         flower_w = hex("#D0D0C8"),
     },
-    pyromite = {
-        base = hex("#8B3A2A"),
-        crystal = hex("#C44B32"),
-        glow = hex("#FF6B3D"),
-        ember = hex("#FF9944"),
-        dark = hex("#5C2218"),
-        ash = hex("#4A3A35"),
-        hot = hex("#FFB060"),
+    iron = {
+        base = hex("#6B5A4A"),
+        highlight = hex("#8A7A68"),
+        shadow = hex("#4A3D32"),
+        dark = hex("#3A2E25"),
+        ore = hex("#8B6B50"),
+        ore_light = hex("#A08060"),
+        ore_dark = hex("#5C4435"),
+        rust = hex("#7A4A30"),
     },
-    crystalline = {
+    copper = {
+        base = hex("#5A5040"),
+        highlight = hex("#7A6E58"),
+        shadow = hex("#3E382E"),
+        dark = hex("#2E2A22"),
+        ore = hex("#B87040"),
+        ore_light = hex("#D08850"),
+        ore_dark = hex("#8A5030"),
+        green = hex("#508860"),
+    },
+    coal = {
+        base = hex("#3A3A38"),
+        highlight = hex("#505050"),
+        shadow = hex("#282828"),
+        dark = hex("#1A1A1A"),
+        seam = hex("#222222"),
+        shiny = hex("#606060"),
+        dust = hex("#484848"),
+    },
+    tin = {
+        base = hex("#687070"),
+        highlight = hex("#8A9494"),
+        shadow = hex("#4A5252"),
+        dark = hex("#3A4242"),
+        ore = hex("#90A0A0"),
+        ore_light = hex("#B0C0C0"),
+        ore_dark = hex("#607070"),
+    },
+    gold = {
+        base = hex("#6B5830"),
+        highlight = hex("#8A7840"),
+        shadow = hex("#4A3C20"),
+        dark = hex("#3A2E18"),
+        ore = hex("#D4A830"),
+        ore_light = hex("#E8C848"),
+        ore_dark = hex("#A08020"),
+        sparkle = hex("#FFF080"),
+    },
+    quartz = {
         base = hex("#5B7B8F"),
         highlight = hex("#8FB4C9"),
         shadow = hex("#3F5766"),
+        dark = hex("#2E4555"),
         crystal = hex("#A8D4E8"),
         ice = hex("#C8E8F4"),
         deep = hex("#2E4555"),
         frost = hex("#D0E8F0"),
     },
-    biovine = {
+    sulfur = {
+        base = hex("#7A7030"),
+        highlight = hex("#A09840"),
+        shadow = hex("#585020"),
+        dark = hex("#404018"),
+        bright = hex("#C8B840"),
+        fume = hex("#A0A040"),
+        crust = hex("#908028"),
+    },
+    wall = {
+        base = hex("#6B6B6B"),
+        highlight = hex("#909090"),
+        shadow = hex("#4A4A4A"),
+        dark = hex("#383838"),
+        light = hex("#A0A0A0"),
+        crack = hex("#3A3A3A"),
+        moss = hex("#506040"),
+        mortar = hex("#585858"),
+    },
+    stone = {
+        base = hex("#7A7A72"),
+        highlight = hex("#989890"),
+        shadow = hex("#5A5A54"),
+        dark = hex("#484844"),
+        mortar = hex("#606058"),
+        crack = hex("#404040"),
+    },
+    oil = {
+        base = hex("#2A2830"),
+        highlight = hex("#404048"),
+        shadow = hex("#1A1820"),
+        dark = hex("#101018"),
+        sheen = hex("#506080"),
+        rainbow = hex("#607890"),
+        bubble = hex("#384050"),
+    },
+    crystal = {
+        base = hex("#8B3A2A"),
+        highlight = hex("#A84A35"),
+        shadow = hex("#5C2218"),
+        dark = hex("#3A1510"),
+        shard = hex("#C44B32"),
+        glow = hex("#FF6B3D"),
+        ember = hex("#FF9944"),
+        hot = hex("#FFB060"),
+        ash_col = hex("#4A3A35"),
+    },
+    uranium = {
+        base = hex("#3A5030"),
+        highlight = hex("#507040"),
+        shadow = hex("#283820"),
+        dark = hex("#1A2818"),
+        glow = hex("#80E040"),
+        rod = hex("#60A830"),
+        bright = hex("#A0FF60"),
+    },
+    biomass = {
         base = hex("#4B5C3D"),
+        highlight = hex("#607848"),
+        shadow = hex("#344830"),
+        dark = hex("#2E3A28"),
         vine = hex("#7B4E8A"),
         glow = hex("#5ADB50"),
         spore = hex("#8AEB80"),
-        dark = hex("#2E3A28"),
         purple = hex("#9B68AA"),
         mushroom = hex("#B87848"),
         mushcap = hex("#C89868"),
     },
-    wall = {
-        base = hex("#6B6B6B"),
-        highlight = hex("#888888"),
-        shadow = hex("#4A4A4A"),
-        dark = hex("#383838"),
-        light = hex("#9A9A9A"),
-        crack = hex("#3A3A3A"),
-        moss = hex("#506040"),
-    },
     ash = {
         base = hex("#7A6E63"),
-        dark = hex("#5C5248"),
-        light = hex("#8F8275"),
-        crack = hex("#4A4038"),
+        highlight = hex("#908475"),
+        shadow = hex("#5C5248"),
+        dark = hex("#4A4038"),
+        crack = hex("#3A3028"),
         ember = hex("#8B4030"),
-    },
-    voltite = {
-        base = hex("#4A4078"),
-        yellow = hex("#E8D840"),
-        blue = hex("#4080E0"),
-        arc = hex("#F0F060"),
-        dark = hex("#2A2050"),
-    },
-    umbrite = {
-        base = hex("#3A2850"),
-        purple = hex("#6840A0"),
-        wisp = hex("#8060C0"),
-        dark = hex("#1A1030"),
-        glow = hex("#A880E0"),
-    },
-    resonite = {
-        base = hex("#408080"),
-        teal = hex("#50B0B0"),
-        bright = hex("#80E0D0"),
-        dark = hex("#285050"),
-        white = hex("#C0F0E8"),
+        light = hex("#8F8275"),
     },
 }
 
 -- ── Create sprite ───────────────────────────────────────────────────────
 
 local spr = Sprite(W, H, ColorMode.RGB)
-local img = Image(W, H, ColorMode.RGB)
+img = Image(W, H, ColorMode.RGB)
 
--- Clear to transparent
 for y = 0, H - 1 do
     for x = 0, W - 1 do
         img:drawPixel(x, y, TRANSPARENT)
     end
 end
 
--- ── Drawing functions ───────────────────────────────────────────────────
+-- Helper: flat atlas index -> (col, row)
+local function idx_to_cr(idx)
+    return idx % COLS, math.floor(idx / COLS)
+end
 
--- Fill a diamond tile at grid position (col, row) with noise-based terrain
-local function fill_diamond(col, row, base, dark, light, seed)
+-- ════════════════════════════════════════════════════════════════════════
+-- GRASS: bg=0, fg=[1..6], misc=[7..12]
+-- ════════════════════════════════════════════════════════════════════════
+
+local function grass_texture(col, row, seed)
     local ox = col * CELL_W
     local oy = row * CELL_H
     for py = 0, CELL_H - 1 do
         for px = 0, CELL_W - 1 do
-            local inside = in_diamond(px, py)
-            if inside then
-                local n = fbm(px + ox, py + oy, 3, seed)
-                local c
-                if n < 0.4 then
-                    c = lerp(dark, base, n / 0.4)
-                else
-                    c = lerp(base, light, (n - 0.4) / 0.6)
-                end
-                -- Apply isometric shading
-                c = iso_shade(px, py, c, 1.15, 0.85)
-                img:drawPixel(ox + px, oy + py, c)
+            if not in_diamond(px, py) then goto cont end
+            local n2 = fbm(px + ox + 500, py + oy + 500, 2, seed + 777)
+            if n2 > 0.6 then
+                dpx_blend(col, row, px, py, pal.grass.light, math.floor((n2 - 0.6) * 2.5 * 40))
+            elseif n2 < 0.3 then
+                dpx_blend(col, row, px, py, pal.grass.dark, math.floor((0.3 - n2) * 3 * 30))
             end
+            if hash(px + ox, py + oy, seed + 333) < 0.03 then
+                dpx_blend(col, row, px, py, pal.grass.dirt, 50)
+            end
+            ::cont::
         end
     end
 end
 
--- Draw a pixel within a diamond cell (bounds + diamond checked)
-local function dpx(col, row, px, py, c)
-    if px < 0 or px >= CELL_W or py < 0 or py >= CELL_H then return end
-    local inside = in_diamond(px, py)
-    if not inside then return end
-    local ox = col * CELL_W
-    local oy = row * CELL_H
-    img:drawPixel(ox + px, oy + py, c)
-end
-
--- Draw a pixel with alpha blend
-local function dpx_blend(col, row, px, py, c, alpha)
-    if px < 0 or px >= CELL_W or py < 0 or py >= CELL_H then return end
-    local inside = in_diamond(px, py)
-    if not inside then return end
-    local ox = col * CELL_W
-    local oy = row * CELL_H
-    local existing = img:getPixel(ox + px, oy + py)
-    local blended = lerp(existing, c, alpha / 255.0)
-    img:drawPixel(ox + px, oy + py, blended)
-end
-
--- Draw a small cross/tuft detail
-local function draw_tuft(col, row, cx, cy, c1, c2, size)
-    size = size or 1
-    dpx(col, row, cx, cy, c1)
-    if size > 0 then
-        dpx(col, row, cx - 1, cy, c2)
-        dpx(col, row, cx + 1, cy, c2)
-    end
-    if size > 1 then
-        dpx(col, row, cx, cy - 1, c2)
+-- bg=0
+do
+    local c, r = idx_to_cr(0)
+    render_diamond(c, r, pal.grass.base, pal.grass.shadow, pal.grass.highlight, 42)
+    grass_texture(c, r, 42)
+    for i = 0, 2 do
+        local tx = 18 + math.floor(hash(i, 0, 50) * 28)
+        local ty = 10 + math.floor(hash(0, i, 51) * 12)
+        draw_grass_tuft(c, r, tx, ty, pal.grass.tuft_dark, pal.grass.tuft, 1, 52 + i)
     end
 end
 
--- Draw small dot cluster
-local function draw_dots(col, row, cx, cy, c, count, spread, seed)
-    for i = 0, count - 1 do
-        local dx = math.floor(hash(cx + i, cy, seed) * spread * 2 - spread)
-        local dy = math.floor(hash(cx, cy + i, seed + 99) * spread * 2 - spread)
-        dpx(col, row, cx + dx, cy + dy, c)
-    end
-end
+-- fg=[1..6]
+for vi = 0, 5 do
+    local idx = 1 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 100 + vi * 17
+    render_diamond(c, r, pal.grass.base, pal.grass.shadow, pal.grass.highlight, seed)
+    grass_texture(c, r, seed)
 
--- Draw a small crystal shard
-local function draw_crystal(col, row, cx, cy, h, c_base, c_highlight, c_shadow)
-    for dy = 0, h - 1 do
-        local w = math.max(1, math.floor((h - dy) * 0.8))
-        for dx = -math.floor(w / 2), math.floor(w / 2) do
-            local c = c_base
-            if dx < 0 then c = c_shadow end
-            if dx > 0 then c = c_highlight end
-            if dy == 0 then c = c_highlight end
-            dpx(col, row, cx + dx, cy - dy, c)
-        end
-    end
-end
-
--- Draw a small mushroom
-local function draw_mushroom(col, row, cx, cy, cap_c, stem_c)
-    -- Stem
-    dpx(col, row, cx, cy, stem_c)
-    dpx(col, row, cx, cy - 1, stem_c)
-    -- Cap
-    dpx(col, row, cx - 1, cy - 2, cap_c)
-    dpx(col, row, cx, cy - 2, brighten(cap_c, 1.2))
-    dpx(col, row, cx + 1, cy - 2, cap_c)
-    dpx(col, row, cx, cy - 3, brighten(cap_c, 0.9))
-end
-
--- Draw vine tendril segment
-local function draw_tendril(col, row, sx, sy, length, dir_seed, c1, c2)
-    local x, y = sx, sy
-    for i = 0, length - 1 do
-        local t = i / math.max(1, length - 1)
-        dpx(col, row, math.floor(x), math.floor(y), lerp(c1, c2, t))
-        local angle = hash(math.floor(x), math.floor(y), dir_seed) * 3.14 * 2
-        x = x + math.cos(angle) * 1.5
-        y = y + math.sin(angle) * 0.8
-    end
-end
-
--- ════════════════════════════════════════════════════════════════════════
--- ROW 0: GRASS BASE + FOREGROUND VARIANTS
--- ════════════════════════════════════════════════════════════════════════
-
--- Col 0: Base grass
-fill_diamond(0, 0, pal.grass.base, pal.grass.shadow, pal.grass.highlight, 42)
-
--- Cols 1-6: Grass with details
-for c = 1, 6 do
-    fill_diamond(c, 0, pal.grass.base, pal.grass.shadow, pal.grass.highlight, 42 + c * 7)
-
-    local seed = c * 31
-    -- Add grass tufts
-    local tuft_count = 2 + math.floor(hash(c, 0, 100) * 4)
+    local tuft_count = 3 + vi
     for i = 0, tuft_count - 1 do
-        local tx = 12 + math.floor(hash(c + i, 0, 101) * 40)
-        local ty = 6 + math.floor(hash(c, i, 102) * 20)
-        draw_tuft(c, 0, tx, ty, pal.grass.tuft, pal.grass.tuft_dark, math.floor(hash(i, c, 103) * 2))
+        local tx = 10 + math.floor(hash(i + vi, 0, seed + 10) * 44)
+        local ty = 6 + math.floor(hash(0, i + vi, seed + 11) * 20)
+        draw_grass_tuft(c, r, tx, ty, pal.grass.tuft_dark, pal.grass.tuft_tip, 2, seed + 12 + i)
     end
 
-    -- Col-specific details
-    if c == 2 or c == 5 then
-        -- Small stones
-        local sx = 20 + math.floor(hash(c, 0, 200) * 20)
-        local sy = 10 + math.floor(hash(c, 0, 201) * 12)
-        dpx(c, 0, sx, sy, pal.grass.stone)
-        dpx(c, 0, sx + 1, sy, brighten(pal.grass.stone, 1.1))
-    end
-
-    if c == 3 or c == 6 then
-        -- Dirt patch
-        local dx = 22 + math.floor(hash(c, 0, 300) * 16)
-        local dy = 10 + math.floor(hash(c, 0, 301) * 10)
-        for ddy = -1, 1 do
-            for ddx = -2, 2 do
-                if math.abs(ddx) + math.abs(ddy) < 3 then
-                    dpx_blend(c, 0, dx + ddx, dy + ddy, pal.grass.dirt, 160)
-                end
-            end
-        end
-    end
-
-    if c == 4 then
-        -- Tiny flower
-        local fx = 28 + math.floor(hash(c, 0, 400) * 10)
-        local fy = 12
-        dpx(c, 0, fx, fy, pal.grass.flower_r)
-        dpx(c, 0, fx, fy + 1, pal.grass.tuft_dark)
-    end
-end
-
--- Col 7: Grass misc 0
-fill_diamond(7, 0, pal.grass.base, pal.grass.shadow, pal.grass.highlight, 91)
--- Slightly different color shift
-for py = 0, CELL_H - 1 do
-    for px = 0, CELL_W - 1 do
-        local inside = in_diamond(px, py)
-        if inside and hash(px, py, 777) < 0.06 then
-            dpx_blend(7, 0, px, py, pal.grass.dirt, 80)
-        end
-    end
-end
-
--- ════════════════════════════════════════════════════════════════════════
--- ROW 1: MORE GRASS MISC + PYROMITE BASE + FG
--- ════════════════════════════════════════════════════════════════════════
-
--- Cols 0-4: Grass misc variants
-for c = 0, 4 do
-    fill_diamond(c, 1, pal.grass.base, pal.grass.shadow, pal.grass.highlight, 120 + c * 13)
-
-    local seed = c * 47 + 1000
-    if c == 0 then
-        -- Slight color shift (yellower)
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) and hash(px, py, seed) < 0.15 then
-                    dpx_blend(c, 1, px, py, pal.grass.light, 60)
-                end
-            end
-        end
-    elseif c == 1 then
-        -- Tiny flowers scattered
-        for i = 0, 3 do
-            local fx = 12 + math.floor(hash(i, 1, seed) * 38)
-            local fy = 5 + math.floor(hash(1, i, seed + 1) * 20)
-            local fc = (i % 2 == 0) and pal.grass.flower_y or pal.grass.flower_w
-            dpx(c, 1, fx, fy, fc)
-        end
-    elseif c == 2 then
-        -- Bare/dry patches
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) and hash(px, py, seed) < 0.12 then
-                    dpx_blend(c, 1, px, py, pal.grass.dirt_dark, 100)
-                end
-            end
-        end
-    elseif c == 3 then
-        -- More tufts, denser
-        for i = 0, 6 do
-            local tx = 8 + math.floor(hash(i, 3, seed) * 48)
-            local ty = 4 + math.floor(hash(3, i, seed + 1) * 24)
-            draw_tuft(c, 1, tx, ty, pal.grass.tuft, pal.grass.tuft_dark, 1)
-        end
-    elseif c == 4 then
-        -- Scattered stones
-        for i = 0, 2 do
-            local sx = 15 + math.floor(hash(i, 4, seed) * 30)
-            local sy = 8 + math.floor(hash(4, i, seed + 1) * 16)
-            dpx(c, 1, sx, sy, pal.grass.stone)
-            dpx(c, 1, sx + 1, sy, brighten(pal.grass.stone, 0.9))
-        end
-    end
-end
-
--- Col 5: Pyromite deposit base
-fill_diamond(5, 1, pal.pyromite.base, pal.pyromite.dark, brighten(pal.pyromite.base, 1.2), 200)
--- Faint ember glow cracks
-for py = 0, CELL_H - 1 do
-    for px = 0, CELL_W - 1 do
-        if in_diamond(px, py) then
-            local n = fbm(px + 5 * CELL_W, py + 1 * CELL_H, 2, 210)
-            if n > 0.65 and n < 0.72 then
-                dpx_blend(5, 1, px, py, pal.pyromite.glow, 100)
-            end
-        end
-    end
-end
-
--- Cols 6-7: Pyromite foreground variants
-for c = 6, 7 do
-    fill_diamond(c, 1, pal.pyromite.base, pal.pyromite.dark, brighten(pal.pyromite.base, 1.2), 200 + (c - 5) * 11)
-    -- Glowing cracks
-    for py = 0, CELL_H - 1 do
-        for px = 0, CELL_W - 1 do
-            if in_diamond(px, py) then
-                local n = fbm(px + c * CELL_W, py + 1 * CELL_H, 2, 220 + c)
-                if n > 0.62 and n < 0.70 then
-                    dpx_blend(c, 1, px, py, pal.pyromite.glow, 140)
-                end
-            end
-        end
-    end
-    -- Small crystals poking up
-    local count = (c == 6) and 2 or 3
-    for i = 0, count - 1 do
-        local cx = 16 + math.floor(hash(c + i, 1, 230) * 30)
-        local cy = 10 + math.floor(hash(c, i + 1, 231) * 14)
-        local ch = 2 + math.floor(hash(i, c, 232) * 3)
-        draw_crystal(c, 1, cx, cy, ch, pal.pyromite.crystal, pal.pyromite.glow, pal.pyromite.dark)
-    end
-end
-
--- ════════════════════════════════════════════════════════════════════════
--- ROW 2: PYROMITE FG/MISC + CRYSTALLINE BASE + FG
--- ════════════════════════════════════════════════════════════════════════
-
--- Col 0: Pyromite fg variant
-fill_diamond(0, 2, pal.pyromite.base, pal.pyromite.dark, brighten(pal.pyromite.base, 1.2), 250)
-for i = 0, 1 do
-    local cx = 20 + i * 18
-    local cy = 14 + math.floor(hash(i, 2, 251) * 8)
-    draw_crystal(0, 2, cx, cy, 3, pal.pyromite.crystal, pal.pyromite.ember, pal.pyromite.dark)
-end
--- Ember glow spots
-draw_dots(0, 2, 30, 12, pal.pyromite.glow, 4, 8, 255)
-
--- Cols 1-3: Pyromite misc
-for c = 1, 3 do
-    fill_diamond(c, 2, pal.pyromite.base, pal.pyromite.dark, brighten(pal.pyromite.base, 1.1), 260 + c * 7)
-
-    if c == 1 then
-        -- Ember particles
-        for i = 0, 5 do
-            local ex = 10 + math.floor(hash(i, 2, 270) * 44)
-            local ey = 4 + math.floor(hash(2, i, 271) * 24)
-            dpx(c, 2, ex, ey, with_alpha(pal.pyromite.ember, 180))
-        end
-    elseif c == 2 then
-        -- Heat shimmer dots
-        for i = 0, 4 do
-            local sx = 12 + math.floor(hash(i, c, 280) * 40)
-            local sy = 6 + math.floor(hash(c, i, 281) * 20)
-            dpx(c, 2, sx, sy, with_alpha(pal.pyromite.hot, 120))
-            dpx(c, 2, sx + 1, sy, with_alpha(pal.pyromite.hot, 80))
-        end
-    else
-        -- Ash patches
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) and hash(px, py, 290) < 0.08 then
-                    dpx_blend(c, 2, px, py, pal.pyromite.ash, 120)
-                end
-            end
-        end
-    end
-end
-
--- Col 4: Crystalline deposit base
-fill_diamond(4, 2, pal.crystalline.base, pal.crystalline.shadow, pal.crystalline.highlight, 300)
--- Frost patterns
-for py = 0, CELL_H - 1 do
-    for px = 0, CELL_W - 1 do
-        if in_diamond(px, py) then
-            local n = fbm(px + 4 * CELL_W, py + 2 * CELL_H, 3, 310)
-            if n > 0.6 then
-                dpx_blend(4, 2, px, py, pal.crystalline.frost, math.floor((n - 0.6) * 2.5 * 120))
-            end
-        end
-    end
-end
-
--- Cols 5-7: Crystalline foreground
-for c = 5, 7 do
-    fill_diamond(c, 2, pal.crystalline.base, pal.crystalline.shadow, pal.crystalline.highlight, 300 + (c - 4) * 9)
-    -- Frost base pattern
-    for py = 0, CELL_H - 1 do
-        for px = 0, CELL_W - 1 do
-            if in_diamond(px, py) then
-                local n = fbm(px + c * CELL_W, py + 2 * CELL_H, 2, 320 + c)
-                if n > 0.65 then
-                    dpx_blend(c, 2, px, py, pal.crystalline.frost, 80)
-                end
-            end
-        end
-    end
-    -- Ice shards / crystal clusters
-    local count = 1 + (c - 5)
-    for i = 0, count do
-        local cx = 14 + math.floor(hash(c + i, 2, 330) * 34)
-        local cy = 12 + math.floor(hash(c, i + 2, 331) * 12)
-        local ch = 3 + math.floor(hash(i, c + 2, 332) * 3)
-        draw_crystal(c, 2, cx, cy, ch, pal.crystalline.crystal, pal.crystalline.ice, pal.crystalline.deep)
-    end
-end
-
--- ════════════════════════════════════════════════════════════════════════
--- ROW 3: CRYSTALLINE MISC + BIOVINE BASE + FG + MISC
--- ════════════════════════════════════════════════════════════════════════
-
--- Cols 0-2: Crystalline misc
-for c = 0, 2 do
-    fill_diamond(c, 3, pal.crystalline.base, pal.crystalline.shadow, pal.crystalline.highlight, 350 + c * 11)
-
-    if c == 0 then
-        -- Frost rimes (delicate ice lines)
-        for i = 0, 3 do
-            local sx = 10 + math.floor(hash(i, 3, 360) * 20)
-            local sy = 8 + math.floor(hash(3, i, 361) * 10)
-            for j = 0, 4 do
-                dpx(c, 3, sx + j * 2, sy + math.floor(hash(j, i, 362) * 3) - 1, with_alpha(pal.crystalline.frost, 160))
-            end
-        end
-    elseif c == 1 then
-        -- Scattered crystal chips
-        for i = 0, 5 do
-            local cx = 8 + math.floor(hash(i, c, 370) * 48)
-            local cy = 4 + math.floor(hash(c, i, 371) * 24)
-            dpx(c, 3, cx, cy, pal.crystalline.crystal)
-            if hash(i, c, 372) > 0.5 then
-                dpx(c, 3, cx + 1, cy, pal.crystalline.ice)
-            end
-        end
-    else
-        -- Mixed frost + tiny shards
-        for i = 0, 2 do
-            local cx = 16 + math.floor(hash(i, c, 380) * 28)
-            local cy = 10 + math.floor(hash(c, i, 381) * 14)
-            draw_crystal(c, 3, cx, cy, 2, pal.crystalline.crystal, pal.crystalline.ice, pal.crystalline.shadow)
-        end
-    end
-end
-
--- Col 3: Biovine deposit base
-fill_diamond(3, 3, pal.biovine.base, pal.biovine.dark, brighten(pal.biovine.base, 1.2), 400)
--- Organic tendrils in ground
-for py = 0, CELL_H - 1 do
-    for px = 0, CELL_W - 1 do
-        if in_diamond(px, py) then
-            local n = fbm(px + 3 * CELL_W, py + 3 * CELL_H, 3, 410)
-            local n2 = fbm(px + 3 * CELL_W, py + 3 * CELL_H, 2, 415)
-            if n > 0.55 and n < 0.62 then
-                dpx_blend(3, 3, px, py, pal.biovine.vine, 100)
-            end
-            if n2 > 0.7 then
-                dpx_blend(3, 3, px, py, pal.biovine.glow, 40)
-            end
-        end
-    end
-end
-
--- Cols 4-6: Biovine foreground
-for c = 4, 6 do
-    fill_diamond(c, 3, pal.biovine.base, pal.biovine.dark, brighten(pal.biovine.base, 1.15), 400 + (c - 3) * 13)
-    -- Vine base pattern
-    for py = 0, CELL_H - 1 do
-        for px = 0, CELL_W - 1 do
-            if in_diamond(px, py) then
-                local n = fbm(px + c * CELL_W, py + 3 * CELL_H, 2, 420 + c)
-                if n > 0.58 and n < 0.65 then
-                    dpx_blend(c, 3, px, py, pal.biovine.vine, 80)
-                end
-            end
-        end
-    end
-
-    if c == 4 then
-        -- Vine tendrils
-        for i = 0, 2 do
-            local sx = 15 + i * 14
-            local sy = 14 + math.floor(hash(i, c, 430) * 8)
-            draw_tendril(c, 3, sx, sy, 5, 431 + i, pal.biovine.vine, pal.biovine.purple)
-        end
-    elseif c == 5 then
-        -- Glowing spores
-        for i = 0, 4 do
-            local sx = 10 + math.floor(hash(i, c, 440) * 44)
-            local sy = 4 + math.floor(hash(c, i, 441) * 24)
-            dpx(c, 3, sx, sy, pal.biovine.glow)
-            dpx_blend(c, 3, sx - 1, sy, pal.biovine.glow, 60)
-            dpx_blend(c, 3, sx + 1, sy, pal.biovine.glow, 60)
-            dpx_blend(c, 3, sx, sy - 1, pal.biovine.glow, 60)
-        end
-    else
-        -- Mushroom caps
+    if vi == 0 then
         for i = 0, 1 do
-            local mx = 18 + i * 20
-            local my = 16 + math.floor(hash(i, c, 450) * 8)
-            draw_mushroom(c, 3, mx, my, pal.biovine.mushcap, pal.biovine.mushroom)
+            draw_pebble(c, r, 22 + i * 14, 12 + math.floor(hash(i, 1, seed + 20) * 8), pal.grass.stone, pal.grass.stone_dark)
         end
-        -- Small spore
-        dpx(c, 3, 35, 10, pal.biovine.spore)
+    elseif vi == 1 then
+        local dx = 24 + math.floor(hash(vi, 0, seed + 30) * 12)
+        local dy = 12 + math.floor(hash(0, vi, seed + 31) * 6)
+        for ddy = -1, 1 do for ddx = -2, 2 do
+            if math.abs(ddx) + math.abs(ddy) < 3 then
+                dpx_blend(c, r, dx + ddx, dy + ddy, pal.grass.dirt, 120)
+            end
+        end end
+        draw_crack(c, r, dx - 2, dy, 4, pal.grass.crack, seed + 32)
+    elseif vi == 2 then
+        for i = 0, 1 do
+            local fx = 20 + i * 16
+            local fy = 10 + math.floor(hash(i, vi, seed + 40) * 10)
+            dpx(c, r, fx, fy, pal.grass.flower_r)
+            dpx(c, r, fx, fy + 1, pal.grass.tuft_dark)
+        end
+    elseif vi == 3 then
+        for i = 0, 2 do
+            draw_pebble(c, r, 14 + math.floor(hash(i, vi, seed + 50) * 32), 8 + math.floor(hash(vi, i, seed + 51) * 14), pal.grass.stone, pal.grass.stone_dark)
+        end
+        draw_crack(c, r, 18, 15, 6, pal.grass.crack, seed + 55)
+    elseif vi == 4 then
+        for i = 0, 2 do
+            dpx(c, r, 16 + i * 12, 8 + math.floor(hash(i, vi, seed + 60) * 12), pal.grass.flower_y)
+        end
+    else
+        draw_pebble(c, r, 20, 10, pal.grass.stone, pal.grass.stone_dark)
+        draw_crack(c, r, 28, 14, 5, pal.grass.crack, seed + 70)
+        dpx_blend(c, r, 36, 18, pal.grass.dirt_dark, 100)
+        dpx_blend(c, r, 37, 18, pal.grass.dirt, 80)
     end
 end
 
--- Col 7: Biovine misc
-fill_diamond(7, 3, pal.biovine.base, pal.biovine.dark, brighten(pal.biovine.base, 1.1), 460)
-draw_tendril(7, 3, 20, 16, 6, 461, pal.biovine.vine, pal.biovine.glow)
-draw_dots(7, 3, 35, 12, pal.biovine.spore, 3, 6, 465)
+-- misc=[7..12]
+for vi = 0, 5 do
+    local idx = 7 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 200 + vi * 23
+    render_diamond(c, r, pal.grass.base, pal.grass.shadow, pal.grass.highlight, seed)
+    grass_texture(c, r, seed)
 
--- ════════════════════════════════════════════════════════════════════════
--- ROW 4: BIOVINE MISC + RESERVED
--- ════════════════════════════════════════════════════════════════════════
-
--- Cols 0-1: More biovine misc
-for c = 0, 1 do
-    fill_diamond(c, 4, pal.biovine.base, pal.biovine.dark, brighten(pal.biovine.base, 1.1), 470 + c * 9)
-    if c == 0 then
-        -- Scattered spores and vine bits
+    if vi == 0 then
+        for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+            if in_diamond(px, py) and hash(px, py, seed + 5) < 0.12 then
+                dpx_blend(c, r, px, py, pal.grass.light, 50)
+            end
+        end end
+    elseif vi == 1 then
         for i = 0, 3 do
-            local sx = 10 + math.floor(hash(i, c, 475) * 40)
-            local sy = 5 + math.floor(hash(c, i, 476) * 20)
-            dpx(c, 4, sx, sy, pal.biovine.spore)
+            local fx = 12 + math.floor(hash(i, vi, seed + 10) * 38)
+            local fy = 5 + math.floor(hash(vi, i, seed + 11) * 20)
+            dpx(c, r, fx, fy, (i % 2 == 0) and pal.grass.flower_y or pal.grass.flower_w)
+            dpx(c, r, fx, fy + 1, pal.grass.tuft_dark)
         end
-        draw_tendril(c, 4, 30, 18, 4, 477, pal.biovine.vine, pal.biovine.dark)
-    else
-        -- Purple vine overlay
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) then
-                    local n = fbm(px + c * CELL_W, py + 4 * CELL_H, 2, 480)
-                    if n > 0.6 and n < 0.66 then
-                        dpx_blend(c, 4, px, py, pal.biovine.purple, 90)
-                    end
-                end
+    elseif vi == 2 then
+        for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+            if in_diamond(px, py) and hash(px, py, seed + 20) < 0.10 then
+                dpx_blend(c, r, px, py, pal.grass.dirt_dark, 80)
             end
+        end end
+    elseif vi == 3 then
+        for i = 0, 5 do
+            local tx = 8 + math.floor(hash(i, vi, seed + 30) * 48)
+            local ty = 5 + math.floor(hash(vi, i, seed + 31) * 22)
+            draw_grass_tuft(c, r, tx, ty, pal.grass.tuft_dark, pal.grass.tuft_tip, 2, seed + 32 + i)
         end
-    end
-end
-
--- Cols 2-7: Reserved (fill with grass)
-for c = 2, 7 do
-    fill_diamond(c, 4, pal.grass.base, pal.grass.shadow, pal.grass.highlight, 500 + c * 7)
-end
-
--- ════════════════════════════════════════════════════════════════════════
--- ROWS 5-7: RESERVED (grass variants)
--- ════════════════════════════════════════════════════════════════════════
-
-for row = 5, 7 do
-    for c = 0, 7 do
-        fill_diamond(c, row, pal.grass.base, pal.grass.shadow, pal.grass.highlight, 600 + row * 50 + c * 11)
-        -- Add some random subtle details
-        if hash(c, row, 610) > 0.5 then
-            local tx = 20 + math.floor(hash(c, row, 611) * 24)
-            local ty = 10 + math.floor(hash(c, row, 612) * 12)
-            draw_tuft(c, row, tx, ty, pal.grass.tuft, pal.grass.tuft_dark, 1)
-        end
-    end
-end
-
--- ════════════════════════════════════════════════════════════════════════
--- ROW 8: STONE WALLS
--- ════════════════════════════════════════════════════════════════════════
-
--- Cols 0-3: Stone wall base + variants
-for c = 0, 3 do
-    fill_diamond(c, 8, pal.wall.base, pal.wall.shadow, pal.wall.highlight, 800 + c * 17)
-
-    -- Rock grain: horizontal-ish cracks
-    for i = 0, 2 + c do
-        local sx = 8 + math.floor(hash(i, c + 8, 810) * 30)
-        local sy = 5 + math.floor(hash(c + 8, i, 811) * 20)
-        local len = 3 + math.floor(hash(i, c, 812) * 8)
-        for j = 0, len - 1 do
-            local dy = math.floor(hash(sx + j, sy, 813) * 3) - 1
-            dpx_blend(c, 8, sx + j, sy + dy, pal.wall.crack, 160)
-        end
-    end
-
-    if c >= 2 then
-        -- More pronounced cracks for variants
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) then
-                    local n = fbm(px + c * CELL_W, py + 8 * CELL_H, 3, 820 + c)
-                    if n > 0.58 and n < 0.62 then
-                        dpx_blend(c, 8, px, py, pal.wall.dark, 140)
-                    end
-                end
-            end
-        end
-    end
-end
-
--- Cols 4-6: Wall misc
-for c = 4, 6 do
-    fill_diamond(c, 8, pal.wall.base, pal.wall.shadow, pal.wall.highlight, 840 + c * 13)
-
-    if c == 4 then
-        -- Mossy wall
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) then
-                    local n = fbm(px + c * CELL_W, py + 8 * CELL_H, 2, 850)
-                    if n > 0.5 and py > CELL_H / 2 then
-                        dpx_blend(c, 8, px, py, pal.wall.moss, math.floor((n - 0.5) * 2 * 160))
-                    end
-                end
-            end
-        end
-    elseif c == 5 then
-        -- Darker stone
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) then
-                    dpx_blend(c, 8, px, py, pal.wall.dark, 60)
-                end
-            end
-        end
-        -- A few cracks
-        for i = 0, 2 do
-            local sx = 12 + i * 14
-            local sy = 8 + math.floor(hash(i, 5, 860) * 14)
-            for j = 0, 4 do
-                dpx(c, 8, sx + j, sy + math.floor(hash(j, i, 861) * 3) - 1, pal.wall.crack)
-            end
+    elseif vi == 4 then
+        for i = 0, 3 do
+            draw_pebble(c, r, 14 + math.floor(hash(i, vi, seed + 40) * 32), 8 + math.floor(hash(vi, i, seed + 41) * 14), pal.grass.stone, pal.grass.stone_dark)
         end
     else
-        -- Crumbled edges
-        local depth_thresh = 0.15
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                local d = diamond_depth(px, py)
-                if d >= 0 and d < depth_thresh then
-                    local n = hash(px, py, 870)
-                    if n < 0.3 then
-                        dpx(c, 8, px, py, TRANSPARENT)
-                    elseif n < 0.5 then
-                        dpx_blend(c, 8, px, py, pal.wall.dark, 120)
-                    end
+        for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+            if in_diamond(px, py) then
+                local dist = math.abs((py - 15.5) - (px - 31.5) * 0.3)
+                if dist < 3 and hash(px, py, seed + 50) < 0.4 then
+                    dpx_blend(c, r, px, py, pal.grass.dirt, 80)
                 end
             end
+        end end
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- IRON: bg=13, fg=[14,15,16], misc=[17,18,19]
+-- ════════════════════════════════════════════════════════════════════════
+
+do
+    local c, r = idx_to_cr(13)
+    render_diamond(c, r, pal.iron.base, pal.iron.shadow, pal.iron.highlight, 300, {edge_thickness = 0.15, edge_darken = 0.55})
+end
+
+for vi = 0, 2 do
+    local idx = 14 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 310 + vi * 19
+    render_diamond(c, r, pal.iron.base, pal.iron.shadow, pal.iron.highlight, seed, {edge_thickness = 0.15, edge_darken = 0.55})
+    local count = 2 + vi
+    for i = 0, count - 1 do
+        local cx = 14 + math.floor(hash(i, vi, seed + 10) * 32)
+        local cy = 14 + math.floor(hash(vi, i, seed + 11) * 10)
+        local h = 3 + math.floor(hash(i, vi + 1, seed + 12) * 3)
+        local w = 2 + math.floor(hash(vi + 1, i, seed + 13) * 2)
+        draw_rock(c, r, cx, cy, w, h, pal.iron.ore_light, pal.iron.ore, pal.iron.ore_dark)
+    end
+    if vi >= 1 then
+        for i = 0, 1 do
+            draw_crack(c, r, 18 + math.floor(hash(i, vi, seed + 20) * 24), 10 + math.floor(hash(vi, i, seed + 21) * 10), 4 + vi, pal.iron.rust, seed + 22 + i)
         end
     end
 end
 
--- Col 7 row 8: empty/transparent
--- (left transparent)
-
--- ════════════════════════════════════════════════════════════════════════
--- ROW 9: MORE STONE VARIANTS
--- ════════════════════════════════════════════════════════════════════════
-
-for c = 0, 3 do
-    local shade = (c < 2) and 0.85 or 1.15
-    fill_diamond(c, 9,
-        brighten(pal.wall.base, shade),
-        brighten(pal.wall.shadow, shade),
-        brighten(pal.wall.highlight, shade),
-        900 + c * 19)
-    -- Subtle grain
-    for i = 0, 2 do
-        local sx = 10 + math.floor(hash(i, c + 9, 910) * 35)
-        local sy = 6 + math.floor(hash(c + 9, i, 911) * 18)
-        dpx(c, 9, sx, sy, pal.wall.crack)
-        dpx(c, 9, sx + 1, sy, pal.wall.crack)
-    end
-end
-
--- Cols 4-7 row 9: transparent/reserved
-
--- ════════════════════════════════════════════════════════════════════════
--- ROW 10: VOLTITE (electric yellow-blue)
--- ════════════════════════════════════════════════════════════════════════
-
-for c = 0, 3 do
-    fill_diamond(c, 10, pal.voltite.base, pal.voltite.dark, brighten(pal.voltite.base, 1.3), 1000 + c * 23)
-
-    if c == 0 then
-        -- Base deposit
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) then
-                    local n = fbm(px, py + 10 * CELL_H, 2, 1010)
-                    if n > 0.6 then
-                        dpx_blend(c, 10, px, py, pal.voltite.blue, 60)
-                    end
-                end
-            end
-        end
-    else
-        -- Electric arcs
-        local arc_count = c
-        for i = 0, arc_count - 1 do
-            local sx = 10 + math.floor(hash(i, c, 1020) * 40)
-            local sy = 6 + math.floor(hash(c, i, 1021) * 18)
-            -- Jagged line
-            local x, y = sx, sy
-            for j = 0, 4 do
-                dpx(c, 10, math.floor(x), math.floor(y), pal.voltite.yellow)
-                x = x + 2 + hash(j, i, 1022) * 3
-                y = y + (hash(j + 1, i, 1023) - 0.5) * 4
-            end
-        end
-        -- Glow spots
-        for i = 0, 2 do
-            local gx = 14 + math.floor(hash(i, c + 10, 1030) * 32)
-            local gy = 8 + math.floor(hash(c + 10, i, 1031) * 16)
-            dpx(c, 10, gx, gy, pal.voltite.arc)
-        end
-    end
-end
-
--- Cols 4-7: more voltite variants
-for c = 4, 7 do
-    fill_diamond(c, 10, pal.voltite.base, pal.voltite.dark, brighten(pal.voltite.base, 1.2), 1040 + c * 11)
-    -- Scattered electric dots
+for vi = 0, 2 do
+    local idx = 17 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 350 + vi * 23
+    render_diamond(c, r, pal.iron.base, pal.iron.shadow, pal.iron.highlight, seed, {edge_thickness = 0.15, edge_darken = 0.55})
+    draw_rock(c, r, 24 + math.floor(hash(vi, 0, seed + 10) * 16), 14 + math.floor(hash(0, vi, seed + 11) * 6), 2, 2 + vi, pal.iron.ore_light, pal.iron.ore, pal.iron.ore_dark)
     for i = 0, 3 do
-        local ex = 10 + math.floor(hash(i, c, 1050) * 44)
-        local ey = 4 + math.floor(hash(c, i, 1051) * 24)
-        dpx(c, 10, ex, ey, pal.voltite.yellow)
+        dpx(c, r, 10 + math.floor(hash(i, vi, seed + 30) * 44), 5 + math.floor(hash(vi, i, seed + 31) * 22), pal.iron.ore_dark)
     end
 end
 
 -- ════════════════════════════════════════════════════════════════════════
--- ROW 11: UMBRITE (dark purple shadow)
+-- COPPER: bg=20, fg=[21,22,23], misc=[24,25,26]
 -- ════════════════════════════════════════════════════════════════════════
 
-for c = 0, 3 do
-    fill_diamond(c, 11, pal.umbrite.base, pal.umbrite.dark, brighten(pal.umbrite.base, 1.2), 1100 + c * 19)
+do
+    local c, r = idx_to_cr(20)
+    render_diamond(c, r, pal.copper.base, pal.copper.shadow, pal.copper.highlight, 400, {edge_thickness = 0.15, edge_darken = 0.55})
+end
 
-    if c == 0 then
-        -- Base with subtle swirls
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) then
-                    local n = fbm(px + 11 * CELL_W, py + 11 * CELL_H, 3, 1110)
-                    if n > 0.55 then
-                        dpx_blend(c, 11, px, py, pal.umbrite.purple, math.floor((n - 0.55) * 4 * 80))
-                    end
-                end
-            end
-        end
-    else
-        -- Wisps
-        for i = 0, c do
-            local wx = 12 + math.floor(hash(i, c, 1120) * 36)
-            local wy = 6 + math.floor(hash(c, i, 1121) * 18)
-            dpx(c, 11, wx, wy, pal.umbrite.wisp)
-            dpx_blend(c, 11, wx - 1, wy, pal.umbrite.glow, 60)
-            dpx_blend(c, 11, wx + 1, wy, pal.umbrite.glow, 60)
-            dpx_blend(c, 11, wx, wy - 1, pal.umbrite.glow, 40)
-        end
+for vi = 0, 2 do
+    local idx = 21 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 410 + vi * 17
+    render_diamond(c, r, pal.copper.base, pal.copper.shadow, pal.copper.highlight, seed, {edge_thickness = 0.15, edge_darken = 0.55})
+    local count = 2 + vi
+    for i = 0, count - 1 do
+        local cx = 14 + math.floor(hash(i, vi, seed + 10) * 30)
+        local cy = 14 + math.floor(hash(vi, i, seed + 11) * 8)
+        local h = 3 + math.floor(hash(i, vi + 1, seed + 12) * 2)
+        draw_rock(c, r, cx, cy, 3, h, pal.copper.ore_light, pal.copper.ore, pal.copper.ore_dark)
+        dpx(c, r, cx, cy - h, pal.copper.green)
+        dpx(c, r, cx + 1, cy - h, brighten(pal.copper.green, 0.85))
     end
 end
 
--- Cols 4-7: more umbrite
-for c = 4, 7 do
-    fill_diamond(c, 11, pal.umbrite.base, pal.umbrite.dark, brighten(pal.umbrite.base, 1.15), 1140 + c * 13)
-    -- Shadow wisps
-    for i = 0, 2 do
-        local wx = 14 + math.floor(hash(i, c, 1150) * 30)
-        local wy = 8 + math.floor(hash(c, i, 1151) * 14)
-        dpx(c, 11, wx, wy, pal.umbrite.glow)
+for vi = 0, 2 do
+    local idx = 24 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 450 + vi * 19
+    render_diamond(c, r, pal.copper.base, pal.copper.shadow, pal.copper.highlight, seed, {edge_thickness = 0.15, edge_darken = 0.55})
+    for i = 0, 4 do
+        dpx(c, r, 10 + math.floor(hash(i, vi, seed + 10) * 44), 5 + math.floor(hash(vi, i, seed + 11) * 22), pal.copper.ore)
+    end
+    if vi > 0 then
+        draw_rock(c, r, 26 + math.floor(hash(vi, 0, seed + 20) * 12), 14, 2, 2, pal.copper.ore_light, pal.copper.ore, pal.copper.ore_dark)
     end
 end
 
 -- ════════════════════════════════════════════════════════════════════════
--- ROW 12: RESONITE (sonic teal)
+-- COAL: bg=27, fg=[28,29,30], misc=[31,32,33]
 -- ════════════════════════════════════════════════════════════════════════
 
-for c = 0, 3 do
-    fill_diamond(c, 12, pal.resonite.base, pal.resonite.dark, brighten(pal.resonite.base, 1.2), 1200 + c * 17)
-
-    if c == 0 then
-        -- Base with concentric ring hints
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) then
-                    local dx = (px - 31.5) / 32
-                    local dy = (py - 15.5) / 16
-                    local dist = math.sqrt(dx * dx + dy * dy)
-                    local ring = math.sin(dist * 20) * 0.5 + 0.5
-                    if ring > 0.8 then
-                        dpx_blend(c, 12, px, py, pal.resonite.teal, 50)
-                    end
-                end
-            end
-        end
-    else
-        -- Geometric patterns
-        for i = 0, c do
-            local gx = 14 + math.floor(hash(i, c, 1220) * 32)
-            local gy = 8 + math.floor(hash(c, i, 1221) * 14)
-            -- Small diamond/square
-            dpx(c, 12, gx, gy - 1, pal.resonite.bright)
-            dpx(c, 12, gx - 1, gy, pal.resonite.teal)
-            dpx(c, 12, gx + 1, gy, pal.resonite.teal)
-            dpx(c, 12, gx, gy + 1, pal.resonite.bright)
-            dpx(c, 12, gx, gy, pal.resonite.white)
-        end
-    end
+do
+    local c, r = idx_to_cr(27)
+    render_diamond(c, r, pal.coal.base, pal.coal.shadow, pal.coal.highlight, 500, {edge_thickness = 0.18, edge_darken = 0.50})
 end
 
-for c = 4, 7 do
-    fill_diamond(c, 12, pal.resonite.base, pal.resonite.dark, brighten(pal.resonite.base, 1.15), 1240 + c * 11)
-    for i = 0, 2 do
-        local gx = 16 + math.floor(hash(i, c, 1250) * 28)
-        local gy = 10 + math.floor(hash(c, i, 1251) * 12)
-        dpx(c, 12, gx, gy, pal.resonite.bright)
-    end
-end
-
--- ════════════════════════════════════════════════════════════════════════
--- ROW 13: ASH TERRAIN
--- ════════════════════════════════════════════════════════════════════════
-
-for c = 0, 7 do
-    fill_diamond(c, 13, pal.ash.base, pal.ash.dark, pal.ash.light, 1300 + c * 23)
-
-    -- Cracks
-    if c < 4 then
-        for i = 0, 1 + c do
-            local sx = 10 + math.floor(hash(i, c + 13, 1310) * 30)
-            local sy = 6 + math.floor(hash(c + 13, i, 1311) * 18)
-            local len = 4 + math.floor(hash(i, c, 1312) * 6)
-            for j = 0, len - 1 do
-                local dy = math.floor(hash(sx + j, sy, 1313) * 3) - 1
-                dpx_blend(c, 13, sx + j, sy + dy, pal.ash.crack, 180)
+for vi = 0, 2 do
+    local idx = 28 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 510 + vi * 21
+    render_diamond(c, r, pal.coal.base, pal.coal.shadow, pal.coal.highlight, seed, {edge_thickness = 0.18, edge_darken = 0.50})
+    local count = 2 + vi
+    for i = 0, count - 1 do
+        local cx = 14 + math.floor(hash(i, vi, seed + 10) * 32)
+        local cy = 14 + math.floor(hash(vi, i, seed + 11) * 8)
+        local h = 2 + math.floor(hash(i, vi + 1, seed + 12) * 3)
+        for dy = 0, h - 1 do
+            local w = h - dy
+            for dx = 0, w - 1 do
+                local cc = pal.coal.seam
+                if dy == h - 1 then cc = pal.coal.shiny end
+                if dx == 0 then cc = pal.coal.dust end
+                dpx(c, r, cx + dx, cy - dy, cc)
             end
         end
     end
-
-    -- Ember specks on some tiles
-    if c >= 3 and c <= 6 then
-        for i = 0, 2 do
-            local ex = 12 + math.floor(hash(i, c, 1320) * 40)
-            local ey = 5 + math.floor(hash(c, i, 1321) * 22)
-            dpx(c, 13, ex, ey, with_alpha(pal.ash.ember, 140))
-        end
-    end
-
-    -- Scorched patches
-    if c >= 5 then
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) and hash(px, py, 1330 + c) < 0.06 then
-                    dpx_blend(c, 13, px, py, pal.ash.crack, 100)
-                end
-            end
+    if vi >= 1 then
+        for i = 0, vi do
+            local sx = 12 + math.floor(hash(i, vi, seed + 20) * 36)
+            local sy = 8 + math.floor(hash(vi, i, seed + 21) * 14)
+            for j = 0, 3 do dpx_blend(c, r, sx + j, sy, pal.coal.shiny, 120) end
         end
     end
 end
 
+for vi = 0, 2 do
+    local idx = 31 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 550 + vi * 17
+    render_diamond(c, r, pal.coal.base, pal.coal.shadow, pal.coal.highlight, seed, {edge_thickness = 0.18, edge_darken = 0.50})
+    for i = 0, 5 do
+        dpx(c, r, 8 + math.floor(hash(i, vi, seed + 10) * 48), 4 + math.floor(hash(vi, i, seed + 11) * 24), pal.coal.seam)
+    end
+    if vi == 2 then draw_rock(c, r, 28, 14, 2, 2, pal.coal.shiny, pal.coal.dust, pal.coal.seam) end
+end
+
 -- ════════════════════════════════════════════════════════════════════════
--- ROW 14: ASH VARIANTS
+-- TIN: bg=34, fg=[35,36,37], misc=[38,39,40]
 -- ════════════════════════════════════════════════════════════════════════
 
-for c = 0, 7 do
-    -- Slightly different base shade per variant
-    local shade = 0.9 + hash(c, 14, 1400) * 0.2
-    fill_diamond(c, 14,
-        brighten(pal.ash.base, shade),
-        brighten(pal.ash.dark, shade),
-        brighten(pal.ash.light, shade),
-        1400 + c * 31)
+do
+    local c, r = idx_to_cr(34)
+    render_diamond(c, r, pal.tin.base, pal.tin.shadow, pal.tin.highlight, 600, {edge_thickness = 0.14, edge_darken = 0.58})
+end
 
-    -- Various details
-    if c % 3 == 0 then
-        -- Deep cracks
-        for i = 0, 2 do
-            local sx = 14 + math.floor(hash(i, c + 14, 1410) * 28)
-            local sy = 8 + math.floor(hash(c + 14, i, 1411) * 14)
-            for j = 0, 5 do
-                dpx_blend(c, 14, sx + j, sy + math.floor(hash(j, i, 1412) * 3) - 1, pal.ash.crack, 200)
+for vi = 0, 2 do
+    local idx = 35 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 610 + vi * 19
+    render_diamond(c, r, pal.tin.base, pal.tin.shadow, pal.tin.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.58})
+    local count = 2 + vi
+    for i = 0, count - 1 do
+        local cx = 14 + math.floor(hash(i, vi, seed + 10) * 30)
+        local cy = 14 + math.floor(hash(vi, i, seed + 11) * 8)
+        local h = 2 + math.floor(hash(i, vi + 1, seed + 12) * 2)
+        draw_rock(c, r, cx, cy, 2 + math.floor(hash(i, vi, seed + 14) * 2), h, pal.tin.ore_light, pal.tin.ore, pal.tin.ore_dark)
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 38 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 650 + vi * 23
+    render_diamond(c, r, pal.tin.base, pal.tin.shadow, pal.tin.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.58})
+    for i = 0, 3 do
+        dpx(c, r, 10 + math.floor(hash(i, vi, seed + 10) * 44), 6 + math.floor(hash(vi, i, seed + 11) * 20), pal.tin.ore)
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- GOLD: bg=41, fg=[42,43,44], misc=[45,46,47]
+-- ════════════════════════════════════════════════════════════════════════
+
+do
+    local c, r = idx_to_cr(41)
+    render_diamond(c, r, pal.gold.base, pal.gold.shadow, pal.gold.highlight, 700, {edge_thickness = 0.16, edge_darken = 0.52})
+end
+
+for vi = 0, 2 do
+    local idx = 42 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 710 + vi * 17
+    render_diamond(c, r, pal.gold.base, pal.gold.shadow, pal.gold.highlight, seed, {edge_thickness = 0.16, edge_darken = 0.52})
+    local count = 2 + vi
+    for i = 0, count - 1 do
+        local cx = 14 + math.floor(hash(i, vi, seed + 10) * 30)
+        local cy = 14 + math.floor(hash(vi, i, seed + 11) * 8)
+        local h = 2 + math.floor(hash(i, vi + 1, seed + 12) * 3)
+        draw_rock(c, r, cx, cy, 2, h, pal.gold.ore_light, pal.gold.ore, pal.gold.ore_dark)
+        dpx(c, r, cx, cy - h, pal.gold.sparkle)
+    end
+    if vi >= 1 then
+        local sx = 16 + math.floor(hash(vi, 0, seed + 20) * 20)
+        local sy = 10 + math.floor(hash(0, vi, seed + 21) * 8)
+        for j = 0, 4 + vi do
+            dpx_blend(c, r, sx + j, sy + math.floor(hash(j, vi, seed + 22) * 3) - 1, pal.gold.ore, 160)
+        end
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 45 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 750 + vi * 19
+    render_diamond(c, r, pal.gold.base, pal.gold.shadow, pal.gold.highlight, seed, {edge_thickness = 0.16, edge_darken = 0.52})
+    for i = 0, 4 do
+        local sx = 10 + math.floor(hash(i, vi, seed + 10) * 44)
+        local sy = 5 + math.floor(hash(vi, i, seed + 11) * 22)
+        dpx(c, r, sx, sy, pal.gold.ore)
+        if hash(i, vi, seed + 15) > 0.6 then dpx(c, r, sx + 1, sy, pal.gold.sparkle) end
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- QUARTZ (Crystalline): bg=48, fg=[49,50,51], misc=[52,53,54]
+-- ════════════════════════════════════════════════════════════════════════
+
+do
+    local c, r = idx_to_cr(48)
+    render_diamond(c, r, pal.quartz.base, pal.quartz.shadow, pal.quartz.highlight, 800, {edge_thickness = 0.14, edge_darken = 0.55})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + 480, py + 800, 3, 805)
+            if n > 0.6 then dpx_blend(c, r, px, py, pal.quartz.frost, math.floor((n - 0.6) * 2.5 * 80)) end
+        end
+    end end
+end
+
+for vi = 0, 2 do
+    local idx = 49 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 810 + vi * 21
+    render_diamond(c, r, pal.quartz.base, pal.quartz.shadow, pal.quartz.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.55})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + idx * 10, py + 800, 2, seed + 5)
+            if n > 0.62 then dpx_blend(c, r, px, py, pal.quartz.frost, 60) end
+        end
+    end end
+    local count = 2 + vi
+    for i = 0, count - 1 do
+        local cx = 14 + math.floor(hash(i, vi, seed + 10) * 30)
+        local cy = 14 + math.floor(hash(vi, i, seed + 11) * 8)
+        local h = 4 + math.floor(hash(i, vi + 1, seed + 12) * 3)
+        local w = 2 + math.floor(hash(vi + 1, i, seed + 13) * 2)
+        draw_hex_prism(c, r, cx, cy, h, w, pal.quartz.crystal, pal.quartz.deep, pal.quartz.ice)
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 52 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 850 + vi * 17
+    render_diamond(c, r, pal.quartz.base, pal.quartz.shadow, pal.quartz.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.55})
+    if vi == 0 then
+        for i = 0, 3 do
+            local sx = 10 + math.floor(hash(i, vi, seed + 10) * 20)
+            local sy = 8 + math.floor(hash(vi, i, seed + 11) * 10)
+            for j = 0, 4 do
+                dpx(c, r, sx + j * 2, sy + math.floor(hash(j, i, seed + 12) * 3) - 1, with_alpha(pal.quartz.frost, 160))
             end
         end
-    elseif c % 3 == 1 then
-        -- Scattered ember dots
+    elseif vi == 1 then
         for i = 0, 4 do
-            local ex = 8 + math.floor(hash(i, c, 1420) * 48)
-            local ey = 3 + math.floor(hash(c, i, 1421) * 26)
-            dpx(c, 14, ex, ey, with_alpha(pal.ash.ember, 120))
+            local sx = 10 + math.floor(hash(i, vi, seed + 20) * 44)
+            local sy = 5 + math.floor(hash(vi, i, seed + 21) * 22)
+            dpx(c, r, sx, sy, pal.quartz.crystal)
+            if hash(i, vi, seed + 22) > 0.5 then dpx(c, r, sx + 1, sy, pal.quartz.ice) end
         end
     else
-        -- Lighter ash dust
-        for py = 0, CELL_H - 1 do
-            for px = 0, CELL_W - 1 do
-                if in_diamond(px, py) and hash(px, py, 1430 + c) < 0.1 then
-                    dpx_blend(c, 14, px, py, pal.ash.light, 80)
+        draw_hex_prism(c, r, 28, 14, 3, 2, pal.quartz.crystal, pal.quartz.deep, pal.quartz.ice)
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- SULFUR: bg=55, fg=[56,57,58], misc=[59,60,61]
+-- ════════════════════════════════════════════════════════════════════════
+
+do
+    local c, r = idx_to_cr(55)
+    render_diamond(c, r, pal.sulfur.base, pal.sulfur.shadow, pal.sulfur.highlight, 900, {edge_thickness = 0.14, edge_darken = 0.55})
+end
+
+for vi = 0, 2 do
+    local idx = 56 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 910 + vi * 19
+    render_diamond(c, r, pal.sulfur.base, pal.sulfur.shadow, pal.sulfur.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.55})
+    local count = 2 + vi
+    for i = 0, count - 1 do
+        local cx = 14 + math.floor(hash(i, vi, seed + 10) * 30)
+        local cy = 14 + math.floor(hash(vi, i, seed + 11) * 8)
+        local h = 2 + math.floor(hash(i, vi + 1, seed + 12) * 3)
+        draw_crystal_shard(c, r, cx, cy, h, 2, pal.sulfur.crust, pal.sulfur.bright, pal.sulfur.dark, pal.sulfur.bright)
+    end
+    if vi >= 1 then
+        for i = 0, 1 do
+            local fx = 18 + math.floor(hash(i, vi, seed + 20) * 24)
+            local fy = 6 + math.floor(hash(vi, i, seed + 21) * 8)
+            dpx_blend(c, r, fx, fy, pal.sulfur.fume, 100)
+            dpx_blend(c, r, fx, fy - 1, pal.sulfur.fume, 60)
+        end
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 59 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 950 + vi * 23
+    render_diamond(c, r, pal.sulfur.base, pal.sulfur.shadow, pal.sulfur.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.55})
+    for i = 0, 3 do
+        dpx(c, r, 10 + math.floor(hash(i, vi, seed + 10) * 44), 5 + math.floor(hash(vi, i, seed + 11) * 22), pal.sulfur.crust)
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- WALL: bg=62, fg=[63,64,65], misc=[66,67,68]
+-- ════════════════════════════════════════════════════════════════════════
+
+local function wall_mortar(col, row, alpha)
+    alpha = alpha or 120
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if not in_diamond(px, py) then goto cont end
+        if diamond_depth(px, py) < 0.08 then goto cont end
+        if py % 8 == 0 then dpx_blend(col, row, px, py, pal.wall.mortar, alpha) end
+        local offset = (math.floor(py / 8) % 2 == 0) and 0 or 10
+        if (px + offset) % 16 == 0 then dpx_blend(col, row, px, py, pal.wall.mortar, math.floor(alpha * 0.8)) end
+        ::cont::
+    end end
+end
+
+do
+    local c, r = idx_to_cr(62)
+    render_diamond(c, r, pal.wall.base, pal.wall.shadow, pal.wall.highlight, 1000, {edge_thickness = 0.20, edge_darken = 0.45})
+    wall_mortar(c, r, 120)
+end
+
+for vi = 0, 2 do
+    local idx = 63 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1010 + vi * 17
+    render_diamond(c, r, pal.wall.base, pal.wall.shadow, pal.wall.highlight, seed, {edge_thickness = 0.20, edge_darken = 0.45})
+    wall_mortar(c, r, 120)
+    for i = 0, vi + 1 do
+        draw_crack(c, r, 10 + math.floor(hash(i, vi, seed + 10) * 30), 6 + math.floor(hash(vi, i, seed + 11) * 18), 4 + vi * 2, pal.wall.crack, seed + 12 + i)
+    end
+    if vi >= 1 then
+        draw_rock(c, r, 22 + math.floor(hash(vi, 0, seed + 20) * 16), 12 + math.floor(hash(0, vi, seed + 21) * 6), 3, 2 + vi, pal.wall.light, pal.wall.base, pal.wall.shadow)
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 66 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1050 + vi * 19
+    render_diamond(c, r, pal.wall.base, pal.wall.shadow, pal.wall.highlight, seed, {edge_thickness = 0.20, edge_darken = 0.45})
+    wall_mortar(c, r, 100)
+    if vi == 0 then
+        for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+            if in_diamond(px, py) then
+                local n = fbm(px + idx * 10, py + 1000, 2, seed + 5)
+                if n > 0.5 and py > CELL_H / 2 then
+                    dpx_blend(c, r, px, py, pal.wall.moss, math.floor((n - 0.5) * 2 * 120))
                 end
             end
+        end end
+    elseif vi == 1 then
+        for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+            if in_diamond(px, py) then dpx_blend(c, r, px, py, pal.wall.dark, 40) end
+        end end
+        draw_crack(c, r, 16, 10, 8, pal.wall.crack, seed + 10)
+    else
+        for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+            local d = diamond_depth(px, py)
+            if d >= 0 and d < 0.12 then
+                local n = hash(px, py, seed + 20)
+                if n < 0.25 then dpx(c, r, px, py, TRANSPARENT)
+                elseif n < 0.45 then dpx_blend(c, r, px, py, pal.wall.dark, 100) end
+            end
+        end end
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- STONE: bg=69, fg=[70,71,72], misc=[73,74,75]
+-- ════════════════════════════════════════════════════════════════════════
+
+local function stone_grid(col, row, alpha)
+    alpha = alpha or 100
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if not in_diamond(px, py) then goto cont end
+        if diamond_depth(px, py) < 0.06 then goto cont end
+        local u = (px - 31.5) + (py - 15.5) * 2
+        local v = -(px - 31.5) + (py - 15.5) * 2
+        if math.abs(u % 16) < 1 or math.abs(v % 16) < 1 then
+            dpx_blend(col, row, px, py, pal.stone.mortar, alpha)
+        end
+        ::cont::
+    end end
+end
+
+do
+    local c, r = idx_to_cr(69)
+    render_diamond(c, r, pal.stone.base, pal.stone.shadow, pal.stone.highlight, 1100, {edge_thickness = 0.10, edge_darken = 0.60})
+    stone_grid(c, r, 100)
+end
+
+for vi = 0, 2 do
+    local idx = 70 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1110 + vi * 19
+    render_diamond(c, r, pal.stone.base, pal.stone.shadow, pal.stone.highlight, seed, {edge_thickness = 0.10, edge_darken = 0.60})
+    stone_grid(c, r, 100)
+    for i = 0, vi do
+        draw_crack(c, r, 14 + math.floor(hash(i, vi, seed + 10) * 28), 8 + math.floor(hash(vi, i, seed + 11) * 14), 4 + vi * 2, pal.stone.crack, seed + 12 + i)
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 73 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1150 + vi * 23
+    local shade = 0.9 + hash(vi, 0, seed) * 0.2
+    render_diamond(c, r, brighten(pal.stone.base, shade), brighten(pal.stone.shadow, shade), brighten(pal.stone.highlight, shade), seed, {edge_thickness = 0.10, edge_darken = 0.60})
+    stone_grid(c, r, 80)
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- OIL: bg=80, fg=[81,82,83], misc=[84,85,86]
+-- ════════════════════════════════════════════════════════════════════════
+
+do
+    local c, r = idx_to_cr(80)
+    render_diamond(c, r, pal.oil.base, pal.oil.shadow, pal.oil.highlight, 1200, {edge_thickness = 0.16, edge_darken = 0.50})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + 800, py + 1200, 3, 1205)
+            if n > 0.55 and n < 0.65 then dpx_blend(c, r, px, py, pal.oil.sheen, 40) end
+        end
+    end end
+end
+
+for vi = 0, 2 do
+    local idx = 81 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1210 + vi * 17
+    render_diamond(c, r, pal.oil.base, pal.oil.shadow, pal.oil.highlight, seed, {edge_thickness = 0.16, edge_darken = 0.50})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + idx * 10, py + seed, 2, seed + 5)
+            if n > 0.5 then dpx_blend(c, r, px, py, pal.oil.sheen, math.floor((n - 0.5) * 2 * 50)) end
+            local n2 = fbm(px + idx * 10 + 500, py + seed + 500, 2, seed + 10)
+            if n2 > 0.7 then dpx_blend(c, r, px, py, pal.oil.rainbow, 30) end
+        end
+    end end
+    -- Dark pool patches
+    local count = 1 + vi
+    for i = 0, count - 1 do
+        local cx = 18 + math.floor(hash(i, vi, seed + 20) * 24)
+        local cy = 10 + math.floor(hash(vi, i, seed + 21) * 12)
+        for dy = -1, 1 do for dx = -2, 2 do
+            if math.abs(dx) + math.abs(dy) < 3 then dpx_blend(c, r, cx + dx, cy + dy, pal.oil.dark, 80) end
+        end end
+    end
+    for i = 0, vi do
+        dpx(c, r, 14 + math.floor(hash(i, vi, seed + 30) * 32), 6 + math.floor(hash(vi, i, seed + 31) * 18), pal.oil.bubble)
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 84 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1250 + vi * 19
+    render_diamond(c, r, pal.oil.base, pal.oil.shadow, pal.oil.highlight, seed, {edge_thickness = 0.16, edge_darken = 0.50})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + idx * 10, py + seed, 2, seed + 5)
+            if n > 0.6 then dpx_blend(c, r, px, py, pal.oil.sheen, 30) end
+        end
+    end end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- CRYSTAL (Pyromite): bg=87, fg=[88,89,90], misc=[91,92,93]
+-- ════════════════════════════════════════════════════════════════════════
+
+do
+    local c, r = idx_to_cr(87)
+    render_diamond(c, r, pal.crystal.base, pal.crystal.shadow, pal.crystal.highlight, 1300, {edge_thickness = 0.16, edge_darken = 0.50})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + 870, py + 1300, 2, 1305)
+            if n > 0.62 and n < 0.70 then dpx_blend(c, r, px, py, pal.crystal.glow, 80) end
+        end
+    end end
+end
+
+for vi = 0, 2 do
+    local idx = 88 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1310 + vi * 21
+    render_diamond(c, r, pal.crystal.base, pal.crystal.shadow, pal.crystal.highlight, seed, {edge_thickness = 0.16, edge_darken = 0.50})
+    -- Glow cracks
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + idx * 10, py + seed, 2, seed + 5)
+            if n > 0.60 and n < 0.68 then dpx_blend(c, r, px, py, pal.crystal.glow, 100) end
+        end
+    end end
+    -- Jagged crystal shards
+    local count = 2 + vi
+    for i = 0, count - 1 do
+        local cx = 12 + math.floor(hash(i, vi, seed + 10) * 34)
+        local cy = 16 + math.floor(hash(vi, i, seed + 11) * 6)
+        local h = 4 + math.floor(hash(i, vi + 1, seed + 12) * 4)
+        local w = 1 + math.floor(hash(vi + 1, i, seed + 13) * 2)
+        draw_crystal_shard(c, r, cx, cy, h, w, pal.crystal.shard, pal.crystal.glow, pal.crystal.dark, pal.crystal.ember)
+    end
+    -- Ember glow
+    for i = 0, 2 do
+        dpx_blend(c, r, 14 + math.floor(hash(i, vi, seed + 20) * 32), 8 + math.floor(hash(vi, i, seed + 21) * 12), pal.crystal.hot, 120)
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 91 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1350 + vi * 17
+    render_diamond(c, r, pal.crystal.base, pal.crystal.shadow, pal.crystal.highlight, seed, {edge_thickness = 0.16, edge_darken = 0.50})
+    if vi == 0 then
+        for i = 0, 4 do
+            dpx(c, r, 10 + math.floor(hash(i, vi, seed + 10) * 44), 4 + math.floor(hash(vi, i, seed + 11) * 24), with_alpha(pal.crystal.ember, 180))
+        end
+    elseif vi == 1 then
+        for i = 0, 3 do
+            dpx(c, r, 12 + math.floor(hash(i, vi, seed + 20) * 40), 6 + math.floor(hash(vi, i, seed + 21) * 20), with_alpha(pal.crystal.hot, 120))
+        end
+    else
+        for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+            if in_diamond(px, py) and hash(px, py, seed + 30) < 0.06 then
+                dpx_blend(c, r, px, py, pal.crystal.ash_col, 100)
+            end
+        end end
+        draw_crystal_shard(c, r, 28, 14, 3, 1, pal.crystal.shard, pal.crystal.glow, pal.crystal.dark, pal.crystal.ember)
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- URANIUM: bg=94, fg=[95,96,97], misc=[98,99,100]
+-- ════════════════════════════════════════════════════════════════════════
+
+do
+    local c, r = idx_to_cr(94)
+    render_diamond(c, r, pal.uranium.base, pal.uranium.shadow, pal.uranium.highlight, 1400, {edge_thickness = 0.14, edge_darken = 0.55})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + 940, py + 1400, 2, 1405)
+            if n > 0.6 then dpx_blend(c, r, px, py, pal.uranium.glow, math.floor((n - 0.6) * 2.5 * 40)) end
+        end
+    end end
+end
+
+for vi = 0, 2 do
+    local idx = 95 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1410 + vi * 19
+    render_diamond(c, r, pal.uranium.base, pal.uranium.shadow, pal.uranium.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.55})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + idx * 10, py + seed, 2, seed + 5)
+            if n > 0.55 then dpx_blend(c, r, px, py, pal.uranium.glow, math.floor((n - 0.55) * 3 * 30)) end
+        end
+    end end
+    local count = 2 + vi
+    for i = 0, count - 1 do
+        local cx = 14 + math.floor(hash(i, vi, seed + 10) * 30)
+        local cy = 14 + math.floor(hash(vi, i, seed + 11) * 8)
+        local h = 3 + math.floor(hash(i, vi + 1, seed + 12) * 3)
+        for dy = 0, h - 1 do
+            dpx(c, r, cx, cy - dy, pal.uranium.rod)
+            if dy == h - 1 then dpx(c, r, cx, cy - dy, pal.uranium.bright) end
+            dpx_blend(c, r, cx - 1, cy - dy, pal.uranium.glow, 50)
+            dpx_blend(c, r, cx + 1, cy - dy, pal.uranium.glow, 50)
+        end
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 98 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1450 + vi * 23
+    render_diamond(c, r, pal.uranium.base, pal.uranium.shadow, pal.uranium.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.55})
+    for i = 0, 3 do
+        dpx(c, r, 10 + math.floor(hash(i, vi, seed + 10) * 44), 5 + math.floor(hash(vi, i, seed + 11) * 22), pal.uranium.glow)
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- BIOMASS (Biovine): bg=101, fg=[102,103,104], misc=[105,106,107]
+-- ════════════════════════════════════════════════════════════════════════
+
+do
+    local c, r = idx_to_cr(101)
+    render_diamond(c, r, pal.biomass.base, pal.biomass.shadow, pal.biomass.highlight, 1500, {edge_thickness = 0.14, edge_darken = 0.55})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + 1010, py + 1500, 3, 1505)
+            if n > 0.55 and n < 0.62 then dpx_blend(c, r, px, py, pal.biomass.vine, 80) end
+            local n2 = fbm(px + 1510, py + 2000, 2, 1510)
+            if n2 > 0.7 then dpx_blend(c, r, px, py, pal.biomass.glow, 30) end
+        end
+    end end
+end
+
+for vi = 0, 2 do
+    local idx = 102 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1510 + vi * 21
+    render_diamond(c, r, pal.biomass.base, pal.biomass.shadow, pal.biomass.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.55})
+    for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+        if in_diamond(px, py) then
+            local n = fbm(px + idx * 10, py + seed, 2, seed + 5)
+            if n > 0.56 and n < 0.63 then dpx_blend(c, r, px, py, pal.biomass.vine, 60) end
+        end
+    end end
+    if vi == 0 then
+        for i = 0, 2 do
+            draw_vine(c, r, 14 + i * 14, 16 + math.floor(hash(i, vi, seed + 10) * 6), 5, pal.biomass.vine, pal.biomass.purple, seed + 11 + i)
+        end
+    elseif vi == 1 then
+        for i = 0, 4 do
+            local sx = 10 + math.floor(hash(i, vi, seed + 20) * 44)
+            local sy = 5 + math.floor(hash(vi, i, seed + 21) * 22)
+            dpx(c, r, sx, sy, pal.biomass.glow)
+            dpx_blend(c, r, sx - 1, sy, pal.biomass.glow, 40)
+            dpx_blend(c, r, sx + 1, sy, pal.biomass.glow, 40)
+        end
+        draw_vine(c, r, 20, 18, 6, pal.biomass.vine, pal.biomass.glow, seed + 25)
+    else
+        for i = 0, 1 do
+            draw_mushroom(c, r, 18 + i * 16, 18 + math.floor(hash(i, vi, seed + 30) * 6), pal.biomass.mushcap, pal.biomass.mushroom, 3)
+        end
+        draw_vine(c, r, 30, 16, 4, pal.biomass.vine, pal.biomass.purple, seed + 35)
+        dpx(c, r, 35, 10, pal.biomass.spore)
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 105 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1550 + vi * 17
+    render_diamond(c, r, pal.biomass.base, pal.biomass.shadow, pal.biomass.highlight, seed, {edge_thickness = 0.14, edge_darken = 0.55})
+    if vi == 0 then
+        for i = 0, 3 do
+            dpx(c, r, 10 + math.floor(hash(i, vi, seed + 10) * 40), 5 + math.floor(hash(vi, i, seed + 11) * 20), pal.biomass.spore)
+        end
+        draw_vine(c, r, 28, 18, 4, pal.biomass.vine, pal.biomass.dark, seed + 15)
+    elseif vi == 1 then
+        for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+            if in_diamond(px, py) then
+                local n = fbm(px + idx * 10, py + seed, 2, seed + 5)
+                if n > 0.58 and n < 0.64 then dpx_blend(c, r, px, py, pal.biomass.purple, 70) end
+            end
+        end end
+    else
+        for i = 0, 4 do
+            dpx(c, r, 8 + math.floor(hash(i, vi, seed + 20) * 48), 4 + math.floor(hash(vi, i, seed + 21) * 24), pal.biomass.glow)
         end
     end
 end
 
 -- ════════════════════════════════════════════════════════════════════════
--- FINALIZE: Apply image to sprite and export
+-- ASH: bg=108, fg=[109,110,111], misc reuses [108,109,110]
 -- ════════════════════════════════════════════════════════════════════════
 
--- Place image onto sprite cel
+do
+    local c, r = idx_to_cr(108)
+    render_diamond(c, r, pal.ash.base, pal.ash.shadow, pal.ash.highlight, 1600, {edge_thickness = 0.12, edge_darken = 0.58})
+    for i = 0, 2 do
+        draw_crack(c, r, 12 + math.floor(hash(i, 0, 1605) * 28), 8 + math.floor(hash(0, i, 1606) * 14), 5, pal.ash.crack, 1607 + i)
+    end
+end
+
+for vi = 0, 2 do
+    local idx = 109 + vi
+    local c, r = idx_to_cr(idx)
+    local seed = 1610 + vi * 19
+    render_diamond(c, r, pal.ash.base, pal.ash.shadow, pal.ash.highlight, seed, {edge_thickness = 0.12, edge_darken = 0.58})
+    for i = 0, 1 + vi do
+        draw_crack(c, r, 10 + math.floor(hash(i, vi, seed + 10) * 30), 6 + math.floor(hash(vi, i, seed + 11) * 18), 4 + vi * 2, pal.ash.crack, seed + 12 + i)
+    end
+    if vi >= 1 then
+        for i = 0, 2 do
+            dpx(c, r, 12 + math.floor(hash(i, vi, seed + 20) * 40), 5 + math.floor(hash(vi, i, seed + 21) * 22), with_alpha(pal.ash.ember, 140))
+        end
+    end
+    if vi == 2 then
+        for py = 0, CELL_H - 1 do for px = 0, CELL_W - 1 do
+            if in_diamond(px, py) and hash(px, py, seed + 30) < 0.05 then
+                dpx_blend(c, r, px, py, pal.ash.crack, 80)
+            end
+        end end
+    end
+end
+
+-- ════════════════════════════════════════════════════════════════════════
+-- FINALIZE
+-- ════════════════════════════════════════════════════════════════════════
+
 local cel = spr.cels[1]
 cel.image = img
 
--- Save as PNG directly
 local out_dir = "/Users/gorishniymax/Repos/factor/resources/sprites/terrain"
 spr:saveCopyAs(out_dir .. "/terrain_atlas.png")
 spr:saveAs(out_dir .. "/terrain_atlas.aseprite")

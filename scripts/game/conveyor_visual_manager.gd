@@ -149,14 +149,34 @@ const vec4 OUTLINE_COL = vec4(0.8, 0.1, 0.07, 0.85);
 varying flat float v_row;
 varying flat float v_flip;
 varying flat float v_highlight;
+varying flat float v_direction;
 void vertex() {
 	v_row = INSTANCE_CUSTOM.r;
 	v_flip = INSTANCE_CUSTOM.g;
 	v_highlight = INSTANCE_CUSTOM.b;
+	v_direction = INSTANCE_CUSTOM.a;
 }
 void fragment() {
 	float u = UV.x;
 	float v = UV.y;
+	// Rotate UV based on conveyor direction so ridges flow correctly
+	// Direction 0=RIGHT (default), 1=DOWN, 2=LEFT, 3=UP
+	float dir = v_direction;
+	if (dir > 0.5 && dir < 1.5) {
+		// DOWN: 90 deg CCW
+		float tmp = u;
+		u = 1.0 - v;
+		v = tmp;
+	} else if (dir > 1.5 && dir < 2.5) {
+		// LEFT: 180 deg
+		u = 1.0 - u;
+		v = 1.0 - v;
+	} else if (dir > 2.5) {
+		// UP: 90 deg CW
+		float tmp = u;
+		u = v;
+		v = 1.0 - tmp;
+	}
 	if (v_flip > 0.5) v = 1.0 - v;
 	float col = floor(frame_idx);
 	float row = v_row;

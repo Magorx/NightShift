@@ -15,39 +15,39 @@ region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bi1"]
 atlas = ExtResource("8_sheet")
-region = Rect2(64, 0, 64, 96)
+region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bw0"]
 atlas = ExtResource("8_sheet")
-region = Rect2(64, 0, 64, 96)
+region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bw1"]
 atlas = ExtResource("8_sheet")
-region = Rect2(64, 0, 64, 96)
+region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba0"]
 atlas = ExtResource("8_sheet")
-region = Rect2(64, 0, 64, 96)
+region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba1"]
 atlas = ExtResource("8_sheet")
-region = Rect2(64, 0, 64, 96)
+region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba2"]
 atlas = ExtResource("8_sheet")
-region = Rect2(64, 0, 64, 96)
+region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba3"]
 atlas = ExtResource("8_sheet")
-region = Rect2(64, 0, 64, 96)
+region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd0"]
 atlas = ExtResource("8_sheet")
-region = Rect2(64, 0, 64, 96)
+region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bd1"]
 atlas = ExtResource("8_sheet")
-region = Rect2(64, 0, 64, 96)
+region = Rect2(0, 0, 64, 96)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_base"]
 animations = [{

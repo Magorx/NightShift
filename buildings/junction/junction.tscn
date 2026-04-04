@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://bgk5i1pp0m4tc"]
+[gd_scene load_steps=17 format=3 uid="uid://bgk5i1pp0m4tc"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://x3t3x00qid6f" path="res://buildings/junction/junction.gd" id="3"]
@@ -7,34 +7,76 @@
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="6"]
 [ext_resource type="Texture2D" uid="uid://coou8ib7hwb10" path="res://buildings/junction/sprites/main.png" id="7_m8v5y"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_lir88"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_b1"]
 atlas = ExtResource("7_m8v5y")
-region = Rect2(0, 0, 32, 32)
+region = Rect2(0, 0, 64, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b2"]
+atlas = ExtResource("7_m8v5y")
+region = Rect2(0, 0, 64, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b3"]
+atlas = ExtResource("7_m8v5y")
+region = Rect2(0, 0, 64, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_b4"]
+atlas = ExtResource("7_m8v5y")
+region = Rect2(0, 0, 64, 48)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_m8v5y"]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_lir88")
+"texture": SubResource("AtlasTexture_b1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_b4")
 }],
 "loop": true,
 "name": &"default",
-"speed": 5.0
+"speed": 3.0
 }]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_1hrax"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_t1"]
 atlas = ExtResource("7_m8v5y")
-region = Rect2(32, 0, 32, 32)
+region = Rect2(0, 48, 64, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t2"]
+atlas = ExtResource("7_m8v5y")
+region = Rect2(64, 48, 64, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t3"]
+atlas = ExtResource("7_m8v5y")
+region = Rect2(0, 48, 64, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_t4"]
+atlas = ExtResource("7_m8v5y")
+region = Rect2(64, 48, 64, 48)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_kdx5j"]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_1hrax")
+"texture": SubResource("AtlasTexture_t1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_t4")
 }],
 "loop": true,
 "name": &"default",
-"speed": 5.0
+"speed": 3.0
 }]
 
 [node name="Junction" type="Node2D"]
@@ -97,13 +139,13 @@ script = ExtResource("3")
 
 [node name="SpriteBottom" type="AnimatedSprite2D" parent="Rotatable"]
 texture_filter = 1
-position = Vector2(16, 16)
+position = Vector2(0, -8)
 sprite_frames = SubResource("SpriteFrames_m8v5y")
 autoplay = "default"
 
 [node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
 z_index = 10
 texture_filter = 1
-position = Vector2(16, 16)
+position = Vector2(0, -8)
 sprite_frames = SubResource("SpriteFrames_kdx5j")
 autoplay = "default"
