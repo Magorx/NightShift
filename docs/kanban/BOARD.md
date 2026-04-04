@@ -294,6 +294,17 @@
 
 ## Done
 
+### **LIB.1** Isometric 3D Geometry Library (2026-04-04)
+
+  - tags: [art-pipeline, tooling]
+    ```md
+    Full 3D-to-isometric rendering library at tools/rendering/iso/.
+    10 modules: config, projection, zbuffer, shading, primitives (9 shapes),
+    mechanical (gear/pipe/piston/fan), texture (12 patterns), animation,
+    scene composition. Configurable projection (not hardcoded 2:1).
+    8 example PNGs generated. Planned 5h, actual ~0.5h.
+    ```
+
 ### **S0** Design & Planning (2026-04-03)
 
   - tags: [planning]

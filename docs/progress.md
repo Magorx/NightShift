@@ -155,14 +155,38 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 - **Blockers**: Art quality still unsatisfactory -- buildings look like crude boxes despite correct 3D structure. Need better pixel art technique or different approach (3D renders?)
 - **Next session goal**: Revisit art approach (possibly 3D pre-renders), then P3.1-P3.6
 
+### Session 8 -- Isometric 3D Geometry Library (LIB.1)
+- **Date**: 2026-04-04
+- **Hours**: ~0.5h (evening session, 20:54-21:22 MSK)
+- **Work done**:
+  - LIB.1: Built complete isometric 3D rendering library at `tools/rendering/iso/`
+  - 10 Lua modules: config, projection, zbuffer, shading, primitives, mechanical, texture, animation, scene, init
+  - 9 shape primitives: Box, Cylinder, Cone, Sphere, Hemisphere, Wedge, Prism, Torus, Arch
+  - 6 mechanical parts: Gear (with rotation animation), Pipe, PipeElbow, Piston, Axle, Fan
+  - 12 procedural textures: noise, brick, metal plate, grate, rivets, wood grain, corrugated, diamond plate, hex mesh, dithered blend, compose
+  - CSG boolean operations: union, subtract, intersect
+  - Animation helpers: rotation, oscillation, shake, particle emitter
+  - Scene composition with automatic depth-sorted rendering
+  - Configurable projection (5 presets + custom tile_ratio/z_scale + raw matrix)
+  - 8 example PNGs generated demonstrating all features
+  - README.md, CLAUDE.md, examples/README.md documentation
+- **Stats**: 14 new files, ~1500 lines of Lua
+- **Decisions made**:
+  - Projection NOT hardcoded to 2:1 -- configurable via tile_ratio or raw 2x3 matrix
+  - Shapes use analytical ray-intersection (box, cylinder, cone, sphere) or slice-sampling (torus, wedge)
+  - All modules use Iso._H for aseprite_helper reference (single source of truth)
+  - Shapes cache screen bounding boxes at creation time (must recreate after projection change)
+- **Blockers**: None
+- **Next session goal**: Use iso_geo in building generate.lua scripts to improve art quality, then P3.1
+
 ---
 
 ## Velocity Tracking
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total sessions | 5 | |
-| Total hours | 8.5 | |
+| Total sessions | 6 | |
+| Total hours | 9.0 | |
 | Factor baseline | ~42h over 2 weeks | 3h/day evenings |
 | Estimated M1 hours | 40-60h | ~2-3 weeks at 3h/day |
 | Estimated M2 hours | 40-60h | ~2-3 weeks at 3h/day |
