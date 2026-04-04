@@ -1,11 +1,18 @@
 extends Node
 
-## Isometric 2:1 dimetric tile dimensions (screen footprint of one diamond tile).
+## Isometric tile dimensions (screen footprint of one diamond tile).
 ## Grid X axis goes down-right on screen, Grid Y axis goes down-left.
-const TILE_WIDTH := 64
-const TILE_HEIGHT := 32
-const HALF_W := TILE_WIDTH / 2.0  # 32.0
-const HALF_H := TILE_HEIGHT / 2.0  # 16.0
+## Change TILE_WIDTH:TILE_HEIGHT ratio to adjust diamond angle.
+## 64:32 = classic 2:1 dimetric. 64:48 = steeper. 64:24 = flatter.
+static var TILE_WIDTH := 64
+static var TILE_HEIGHT := 32
+static var HALF_W := TILE_WIDTH / 2.0
+static var HALF_H := TILE_HEIGHT / 2.0
+
+## Call after changing TILE_WIDTH/TILE_HEIGHT to recompute derived values.
+static func recalculate() -> void:
+	HALF_W = TILE_WIDTH / 2.0
+	HALF_H = TILE_HEIGHT / 2.0
 
 ## Convert grid coordinates to world-space (isometric diamond center).
 ## In isometric, grid_to_world returns the tile CENTER (unlike orthogonal where it's top-left).
