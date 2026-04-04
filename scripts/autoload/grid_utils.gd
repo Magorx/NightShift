@@ -6,7 +6,10 @@ extends Node
 ## Change ROTATION (radians) to rotate the entire grid on screen.
 static var TILE_WIDTH := 64
 static var TILE_HEIGHT := 32
-static var ROTATION := 3.141592 / 4  # radians; 0 = standard diamond
+## Default rotation: grid axes align with 45° screen diagonals so
+## player diagonal movement (W+D, W+A) follows grid axes exactly.
+## Formula: PI/4 - atan2(TILE_HEIGHT, TILE_WIDTH)
+static var ROTATION := PI / 4.0 - atan2(32.0, 64.0)  # ≈ 0.3217 rad ≈ 18.4°
 
 ## Derived basis vectors: where grid +X and +Y point on screen.
 ## Recomputed by recalculate(). All coordinate math uses these.
@@ -16,6 +19,10 @@ static var _basis_x := Vector2(HALF_W, HALF_H)
 static var _basis_y := Vector2(-HALF_W, HALF_H)
 ## Inverse basis (for world_to_grid), precomputed for speed.
 static var _inv_det := 1.0 / (_basis_x.x * _basis_y.y - _basis_x.y * _basis_y.x)
+
+## Recompute derived values on startup (static var initializers don't include ROTATION).
+func _ready() -> void:
+	recalculate()
 
 ## Call after changing TILE_WIDTH, TILE_HEIGHT, or ROTATION.
 static func recalculate() -> void:
