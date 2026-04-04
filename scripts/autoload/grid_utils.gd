@@ -9,7 +9,7 @@ static var TILE_HEIGHT := 32
 ## Default rotation: grid axes align with 45° screen diagonals so
 ## player diagonal movement (W+D, W+A) follows grid axes exactly.
 ## Formula: PI/4 - atan2(TILE_HEIGHT, TILE_WIDTH)
-static var ROTATION := PI / 4.0 - atan2(32.0, 64.0)  # ≈ 0.3217 rad ≈ 18.4°
+static var ROTATION := 0 #-(PI / 4.0 - atan2(32.0, 64.0))  # ≈ 0.3217 rad ≈ 18.4°
 
 ## Derived basis vectors: where grid +X and +Y point on screen.
 ## Recomputed by recalculate(). All coordinate math uses these.
@@ -124,3 +124,54 @@ static func get_diamond_points(center: Vector2) -> PackedVector2Array:
 		center + diamond_bottom(),
 		center + diamond_left(),
 	])
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 3D API — grid coords map to world XZ plane (Y = 0 ground), 1 unit per tile.
+# Grid X → world +X, Grid Y → world +Z.
+# ══════════════════════════════════════════════════════════════════════════════
+
+## Size of one grid tile in 3D world units.
+const TILE_UNIT_3D := 1.0
+
+## Convert grid coordinates to 3D world position on the ground plane.
+static func grid_to_world_3d(grid_pos: Vector2i) -> Vector3:
+	return Vector3(grid_pos.x * TILE_UNIT_3D, 0.0, grid_pos.y * TILE_UNIT_3D)
+
+## Alias — center of a tile in 3D (same as grid_to_world_3d).
+static func grid_to_center_3d(grid_pos: Vector2i) -> Vector3:
+	return grid_to_world_3d(grid_pos)
+
+## Convert 3D world position to grid coordinates (projects onto XZ plane).
+static func world_to_grid_3d(world_pos: Vector3) -> Vector2i:
+	return Vector2i(
+		floori(world_pos.x / TILE_UNIT_3D + 0.5),
+		floori(world_pos.z / TILE_UNIT_3D + 0.5)
+	)
+
+## Offset from grid cell center along a grid direction in 3D.
+## fraction=0.5 gives tile edge.
+static func grid_offset_3d(grid_pos: Vector2i, direction: Vector2, fraction: float) -> Vector3:
+	var center := grid_to_world_3d(grid_pos)
+	return center + Vector3(direction.x, 0.0, direction.y) * TILE_UNIT_3D * fraction
+
+## Convert a grid-space direction to a 3D world direction (normalized, on XZ plane).
+static func grid_dir_to_world_3d(grid_dir: Vector2) -> Vector3:
+	return Vector3(grid_dir.x, 0.0, grid_dir.y).normalized()
+
+## Transform3D that places a unit-sized object at a grid position.
+## The transform scales by TILE_UNIT_3D and positions on the ground plane.
+static func tile_transform_3d(grid_pos: Vector2i) -> Transform3D:
+	var origin := grid_to_world_3d(grid_pos)
+	return Transform3D(
+		Basis.IDENTITY.scaled(Vector3(TILE_UNIT_3D, TILE_UNIT_3D, TILE_UNIT_3D)),
+		origin
+	)
+
+## Map world bounds for an NxN grid in 3D (AABB on XZ plane).
+static func map_world_size_3d(map_tiles: int) -> Vector3:
+	return Vector3(map_tiles * TILE_UNIT_3D, 0.0, map_tiles * TILE_UNIT_3D)
+
+## The origin corner (min X, Y=0, min Z) of the map in 3D.
+static func map_origin_3d(map_tiles: int) -> Vector3:
+	return Vector3.ZERO

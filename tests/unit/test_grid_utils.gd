@@ -212,3 +212,122 @@ func test_picking_at_diamond_bottom() -> void:
 func test_picking_at_diamond_left() -> void:
 	var left := GU.grid_to_center(Vector2i(0, 0)) + GU.diamond_left() * 0.9
 	assert_vec2i_eq(GU.world_to_grid(left), Vector2i(0, 0), "left of (0,0) picks (0,0)")
+
+# ---------------------------------------------------------------
+# 3D API tests
+# ---------------------------------------------------------------
+
+func assert_vec3_eq(a: Vector3, b: Vector3, msg: String = "") -> void:
+	var close := a.distance_to(b) < 0.01
+	if close:
+		_pass_count += 1
+	else:
+		_fail_count += 1
+		var text := "%s: expected %s == %s" % [_test_name, str(a), str(b)]
+		if msg:
+			text += " (%s)" % msg
+		printerr("  FAIL: " + text)
+
+# -- grid_to_world_3d --
+
+func test_grid_to_world_3d_origin() -> void:
+	assert_vec3_eq(GU.grid_to_world_3d(Vector2i(0, 0)), Vector3.ZERO, "3d origin")
+
+func test_grid_to_world_3d_x_axis() -> void:
+	assert_vec3_eq(GU.grid_to_world_3d(Vector2i(1, 0)), Vector3(1, 0, 0), "3d grid(1,0)")
+
+func test_grid_to_world_3d_y_axis() -> void:
+	assert_vec3_eq(GU.grid_to_world_3d(Vector2i(0, 1)), Vector3(0, 0, 1), "3d grid(0,1)")
+
+func test_grid_to_world_3d_diagonal() -> void:
+	assert_vec3_eq(GU.grid_to_world_3d(Vector2i(3, 5)), Vector3(3, 0, 5), "3d grid(3,5)")
+
+func test_grid_to_world_3d_negative() -> void:
+	assert_vec3_eq(GU.grid_to_world_3d(Vector2i(-2, -4)), Vector3(-2, 0, -4), "3d negative")
+
+func test_grid_to_center_3d_matches() -> void:
+	for pos in [Vector2i(0,0), Vector2i(3,7), Vector2i(-2,5)]:
+		assert_vec3_eq(GU.grid_to_center_3d(pos), GU.grid_to_world_3d(pos),
+			"center_3d == world_3d at %s" % str(pos))
+
+# -- world_to_grid_3d --
+
+func test_world_to_grid_3d_origin() -> void:
+	assert_vec2i_eq(GU.world_to_grid_3d(Vector3.ZERO), Vector2i(0, 0), "3d origin")
+
+func test_world_to_grid_3d_exact() -> void:
+	assert_vec2i_eq(GU.world_to_grid_3d(Vector3(1, 0, 0)), Vector2i(1, 0), "3d (1,0,0)")
+	assert_vec2i_eq(GU.world_to_grid_3d(Vector3(0, 0, 1)), Vector2i(0, 1), "3d (0,0,1)")
+
+func test_world_to_grid_3d_ignores_y() -> void:
+	assert_vec2i_eq(GU.world_to_grid_3d(Vector3(2, 5.5, 3)), Vector2i(2, 3), "ignores Y height")
+
+func test_world_to_grid_3d_near_edge() -> void:
+	assert_vec2i_eq(GU.world_to_grid_3d(Vector3(1.3, 0, 2.1)), Vector2i(1, 2), "near edge")
+
+func test_world_to_grid_3d_negative() -> void:
+	assert_vec2i_eq(GU.world_to_grid_3d(Vector3(-1, 0, -1)), Vector2i(-1, -1), "3d negative")
+
+# -- roundtrip 3D --
+
+func test_roundtrip_3d() -> void:
+	var positions := [
+		Vector2i(0,0), Vector2i(1,0), Vector2i(0,1), Vector2i(5,3),
+		Vector2i(-3,-7), Vector2i(63,63), Vector2i(127,0),
+	]
+	for grid_pos in positions:
+		var world_pos := GU.grid_to_world_3d(grid_pos)
+		var back := GU.world_to_grid_3d(world_pos)
+		assert_vec2i_eq(back, grid_pos, "3d roundtrip %s" % str(grid_pos))
+
+# -- grid_offset_3d --
+
+func test_grid_offset_3d_zero_fraction() -> void:
+	var result := GU.grid_offset_3d(Vector2i(2, 3), Vector2(1, 0), 0.0)
+	assert_vec3_eq(result, GU.grid_to_world_3d(Vector2i(2, 3)), "3d offset frac 0 = center")
+
+func test_grid_offset_3d_half() -> void:
+	var result := GU.grid_offset_3d(Vector2i(0, 0), Vector2(1, 0), 0.5)
+	assert_vec3_eq(result, Vector3(0.5, 0, 0), "3d offset half along X")
+
+func test_grid_offset_3d_full() -> void:
+	var result := GU.grid_offset_3d(Vector2i(0, 0), Vector2(1, 0), 1.0)
+	assert_vec3_eq(result, Vector3(1, 0, 0), "3d offset full = next center")
+
+func test_grid_offset_3d_y_direction() -> void:
+	var result := GU.grid_offset_3d(Vector2i(0, 0), Vector2(0, 1), 0.5)
+	assert_vec3_eq(result, Vector3(0, 0, 0.5), "3d offset half along Z")
+
+# -- grid_dir_to_world_3d --
+
+func test_grid_dir_to_world_3d_normalized() -> void:
+	var d := GU.grid_dir_to_world_3d(Vector2(1, 0))
+	assert_true(absf(d.length() - 1.0) < 0.001, "3d dir normalized")
+
+func test_grid_dir_to_world_3d_axes() -> void:
+	assert_vec3_eq(GU.grid_dir_to_world_3d(Vector2(1, 0)), Vector3(1, 0, 0), "3d dir +X")
+	assert_vec3_eq(GU.grid_dir_to_world_3d(Vector2(0, 1)), Vector3(0, 0, 1), "3d dir +Z")
+
+func test_grid_dir_to_world_3d_opposite() -> void:
+	var right := GU.grid_dir_to_world_3d(Vector2(1, 0))
+	var left := GU.grid_dir_to_world_3d(Vector2(-1, 0))
+	assert_vec3_eq(right + left, Vector3.ZERO, "3d opposite dirs cancel")
+
+# -- tile_transform_3d --
+
+func test_tile_transform_3d_origin() -> void:
+	var t := GU.tile_transform_3d(Vector2i(0, 0))
+	assert_vec3_eq(t.origin, Vector3.ZERO, "3d transform origin at (0,0)")
+
+func test_tile_transform_3d_position() -> void:
+	var t := GU.tile_transform_3d(Vector2i(5, 3))
+	assert_vec3_eq(t.origin, Vector3(5, 0, 3), "3d transform origin at (5,3)")
+
+# -- map helpers 3D --
+
+func test_map_world_size_3d() -> void:
+	var s := GU.map_world_size_3d(16)
+	assert_vec3_eq(s, Vector3(16, 0, 16), "3d map size 16")
+
+func test_map_origin_3d() -> void:
+	assert_vec3_eq(GU.map_origin_3d(16), Vector3.ZERO, "3d map origin")
