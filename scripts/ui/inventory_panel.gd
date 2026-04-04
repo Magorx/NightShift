@@ -351,7 +351,7 @@ func _drop_held_item_at_cursor() -> void:
 	if to_target.length() > DROP_RANGE:
 		world_pos = player.position + to_target.normalized() * DROP_RANGE
 	# Try to insert into building at drop position
-	var drop_grid := Vector2i(floori(world_pos.x / Player.TILE_SIZE), floori(world_pos.y / Player.TILE_SIZE))
+	var drop_grid := GridUtils.world_to_grid(world_pos)
 	var building = GameManager.get_building_at(drop_grid)
 	if building and building.logic:
 		var leftover: int = building.logic.try_insert_item(_held_item.item_id, _held_item.quantity)
@@ -362,7 +362,7 @@ func _drop_held_item_at_cursor() -> void:
 	# Drop on top of the building so it can consume from the stack later
 	var ground_pos := world_pos
 	if building:
-		ground_pos = Vector2(drop_grid) * Player.TILE_SIZE + Vector2(Player.TILE_SIZE, Player.TILE_SIZE) * 0.5
+		ground_pos = GridUtils.grid_to_center(drop_grid)
 	player._spawn_ground_item(_held_item.item_id, _held_item.quantity, ground_pos)
 	_clear_held()
 

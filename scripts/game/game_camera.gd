@@ -1,8 +1,6 @@
 class_name GameCamera
 extends Camera2D
 
-const TILE_SIZE := 32
-
 # ── Zoom ────────────────────────────────────────────────────────────────────
 const ZOOM_SPEED := 0.1
 const MIN_ZOOM := 0.5
@@ -86,7 +84,7 @@ func _smooth_zoom(real_delta: float) -> void:
 func _get_bounds() -> Rect2:
 	var viewport_size := get_viewport_rect().size
 	var half_view := viewport_size / (2.0 * zoom.x)
-	var world_size := float(GameManager.map_size * TILE_SIZE)
+	var world_size := float(GridUtils.map_world_size(GameManager.map_size).x)
 	var min_pos := half_view
 	var max_pos := Vector2(world_size, world_size) - half_view
 	if min_pos.x > max_pos.x:

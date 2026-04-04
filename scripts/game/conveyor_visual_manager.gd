@@ -3,7 +3,6 @@ extends BaseMultiMeshManager
 ## Renders all conveyor sprites via a single MultiMeshInstance2D instead of
 ## individual AnimatedSprite2D nodes. Drastically reduces draw calls.
 
-const TILE_SIZE := 32.0
 const INITIAL_CAPACITY := 512
 const ANIM_FPS := 10.0
 const FRAME_COUNT := 4
@@ -20,7 +19,7 @@ func _init() -> void:
 	multimesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_2D
 	multimesh.use_custom_data = true
-	multimesh.mesh = BaseMultiMeshManager.create_quad_mesh(TILE_SIZE)
+	multimesh.mesh = BaseMultiMeshManager.create_quad_mesh(GridUtils.TILE_WIDTH)
 
 	_material = _create_material()
 
@@ -39,7 +38,7 @@ func attach_to(parent: Node) -> void:
 func register(grid_pos: Vector2i, conv) -> void:
 	var idx := _allocate()
 	_idx_map[grid_pos] = idx
-	var center := Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
+	var center := GridUtils.grid_to_center(grid_pos)
 	multimesh.set_instance_transform_2d(idx, Transform2D(conv.direction * PI / 2.0, center))
 	multimesh.set_instance_custom_data(idx, Color(5.0, 0.0, 0.0, 1.0))  # default: "start"
 
@@ -82,7 +81,7 @@ func update_variant(conv) -> void:
 	elif has_back:
 		variant_row = 0.0  # straight
 
-	var center := Vector2(conv.grid_pos) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
+	var center := GridUtils.grid_to_center(conv.grid_pos)
 	multimesh.set_instance_transform_2d(idx, Transform2D(conv.direction * PI / 2.0, center))
 	multimesh.set_instance_custom_data(idx, Color(variant_row, flip_v, 0.0, 1.0))
 

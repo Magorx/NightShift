@@ -1,7 +1,6 @@
 class_name GameWorld
 extends Node2D
 
-const TILE_SIZE := 32
 const AUTOSAVE_INTERVAL := 60.0
 
 @onready var camera: GameCamera = $Camera2D
@@ -223,7 +222,7 @@ func _process(delta: float) -> void:
 			_hide_ground_tooltip()
 		else:
 			var canvas_xform := get_viewport().get_canvas_transform()
-			var tile_top := Vector2(_ground_tooltip_grid) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, 0)
+			var tile_top := GridUtils.grid_to_world(_ground_tooltip_grid) + Vector2(GridUtils.HALF_W, 0)
 			var screen_pos: Vector2 = canvas_xform * tile_top
 			var popup_size := _ground_tooltip.size
 			_ground_tooltip.position = Vector2(
@@ -278,7 +277,7 @@ func _open_pause_menu() -> void:
 func _spawn_player() -> void:
 	player = _player_scene.instantiate()
 	# Spawn at map center
-	var center := Vector2(GameManager.map_size * TILE_SIZE, GameManager.map_size * TILE_SIZE) * 0.5
+	var center := GridUtils.map_world_size(GameManager.map_size) * 0.5
 	player.position = center
 	player.spawn_position = center
 	add_child(player)
@@ -303,18 +302,18 @@ const DEPOSIT_ITEMS = TileDatabase.DEPOSIT_ITEMS
 const WALL_ITEMS = TileDatabase.WALL_ITEMS
 
 func _create_tile_source(tile_set: TileSet, source_id: int, color: Color, has_collision: bool = false) -> void:
-	var img := Image.create(TILE_SIZE, TILE_SIZE, false, Image.FORMAT_RGBA8)
+	var img := Image.create(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT, false, Image.FORMAT_RGBA8)
 	img.fill(color)
 	var tex := ImageTexture.create_from_image(img)
 	var source := TileSetAtlasSource.new()
 	source.texture = tex
-	source.texture_region_size = Vector2i(TILE_SIZE, TILE_SIZE)
+	source.texture_region_size = Vector2i(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT)
 	source.create_tile(Vector2i(0, 0))
 	# Must add source to tileset before accessing TileData physics layers
 	tile_set.add_source(source, source_id)
 	if has_collision:
 		var td: TileData = source.get_tile_data(Vector2i(0, 0), 0)
-		var hs := TILE_SIZE / 2.0
+		var hs := GridUtils.HALF_W
 		td.set_collision_polygons_count(0, 1)
 		td.set_collision_polygon_points(0, 0, PackedVector2Array([
 			Vector2(-hs, -hs), Vector2(hs, -hs), Vector2(hs, hs), Vector2(-hs, hs)
@@ -322,7 +321,7 @@ func _create_tile_source(tile_set: TileSet, source_id: int, color: Color, has_co
 
 func _setup_tileset() -> void:
 	var tile_set := TileSet.new()
-	tile_set.tile_size = Vector2i(TILE_SIZE, TILE_SIZE)
+	tile_set.tile_size = Vector2i(GridUtils.TILE_WIDTH, GridUtils.TILE_HEIGHT)
 	# Physics layer for wall collision (layer 2 = building collision layer)
 	tile_set.add_physics_layer()
 	tile_set.set_physics_layer_collision_layer(0, 1 << 1)

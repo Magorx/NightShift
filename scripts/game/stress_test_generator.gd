@@ -4,7 +4,6 @@
 ## junctions) → horizontal bus → splitter → multiple converters → sinks,
 ## and sinks.
 
-const TILE_SIZE := 32
 const BLOCK_SPACING := 28   # tiles between factory block centers
 const CLUSTER_RADIUS := 3   # deposit cluster radius in tiles
 const BUS_OFFSET := 5       # rows below lowest deposit for the collection bus

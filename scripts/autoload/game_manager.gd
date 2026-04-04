@@ -3,7 +3,6 @@ extends Node
 signal building_placed(building_id: StringName, grid_pos: Vector2i)
 signal item_delivered(item_id: StringName)
 
-const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 ## Z-index layers for draw ordering within BuildingLayer.
@@ -361,7 +360,7 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		building = base_script.new()
 	building.init(id, grid_pos, rotation)
 	# Position so the anchor cell aligns with grid_pos
-	building.position = Vector2(grid_pos - def.anchor_cell) * TILE_SIZE
+	building.position = GridUtils.grid_to_world(grid_pos - def.anchor_cell)
 
 	building_layer.add_child(building)
 

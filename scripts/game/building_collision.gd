@@ -3,7 +3,6 @@ extends StaticBody2D
 ## Manages collision shapes for buildings that block the player.
 ## One CollisionShape2D per occupied tile of each blocking building.
 
-const TILE_SIZE := 32
 const BUILDING_COLLISION_LAYER := 2
 
 # Map from grid position to CollisionShape2D node
@@ -15,14 +14,14 @@ func _ready() -> void:
 	collision_layer = (1 << (BUILDING_COLLISION_LAYER - 1))
 	collision_mask = 0  # Static body doesn't need to detect others
 	_shared_rect_shape = RectangleShape2D.new()
-	_shared_rect_shape.size = Vector2(TILE_SIZE, TILE_SIZE)
+	_shared_rect_shape.size = GridUtils.tile_size_vec()
 
 func add_tile(grid_pos: Vector2i) -> void:
 	if _shapes.has(grid_pos):
 		return
 	var shape_node := CollisionShape2D.new()
 	shape_node.shape = _shared_rect_shape
-	shape_node.position = Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE, TILE_SIZE) * 0.5
+	shape_node.position = GridUtils.grid_to_center(grid_pos)
 	add_child(shape_node)
 	_shapes[grid_pos] = shape_node
 

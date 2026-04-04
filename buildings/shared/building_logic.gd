@@ -8,7 +8,6 @@ extends Node
 ## GameManager finds the logic node by type (`child is BuildingLogic`) rather than
 ## by name, so adding a new building type requires zero changes to GameManager.
 
-const TILE_SIZE := 32
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 var grid_pos: Vector2i

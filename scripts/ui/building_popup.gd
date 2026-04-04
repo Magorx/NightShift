@@ -6,7 +6,6 @@ extends PanelContainer
 
 signal dismissed
 
-const TILE_SIZE := 32
 const UPDATE_INTERVAL := 0.25
 const SCREEN_MARGIN := 4.0
 const GAP_ABOVE := 4.0
@@ -296,16 +295,16 @@ func _update_position() -> void:
 		max_cell.x = maxi(max_cell.x, world_cell.x + 1)
 		max_cell.y = maxi(max_cell.y, world_cell.y + 1)
 	var top_center_world := Vector2(
-		(min_cell.x + max_cell.x) * 0.5 * TILE_SIZE,
-		min_cell.y * TILE_SIZE
+		(min_cell.x + max_cell.x) * 0.5 * GridUtils.TILE_WIDTH,
+		min_cell.y * GridUtils.TILE_HEIGHT
 	)
-	var bottom_center_world := Vector2(top_center_world.x, max_cell.y * TILE_SIZE)
+	var bottom_center_world := Vector2(top_center_world.x, max_cell.y * GridUtils.TILE_HEIGHT)
 	var viewport_size := get_viewport_rect().size
 	var canvas_xform := get_viewport().get_canvas_transform()
 	var top_screen: Vector2 = canvas_xform * top_center_world
 	var bottom_screen: Vector2 = canvas_xform * bottom_center_world
 	if bottom_screen.y < 0 or top_screen.y > viewport_size.y \
-		or bottom_screen.x < -TILE_SIZE * _camera.zoom.x or top_screen.x > viewport_size.x + TILE_SIZE * _camera.zoom.x:
+		or bottom_screen.x < -GridUtils.TILE_WIDTH * _camera.zoom.x or top_screen.x > viewport_size.x + GridUtils.TILE_WIDTH * _camera.zoom.x:
 		hide_popup()
 		return
 	var popup_size := size

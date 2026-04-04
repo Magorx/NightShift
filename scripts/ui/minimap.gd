@@ -1,7 +1,5 @@
 extends Control
 
-const TILE_SIZE := 32
-
 var _camera: Camera2D
 var _last_cam_pos := Vector2.ZERO
 var _last_cam_zoom := 1.0
@@ -34,7 +32,7 @@ func _process(delta: float) -> void:
 			queue_redraw()
 
 func _draw() -> void:
-	var map_px := float(GameManager.map_size * TILE_SIZE)
+	var map_px := GridUtils.map_world_size(GameManager.map_size).x
 	var display_size := size
 
 	if _cache_dirty or not _cached_image:
@@ -78,10 +76,10 @@ func _rebuild_cache(map_px: float, display_size: Vector2) -> void:
 		if item_def:
 			color = item_def.color
 			color.a = 0.35
-		var x1 := int(pos.x * TILE_SIZE * scale_x)
-		var y1 := int(pos.y * TILE_SIZE * scale_y)
-		var x2 := int((pos.x + 1) * TILE_SIZE * scale_x)
-		var y2 := int((pos.y + 1) * TILE_SIZE * scale_y)
+		var x1 := int(pos.x * GridUtils.TILE_WIDTH * scale_x)
+		var y1 := int(pos.y * GridUtils.TILE_HEIGHT * scale_y)
+		var x2 := int((pos.x + 1) * GridUtils.TILE_WIDTH * scale_x)
+		var y2 := int((pos.y + 1) * GridUtils.TILE_HEIGHT * scale_y)
 		_fill_rect_on_image(img, x1, y1, maxi(x2 - x1, 1), maxi(y2 - y1, 1), color, w, h)
 
 	# Buildings
@@ -98,10 +96,10 @@ func _rebuild_cache(map_px: float, display_size: Vector2) -> void:
 		var color := Color.WHITE
 		if def:
 			color = def.color
-		var bx1 := int(pos.x * TILE_SIZE * scale_x)
-		var by1 := int(pos.y * TILE_SIZE * scale_y)
-		var bx2 := int((pos.x + 1) * TILE_SIZE * scale_x)
-		var by2 := int((pos.y + 1) * TILE_SIZE * scale_y)
+		var bx1 := int(pos.x * GridUtils.TILE_WIDTH * scale_x)
+		var by1 := int(pos.y * GridUtils.TILE_HEIGHT * scale_y)
+		var bx2 := int((pos.x + 1) * GridUtils.TILE_WIDTH * scale_x)
+		var by2 := int((pos.y + 1) * GridUtils.TILE_HEIGHT * scale_y)
 		_fill_rect_on_image(img, bx1, by1, maxi(bx2 - bx1, 2), maxi(by2 - by1, 2), color, w, h)
 
 	_cached_building_count = GameManager.unique_buildings.size()
@@ -127,7 +125,7 @@ func _gui_input(event: InputEvent) -> void:
 func _pan_camera_to(local_pos: Vector2) -> void:
 	if not _camera:
 		return
-	var map_px := float(GameManager.map_size * TILE_SIZE)
+	var map_px := GridUtils.map_world_size(GameManager.map_size).x
 	var world_x := (local_pos.x / size.x) * map_px
 	var world_y := (local_pos.y / size.y) * map_px
 	_camera.position = Vector2(world_x, world_y)

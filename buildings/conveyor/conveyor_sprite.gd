@@ -6,13 +6,11 @@ extends AnimatedSprite2D
 ## Animations (straight, turn, side_input, dual_side_input) are defined
 ## in the SpriteFrames resource on the AnimatedSprite2D node in the scene.
 
-const TILE_SIZE := 32
-
 var _flip: bool = false
 
 func _ready() -> void:
 	centered = true
-	position = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+	position = Vector2(GridUtils.HALF_W, GridUtils.HALF_H)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	play()
 	_sync_to_global_clock()

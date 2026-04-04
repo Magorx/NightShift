@@ -51,13 +51,13 @@ func run_simulation() -> void:
 			cam.min_zoom = 0.05
 			cam.target_node = null
 			var half := GameManager.map_size / 2
-			cam.position = Vector2(half * 32, half * 32)
+			cam.position = GridUtils.grid_to_center(Vector2i(half, half))
 			cam.zoom = Vector2(0.12, 0.12)
 			cam.set_target_zoom(0.12)
 			await sim_advance_ticks(2)
 			await sim_capture_screenshot("full_map")
 			# Zoom into a factory block in the top-left area
-			cam.position = Vector2(10 * 32, 18 * 32)
+			cam.position = GridUtils.grid_to_center(Vector2i(10, 18))
 			cam.zoom = Vector2(0.6, 0.6)
 			cam.set_target_zoom(0.6)
 			await sim_advance_ticks(2)
@@ -74,7 +74,7 @@ func run_simulation() -> void:
 							has_neighbor = true
 							break
 					if has_neighbor:
-						conv_pos = Vector2(gp) * 32.0 + Vector2(16, 16)
+						conv_pos = GridUtils.grid_to_center(gp)
 						break
 			cam.position = conv_pos
 			cam.zoom = Vector2(6.0, 6.0)
@@ -98,7 +98,7 @@ func _run_benchmark() -> void:
 	Engine.max_fps = 0
 
 	var half := GameManager.map_size / 2
-	var center := Vector2(half * 32, half * 32)
+	var center := GridUtils.grid_to_center(Vector2i(half, half))
 
 	print("[BENCH] Warming up factory for 2 seconds...")
 	# Let factory produce items so conveyors are loaded
@@ -115,7 +115,7 @@ func _run_benchmark() -> void:
 	var zoomed_out := await sim_benchmark_fps(3.0, "zoomed_out")
 
 	# ── Test 2: Medium zoom ──
-	cam.position = Vector2(40 * 32, 40 * 32)
+	cam.position = GridUtils.grid_to_center(Vector2i(40, 40))
 	cam.zoom = Vector2(0.5, 0.5)
 	cam.set_target_zoom(0.5)
 	await get_tree().process_frame
@@ -124,7 +124,7 @@ func _run_benchmark() -> void:
 	var medium := await sim_benchmark_fps(3.0, "medium_zoom")
 
 	# ── Test 3: Close up ──
-	cam.position = Vector2(10 * 32, 18 * 32)
+	cam.position = GridUtils.grid_to_center(Vector2i(10, 18))
 	cam.zoom = Vector2(1.0, 1.0)
 	cam.set_target_zoom(1.0)
 	await get_tree().process_frame

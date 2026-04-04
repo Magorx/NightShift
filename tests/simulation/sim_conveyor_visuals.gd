@@ -8,7 +8,7 @@ extends "res://tests/simulation/simulation_base.gd"
 func run_simulation() -> void:
 	var cam = game_world.find_child("Camera2D", false, false)
 	if cam:
-		cam.position = Vector2(20 * 32, 18 * 32)
+		cam.position = GridUtils.grid_to_center(Vector2i(20, 18))
 		cam.zoom = Vector2(0.45, 0.45)
 
 	# ── Row 1 (y=5): rotation=0 (right-pointing) ──
@@ -38,7 +38,7 @@ func run_simulation() -> void:
 
 		# Also capture a zoomed-in view of one variant group
 		if cam:
-			cam.position = Vector2(8 * 32, 5 * 32)
+			cam.position = GridUtils.grid_to_center(Vector2i(8, 5))
 			cam.zoom = Vector2(2.0, 2.0)
 			await sim_advance_ticks(2)
 			await sim_capture_screenshot("closeup")

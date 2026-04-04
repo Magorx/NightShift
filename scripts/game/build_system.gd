@@ -4,7 +4,6 @@ extends Node2D
 signal building_clicked(building: Node2D)
 signal ground_inspected(grid_pos: Vector2i)
 
-const TILE_SIZE := 32
 const GHOST_MODULATE := Color(0.8, 0.9, 1.0, 0.55)
 const GHOST_INVALID_MODULATE := Color(1.0, 0.5, 0.5, 0.45)
 const DESTROY_AREA_COLOR := Color(1.0, 0.2, 0.2, 0.15)
@@ -484,7 +483,7 @@ func _update_ghosts() -> void:
 			else:
 				can_place = GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation)
 			can_place = can_place and can_afford
-			_ghost_nodes[i].position = Vector2(pos - def.anchor_cell) * TILE_SIZE
+			_ghost_nodes[i].position = GridUtils.grid_to_world(pos - def.anchor_cell)
 			_ghost_nodes[i].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
 			_ghost_nodes[i].visible = true
 			_update_ghost_conveyor_variant(_ghost_nodes[i], pos, rotation, _placeable_blueprints)
@@ -504,7 +503,7 @@ func _update_ghosts() -> void:
 			else:
 				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, GameManager.map_size, current_rotation)
 			can_place = can_place and can_afford
-			_ghost_nodes[0].position = Vector2(cursor_grid_pos - def.anchor_cell) * TILE_SIZE
+			_ghost_nodes[0].position = GridUtils.grid_to_world(cursor_grid_pos - def.anchor_cell)
 			_ghost_nodes[0].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
 			_ghost_nodes[0].visible = true
 			_update_ghost_conveyor_variant(_ghost_nodes[0], cursor_grid_pos, rotation, [])
@@ -784,7 +783,7 @@ func _draw() -> void:
 	if _phase_index > 0 and not _phase_placements.is_empty():
 		_draw_phase_area()
 	if destroy_mode:
-		var cell_size := Vector2(TILE_SIZE, TILE_SIZE)
+		var cell_size := GridUtils.tile_size_vec()
 		_draw_destroy(cell_size)
 
 func _draw_destroy(cell_size: Vector2) -> void:
@@ -796,11 +795,11 @@ func _draw_destroy(cell_size: Vector2) -> void:
 		var max_pos := Vector2i(
 			maxi(_destroy_drag_start.x, cursor_grid_pos.x),
 			maxi(_destroy_drag_start.y, cursor_grid_pos.y))
-		var rect_pos := Vector2(min_pos) * TILE_SIZE
-		var rect_size := Vector2(max_pos - min_pos + Vector2i.ONE) * TILE_SIZE
+		var rect_pos := GridUtils.grid_to_world(min_pos)
+		var rect_size := Vector2(max_pos - min_pos + Vector2i.ONE) * GridUtils.TILE_WIDTH
 		draw_rect(Rect2(rect_pos, rect_size), DESTROY_AREA_COLOR)
 	else:
-		draw_rect(Rect2(Vector2(cursor_grid_pos) * TILE_SIZE, cell_size), DESTROY_CURSOR_COLOR)
+		draw_rect(Rect2(GridUtils.grid_to_world(cursor_grid_pos), cell_size), DESTROY_CURSOR_COLOR)
 
 
 
@@ -815,21 +814,22 @@ func _draw_phase_area() -> void:
 	var origins: Array = []
 	for entry in prev_placements:
 		origins.append(entry.pos as Vector2i)
-	DrawUtils.draw_manhattan_area(self, origins, max_dist, TILE_SIZE, GameManager.map_size, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
+	DrawUtils.draw_manhattan_area(self, origins, max_dist, GridUtils.TILE_WIDTH, GameManager.map_size, PHASE_AREA_COLOR, PHASE_AREA_OUTLINE_COLOR, OUTLINE_WIDTH)
 
 ## Read actual Shape ColorRect positions from the placed building node.
 func _get_building_visual_cells(building: Node2D) -> Array:
 	var cells: Array = []
-	var bx := floori(building.position.x / TILE_SIZE)
-	var by := floori(building.position.y / TILE_SIZE)
+	var bpos := GridUtils.world_to_grid(building.position)
+	var bx := bpos.x
+	var by := bpos.y
 	var rotatable = building.find_child("Rotatable", false, false)
 	var container = rotatable if rotatable else building
 	var shape_node = container.find_child("Shape", false, false)
 	if shape_node:
 		for child in shape_node.get_children():
 			if child is ColorRect:
-				var gx := floori(child.offset_left / TILE_SIZE)
-				var gy := floori(child.offset_top / TILE_SIZE)
+				var gx := floori(child.offset_left / GridUtils.TILE_WIDTH)
+				var gy := floori(child.offset_top / GridUtils.TILE_HEIGHT)
 				cells.append(Vector2i(bx + gx, by + gy))
 	if cells.is_empty():
 		var def = GameManager.get_building_def(building.building_id)
@@ -845,7 +845,7 @@ func _draw_shape_outline(cells: Array) -> void:
 	var cell_set: Dictionary = {}
 	for cell in cells:
 		cell_set[cell] = true
-	var s := float(TILE_SIZE)
+	var s := float(GridUtils.TILE_WIDTH)
 	for cell in cells:
 		var wp := Vector2(cell) * s
 		if not cell_set.has(cell + Vector2i(1, 0)):
@@ -861,9 +861,7 @@ func _draw_shape_outline(cells: Array) -> void:
 
 func _get_grid_pos_under_mouse() -> Vector2i:
 	var mouse_world := get_global_mouse_position()
-	var gx := floori(mouse_world.x / TILE_SIZE)
-	var gy := floori(mouse_world.y / TILE_SIZE)
-	return Vector2i(gx, gy)
+	return GridUtils.world_to_grid(mouse_world)
 
 func _try_remove(pos: Vector2i) -> void:
 	GameManager.remove_building(pos)

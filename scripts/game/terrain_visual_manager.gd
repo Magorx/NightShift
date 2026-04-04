@@ -9,7 +9,6 @@ extends BaseMultiMeshManager
 ##   See ATLAS_INDEX below for the mapping from (tile_type, layer, variant)
 ##   to flat atlas index.  Row = index / 8, Col = index % 8.
 
-const TILE_SIZE := 32.0
 const ATLAS_COLS := 8
 const ATLAS_ROWS := 15
 
@@ -133,7 +132,7 @@ func build(map_size: int, tile_types: PackedByteArray, variants: PackedByteArray
 			var fg_var: int = v & 0x0F
 			var misc_var: int = (v >> 4) & 0x0F
 
-			var center := Vector2(x * TILE_SIZE + TILE_SIZE * 0.5, y * TILE_SIZE + TILE_SIZE * 0.5)
+			var center := GridUtils.grid_to_center(Vector2i(x, y))
 			var xform := Transform2D(0, center)
 
 			if not ATLAS.has(tile_type):
@@ -176,7 +175,7 @@ func update_cell(map_size: int, x: int, y: int, tile_type: int, fg_var: int, mis
 	var tint := Color(1, 1, 1, 1)
 	if GRASS_TINTS.has(actual_type):
 		tint = GRASS_TINTS[actual_type]
-	var center := Vector2(x * TILE_SIZE + TILE_SIZE * 0.5, y * TILE_SIZE + TILE_SIZE * 0.5)
+	var center := GridUtils.grid_to_center(Vector2i(x, y))
 	var xform := Transform2D(0, center)
 	_set_instance(_bg_mm, idx, xform, entry["bg"], tint)
 	var fg_arr: Array = entry["fg"]
@@ -201,7 +200,7 @@ func _create_layer(texture: Texture2D, shader: Shader, z: int) -> Array:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_2D
 	mm.use_custom_data = true
-	mm.mesh = BaseMultiMeshManager.create_quad_mesh(TILE_SIZE)
+	mm.mesh = BaseMultiMeshManager.create_quad_mesh(GridUtils.TILE_WIDTH)
 
 	var inst := MultiMeshInstance2D.new()
 	inst.multimesh = mm

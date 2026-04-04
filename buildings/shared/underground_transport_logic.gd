@@ -122,18 +122,18 @@ func _update_item_visual(item: Dictionary) -> void:
 		item.visual.visible = true
 		var local_t: float = p / entry_end
 		var dir_vec := Vector2(DIRECTION_VECTORS[direction])
-		var center := Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE, TILE_SIZE) * 0.5
-		var back_edge := center - dir_vec * TILE_SIZE * 0.5
-		var vanish_point := center + dir_vec * TILE_SIZE * (SURFACE_VISIBLE_FRACTION - 0.5)
+		var center := GridUtils.grid_to_center(grid_pos)
+		var back_edge := center - dir_vec * GridUtils.HALF_W  # TODO ISO.5: use per-axis half when tiles are non-square
+		var vanish_point := center + dir_vec * GridUtils.TILE_WIDTH * (SURFACE_VISIBLE_FRACTION - 0.5)  # TODO ISO.5: use per-axis half when tiles are non-square
 		item.visual.position = back_edge.lerp(vanish_point, local_t)
 	elif partner and p >= exit_start:
 		# Visible in output cell: 0.25 of cell -> front edge
 		item.visual.visible = true
 		var local_t: float = (p - exit_start) / entry_end
 		var dir_vec := Vector2(DIRECTION_VECTORS[partner.direction])
-		var center := Vector2(partner.grid_pos) * TILE_SIZE + Vector2(TILE_SIZE, TILE_SIZE) * 0.5
-		var appear_point := center - dir_vec * TILE_SIZE * (SURFACE_VISIBLE_FRACTION - 0.5)
-		var front_edge := center + dir_vec * TILE_SIZE * 0.5
+		var center := GridUtils.grid_to_center(partner.grid_pos)
+		var appear_point := center - dir_vec * GridUtils.TILE_WIDTH * (SURFACE_VISIBLE_FRACTION - 0.5)  # TODO ISO.5: use per-axis half when tiles are non-square
+		var front_edge := center + dir_vec * GridUtils.HALF_W  # TODO ISO.5: use per-axis half when tiles are non-square
 		item.visual.position = appear_point.lerp(front_edge, local_t)
 	else:
 		# Underground — hide

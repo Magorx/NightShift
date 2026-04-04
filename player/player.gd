@@ -3,8 +3,6 @@ extends CharacterBody2D
 
 signal item_mined(item_id: StringName)
 
-const TILE_SIZE := 32
-
 # ── Movement ─────────────────────────────────────────────────────────────────
 const BASE_SPEED := 96.0        # 3 tiles/s at 32px/tile
 const SPRINT_SPEED := 160.0     # 5 tiles/s
@@ -239,7 +237,7 @@ func _handle_conveyor_push() -> void:
 		return
 
 	var conv_dir := Vector2(GameManager.DIRECTION_VECTORS[conv.direction])
-	var tile_center := Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE, TILE_SIZE) * 0.5
+	var tile_center := GridUtils.grid_to_center(grid_pos)
 
 	# ── Entering a new conveyor tile: record actual position as entry point ──
 	if grid_pos != _conv_grid:
@@ -252,12 +250,12 @@ func _handle_conveyor_push() -> void:
 	var old_progress := _conv_progress
 	_conv_progress += conv.push_speed * dt
 
-	var exit_point := tile_center + conv_dir * 0.5 * TILE_SIZE
+	var exit_point := tile_center + conv_dir * GridUtils.HALF_W  # TODO ISO.5: use per-axis half when tiles are non-square
 
 	if _conv_progress >= 1.0:
 		# Past the exit edge — push straight in the conveyor direction so we
 		# cross the tile boundary and _get_grid_pos detects the next tile.
-		_conveyor_push = conv_dir * conv.push_speed * TILE_SIZE
+		_conveyor_push = conv_dir * conv.push_speed * GridUtils.TILE_WIDTH
 	elif dt > 0:
 		var old_pos := _bezier_eval(_conv_entry_point, tile_center, exit_point, old_progress)
 		var new_pos := _bezier_eval(_conv_entry_point, tile_center, exit_point, _conv_progress)
@@ -346,7 +344,7 @@ func _handle_hand_mining(delta: float) -> void:
 	var viewport_size := get_viewport_rect().size
 	var offset := screen_pos - viewport_size / 2.0
 	var world_pos: Vector2 = camera.global_position + offset / camera.zoom.x
-	var grid_pos := Vector2i(floori(world_pos.x / TILE_SIZE), floori(world_pos.y / TILE_SIZE))
+	var grid_pos := GridUtils.world_to_grid(world_pos)
 
 	# Must be a deposit with no building on it
 	if not GameManager.deposits.has(grid_pos) or GameManager.buildings.has(grid_pos):
@@ -360,7 +358,7 @@ func _handle_hand_mining(delta: float) -> void:
 		return
 
 	# Must be in range
-	var tile_center := Vector2(grid_pos) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
+	var tile_center := GridUtils.grid_to_center(grid_pos)
 	if position.distance_to(tile_center) > HAND_MINE_RANGE:
 		_stop_mining()
 		return
@@ -426,7 +424,7 @@ class _PickupFloat extends Node2D:
 func _draw() -> void:
 	if not _mining:
 		return
-	var tile_center := Vector2(_mine_target) * TILE_SIZE + Vector2(TILE_SIZE * 0.5, TILE_SIZE * 0.5)
+	var tile_center := GridUtils.grid_to_center(_mine_target)
 	var local_target := tile_center - position
 	var progress := _mine_timer / HAND_MINE_TIME
 
@@ -579,7 +577,7 @@ func _try_drop(drop_stack: bool) -> void:
 
 	# Calculate drop position in front of player (slightly closer so it stays within pickup range)
 	var drop_pos := position + facing_direction.normalized() * (DROP_RANGE - 4.0)
-	var drop_grid := Vector2i(floori(drop_pos.x / TILE_SIZE), floori(drop_pos.y / TILE_SIZE))
+	var drop_grid := GridUtils.world_to_grid(drop_pos)
 
 	# Try to insert into building at drop position
 	var building = GameManager.get_building_at(drop_grid)
@@ -593,7 +591,7 @@ func _try_drop(drop_stack: bool) -> void:
 	# Drop on top of the building so it can consume from the stack later
 	var ground_pos := drop_pos
 	if building:
-		ground_pos = Vector2(drop_grid) * TILE_SIZE + Vector2(TILE_SIZE, TILE_SIZE) * 0.5
+		ground_pos = GridUtils.grid_to_center(drop_grid)
 	_spawn_ground_item(dropped.item_id, dropped.quantity, ground_pos)
 
 func _spawn_ground_item(item_id: StringName, quantity: int, pos: Vector2) -> void:
@@ -636,7 +634,7 @@ func _update_conv_item_hover() -> void:
 		return
 
 	var mouse_world := get_global_mouse_position()
-	var mouse_grid := Vector2i(floori(mouse_world.x / TILE_SIZE), floori(mouse_world.y / TILE_SIZE))
+	var mouse_grid := GridUtils.world_to_grid(mouse_world)
 
 	for offset in [Vector2i.ZERO, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]:
 		var check: Vector2i = mouse_grid + offset
@@ -710,7 +708,7 @@ func _update_visuals(delta: float) -> void:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 func _get_grid_pos() -> Vector2i:
-	return Vector2i(floori(position.x / TILE_SIZE), floori(position.y / TILE_SIZE))
+	return GridUtils.world_to_grid(position)
 
 func _has_movement_input() -> bool:
 	return Input.is_action_pressed(&"pan_up") or Input.is_action_pressed(&"pan_down") \

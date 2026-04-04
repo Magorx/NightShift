@@ -11,20 +11,20 @@ func run_simulation() -> void:
 		return
 
 	# ── Test 1: Player spawn position ────────────────────────────────────────
-	var expected_center: float = GameManager.map_size * 32 * 0.5
-	sim_assert(absf(player.position.x - expected_center) < 32, "Player spawned near map center X")
-	sim_assert(absf(player.position.y - expected_center) < 32, "Player spawned near map center Y")
+	var expected_center: float = GridUtils.map_world_size(GameManager.map_size).x * 0.5
+	sim_assert(absf(player.position.x - expected_center) < GridUtils.TILE_WIDTH, "Player spawned near map center X")
+	sim_assert(absf(player.position.y - expected_center) < GridUtils.TILE_HEIGHT, "Player spawned near map center Y")
 
 	# ── Test 2: Building collision — blocking buildings ──────────────────────
 	# Place a smelter (2x2, blocking) near the player
-	var smelter_pos := Vector2i(floori(player.position.x / 32) + 3, floori(player.position.y / 32))
+	var smelter_pos := GridUtils.world_to_grid(player.position) + Vector2i(3, 0)
 	sim_place_building(&"smelter", smelter_pos, 0)
 
 	# Verify collision tile was created
 	sim_assert(GameManager.building_collision != null, "Building collision system exists")
 
 	# ── Test 3: Ground-level buildings don't block ───────────────────────────
-	var conv_pos := Vector2i(floori(player.position.x / 32) - 2, floori(player.position.y / 32))
+	var conv_pos := GridUtils.world_to_grid(player.position) + Vector2i(-2, 0)
 	sim_place_building(&"conveyor", conv_pos, 0)
 
 	var conv_def = GameManager.get_building_def(&"conveyor")
@@ -55,7 +55,7 @@ func run_simulation() -> void:
 	sim_assert(player.z_height < 0.01, "Player at ground level after landing")
 
 	# ── Test 6: Ground height on buildings ───────────────────────────────────
-	var smelter_world: Vector2 = Vector2(smelter_pos) * 32 + Vector2(16, 16)
+	var smelter_world: Vector2 = GridUtils.grid_to_center(smelter_pos)
 	player.position = smelter_world
 	player.velocity = Vector2.ZERO
 	sim_assert(player._get_ground_height() > 0, "Smelter tile has elevated ground height")
@@ -68,7 +68,7 @@ func run_simulation() -> void:
 	sim_assert(player.collision_mask == 0, "Elevated collision mask is 0 (no building collision)")
 
 	# Move off building → ground height should be 0
-	player.position = Vector2(smelter_pos.x * 32 - 48, smelter_pos.y * 32 + 16)
+	player.position = GridUtils.grid_to_world(smelter_pos) + Vector2(-48, GridUtils.HALF_H)
 	sim_assert(player._get_ground_height() < 0.01, "Empty tile has ground height 0")
 
 	# Reset to grounded on ground
@@ -79,9 +79,9 @@ func run_simulation() -> void:
 
 	# ── Test 7: Conveyor push ────────────────────────────────────────────────
 	# Place a conveyor and stand on it
-	var push_conv_pos := Vector2i(20, floori(player.position.y / 32))
+	var push_conv_pos := Vector2i(20, GridUtils.world_to_grid(player.position).y)
 	sim_place_building(&"conveyor", push_conv_pos, 0)  # pointing right
-	player.position = Vector2(push_conv_pos) * 32 + Vector2(16, 16)
+	player.position = GridUtils.grid_to_center(push_conv_pos)
 	player.velocity = Vector2.ZERO
 	player.z_height = 0.0
 	player._is_grounded = true

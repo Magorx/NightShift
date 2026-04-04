@@ -56,7 +56,6 @@ func _physics_process(delta: float) -> void:
 	if _ground_frame % 4 == 0:
 		_pickup_ground_items()
 
-const TILE_SIZE := 32
 var _ground_frame: int = 0
 
 func _pickup_ground_items() -> void:
@@ -66,7 +65,7 @@ func _pickup_ground_items() -> void:
 	for item in ground_items:
 		if not is_instance_valid(item) or item.quantity <= 0:
 			continue
-		var grid_pos := Vector2i(floori(item.position.x / TILE_SIZE), floori(item.position.y / TILE_SIZE))
+		var grid_pos := GridUtils.world_to_grid(item.position)
 		if not conveyors.has(grid_pos):
 			continue
 		var conv = conveyors[grid_pos]
