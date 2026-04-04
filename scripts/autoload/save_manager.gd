@@ -308,13 +308,13 @@ func _restore_camera(cam_data: Dictionary) -> void:
 		cam = gw.find_child("Camera2D", false, false)
 	if cam:
 		# Position follows the player; only restore zoom
-		var z: float = cam_data.get("zoom", 40.0)
+		var z: float = cam_data.get("zoom", 1.0)
 		if cam is Camera3D:
 			# Legacy saves stored zoom as 0.5-3.0; new saves store ortho size directly
 			var ortho_size: float = z if z > 5.0 else z * 40.0
 			cam.size = ortho_size
 			if cam.has_method("set_target_zoom"):
-				cam.set_target_zoom(ortho_size)
+				cam.set_target_zoom(z * 40.0)
 		else:
 			cam.zoom = Vector2(z, z)
 			if cam.has_method("set_target_zoom"):

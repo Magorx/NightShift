@@ -4,7 +4,7 @@ extends Node3D
 const AUTOSAVE_INTERVAL := 60.0
 
 @onready var camera: GameCamera = $Camera3D
-@onready var build_system: Node2D = $BuildSystem
+@onready var build_system = $BuildSystem
 @onready var hud: Control = $UI/HUD
 
 var player  # Player (CharacterBody3D)
@@ -141,7 +141,7 @@ func _on_building_selected(id: StringName) -> void:
 func _on_popup_dismissed() -> void:
 	build_system.clear_select_highlight()
 
-func _on_building_clicked(building: Node2D) -> void:
+func _on_building_clicked(building: Node) -> void:
 	_hide_ground_tooltip()
 	if _popup:
 		if building:
@@ -232,7 +232,7 @@ func _process(delta: float) -> void:
 		if _ground_tooltip_timer <= 0:
 			_hide_ground_tooltip()
 		elif camera:
-			var tile_world := GridUtils.grid_to_world_3d(_ground_tooltip_grid)
+			var tile_world := GridUtils.grid_to_world(_ground_tooltip_grid)
 			var screen_pos := camera.unproject_position(tile_world)
 			var popup_size := _ground_tooltip.size
 			_ground_tooltip.position = Vector2(
@@ -288,7 +288,7 @@ func _spawn_player() -> void:
 	player = _player_scene.instantiate()
 	# Spawn at map center (grid midpoint)
 	var center_grid := Vector2i(GameManager.map_size / 2, GameManager.map_size / 2)
-	var center := GridUtils.grid_to_world_3d(center_grid)
+	var center := GridUtils.grid_to_world(center_grid)
 	player.position = center
 	player.spawn_position = center
 	add_child(player)

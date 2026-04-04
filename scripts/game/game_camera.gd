@@ -117,8 +117,8 @@ func _camera_offset() -> Vector3:
 
 func _get_bounds() -> Rect2:
 	var n := GameManager.map_size
-	var map_size_3d := GridUtils.map_world_size_3d(n)
-	var origin := GridUtils.map_origin_3d(n)
+	var map_size_3d := GridUtils.map_world_size(n)
+	var origin := GridUtils.map_origin(n)
 	# Half-view in world units (ortho size is vertical extent)
 	var half_view := size * 0.5
 	var min_pos := Vector2(origin.x + half_view, origin.z + half_view)

@@ -122,8 +122,8 @@ func _update_item_visual(item: Dictionary) -> void:
 		item.visual.visible = true
 		var local_t: float = p / entry_end
 		var dir_vec := Vector2(DIRECTION_VECTORS[direction])
-		var back_edge := GridUtils.grid_offset_3d(grid_pos, -dir_vec, 0.5)
-		var vanish_point := GridUtils.grid_offset_3d(grid_pos, dir_vec, SURFACE_VISIBLE_FRACTION - 0.5)
+		var back_edge := GridUtils.grid_offset(grid_pos, -dir_vec, 0.5)
+		var vanish_point := GridUtils.grid_offset(grid_pos, dir_vec, SURFACE_VISIBLE_FRACTION - 0.5)
 		var pos := back_edge.lerp(vanish_point, local_t)
 		pos.y = 0.05
 		item.visual.position = pos
@@ -132,8 +132,8 @@ func _update_item_visual(item: Dictionary) -> void:
 		item.visual.visible = true
 		var local_t: float = (p - exit_start) / entry_end
 		var dir_vec := Vector2(DIRECTION_VECTORS[partner.direction])
-		var appear_point := GridUtils.grid_offset_3d(partner.grid_pos, -dir_vec, SURFACE_VISIBLE_FRACTION - 0.5)
-		var front_edge := GridUtils.grid_offset_3d(partner.grid_pos, dir_vec, 0.5)
+		var appear_point := GridUtils.grid_offset(partner.grid_pos, -dir_vec, SURFACE_VISIBLE_FRACTION - 0.5)
+		var front_edge := GridUtils.grid_offset(partner.grid_pos, dir_vec, 0.5)
 		var pos := appear_point.lerp(front_edge, local_t)
 		pos.y = 0.05
 		item.visual.position = pos

@@ -337,17 +337,23 @@ func _drop_held_item_at_cursor() -> void:
 	if not player or not is_instance_valid(player):
 		_clear_held()
 		return
-	var camera := get_viewport().get_camera_2d()
+	var camera := get_viewport().get_camera_3d()
 	if not camera:
 		_return_held_item()
 		return
-	# Screen → world conversion
-	var screen_pos := get_global_mouse_position()
-	var viewport_size := get_viewport_rect().size
-	var offset := screen_pos - viewport_size / 2.0
-	var world_pos: Vector2 = camera.global_position + offset / camera.zoom.x
+	# Screen → world conversion via ground plane raycast
+	var screen_pos := get_viewport().get_mouse_position()
+	var ray_origin := camera.project_ray_origin(screen_pos)
+	var ray_dir := camera.project_ray_normal(screen_pos)
+	# Intersect with Y=0 ground plane
+	if absf(ray_dir.y) < 0.001:
+		_return_held_item()
+		return
+	var t := -ray_origin.y / ray_dir.y
+	var world_pos: Vector3 = ray_origin + ray_dir * t
 	# Clamp to max range from player
-	var to_target: Vector2 = world_pos - player.position
+	var to_target: Vector3 = world_pos - player.position
+	to_target.y = 0.0
 	if to_target.length() > DROP_RANGE:
 		world_pos = player.position + to_target.normalized() * DROP_RANGE
 	# Try to insert into building at drop position
@@ -360,7 +366,7 @@ func _drop_held_item_at_cursor() -> void:
 			return
 		_held_item.quantity = leftover
 	# Drop on top of the building so it can consume from the stack later
-	var ground_pos := world_pos
+	var ground_pos: Vector3 = world_pos
 	if building:
 		ground_pos = GridUtils.grid_to_center(drop_grid)
 	player._spawn_ground_item(_held_item.item_id, _held_item.quantity, ground_pos)

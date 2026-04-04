@@ -41,7 +41,7 @@ func attach_to(parent: Node) -> void:
 func register(grid_pos: Vector2i, conv) -> void:
 	var idx := _allocate()
 	_idx_map[grid_pos] = idx
-	multimesh.set_instance_transform(idx, GridUtils.tile_transform_3d(grid_pos))
+	multimesh.set_instance_transform(idx, GridUtils.tile_transform(grid_pos))
 	# custom_data: r=variant_row, g=flip_v, b=highlight, a=direction
 	multimesh.set_instance_custom_data(idx, Color(5.0, 0.0, 0.0, float(conv.direction)))
 
@@ -84,7 +84,7 @@ func update_variant(conv) -> void:
 	elif has_back:
 		variant_row = 0.0  # straight
 
-	multimesh.set_instance_transform(idx, GridUtils.tile_transform_3d(conv.grid_pos))
+	multimesh.set_instance_transform(idx, GridUtils.tile_transform(conv.grid_pos))
 	multimesh.set_instance_custom_data(idx, Color(variant_row, flip_v, 0.0, float(conv.direction)))
 
 func update_animation() -> void:

@@ -85,7 +85,7 @@ func _try_merge_nearby() -> void:
 # -- Building feed ------------------------------------------------------------
 
 func _try_feed_building() -> void:
-	var grid_pos := GridUtils.world_to_grid_3d(position)
+	var grid_pos := GridUtils.world_to_grid(position)
 	var building = GameManager.get_building_at(grid_pos)
 	if not building or not building.logic:
 		return

@@ -95,7 +95,6 @@ var building_collision  # BuildingCollision (StaticBody2D for player collision)
 var player  # Player (CharacterBody2D)
 
 func _ready() -> void:
-	GridUtils.recalculate()
 	_load_building_defs()
 	_load_recipes()
 	_register_placement_phases()
@@ -356,7 +355,7 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	var building: Node3D = base_script.new()
 	building.init(id, grid_pos, rotation)
 	# Position so the anchor cell aligns with grid_pos (3D: grid X -> world X, grid Y -> world Z)
-	building.position = GridUtils.grid_to_world_3d(grid_pos - def.anchor_cell)
+	building.position = GridUtils.grid_to_world(grid_pos - def.anchor_cell)
 	# Rotation: Y-axis rotation (0=right, 1=down, 2=left, 3=up)
 	# Negative because Godot's Y rotation is counter-clockwise viewed from above
 	building.rotation.y = -rotation * PI / 2.0
@@ -425,8 +424,8 @@ func _add_placeholder_mesh(building: Node3D, def: BuildingDef, rotation: int) ->
 	for cell in rotated_shape:
 		min_cell = min_cell.min(cell)
 		max_cell = max_cell.max(cell)
-	var w := float(max_cell.x - min_cell.x + 1) * GridUtils.TILE_UNIT_3D * 0.9
-	var d := float(max_cell.y - min_cell.y + 1) * GridUtils.TILE_UNIT_3D * 0.9
+	var w := float(max_cell.x - min_cell.x + 1) * GridUtils.TILE_SIZE * 0.9
+	var d := float(max_cell.y - min_cell.y + 1) * GridUtils.TILE_SIZE * 0.9
 	# Ground-level buildings (conveyors, junctions) get flat boxes; others get taller ones
 	var h := 0.1 if def.is_ground_level else 0.8
 	box.size = Vector3(w, h, d)
@@ -440,8 +439,8 @@ func _add_placeholder_mesh(building: Node3D, def: BuildingDef, rotation: int) ->
 	for cell in unrotated_shape:
 		un_min = un_min.min(cell)
 		un_max = un_max.max(cell)
-	var uw := float(un_max.x - un_min.x + 1) * GridUtils.TILE_UNIT_3D
-	var ud := float(un_max.y - un_min.y + 1) * GridUtils.TILE_UNIT_3D
+	var uw := float(un_max.x - un_min.x + 1) * GridUtils.TILE_SIZE
+	var ud := float(un_max.y - un_min.y + 1) * GridUtils.TILE_SIZE
 	placeholder.position = Vector3(uw / 2.0, h / 2.0, ud / 2.0)
 	# Color by building identity
 	var mat := StandardMaterial3D.new()
@@ -511,7 +510,7 @@ func get_conveyor_at(grid_pos: Vector2i):
 
 ## Return an array of grid positions of buildings linked to this one.
 ## Linked buildings are co-highlighted and co-removed in destroy mode.
-func get_linked_buildings(building: BuildingBase) -> Array:
+func get_linked_buildings(building) -> Array:
 	if not building or not is_instance_valid(building):
 		return []
 	if building.logic:
@@ -520,7 +519,7 @@ func get_linked_buildings(building: BuildingBase) -> Array:
 
 ## Return all building nodes that form a logical group with this one
 ## (the building itself + any linked partners like tunnel pairs).
-func get_building_group(building: BuildingBase) -> Array:
+func get_building_group(building) -> Array:
 	if not building or not is_instance_valid(building):
 		return []
 	var group: Array = [building]

@@ -21,7 +21,7 @@ func add_tile(grid_pos: Vector2i) -> void:
 		return
 	var shape_node := CollisionShape3D.new()
 	shape_node.shape = _shared_box_shape
-	var world_pos := GridUtils.grid_to_world_3d(grid_pos)
+	var world_pos := GridUtils.grid_to_world(grid_pos)
 	shape_node.position = Vector3(world_pos.x, 0.5, world_pos.z)  # center box at Y=0.5
 	add_child(shape_node)
 	_shapes[grid_pos] = shape_node

@@ -217,7 +217,7 @@ func _handle_conveyor_push() -> void:
 		return
 
 	var conv_dir := Vector2(GameManager.DIRECTION_VECTORS[conv.direction])
-	var tile_center := GridUtils.grid_to_world_3d(grid_pos)
+	var tile_center := GridUtils.grid_to_world(grid_pos)
 
 	# -- Entering a new conveyor tile: record actual position as entry point --
 	if grid_pos != _conv_grid:
@@ -230,12 +230,12 @@ func _handle_conveyor_push() -> void:
 	var old_progress := _conv_progress
 	_conv_progress += conv.push_speed * dt
 
-	var exit_point := GridUtils.grid_offset_3d(grid_pos, conv_dir, 0.5)
+	var exit_point := GridUtils.grid_offset(grid_pos, conv_dir, 0.5)
 
 	if _conv_progress >= 1.0:
 		# Past the exit edge -- push in world-space conveyor direction
-		var world_dir := GridUtils.grid_dir_to_world_3d(conv_dir)
-		_conveyor_push = world_dir * conv.push_speed * GridUtils.TILE_UNIT_3D
+		var world_dir := GridUtils.grid_dir_to_world(conv_dir)
+		_conveyor_push = world_dir * conv.push_speed * GridUtils.TILE_SIZE
 	elif dt > 0:
 		var old_pos := _bezier_eval_3d(_conv_entry_point, tile_center, exit_point, old_progress)
 		var new_pos := _bezier_eval_3d(_conv_entry_point, tile_center, exit_point, _conv_progress)
@@ -328,7 +328,7 @@ func _handle_hand_mining(delta: float) -> void:
 		return
 	var t := -ray_origin.y / ray_dir.y
 	var world_pos := ray_origin + ray_dir * t
-	var grid_pos := GridUtils.world_to_grid_3d(world_pos)
+	var grid_pos := GridUtils.world_to_grid(world_pos)
 
 	# Must be a deposit with no building on it
 	if not GameManager.deposits.has(grid_pos) or GameManager.buildings.has(grid_pos):
@@ -342,7 +342,7 @@ func _handle_hand_mining(delta: float) -> void:
 		return
 
 	# Must be in range (XZ distance only)
-	var tile_center := GridUtils.grid_to_world_3d(grid_pos)
+	var tile_center := GridUtils.grid_to_world(grid_pos)
 	var dist_xz := Vector2(position.x - tile_center.x, position.z - tile_center.z).length()
 	if dist_xz > HAND_MINE_RANGE:
 		_stop_mining()
@@ -475,7 +475,7 @@ func _try_drop(drop_stack: bool) -> void:
 	var drop_dir := facing_direction.normalized()
 	var drop_pos := position + drop_dir * (DROP_RANGE - 0.125)
 	drop_pos.y = 0.0  # ground level
-	var drop_grid := GridUtils.world_to_grid_3d(drop_pos)
+	var drop_grid := GridUtils.world_to_grid(drop_pos)
 
 	# Try to insert into building at drop position
 	var building = GameManager.get_building_at(drop_grid)
@@ -489,7 +489,7 @@ func _try_drop(drop_stack: bool) -> void:
 	# Drop on top of the building so it can consume from the stack later
 	var ground_pos := drop_pos
 	if building:
-		ground_pos = GridUtils.grid_to_world_3d(drop_grid)
+		ground_pos = GridUtils.grid_to_world(drop_grid)
 	_spawn_ground_item(dropped.item_id, dropped.quantity, ground_pos)
 
 func _spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
@@ -551,7 +551,7 @@ func _update_visuals(delta: float) -> void:
 # -- Helpers ------------------------------------------------------------------
 
 func _get_grid_pos() -> Vector2i:
-	return GridUtils.world_to_grid_3d(global_position)
+	return GridUtils.world_to_grid(global_position)
 
 func _has_movement_input() -> bool:
 	return Input.is_action_pressed(&"pan_up") or Input.is_action_pressed(&"pan_down") \

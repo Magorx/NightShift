@@ -133,7 +133,7 @@ func build(map_size: int, tile_types: PackedByteArray, variants: PackedByteArray
 			var fg_var: int = v & 0x0F
 			var misc_var: int = (v >> 4) & 0x0F
 
-			var xform := GridUtils.tile_transform_3d(Vector2i(x, y))
+			var xform := GridUtils.tile_transform(Vector2i(x, y))
 
 			if not ATLAS.has(tile_type):
 				# Fallback: use grass
@@ -175,7 +175,7 @@ func update_cell(map_size: int, x: int, y: int, tile_type: int, fg_var: int, mis
 	var tint := Color(1, 1, 1, 1)
 	if GRASS_TINTS.has(actual_type):
 		tint = GRASS_TINTS[actual_type]
-	var xform := GridUtils.tile_transform_3d(Vector2i(x, y))
+	var xform := GridUtils.tile_transform(Vector2i(x, y))
 	_set_instance(_bg_mm, idx, xform, entry["bg"], tint)
 	var fg_arr: Array = entry["fg"]
 	_set_instance(_fg_mm, idx, xform, fg_arr[fg_var % fg_arr.size()], tint)

@@ -213,15 +213,15 @@ func can_accept_from(_from_dir_idx: int) -> bool:
 func _position_item(item: Dictionary) -> void:
 	if not item.visual:
 		return
-	var center := GridUtils.grid_to_center_3d(grid_pos)
+	var center := GridUtils.grid_to_center(grid_pos)
 	var entry_dir := Vector2(DIRECTION_VECTORS[item.from_dir_idx])
-	var entry_point := GridUtils.grid_offset_3d(grid_pos, entry_dir, 0.5)
+	var entry_point := GridUtils.grid_offset(grid_pos, entry_dir, 0.5)
 	var t: float = item.progress
 
 	var pos: Vector3
 	if item.output_dir_idx >= 0:
 		var exit_dir := Vector2(DIRECTION_VECTORS[item.output_dir_idx])
-		var exit_point := GridUtils.grid_offset_3d(grid_pos, exit_dir, 0.5)
+		var exit_point := GridUtils.grid_offset(grid_pos, exit_dir, 0.5)
 		pos = entry_point * (1-t)*(1-t) + center * 2*(1-t)*t + exit_point * t*t
 	else:
 		pos = entry_point.lerp(center, t)

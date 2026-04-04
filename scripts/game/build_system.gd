@@ -1,7 +1,7 @@
 class_name BuildSystem
 extends Node2D
 
-signal building_clicked(building: Node2D)
+signal building_clicked(building: Node)
 signal ground_inspected(grid_pos: Vector2i)
 
 const GHOST_MODULATE := Color(0.8, 0.9, 1.0, 0.55)
@@ -35,7 +35,7 @@ var _destroy_drag_start := Vector2i.ZERO
 var _highlighted_buildings: Dictionary = {}
 
 # Selection highlight (info panel)
-var _selected_building: Node2D = null
+var _selected_building: Node = null
 var _select_highlighted: Dictionary = {} # instance_id -> Array of {node, original}
 
 
@@ -483,7 +483,8 @@ func _update_ghosts() -> void:
 			else:
 				can_place = GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation)
 			can_place = can_place and can_afford
-			_ghost_nodes[i].position = GridUtils.grid_to_world(pos - def.anchor_cell)
+			var world_3d := GridUtils.grid_to_world(pos - def.anchor_cell)
+			_ghost_nodes[i].position = Vector2(world_3d.x, world_3d.z)
 			_ghost_nodes[i].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
 			_ghost_nodes[i].visible = true
 			_update_ghost_conveyor_variant(_ghost_nodes[i], pos, rotation, _placeable_blueprints)
@@ -503,7 +504,8 @@ func _update_ghosts() -> void:
 			else:
 				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, GameManager.map_size, current_rotation)
 			can_place = can_place and can_afford
-			_ghost_nodes[0].position = GridUtils.grid_to_world(cursor_grid_pos - def.anchor_cell)
+			var world_3d := GridUtils.grid_to_world(cursor_grid_pos - def.anchor_cell)
+			_ghost_nodes[0].position = Vector2(world_3d.x, world_3d.z)
 			_ghost_nodes[0].modulate = GHOST_MODULATE if can_place else GHOST_INVALID_MODULATE
 			_ghost_nodes[0].visible = true
 			_update_ghost_conveyor_variant(_ghost_nodes[0], cursor_grid_pos, rotation, [])
@@ -665,13 +667,11 @@ func _update_destroy_highlights() -> void:
 				entry.node.material.set_shader_parameter("frame_uv_min", bounds.position)
 				entry.node.material.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
 
-func _apply_highlight(building: Node2D) -> void:
-	var orig_z := building.z_index
-	building.z_index = 100
+func _apply_highlight(building: Node) -> void:
 	# Conveyors use MultiMesh rendering — highlight via the visual manager
 	if building.logic is ConveyorBelt and GameManager.conveyor_visual_manager:
 		GameManager.conveyor_visual_manager.set_highlight(building.logic.grid_pos, true)
-		_highlighted_buildings[building.get_instance_id()] = {entries = [], building = building, orig_z = orig_z}
+		_highlighted_buildings[building.get_instance_id()] = {entries = [], building = building}
 		return
 	var entries: Array = []
 	for node in _get_visual_nodes(building):
@@ -685,7 +685,7 @@ func _apply_highlight(building: Node2D) -> void:
 		mat.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
 		node.material = mat
 		entries.append({node = node, original = orig})
-	_highlighted_buildings[building.get_instance_id()] = {entries = entries, building = building, orig_z = orig_z}
+	_highlighted_buildings[building.get_instance_id()] = {entries = entries, building = building}
 
 ## Get the UV bounds of the current frame within the atlas texture.
 func _get_frame_uv_bounds(node: CanvasItem) -> Rect2:
@@ -712,7 +712,6 @@ func _remove_highlight(nid: int) -> void:
 		# Clear conveyor multimesh highlight
 		if data.building.logic is ConveyorBelt and GameManager.conveyor_visual_manager:
 			GameManager.conveyor_visual_manager.set_highlight(data.building.logic.grid_pos, false)
-		data.building.z_index = data.orig_z
 	_highlighted_buildings.erase(nid)
 
 func _clear_all_highlights() -> void:
@@ -721,7 +720,7 @@ func _clear_all_highlights() -> void:
 
 # ── Selection highlight (info panel) ─────────────────────────────────────────
 
-func _set_select_highlight(building: Node2D) -> void:
+func _set_select_highlight(building: Node) -> void:
 	if _selected_building == building:
 		return
 	clear_select_highlight()
@@ -761,7 +760,7 @@ func clear_select_highlight() -> void:
 	_selected_building = null
 
 ## Find visual children of a building to apply the destroy shader to.
-func _get_visual_nodes(building: Node2D) -> Array:
+func _get_visual_nodes(building: Node) -> Array:
 	var result: Array = []
 	var rotatable = building.find_child("Rotatable", false, false)
 	var container = rotatable if rotatable else building
@@ -786,7 +785,7 @@ func _draw() -> void:
 	pass
 
 ## Get the grid cells occupied by a building, using its BuildingDef shape.
-func _get_building_visual_cells(building: Node2D) -> Array:
+func _get_building_visual_cells(building: Node) -> Array:
 	var cells: Array = []
 	var def = GameManager.get_building_def(building.building_id)
 	if def:
@@ -810,13 +809,13 @@ func _get_grid_pos_under_mouse() -> Vector2i:
 		return Vector2i.ZERO
 	var t := -ray_origin.y / ray_dir.y
 	var hit := ray_origin + ray_dir * t
-	return GridUtils.world_to_grid_3d(hit)
+	return GridUtils.world_to_grid(hit)
 
 func _try_remove(pos: Vector2i) -> void:
 	GameManager.remove_building(pos)
 
 ## Collect a building and all its linked buildings into to_remove, deduplicating by instance id.
-func _collect_building_and_linked(building: Node2D, seen: Dictionary, to_remove: Array) -> void:
+func _collect_building_and_linked(building: Node, seen: Dictionary, to_remove: Array) -> void:
 	for bld in GameManager.get_building_group(building):
 		var nid: int = bld.get_instance_id()
 		if seen.has(nid):

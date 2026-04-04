@@ -19,7 +19,7 @@ const ICON_SIZE := Vector2(16, 16)
 const FONT_SIZE := 12
 const NUM_WIDTH := 16.0 # fixed width for quantity numbers
 
-var _building: Node2D
+var _building: Node
 var _update_timer: float = 0.0
 var _camera  # GameCamera (Camera3D)
 var _side_menu = null # currently open side menu (recipe menu or custom)
@@ -77,7 +77,7 @@ func _process(delta: float) -> void:
 		_update_timer = 0.0
 		_update_content()
 
-func show_building(building: Node2D, camera) -> void:
+func show_building(building: Node, camera) -> void:
 	if not building:
 		hide_popup()
 		return
@@ -295,22 +295,10 @@ func _update_position() -> void:
 		max_cell.x = maxi(max_cell.x, world_cell.x + 1)
 		max_cell.y = maxi(max_cell.y, world_cell.y + 1)
 	var viewport_size := get_viewport_rect().size
-	var top_screen: Vector2
-	var bottom_screen: Vector2
-	if _camera is Camera3D:
-		var top_world_3d := GridUtils.grid_to_world_3d(Vector2i(int((min_cell.x + max_cell.x) * 0.5), min_cell.y))
-		var bottom_world_3d := GridUtils.grid_to_world_3d(Vector2i(int((min_cell.x + max_cell.x) * 0.5), max_cell.y))
-		top_screen = _camera.unproject_position(top_world_3d)
-		bottom_screen = _camera.unproject_position(bottom_world_3d)
-	else:
-		var top_center_world := Vector2(
-			(min_cell.x + max_cell.x) * 0.5 * GridUtils.TILE_WIDTH,
-			min_cell.y * GridUtils.TILE_HEIGHT
-		)
-		var bottom_center_world := Vector2(top_center_world.x, max_cell.y * GridUtils.TILE_HEIGHT)
-		var canvas_xform := get_viewport().get_canvas_transform()
-		top_screen = canvas_xform * top_center_world
-		bottom_screen = canvas_xform * bottom_center_world
+	var top_world := GridUtils.grid_to_world(Vector2i(int((min_cell.x + max_cell.x) * 0.5), min_cell.y))
+	var bottom_world := GridUtils.grid_to_world(Vector2i(int((min_cell.x + max_cell.x) * 0.5), max_cell.y))
+	var top_screen: Vector2 = _camera.unproject_position(top_world)
+	var bottom_screen: Vector2 = _camera.unproject_position(bottom_world)
 	var margin_px := 64.0
 	if bottom_screen.y < 0 or top_screen.y > viewport_size.y \
 		or bottom_screen.x < -margin_px or top_screen.x > viewport_size.x + margin_px:

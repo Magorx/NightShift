@@ -18,10 +18,11 @@ func _process(delta: float) -> void:
 	if not _camera:
 		return
 	# Always redraw if camera moved (lightweight — just camera rect on cached texture)
-	var cam_pos := _camera.global_position if _camera is Node3D else _camera.position
-	var cam_zoom: float = _camera.size if _camera is Camera3D else _camera.zoom.x
-	if Vector2(cam_pos.x, cam_pos.z if _camera is Node3D else cam_pos.y) != _last_cam_pos or cam_zoom != _last_cam_zoom:
-		_last_cam_pos = Vector2(cam_pos.x, cam_pos.z if _camera is Node3D else cam_pos.y)
+	var cam_pos: Vector3 = _camera.global_position
+	var cam_zoom: float = _camera.size
+	var cam_pos_2d := Vector2(cam_pos.x, cam_pos.z)
+	if cam_pos_2d != _last_cam_pos or cam_zoom != _last_cam_zoom:
+		_last_cam_pos = cam_pos_2d
 		_last_cam_zoom = cam_zoom
 		queue_redraw()
 	# Periodic check for building changes
@@ -52,16 +53,11 @@ func _draw() -> void:
 		var scale_y := display_size.y / map_tiles
 		var cam_grid: Vector2
 		var visible_half: Vector2
-		if _camera is Camera3D:
-			var cam_pos: Vector3 = _camera.global_position
-			cam_grid = Vector2(GridUtils.world_to_grid_3d(cam_pos))
-			# Ortho camera: size is vertical extent in world units
-			var half_size: float = _camera.size * 0.5
-			visible_half = Vector2(half_size, half_size)
-		else:
-			cam_grid = Vector2(GridUtils.world_to_grid(_camera.position))
-			var viewport_size := get_viewport_rect().size
-			visible_half = viewport_size / (_camera.zoom.x * float(GridUtils.TILE_HEIGHT) * 2.0)
+		var cam_pos: Vector3 = _camera.global_position
+		cam_grid = Vector2(GridUtils.world_to_grid(cam_pos))
+		# Ortho camera: size is vertical extent in world units
+		var half_size: float = _camera.size * 0.5
+		visible_half = Vector2(half_size, half_size)
 		var tl := (cam_grid - visible_half) * Vector2(scale_x, scale_y)
 		var br := (cam_grid + visible_half) * Vector2(scale_x, scale_y)
 		draw_rect(Rect2(tl, br - tl), Color(1, 1, 1, 0.6), false, 1.0)
