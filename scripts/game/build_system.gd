@@ -518,7 +518,7 @@ func _trim_ghosts() -> void:
 		if is_instance_valid(ghost):
 			ghost.queue_free()
 
-func _update_ghost_conveyor_variant(ghost: Node2D, grid_pos: Vector2i, rot: int, blueprint_positions: Array) -> void:
+func _update_ghost_conveyor_variant(ghost: Node, grid_pos: Vector2i, rot: int, blueprint_positions: Array) -> void:
 	if selected_building != &"conveyor":
 		return
 	var sprite = ghost.find_child("ConveyorSprite", true, false)
@@ -620,7 +620,7 @@ func _commit_destroy() -> void:
 
 func _update_destroy_highlights() -> void:
 	# Compute which buildings should be highlighted
-	var new_set: Dictionary = {} # instance_id -> Node2D
+	var new_set: Dictionary = {} # instance_id -> Node
 	if _destroy_dragging:
 		var min_pos := Vector2i(
 			mini(_destroy_drag_start.x, cursor_grid_pos.x),
