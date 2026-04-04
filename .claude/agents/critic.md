@@ -37,6 +37,19 @@ You are a ruthless quality reviewer for "Night Shift". Your job is to find probl
 5. **Color harmony**: Do the colors work with the existing palette? Is the elemental identity clear?
 6. **Readability at scale**: Will this look good at game zoom level, not just zoomed in?
 
+## 3D model review
+
+For Blender-generated `.glb` models, **always run the inspection tool** before reviewing:
+```bash
+BLENDER="/Applications/Blender.app/Contents/MacOS/Blender"
+$BLENDER --background --python tools/blender/inspect_model.py -- buildings/<name>/<name>.glb
+```
+This renders 4 screenshots (2 fixed isometric + 2 random angles) to `buildings/<name>/inspect/`. Read the PNGs to check:
+- **Geometry**: Missing faces, inverted normals, gaps between parts
+- **Proportions**: Does the model match the building's gameplay footprint?
+- **Materials**: Colors correct? No washed-out or pitch-black surfaces?
+- **Silhouette from game angle**: Does the iso_front view read clearly at a glance?
+
 ## How to review
 
 1. Read the task brief to understand what was requested

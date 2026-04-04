@@ -120,7 +120,7 @@ Five specialized agents available. Use them selectively -- not every session nee
 - UI popups use `MOUSE_FILTER_PASS`; only interactive elements use `STOP`
 - Direction system: `DIRECTION_VECTORS = [RIGHT, DOWN, LEFT, UP]` (indices 0-3)
 
-### Art Pipeline: `tools/rendering/iso/`
+### Art Pipeline: `tools/rendering/iso/` (2D sprites, legacy)
 Isometric 3D geometry library for building sprite generation. Replaces hand-coded perspective math with a proper 3D→2D pipeline. Load in Aseprite Lua scripts:
 
 ```lua
@@ -137,6 +137,50 @@ Iso._set_helper(H)  -- pass aseprite_helper instance
 - **Scene builder**: `Iso.scene(w, h)` — compose multiple shapes with automatic depth sorting
 - **Animation**: `Iso.anim_gear()`, `Iso.particle_emitter()`, oscillation, shake
 - See `tools/rendering/iso/README.md` for full API, `examples/` for visual reference
+
+### 3D Art Pipeline: `tools/blender/` (3D models for Godot)
+Procedural 3D building models via Blender Python scripts. Outputs `.glb` + `.blend` files with baked NLA animations. Models import into Godot as scene hierarchies with AnimationPlayer.
+
+```bash
+BLENDER="/Applications/Blender.app/Contents/MacOS/Blender"
+
+# Generate a building model (creates .glb + .blend)
+$BLENDER --background --python tools/blender/scenes/drill_model.py
+
+# Custom output path
+$BLENDER --background --python tools/blender/scenes/drill_model.py -- --output path/to/out.glb
+```
+
+**Directory structure:**
+- `tools/blender/render.py` — core setup: orthographic isometric camera, EEVEE render settings, frame rendering
+- `tools/blender/materials/pixel_art.py` — PBR materials from hex colors, Lua palette loader (`load_palette("buildings")`)
+- `tools/blender/prefabs_src/` — parameterized mesh generators (box, cog, cylinder, pipe, piston, fan)
+- `tools/blender/scenes/` — building composition scripts that import prefabs and bake animations
+
+**Prefabs (all in `prefabs_src/`):**
+- `box.py` — `generate_box(w, d, h, hex_color, seam_count)` — rectangular box with optional panel seams
+- `cog.py` — `generate_cog(outer_radius, inner_radius, teeth, thickness, tooth_width_outer, tooth_width_inner)` — gear with trapezoid teeth
+- `cylinder.py` — `generate_cylinder(radius, height, segments, cap_style)` — solid cylinder, flat or dome cap
+- `pipe.py` — `generate_pipe(length, radius, wall_thickness, flange_radius)` — hollow pipe with flange caps
+- `piston.py` — `generate_piston(sleeve_r, rod_r, sleeve_h)` — returns (sleeve, rod) tuple, rod parented to sleeve
+- `fan.py` — `generate_fan(blades, radius, blade_width)` — N-blade fan with hub
+
+**Creating a new building model:**
+1. Create `tools/blender/scenes/<building>_model.py`
+2. Import prefabs and `render.clear_scene()`
+3. Compose parts with `generate_*()`, set `.name`, `.location`, `.parent`
+4. Bake NLA animations: one action per object per state, push to NLA tracks with same name → glTF merges them into combined animations
+5. Export with `export_scene.gltf(export_animation_mode='NLA_TRACKS', export_merge_animation='NLA_TRACK')`
+6. Output goes to `buildings/<name>/models/` (`.glb` + `.blend`)
+
+**Critical gotchas:**
+- Always call `bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])` before `bm.to_mesh()` — otherwise Godot shows missing faces
+- Blender 5.x uses `'BLENDER_EEVEE'` (not `'BLENDER_EEVEE_NEXT'`)
+- Blender 5.x layered actions: fcurves at `action.layers[0].strips[0].channelbags[0].fcurves`
+- Use Principled BSDF materials (not emission) so colors match between Blender and Godot
+- NLA track names must match across objects to merge into combined animations in glTF
+- Palette colors loaded from `tools/palettes/*.lua` via `load_palette()`
+- Reference model: `tools/blender/scenes/drill_model.py` — the first building, well-commented
 
 ### Building Organization
 Each building type lives in `buildings/<name>/` with `.tscn` scene + `.tres` BuildingDef + logic script extending `BuildingLogic`. No changes to GameManager needed to add new buildings.

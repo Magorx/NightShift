@@ -1,3 +1,9 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Claude Code audit log
+.claude/bash-audit.log
+
+# Blender texture cache (downloaded PBR textures from Poly Haven)
+tools/blender/.texture_cache/

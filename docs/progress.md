@@ -266,14 +266,65 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 - **Remaining**: 3D.11 (grid overlay, 1.5h) and 3D.12 (Blender models, 3h+) — both polish/art, not blocking
 - **Next session goal**: 3D.12 (Blender pipeline for real building models) or P3.1 (RoundManager)
 
+### Session 10 -- Blender 3D Art Pipeline (BLD.1)
+- **Date**: 2026-04-04/05
+- **Hours**: ~1.6h (late evening session, 23:22-00:57 MSK)
+- **Work done**:
+  - Built complete Blender Python pipeline for procedural 3D building models at `tools/blender/`
+  - **Core infrastructure**:
+    - `render.py` — orthographic isometric camera, EEVEE settings (filter_size=0, single sample), configurable resolution, frame rendering
+    - `materials/pixel_art.py` — Principled BSDF matte materials from hex colors, Lua palette loader
+  - **6 prefabs** (`prefabs_src/`):
+    - `box.py` — parameterized box with optional panel seams
+    - `cog.py` — gear with trapezoid teeth (separate inner/outer tooth width), hub hole, valley arc steps
+    - `cylinder.py` — solid cylinder with flat or dome cap
+    - `pipe.py` — hollow pipe with flange caps
+    - `piston.py` — sleeve + rod (rod parented to sleeve), with disc head
+    - `fan.py` — N-blade fan with hub
+  - **Drill model** (`scenes/drill_model.py`):
+    - Full drill composed from prefabs: body, band, roof, dual gears, derrick column + cap + cone, piston with head, pipe, exhaust stack + cap
+    - 4 NLA animation states baked: idle (subtle wobble), windup (accelerating), active (full speed rotation + pumping + body shake), winddown (decelerating)
+    - Exports both `.glb` (for Godot) and `.blend` (for editing)
+  - **Issues fixed during iteration**:
+    - Engine name: Blender 5.1 uses `'BLENDER_EEVEE'` not `'BLENDER_EEVEE_NEXT'`
+    - Face normals: added `bmesh.ops.recalc_face_normals()` to all prefabs — Godot was showing missing faces
+    - Cog teeth: rewrote from spiky star (single vertex per tooth) to proper trapezoid profile with valley arc
+    - Materials: switched from emission to Principled BSDF — emission was washed out in Godot
+    - Animation merging: `export_animation_mode='NLA_TRACKS'` + `export_merge_animation='NLA_TRACK'` → 4 combined animations instead of 18 per-object ones
+    - Blender 5.x layered actions: fcurves at `action.layers[0].strips[0].channelbags[0].fcurves`
+    - Piston animation: clamped to only pump downward (head smashes onto sleeve, never goes through)
+  - **Documentation**: Updated CLAUDE.md with full pipeline docs, rewrote artist agent for dual pipeline (Blender primary, Aseprite secondary), saved memory reference
+- **Stats**: 12 new files in `tools/blender/`, 2 output files in `buildings/blender-drill/`
+- **Decisions made**:
+  - Blender pipeline is primary for 3D buildings; Aseprite Lua remains for 2D sprites/items
+  - Models export as `.glb` (compact, Godot-native) + `.blend` (editable)
+  - Animations baked in Blender as NLA strips, state machine management in Godot via AnimationTree
+  - Principled BSDF materials (not emission) for Blender↔Godot color consistency
+  - `drill_model.py` is the reference template for all future building models
+- **Blockers**: None
+- **Next session goal**: Create remaining building models (smelter, splitter, junction, tunnel, sink) or P3.1 (RoundManager)
+
+### Session 11 -- Blender Inspect Tool
+- **Date**: 2026-04-05
+- **Hours**: ~0.2h (late night, 10 min)
+- **Work done**:
+  - Created `tools/blender/inspect_model.py` — model inspection tool that renders 4 screenshots of a `.glb` from multiple angles (2 fixed isometric + 2 random/custom)
+  - Auto-fit zoom from bounding box, 3-point lighting, 16x AA, track-to constraint
+  - CLI options: `--ortho-scale`, `--cam3`/`--cam4` (override random angles), `--seed`, `-w`/`-o`
+  - Created `tools/blender/CLAUDE.md` documenting the tool
+  - Updated artist agent: added "Inspecting results" section — always run after building a model
+  - Updated critic agent: added "3D model review" section with inspection command + checklist
+- **Blockers**: None
+- **Next session goal**: Create remaining building models (smelter, splitter, junction, tunnel, sink) or P3.1 (RoundManager)
+
 ---
 
 ## Velocity Tracking
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total sessions | 10 | |
-| Total hours | 11.9 | |
+| Total sessions | 12 | |
+| Total hours | 13.7 | |
 | Factor baseline | ~42h over 2 weeks | 3h/day evenings |
 | Estimated M1 hours | 40-60h | ~2-3 weeks at 3h/day |
 | Estimated M2 hours | 40-60h | ~2-3 weeks at 3h/day |

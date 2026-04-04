@@ -37,20 +37,282 @@
     Polish card. Not required for gameplay but useful for development.
     ```
 
-### **3D.12** Real building models via Blender pipeline `3h+`
+### **ART3D.1** Smelter 3D model `3h`
 
-  - tags: [3d-transition, art, ongoing]
+  - tags: [3d-art, buildings]
+  - priority: medium
+  - depends: 3D.6
+  - steps:
+      - [ ] Create `tools/blender/scenes/smelter_model.py` following `drill_model.py` pattern
+      - [ ] Design: industrial furnace with intake chute, glowing crucible, exhaust chimney
+      - [ ] Compose from prefabs: box (body), cylinder (crucible/chimney), pipe (intake/output)
+      - [ ] Bake NLA animations: idle (chimney smoke wobble), windup, active (glow pulse, heat shimmer via body shake), winddown
+      - [ ] Export .glb + .blend to `buildings/smelter/`
+      - [ ] Wire into BuildingDef scene_3d, verify in-game with conveyor flow
+    ```md
+    The smelter is the primary converter building. Two inputs, one output.
+    Should look distinctly different from the drill -- wider, lower, hotter.
+    Reference: tools/blender/scenes/drill_model.py for pattern.
+    ```
+
+### **ART3D.2** Splitter 3D model `2.5h`
+
+  - tags: [3d-art, buildings]
+  - priority: medium
+  - depends: 3D.6
+  - steps:
+      - [ ] Create `tools/blender/scenes/splitter_model.py` following drill pattern
+      - [ ] Design: compact junction box with 1 input belt and 2-3 output chutes, visible sorting mechanism
+      - [ ] Compose from prefabs: box (body), pipe (chutes), fan or cog (sorting wheel)
+      - [ ] Bake NLA animations: idle (still), active (sorting wheel spins, items visually diverted)
+      - [ ] Export .glb + .blend to `buildings/splitter/`
+      - [ ] Wire into BuildingDef scene_3d
+    ```md
+    Splitter divides one input stream into multiple outputs.
+    Becomes a multi-target turret at night. Should read as "distributing".
+    Reference: tools/blender/scenes/drill_model.py
+    ```
+
+### **ART3D.3** Conveyor belt 3D model `3h`
+
+  - tags: [3d-art, buildings]
+  - priority: medium
+  - depends: 3D.6
+  - steps:
+      - [ ] Create `tools/blender/scenes/conveyor_model.py` following drill pattern
+      - [ ] Design: low-profile track with side rails, rollers visible underneath, belt surface
+      - [ ] Must tile seamlessly in all 4 directions (test adjacent placement)
+      - [ ] Handle all conveyor atlas variants: straight, turn, junction (may need separate meshes or modular approach)
+      - [ ] Bake NLA animations: idle (still belt), active (belt surface scrolls via UV offset or roller spin)
+      - [ ] Export .glb + .blend to `buildings/conveyor/`
+      - [ ] Integrate with ConveyorVisualManager 3D rendering
+    ```md
+    Most visually repeated building -- must tile perfectly and look good en masse.
+    Becomes wall segments at night, so the model should suggest structural solidity.
+    This is the most complex art card due to tiling and variant handling.
+    Reference: tools/blender/scenes/drill_model.py
+    ```
+
+### **ART3D.4** Junction + Tunnel 3D models `2.5h`
+
+  - tags: [3d-art, buildings]
   - priority: low
   - depends: 3D.6
   - steps:
-      - [ ] Set up Blender Python infrastructure (`tools/blender/render.py`, materials)
-      - [ ] Create prefab generators: cog, pipe, box (see `docs/blender_transition.md`)
-      - [ ] Build drill scene script, export as .glb, import into Godot
-      - [ ] Set `BuildingDef.scene_3d` for each building to use real model
-      - [ ] Implement AnimationPlayer-based building animations (replacing AnimatedSprite2D)
+      - [ ] Create `tools/blender/scenes/junction_model.py` -- cross-shaped junction allowing items to pass through in 2 perpendicular directions
+      - [ ] Create `tools/blender/scenes/tunnel_model.py` -- entrance/exit portal with underground pipe segment
+      - [ ] Compose from prefabs: box, pipe, cylinder
+      - [ ] Minimal animations (junction: idle only; tunnel: idle with subtle glow at openings)
+      - [ ] Export .glb + .blend to respective `buildings/` folders
+      - [ ] Wire both into BuildingDef scene_3d
     ```md
-    Ongoing art task. Replaces CSG placeholders with real models one by one.
-    See docs/blender_transition.md for full pipeline design.
+    Utility buildings grouped together -- simpler geometry, lower priority.
+    Junction is a 4-way crossover; tunnel goes underground (monsters can't cross).
+    Reference: tools/blender/scenes/drill_model.py
+    ```
+
+### **ART3D.5** Source + Sink debug building models `1h`
+
+  - tags: [3d-art, buildings, debug]
+  - priority: low
+  - depends: 3D.6
+  - steps:
+      - [ ] Create `tools/blender/scenes/source_model.py` -- spawning chest/crate with upward arrow indicator
+      - [ ] Create `tools/blender/scenes/sink_model.py` -- consuming void/bin with downward arrow
+      - [ ] Simple geometry, no animations needed (these are debug/test buildings)
+      - [ ] Export .glb + .blend to respective `buildings/` folders
+    ```md
+    Debug buildings used in simulations and testing. Low fidelity is fine.
+    Source spawns items, Sink consumes them. Distinct silhouettes with arrows.
+    Reference: tools/blender/scenes/drill_model.py
+    ```
+
+### **ART3D.6** M1 elemental deposits: Pyromite, Crystalline, Biovine `3h`
+
+  - tags: [3d-art, resources, deposits]
+  - priority: medium
+  - depends: 3D.6
+  - steps:
+      - [ ] Create `tools/blender/scenes/deposit_models.py` -- generates all 3 deposit types in one script
+      - [ ] Pyromite deposit: jagged orange/red crystalline formation rising from ground, volcanic look
+      - [ ] Crystalline deposit: smooth blue/cyan ice crystal cluster, angular facets
+      - [ ] Biovine deposit: organic green growth, vine-like tendrils wrapped around a core node
+      - [ ] Each deposit ~2x2 grid footprint, taller than buildings for visibility on the map
+      - [ ] No animations needed (static terrain features)
+      - [ ] Export .glb files, integrate with world generator terrain rendering
+    ```md
+    The 3 elemental deposits available in M1. Must be instantly recognizable
+    by color and silhouette from isometric camera distance. Players need to
+    spot deposits quickly to plan factory layout.
+    Reference: tools/blender/scenes/drill_model.py for pipeline pattern.
+    ```
+
+### **ART3D.7** Post-M1 elemental deposits: Voltite, Umbrite, Resonite `2.5h`
+
+  - tags: [3d-art, resources, deposits, post-m1]
+  - priority: low
+  - steps:
+      - [ ] Add 3 more deposit types to deposit_models.py (or create separate script)
+      - [ ] Voltite deposit: jagged yellow/purple crystals with lightning-bolt geometry, sharp angles
+      - [ ] Umbrite deposit: dark purple amorphous mass, shadowy with faint inner glow
+      - [ ] Resonite deposit: white/silver geometric formation, clean crystalline with ring-like resonance shapes
+      - [ ] Same scale and integration pattern as ART3D.6
+      - [ ] Export .glb files
+    ```md
+    The remaining 3 elemental deposits unlocked post-M1. Same pipeline as ART3D.6.
+    Design doc: Voltite=Lightning, Umbrite=Shadow, Resonite=Force.
+    ```
+
+### **ART3D.8** 3D item models: 6 elemental resources `3h`
+
+  - tags: [3d-art, resources, items]
+  - priority: medium
+  - depends: 3D.6
+  - steps:
+      - [ ] Create `tools/blender/scenes/item_models.py` -- generates all 6 base resource items
+      - [ ] Each item is a small pickup-sized model (~0.3-0.5 Blender units, fits on conveyor belt)
+      - [ ] Pyromite: glowing orange ore chunk with ember particles baked in
+      - [ ] Crystalline: blue faceted crystal shard
+      - [ ] Biovine: green organic pod/seed
+      - [ ] Voltite: yellow/purple energy crystal with jagged edges
+      - [ ] Umbrite: dark purple wispy orb
+      - [ ] Resonite: white/silver smooth resonating sphere
+      - [ ] Each must be readable at small scale on conveyor belt from iso camera
+      - [ ] Export as individual .glb files or single atlas scene, integrate with ItemVisualManager
+    ```md
+    Items sit on conveyor belts and must be distinguishable at small size.
+    Color is the primary differentiator; silhouette is secondary.
+    M1 uses first 3 (pyromite, crystalline, biovine); others for post-M1.
+    May use MultiMesh3D instancing for performance -- coordinate with ItemVisualManager.
+    ```
+
+### **ART3D.9** 3D item models: combination resources `2h`
+
+  - tags: [3d-art, resources, items]
+  - priority: low
+  - depends: ART3D.8
+  - steps:
+      - [ ] Add combination item models to item_models.py or create combo_item_models.py
+      - [ ] M1 combos: Steam Burst (orange+blue swirl), Verdant Compound (blue+green mix), Frozen Flame (orange+green)
+      - [ ] Post-M1 combos: 12 more pairwise combinations (design as needed)
+      - [ ] Each combo visually blends the two parent element colors/shapes
+      - [ ] Same scale as base items, must be readable on conveyor
+      - [ ] Export .glb files, integrate with ItemVisualManager
+    ```md
+    Combination items created by smelters mixing two elemental inputs.
+    Visual design should clearly communicate "this is A + B combined".
+    15 total pairwise combos from 6 resources; M1 only has 3.
+    ```
+
+### **ART3D.10** Tendril Crawler monster model `3h`
+
+  - tags: [3d-art, monsters]
+  - priority: medium
+  - depends: 3D.6
+  - steps:
+      - [ ] Create `tools/blender/scenes/tendril_crawler_model.py`
+      - [ ] Design: psychedelic pulsating worm/crawler with tentacle-like appendages, vibrant distorted colors
+      - [ ] NOT horror -- surreal, colorful, fever-dream aesthetic per design doc
+      - [ ] Compose from prefabs: cylinder (body segments), pipe (tentacles), sphere shapes via cone/cylinder combos
+      - [ ] Bake NLA animations: idle (pulsating body), move (undulating crawl), attack (lunging tentacle strike)
+      - [ ] Export .glb + .blend to `monsters/tendril_crawler/`
+    ```md
+    First monster type. Follows conveyor paths and rips a LINE of buildings.
+    Design doc: "pulsating geometry, impossible anatomy, vibrant distortion."
+    Needs move + attack animations for combat phase.
+    Reference: tools/blender/scenes/drill_model.py for pipeline pattern.
+    ```
+
+### **ART3D.11** Acid Bloom + Phase Shifter monster models `3h`
+
+  - tags: [3d-art, monsters, post-m1]
+  - priority: low
+  - steps:
+      - [ ] Create `tools/blender/scenes/acid_bloom_model.py` -- blooming flower/fungus that corrodes area
+      - [ ] Create `tools/blender/scenes/phase_shifter_model.py` -- flickering geometric entity that teleports
+      - [ ] Acid Bloom: organic, spreading, green/purple toxic palette, area-of-effect visual
+      - [ ] Phase Shifter: angular, glitching, semi-transparent look with sharp edges
+      - [ ] Both need: idle, move, attack animations
+      - [ ] Export .glb + .blend to respective `monsters/` folders
+    ```md
+    Monster types 2 and 3 from the design doc. Post-M1 priority.
+    Acid Bloom = area corrosion. Phase Shifter = teleports buildings.
+    Same psychedelic-not-horror aesthetic as Tendril Crawler.
+    ```
+
+### **ART3D.12** Player character 3D model `2.5h`
+
+  - tags: [3d-art, player]
+  - priority: medium
+  - depends: 3D.6
+  - steps:
+      - [ ] Create `tools/blender/scenes/player_model.py`
+      - [ ] Design: small factory worker/engineer with hard hat, tool belt -- reads well from iso camera
+      - [ ] Must be visually distinct from buildings and monsters at all zoom levels
+      - [ ] Bake NLA animations: idle (breathing), walk (4-direction or rotation-based), build (placing gesture)
+      - [ ] Export .glb + .blend to `player/`
+      - [ ] Integrate with CharacterBody3D scene, replace placeholder
+    ```md
+    Player character visible during both build and fight phases.
+    Moves around the map, places buildings, carries items.
+    Needs to be readable at isometric camera distance.
+    M1 placeholder is acceptable -- polish in post-M1.
+    Reference: tools/blender/scenes/drill_model.py for pipeline.
+    ```
+
+### **ART3D.13** Projectile + effect models `1.5h`
+
+  - tags: [3d-art, combat, effects]
+  - priority: low
+  - depends: ART3D.3
+  - steps:
+      - [ ] Create `tools/blender/scenes/projectile_models.py`
+      - [ ] 6 elemental projectile types (one per element color): small energy bolt/orb
+      - [ ] Each tinted to element color (fire=orange, ice=blue, poison=green, etc.)
+      - [ ] Simple geometry: sphere or elongated teardrop, ~0.2 Blender units
+      - [ ] Optional: impact/explosion particle mesh for turret hits
+      - [ ] Export .glb files for use in projectile.tscn
+    ```md
+    Turret projectiles fired by converted buildings during fight phase.
+    Small, fast-moving, color-coded by element. Can be simple geometry
+    with material color doing most of the work.
+    ```
+
+### **ART3D.14** Terrain features: rocks, chasms, rubble `2h`
+
+  - tags: [3d-art, terrain]
+  - priority: low
+  - depends: 3D.5
+  - steps:
+      - [ ] Create `tools/blender/scenes/terrain_models.py`
+      - [ ] Rock formations: natural wall obstacles, varying sizes (1x1, 2x1 footprints)
+      - [ ] Chasm edges: impassable terrain border pieces
+      - [ ] Rubble: destroyed building remains (left when buildings reach 0 HP)
+      - [ ] All static, no animations
+      - [ ] Export .glb files, integrate with world generator and damage system
+    ```md
+    Environmental 3D models for the game map. Rocks block building placement
+    and monster pathing. Chasms are impassable. Rubble appears when buildings
+    are destroyed and can be rebuilt on.
+    ```
+
+### **ART3D.15** Night-mode building variants: wall + turret visual states `3h`
+
+  - tags: [3d-art, buildings, combat]
+  - priority: medium
+  - depends: ART3D.1, ART3D.3, P4.2, P4.3
+  - steps:
+      - [ ] For conveyor model: add "wall" NLA animation or alternate mesh state (raised barriers, reinforced look)
+      - [ ] For smelter model: add "turret" NLA animation (barrel/nozzle extends, targeting swivel)
+      - [ ] For splitter model: add "multi-turret" animation (multiple barrels fan out)
+      - [ ] Drill model: add "cache" visual state (inert, armored look with resource glow)
+      - [ ] Visual transition animation: day-to-night morph (mechanical transformation)
+      - [ ] Wire with NightTransform system to swap animation states on phase change
+    ```md
+    Core Night Shift mechanic: buildings visually transform when night falls.
+    Conveyors become walls (raised, fortified). Converters become turrets (weapon extends).
+    This is what makes the game visually unique -- the factory IS the defense.
+    Depends on base building models being complete first.
     ```
 
 ### **P3.1** RoundManager autoload singleton `2h`
