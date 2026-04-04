@@ -324,7 +324,7 @@ func _drop_all_inventory() -> void:
 # ── Hand Mining ─────────────────────────────────────────────────────────────
 
 ## Only these ores can be hand-mined (early game bootstrap).
-const HAND_MINEABLE := [&"iron_ore", &"copper_ore"]
+const HAND_MINEABLE := [&"pyromite", &"crystalline", &"biovine"]
 
 func _handle_hand_mining(delta: float) -> void:
 	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):

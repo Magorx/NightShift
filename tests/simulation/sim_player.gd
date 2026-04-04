@@ -111,10 +111,10 @@ func run_simulation() -> void:
 
 	# ── Test 9: Inventory add/remove ─────────────────────────────────────────
 	player.hp = 100.0  # Reset health
-	var leftover: int = player.add_item(&"iron_ore", 5)
+	var leftover: int = player.add_item(&"pyromite", 5)
 	sim_assert(leftover == 0, "Added 5 iron_ore to inventory (leftover=%d)" % leftover)
 	sim_assert(player.inventory[0] != null, "Slot 0 has items")
-	sim_assert(player.inventory[0].item_id == &"iron_ore", "Slot 0 is iron_ore")
+	sim_assert(player.inventory[0].item_id == &"pyromite", "Slot 0 is iron_ore")
 	sim_assert(player.inventory[0].quantity == 5, "Slot 0 has 5 items")
 
 	var removed: Dictionary = player.remove_item_from_slot(0, 3)
@@ -123,8 +123,8 @@ func run_simulation() -> void:
 
 	# Fill inventory to test overflow
 	for i in range(8):
-		player.add_item(&"iron_ore", 16)
-	leftover = player.add_item(&"iron_ore", 1)
+		player.add_item(&"pyromite", 16)
+	leftover = player.add_item(&"pyromite", 1)
 	# Should overflow since we already had 2 + filled the rest
 	sim_assert(leftover >= 0, "Overflow handled (leftover=%d)" % leftover)
 
@@ -133,7 +133,7 @@ func run_simulation() -> void:
 		player.inventory[i] = null
 
 	# ── Test 10: Ground item spawn and pickup ────────────────────────────────
-	player.add_item(&"iron_ore", 3)
+	player.add_item(&"pyromite", 3)
 	player.selected_slot = 0
 	player.facing_direction = Vector2.RIGHT
 	player._try_drop(false)  # Drop 1 item
@@ -150,7 +150,7 @@ func run_simulation() -> void:
 		gi._hovered = true
 		player._try_pickup()
 		await sim_advance_ticks(5)
-		var total_iron: int = player.count_item(&"iron_ore")
+		var total_iron: int = player.count_item(&"pyromite")
 		sim_assert(total_iron == 3, "Picked up ground item (total=%d)" % total_iron)
 
 	# ── Test 11: Serialization round-trip ────────────────────────────────────

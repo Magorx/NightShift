@@ -46,7 +46,7 @@ var terrain_visual_manager  # TerrainVisualManager (set by game_world)
 var world_seed: int = 0
 
 # Map size in tiles per side (default 64, stress test uses 640)
-var map_size: int = 64
+var map_size: int = 128
 
 # When true, game_world runs the stress test generator after world gen
 var stress_test_pending: bool = false

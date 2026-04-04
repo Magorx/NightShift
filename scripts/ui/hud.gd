@@ -166,34 +166,9 @@ func _on_menu_toggle_pressed() -> void:
 func _on_debug_pressed() -> void:
 	_debug_renew_ash()
 
-## Convert all ash tiles back to biomass deposits with fresh stock.
+## Debug: placeholder for Night Shift debug actions.
 func _debug_renew_ash() -> void:
-	var ms: int = GameManager.map_size
-	var count := 0
-	var rng := RandomNumberGenerator.new()
-	rng.seed = Time.get_ticks_usec()
-	for y in range(ms):
-		for x in range(ms):
-			var idx := y * ms + x
-			if idx >= GameManager.terrain_tile_types.size():
-				continue
-			if GameManager.terrain_tile_types[idx] != TileDatabase.TILE_ASH:
-				continue
-			var pos := Vector2i(x, y)
-			# Restore to biomass
-			GameManager.terrain_tile_types[idx] = TileDatabase.TILE_BIOMASS
-			GameManager.deposits[pos] = &"biomass"
-			GameManager.deposit_stocks[pos] = rng.randi_range(2, 10)
-			# Update terrain visual
-			if GameManager.terrain_visual_manager:
-				var fg_var := rng.randi() % 3
-				var misc_var := rng.randi() % 3
-				GameManager.terrain_visual_manager.update_cell(ms, x, y, TileDatabase.TILE_BIOMASS, fg_var, misc_var)
-			count += 1
-	# Invalidate drain cache so extractors pick up renewed tiles
-	if GameManager.cluster_drain_manager:
-		GameManager.cluster_drain_manager.invalidate_cache()
-	print("[DEBUG] Renewed %d ash tiles to biomass" % count)
+	print("[DEBUG] No ash renewal in Night Shift")
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 

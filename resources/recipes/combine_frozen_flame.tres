@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="RecipeDef" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/recipe_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/items/pyromite.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/items/biovine.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/items/frozen_flame.tres" id="5"]
+
+[sub_resource type="Resource" id="input_0"]
+script = ExtResource("2")
+item = ExtResource("3")
+quantity = 1
+
+[sub_resource type="Resource" id="input_1"]
+script = ExtResource("2")
+item = ExtResource("4")
+quantity = 1
+
+[sub_resource type="Resource" id="output_0"]
+script = ExtResource("2")
+item = ExtResource("5")
+quantity = 1
+
+[resource]
+script = ExtResource("1")
+id = &"combine_frozen_flame"
+display_name = "Combine Frozen Flame"
+converter_type = "smelter"
+inputs = [SubResource("input_0"), SubResource("input_1")]
+outputs = [SubResource("output_0")]
+craft_time = 3.0

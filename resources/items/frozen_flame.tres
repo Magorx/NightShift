@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"frozen_flame"
+display_name = "Frozen Flame"
+color = Color(0.6, 0.3, 0.95, 1)
+category = "intermediate"
+export_value = 3
+research_value = 0
+icon_atlas_index = 5

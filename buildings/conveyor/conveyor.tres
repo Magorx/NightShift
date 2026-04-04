@@ -1,14 +1,7 @@
-[gd_resource type="Resource" script_class="BuildingDef" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="BuildingDef" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_def.gd" id="1"]
 [ext_resource type="PackedScene" path="res://buildings/conveyor/conveyor.tscn" id="2"]
-[ext_resource type="Script" path="res://scripts/resources/item_stack.gd" id="3"]
-[ext_resource type="Resource" path="res://resources/items/iron_plate.tres" id="4"]
-
-[sub_resource type="Resource" id="cost_0"]
-script = ExtResource("3")
-item = ExtResource("4")
-quantity = 1
 
 [resource]
 script = ExtResource("1")
@@ -18,6 +11,6 @@ color = Color(0.85, 0.75, 0.2, 1)
 description = "Transports items in one direction. Chain them together."
 category = "conveyor"
 scene = ExtResource("2")
-replaceable_by = Array[StringName]([&"conveyor", &"conveyor_mk2", &"conveyor_mk3", &"splitter", &"junction", &"tunnel_input"])
+replaceable_by = Array[StringName]([&"conveyor", &"splitter", &"junction", &"tunnel_input"])
 is_ground_level = true
-build_cost = [SubResource("cost_0")]
+build_cost = []

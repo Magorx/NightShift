@@ -11,7 +11,7 @@ func run_simulation() -> void:
 		sim_assert(conv != null, "Conveyor exists at (%d, 10)" % (10 + i))
 
 	# Spawn an iron_ore item on the first conveyor
-	var spawned = sim_spawn_item_on_conveyor(Vector2i(10, 10), &"iron_ore")
+	var spawned = sim_spawn_item_on_conveyor(Vector2i(10, 10), &"pyromite")
 	sim_assert(spawned, "Item spawned on first conveyor")
 
 	# Verify item is on first conveyor
@@ -25,14 +25,14 @@ func run_simulation() -> void:
 	var conv_last = sim_get_conveyor_at(Vector2i(14, 10))
 	sim_assert(conv_last.has_item(), "Item reached last conveyor")
 	var front = conv_last.get_front_item()
-	sim_assert(front.id == &"iron_ore", "Item is iron_ore")
+	sim_assert(front.id == &"pyromite", "Item is iron_ore")
 
 	# First conveyor should be empty now
 	conv0 = sim_get_conveyor_at(Vector2i(10, 10))
 	sim_assert(not conv0.has_item(), "First conveyor is empty after transport")
 
 	# Test blocking: spawn another item, it should stop behind the first
-	sim_spawn_item_on_conveyor(Vector2i(10, 10), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(10, 10), &"pyromite")
 	await sim_advance_seconds(6.0)
 
 	# With max_items=2 the second item fits on the last conveyor behind the first
@@ -41,7 +41,7 @@ func run_simulation() -> void:
 	# Test side entry: place a downward conveyor and feed from the right chain
 	# Conveyor at (15, 10) pointing down, fed by (14, 10) pointing right
 	sim_place_building(&"conveyor", Vector2i(15, 10), 1) # pointing down
-	sim_spawn_item_on_conveyor(Vector2i(10, 10), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(10, 10), &"pyromite")
 	await sim_advance_seconds(8.0)
 
 	var conv_down = sim_get_conveyor_at(Vector2i(15, 10))
@@ -49,7 +49,7 @@ func run_simulation() -> void:
 
 	# Test removal: remove a conveyor mid-chain and verify items don't pass
 	sim_remove_building(Vector2i(12, 10))
-	sim_spawn_item_on_conveyor(Vector2i(10, 10), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(10, 10), &"pyromite")
 	await sim_advance_seconds(4.0)
 
 	var conv_before_gap = sim_get_conveyor_at(Vector2i(11, 10))

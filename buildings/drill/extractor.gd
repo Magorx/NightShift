@@ -8,7 +8,7 @@ func get_placement_error(p_grid_pos: Vector2i, _rotation: int) -> String:
 	return ""
 
 var direction: int = 0
-var item_id: StringName = &"iron_ore":
+var item_id: StringName = &"pyromite":
 	set(value):
 		item_id = value
 		inventory = Inventory.new()
@@ -20,7 +20,7 @@ var inventory: Inventory = Inventory.new()
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(_def, p_grid_pos, rotation)
 	direction = rotation
-	item_id = GameManager.deposits.get(grid_pos, &"iron_ore")
+	item_id = GameManager.deposits.get(grid_pos, &"pyromite")
 	# Speed tiers
 	if str(_def.id) == "drill_mk2":
 		produce_interval = 1.0  # 2x faster

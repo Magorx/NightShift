@@ -12,15 +12,15 @@ const CONV_GAP := 3         # conveyors between splitter and converter input
 const BRANCH_DROP := 4      # rows below bus for second converter branch
 const SINK_GAP := 4         # conveyors after converter output relay before sink
 
-# Tile source IDs — must match game_world.gd / world_generator.gd
-const TILE_IRON := 1
-const TILE_COPPER := 2
-const TILE_COAL := 3
+# Tile source IDs — must match TileDatabase
+const TILE_PYROMITE := TileDatabase.TILE_PYROMITE
+const TILE_CRYSTALLINE := TileDatabase.TILE_CRYSTALLINE
+const TILE_BIOVINE := TileDatabase.TILE_BIOVINE
 
 const ITEM_TILE := {
-	&"iron_ore": TILE_IRON,
-	&"copper_ore": TILE_COPPER,
-	&"coal": TILE_COAL,
+	&"pyromite": TILE_PYROMITE,
+	&"crystalline": TILE_CRYSTALLINE,
+	&"biovine": TILE_BIOVINE,
 }
 
 var _bids: Dictionary  # discovered building IDs by role
@@ -214,7 +214,7 @@ func _build_factory_line(cluster: Dictionary, chains: Dictionary, map_size: int,
 
 	# ── Phase 4: Processing ──
 	var chain = chains.get(item_id)
-	var is_coal := (item_id == &"coal")
+	var is_biovine := (item_id == &"biovine")
 
 	if chain and not _bids.splitter.is_empty() and splitter_x + 14 < map_size:
 		# Has recipe → splitter → 2 converter branches

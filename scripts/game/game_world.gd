@@ -60,7 +60,7 @@ func _ready() -> void:
 	if SaveManager.pending_load:
 		var save_data: Dictionary = SaveManager.peek_save_data()
 		GameManager.world_seed = int(save_data.get("world_seed", randi()))
-		GameManager.map_size = int(save_data.get("map_size", 64))
+		GameManager.map_size = int(save_data.get("map_size", 128))
 		has_saved_terrain = save_data.has("terrain")
 	elif GameManager.world_seed == 0:
 		GameManager.world_seed = randi()
@@ -287,21 +287,13 @@ func _spawn_player() -> void:
 
 # Tile constants — single source of truth in TileDatabase
 const TILE_GROUND = TileDatabase.TILE_GROUND
-const TILE_IRON = TileDatabase.TILE_IRON
-const TILE_COPPER = TileDatabase.TILE_COPPER
-const TILE_COAL = TileDatabase.TILE_COAL
+const TILE_PYROMITE = TileDatabase.TILE_PYROMITE
+const TILE_CRYSTALLINE = TileDatabase.TILE_CRYSTALLINE
+const TILE_BIOVINE = TileDatabase.TILE_BIOVINE
 const TILE_WALL = TileDatabase.TILE_WALL
 const TILE_GROUND_DARK = TileDatabase.TILE_GROUND_DARK
 const TILE_GROUND_LIGHT = TileDatabase.TILE_GROUND_LIGHT
 const TILE_STONE = TileDatabase.TILE_STONE
-const TILE_TIN = TileDatabase.TILE_TIN
-const TILE_GOLD = TileDatabase.TILE_GOLD
-const TILE_QUARTZ = TileDatabase.TILE_QUARTZ
-const TILE_SULFUR = TileDatabase.TILE_SULFUR
-const TILE_OIL = TileDatabase.TILE_OIL
-const TILE_CRYSTAL = TileDatabase.TILE_CRYSTAL
-const TILE_URANIUM = TileDatabase.TILE_URANIUM
-const TILE_BIOMASS = TileDatabase.TILE_BIOMASS
 const TILE_ASH = TileDatabase.TILE_ASH
 const ASH_COLOR := Color(0.50, 0.45, 0.40)
 const DEPOSIT_COLORS = TileDatabase.DEPOSIT_COLORS

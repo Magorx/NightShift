@@ -9,6 +9,7 @@ extends Node
 
 var sim_mode: String = "fast"
 var sim_name: String = ""
+var sim_map_size: int = 64  # smaller map for fast tests; override in subclass if needed
 var game_world: Node2D
 var tick_count: int = 0
 var _failed: bool = false
@@ -38,6 +39,9 @@ func _ready():
 	if sim_mode != "visual":
 		var timer := get_tree().create_timer(TIMEOUT_SECONDS, true, false, true)
 		timer.timeout.connect(_on_timeout)
+
+	# Use smaller map for fast tests (128x128 game default is too slow for unit sims)
+	GameManager.map_size = sim_map_size
 
 	# Ensure deterministic terrain for reproducible screenshots.
 	# game_world._ready() replaces world_seed=0 with randi(), so set a
@@ -280,6 +284,8 @@ func sim_assert(condition: bool, msg: String) -> void:
 
 func _on_timeout() -> void:
 	printerr("[SIM FAIL] Simulation timed out after %d seconds" % int(TIMEOUT_SECONDS))
+	Engine.time_scale = 1.0
+	Engine.max_physics_steps_per_frame = 1
 	get_tree().quit(1)
 
 func sim_finish() -> void:
@@ -294,4 +300,8 @@ func sim_finish() -> void:
 		print("[SIM] Visual mode — game remains playable. Close window to exit.")
 		return
 
+	# Reset time scale so quit() processes promptly (at 100x with 100 max physics
+	# steps, the engine can take very long to finish the current frame batch)
+	Engine.time_scale = 1.0
+	Engine.max_physics_steps_per_frame = 1
 	get_tree().quit(1 if _failed else 0)

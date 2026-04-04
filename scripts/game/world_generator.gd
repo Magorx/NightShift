@@ -1,39 +1,34 @@
 class_name WorldGenerator
 extends RefCounted
-## Procedural world generation using noise-based terrain.
+## Procedural world generation for Night Shift's 128x128 arena.
 ##
 ## Generates:
-## - Rock walls (impassable) from layered simplex + cellular noise
-## - Organic resource deposits in varied shapes (veins, blobs, crescents, clusters)
+## - Rock walls (impassable) from layered simplex + cellular noise, tuned to
+##   create maze-like corridors and natural chokepoints for defense
+## - 3 elemental deposit types (pyromite, crystalline, biovine) in varied
+##   shapes (veins, blobs, crescents, clusters) at close/medium/far distances
+## - Stone wall veins for additional terrain variety
 ## - Ground tile variation for visual interest
 ## - Border walls around the map edge
-## - Clear spawn area with starter resources nearby
-## - Connectivity guarantee: all deposits reachable from spawn
+## - Clear spawn area (radius ~12 tiles)
+## - Connectivity guarantee: all deposits reachable from spawn via BFS + carve
 
 # Tile constants — single source of truth in TileDatabase
 const TILE_GROUND = TileDatabase.TILE_GROUND
-const TILE_IRON = TileDatabase.TILE_IRON
-const TILE_COPPER = TileDatabase.TILE_COPPER
-const TILE_COAL = TileDatabase.TILE_COAL
+const TILE_PYROMITE = TileDatabase.TILE_PYROMITE
+const TILE_CRYSTALLINE = TileDatabase.TILE_CRYSTALLINE
+const TILE_BIOVINE = TileDatabase.TILE_BIOVINE
 const TILE_WALL = TileDatabase.TILE_WALL
 const TILE_GROUND_DARK = TileDatabase.TILE_GROUND_DARK
 const TILE_GROUND_LIGHT = TileDatabase.TILE_GROUND_LIGHT
 const TILE_STONE = TileDatabase.TILE_STONE
-const TILE_TIN = TileDatabase.TILE_TIN
-const TILE_GOLD = TileDatabase.TILE_GOLD
-const TILE_QUARTZ = TileDatabase.TILE_QUARTZ
-const TILE_SULFUR = TileDatabase.TILE_SULFUR
-const TILE_OIL = TileDatabase.TILE_OIL
-const TILE_CRYSTAL = TileDatabase.TILE_CRYSTAL
-const TILE_URANIUM = TileDatabase.TILE_URANIUM
-const TILE_BIOMASS = TileDatabase.TILE_BIOMASS
 const DEPOSIT_ITEMS = TileDatabase.DEPOSIT_ITEMS
 
 # Generation parameters
 const BORDER_WIDTH := 2
-const SPAWN_CLEAR_RADIUS := 10
-const WALL_FREQUENCY := 0.065
-const WALL_THRESHOLD := 0.32
+const SPAWN_CLEAR_RADIUS := 12
+const WALL_FREQUENCY := 0.045
+const WALL_THRESHOLD := 0.25
 const DEPOSIT_MIN_SPACING := 6.0
 
 var _rng: RandomNumberGenerator
@@ -86,17 +81,24 @@ func _generate_walls(walls: Dictionary, map_size: int, spawn: Vector2i) -> void:
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	noise.seed = _seed
 	noise.frequency = WALL_FREQUENCY
-	noise.fractal_octaves = 3
+	noise.fractal_octaves = 4
 	noise.fractal_lacunarity = 2.0
 	noise.fractal_gain = 0.5
 
-	# Secondary noise for more interesting ridge-like shapes
+	# Secondary noise for ridge-like shapes that create corridors
 	var noise2 := FastNoiseLite.new()
 	noise2.noise_type = FastNoiseLite.TYPE_CELLULAR
 	noise2.seed = _seed + 100
-	noise2.frequency = 0.09
+	noise2.frequency = 0.06
 	noise2.cellular_distance_function = FastNoiseLite.DISTANCE_EUCLIDEAN
 	noise2.cellular_return_type = FastNoiseLite.RETURN_DISTANCE
+
+	# Third noise layer at higher frequency for small wall clusters and chokepoints
+	var noise3 := FastNoiseLite.new()
+	noise3.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise3.seed = _seed + 200
+	noise3.frequency = 0.09
+	noise3.fractal_octaves = 2
 
 	for x in range(map_size):
 		for y in range(map_size):
@@ -110,10 +112,16 @@ func _generate_walls(walls: Dictionary, map_size: int, spawn: Vector2i) -> void:
 			if dist_to_spawn < SPAWN_CLEAR_RADIUS:
 				continue
 
-			# Combine two noise layers for interesting wall shapes
+			# Gradual wall density increase away from spawn — walls are rare near
+			# center and denser toward map edges, creating a natural difficulty ramp
+			var norm_dist: float = dist_to_spawn / (map_size * 0.5)
+			var dist_bias: float = lerpf(-0.08, 0.06, clampf(norm_dist, 0.0, 1.0))
+
+			# Combine three noise layers for corridor-like wall shapes
 			var n1: float = noise.get_noise_2d(x, y)
 			var n2: float = noise2.get_noise_2d(x, y)
-			var combined: float = n1 * 0.7 + n2 * 0.3
+			var n3: float = noise3.get_noise_2d(x, y)
+			var combined: float = n1 * 0.5 + n2 * 0.3 + n3 * 0.2 + dist_bias
 
 			if combined > WALL_THRESHOLD:
 				walls[Vector2i(x, y)] = TILE_WALL
@@ -123,11 +131,12 @@ func _generate_walls(walls: Dictionary, map_size: int, spawn: Vector2i) -> void:
 
 func _generate_stone_walls(walls: Dictionary, map_size: int, spawn: Vector2i) -> void:
 	# Stone wall veins: elongated, narrow formations scattered across the map
+	# 4-5 total veins at varying distances
 	# [min_dist, max_dist, count, length_min, length_max]
 	var plan := [
-		[10, 20, 2, 6, 10],    # near spawn
-		[18, 30, 3, 8, 14],    # mid-range
-		[26, 38, 2, 10, 18],   # far
+		[14, 25, 1, 8, 14],    # near-mid
+		[22, 38, 2, 10, 18],   # mid-range
+		[35, 52, 2, 12, 22],   # far
 	]
 
 	for entry in plan:
@@ -196,33 +205,35 @@ func _carve_stone_vein(walls: Dictionary, center: Vector2i, length: int, map_siz
 
 func _generate_all_deposits(deposits: Dictionary, walls: Dictionary, map_size: int, spawn: Vector2i) -> void:
 	# Deposit plan: [tile_id, min_dist, max_dist, count, size_min, size_max]
+	# 3 elemental resources at 3 distance tiers:
+	#   CLOSE (10-22)  — 2 each, easy starter resources
+	#   MEDIUM (22-40) — 2-3 each, expansion resources
+	#   FAR (40-55)    — 1-2 each, risky distant resources
 	var plan := [
-		# Starter deposits — close to spawn, small
-		[TILE_IRON, 6, 14, 1, 3, 4],
-		[TILE_COPPER, 8, 16, 1, 2, 4],
-		# Mid-range deposits
-		[TILE_IRON, 16, 26, 1, 4, 6],
-		[TILE_COPPER, 16, 26, 1, 3, 5],
-		[TILE_COAL, 14, 24, 1, 3, 5],
-		[TILE_TIN, 18, 28, 1, 3, 5],
-		[TILE_QUARTZ, 20, 30, 1, 3, 5],
-		[TILE_BIOMASS, 14, 22, 1, 4, 6],     # biomass grows near spawn, organic clusters
-		# Far deposits — larger but still scarce
-		[TILE_IRON, 24, 34, 1, 5, 7],
-		[TILE_COPPER, 24, 34, 1, 4, 6],
-		[TILE_COAL, 22, 32, 1, 4, 6],
-		[TILE_TIN, 24, 34, 1, 4, 6],
-		[TILE_QUARTZ, 26, 36, 1, 3, 5],
-		[TILE_GOLD, 28, 38, 1, 2, 4],
-		[TILE_SULFUR, 28, 38, 1, 2, 4],
-		[TILE_OIL, 22, 32, 1, 3, 5],         # oil seeps in mid-far range
-		[TILE_BIOMASS, 24, 34, 1, 3, 5],     # more biomass further out
-		# Very far deposits — rare advanced resources
-		[TILE_OIL, 30, 40, 1, 4, 6],         # large oil field
-		[TILE_CRYSTAL, 32, 42, 1, 2, 3],     # rare crystal deposit
-		[TILE_URANIUM, 34, 44, 1, 2, 3],     # very rare uranium
-		[TILE_CRYSTAL, 36, 44, 1, 2, 4],     # second crystal deposit
-		[TILE_URANIUM, 38, 46, 1, 2, 3],     # second uranium
+		# ── CLOSE: starter deposits (distance 10-22) ──
+		[TILE_PYROMITE,    10, 18, 1, 3, 5],
+		[TILE_PYROMITE,    14, 22, 1, 3, 5],
+		[TILE_CRYSTALLINE, 10, 18, 1, 3, 5],
+		[TILE_CRYSTALLINE, 14, 22, 1, 3, 5],
+		[TILE_BIOVINE,     10, 18, 1, 3, 5],
+		[TILE_BIOVINE,     14, 22, 1, 3, 5],
+
+		# ── MEDIUM: expansion deposits (distance 22-40) ──
+		[TILE_PYROMITE,    22, 32, 1, 4, 6],
+		[TILE_PYROMITE,    28, 38, 1, 4, 7],
+		[TILE_PYROMITE,    32, 40, 1, 3, 5],
+		[TILE_CRYSTALLINE, 22, 32, 1, 4, 6],
+		[TILE_CRYSTALLINE, 28, 38, 1, 4, 7],
+		[TILE_BIOVINE,     22, 32, 1, 4, 6],
+		[TILE_BIOVINE,     28, 38, 1, 4, 7],
+		[TILE_BIOVINE,     32, 40, 1, 3, 5],
+
+		# ── FAR: risky distant deposits (distance 40-55) ──
+		[TILE_PYROMITE,    40, 52, 1, 5, 8],
+		[TILE_PYROMITE,    45, 55, 1, 4, 6],
+		[TILE_CRYSTALLINE, 40, 52, 1, 5, 8],
+		[TILE_CRYSTALLINE, 45, 55, 1, 4, 6],
+		[TILE_BIOVINE,     40, 52, 1, 5, 8],
 	]
 
 	var placed_centers: Array[Vector2i] = []
@@ -422,7 +433,6 @@ func _ensure_connectivity(walls: Dictionary, deposits: Dictionary, map_size: int
 
 	# Find unreachable deposit cells and carve paths to them
 	var unreachable_targets: Array[Vector2i] = []
-	var seen: Dictionary = {}
 	for pos in deposits:
 		if reachable.has(pos):
 			continue
@@ -514,11 +524,7 @@ func _apply(tile_map: TileMapLayer, map_size: int, walls: Dictionary, deposits: 
 				var tile_id: int = deposits[pos]
 				tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
 				GameManager.deposits[pos] = DEPOSIT_ITEMS[tile_id]
-				# Set deposit stock: biomass gets random 2-10, all others infinite (-1)
-				if tile_id == TILE_BIOMASS:
-					GameManager.deposit_stocks[pos] = _rng.randi_range(2, 10)
-				else:
-					GameManager.deposit_stocks[pos] = -1
+				GameManager.deposit_stocks[pos] = -1  # all deposits are infinite
 				tile_types[idx] = tile_id
 			elif ground_variant.has(pos):
 				var variant: int = ground_variant[pos]

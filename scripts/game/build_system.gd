@@ -880,7 +880,7 @@ func _collect_building_and_linked(building: Node2D, seen: Dictionary, to_remove:
 func _debug_spawn_item(pos: Vector2i) -> void:
 	var conv = GameManager.get_conveyor_at(pos)
 	if conv and conv.can_accept():
-		conv.place_item(&"iron_ore")
+		conv.place_item(&"pyromite")
 
 # ── Placement fail reason ───────────────────────────────────────────────────
 

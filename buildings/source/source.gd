@@ -2,13 +2,13 @@ class_name ItemSource
 extends BuildingLogic
 
 var direction: int = 0
-var item_id: StringName = &"iron_ore"
+var item_id: StringName = &"pyromite"
 var produce_interval: float = 1.0
 var _timer: float = 0.0
 var _has_ready_item: bool = false
 
 ## Items this source produces — round-robins through them.
-var enabled_items: Array = [&"iron_ore"]
+var enabled_items: Array = [&"pyromite"]
 var _round_robin: RoundRobin = RoundRobin.new()
 
 var _source_item_menu_scene: PackedScene = preload("res://scenes/ui/source_item_menu.tscn")
@@ -16,7 +16,7 @@ var _source_item_menu_scene: PackedScene = preload("res://scenes/ui/source_item_
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(_def, p_grid_pos, rotation)
 	direction = rotation
-	item_id = &"iron_ore"
+	item_id = &"pyromite"
 
 func _physics_process(delta: float) -> void:
 	if enabled_items.is_empty():
@@ -78,7 +78,7 @@ func create_side_menu() -> Control:
 
 func serialize_state() -> Dictionary:
 	var state := {"timer": _timer}
-	var is_default: bool = enabled_items.size() == 1 and enabled_items[0] == &"iron_ore"
+	var is_default: bool = enabled_items.size() == 1 and enabled_items[0] == &"pyromite"
 	if not is_default:
 		var items_arr: Array = []
 		for eid in enabled_items:

@@ -9,7 +9,7 @@ func run_simulation() -> void:
 	sim_assert(result == null, "Drill cannot be placed on empty ground")
 
 	# Test 2: Place drill on an iron deposit
-	sim_add_deposit(Vector2i(10, 10), &"iron_ore")
+	sim_add_deposit(Vector2i(10, 10), &"pyromite")
 	result = sim_place_building(&"drill", Vector2i(10, 10), 0)
 	sim_assert(result != null, "Drill placed on iron deposit at (10, 10)")
 
@@ -29,7 +29,7 @@ func run_simulation() -> void:
 	sim_assert(consumed > 0, "Sink consumed items from drill chain (got %d)" % consumed)
 
 	# Test 4: Place drill on copper deposit
-	sim_add_deposit(Vector2i(30, 8), &"copper_ore")
+	sim_add_deposit(Vector2i(30, 8), &"crystalline")
 	sim_place_building(&"drill", Vector2i(30, 8), 1)  # direction: down
 	sim_place_building(&"conveyor", Vector2i(30, 9), 1)
 	sim_place_building(&"conveyor", Vector2i(30, 10), 1)

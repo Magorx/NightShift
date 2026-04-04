@@ -23,7 +23,7 @@ func run_simulation() -> void:
 	#   Source(5,10) facing down into conveyor(5,11)
 	#   Conveyor(4,11) facing right -> conveyor(5,11) -> conveyor(6,11) -> ...
 	# Both source and conveyor(4,11) feed into conveyor(5,11).
-	sim_clear_all()
+	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
 	sim_place_building(&"source", Vector2i(5, 10), 1) # facing down
@@ -34,9 +34,9 @@ func run_simulation() -> void:
 	sim_place_building(&"conveyor", Vector2i(7, 11), 0) # right
 
 	# Spawn items on the upstream conveyor to compete with source
-	sim_spawn_item_on_conveyor(Vector2i(3, 11), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(3, 11), &"pyromite")
 	await sim_advance_seconds(0.5)
-	sim_spawn_item_on_conveyor(Vector2i(3, 11), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(3, 11), &"pyromite")
 
 	await sim_advance_seconds(6.0)
 
@@ -53,7 +53,7 @@ func run_simulation() -> void:
 
 	# === Test 3: Source pushes to full conveyor line gets fair round-robin ===
 	# A backed-up line where source should eventually get items through
-	sim_clear_all()
+	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
 	# Short line with sink at end to drain items
@@ -69,7 +69,7 @@ func run_simulation() -> void:
 	sim_assert(snk != null and snk.items_consumed >= 3, "Test 3: Sink consumed items from source (got %d)" % (snk.items_consumed if snk else 0))
 
 	# === Test 4: Splitter pulls from non-conveyor (source directly into splitter) ===
-	sim_clear_all()
+	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
 	sim_place_building(&"source", Vector2i(5, 10), 0) # facing right
@@ -87,7 +87,7 @@ func run_simulation() -> void:
 
 	# === Test 5: Splitter-to-splitter chain (routers in a line) ===
 	# Items should pass straight through when possible
-	sim_clear_all()
+	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
 	sim_place_building(&"conveyor", Vector2i(4, 10), 0) # input conveyor
@@ -95,14 +95,14 @@ func run_simulation() -> void:
 	sim_place_building(&"splitter", Vector2i(6, 10), 0)
 	sim_place_building(&"conveyor", Vector2i(7, 10), 0) # output conveyor
 
-	sim_spawn_item_on_conveyor(Vector2i(4, 10), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(4, 10), &"pyromite")
 	await sim_advance_seconds(6.0)
 
 	var output_conv = sim_get_conveyor_at(Vector2i(7, 10))
 	sim_assert(output_conv != null and output_conv.has_item(), "Test 5: Item passed through splitter chain")
 
 	# === Test 6: Junction pulls from non-conveyor sources ===
-	sim_clear_all()
+	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
 	sim_place_building(&"source", Vector2i(9, 10), 0) # facing right
@@ -121,14 +121,14 @@ func run_simulation() -> void:
 	sim_assert(out_conv != null and out_conv.has_item(), "Test 6: Junction pulled from source and passed item through")
 
 	# === Test 7: Sink pulls directly from splitter (no conveyor between) ===
-	sim_clear_all()
+	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
 	sim_place_building(&"conveyor", Vector2i(4, 10), 0)
 	sim_place_building(&"splitter", Vector2i(5, 10), 0)
 	sim_place_building(&"sink", Vector2i(6, 10), 0)
 
-	sim_spawn_item_on_conveyor(Vector2i(4, 10), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(4, 10), &"pyromite")
 	await sim_advance_seconds(5.0)
 
 	var sink_b = sim_get_building_at(Vector2i(6, 10))
@@ -136,7 +136,7 @@ func run_simulation() -> void:
 	sim_assert(sink_logic != null and sink_logic.items_consumed >= 1, "Test 7: Sink pulled item from splitter (consumed %d)" % (sink_logic.items_consumed if sink_logic else 0))
 
 	# === Test 8: Entry_from direction is correct (item visual enters from right side) ===
-	sim_clear_all()
+	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
 	sim_place_building(&"source", Vector2i(5, 10), 0) # facing right

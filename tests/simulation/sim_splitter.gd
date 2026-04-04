@@ -30,9 +30,9 @@ func run_simulation() -> void:
 	sim_assert(spl_building.logic is SplitterLogic, "Building has SplitterLogic")
 
 	# Spawn 2 items on the input chain
-	sim_spawn_item_on_conveyor(Vector2i(8, 10), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(8, 10), &"pyromite")
 	await sim_advance_seconds(1.5)
-	sim_spawn_item_on_conveyor(Vector2i(8, 10), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(8, 10), &"pyromite")
 
 	# Wait for items to travel through the splitter
 	await sim_advance_seconds(5.0)
@@ -56,7 +56,7 @@ func run_simulation() -> void:
 
 	# === Test 2: No U-turn — item should not go back where it came from ===
 	# Clear and rebuild: input from left, only output is also left (should block)
-	sim_clear_all()
+	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
 	# Conveyor pointing right into splitter
@@ -64,7 +64,7 @@ func run_simulation() -> void:
 	sim_place_building(&"splitter", Vector2i(6, 5), 0)
 	# No output conveyors — item should stay buffered in splitter
 
-	sim_spawn_item_on_conveyor(Vector2i(5, 5), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(5, 5), &"pyromite")
 	await sim_advance_seconds(3.0)
 
 	# Input conveyor should be empty (splitter pulled the item)
@@ -83,7 +83,7 @@ func run_simulation() -> void:
 	# Two items heading for the same output should both advance to progress 1.0
 	# independently and exit promptly when a free output appears. With the old
 	# clamped advancement, item 2 would be stuck at progress 0.5 behind item 1.
-	sim_clear_all()
+	GameManager.clear_all()
 	await sim_advance_ticks(2)
 
 	# Input and splitter only — no outputs so items buffer internally
@@ -91,9 +91,9 @@ func run_simulation() -> void:
 	sim_place_building(&"splitter", Vector2i(10, 10), 0)
 
 	# Send 2 items in, staggered for entry-gap clearance
-	sim_spawn_item_on_conveyor(Vector2i(9, 10), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(9, 10), &"pyromite")
 	await sim_advance_seconds(0.7)
-	sim_spawn_item_on_conveyor(Vector2i(9, 10), &"iron_ore")
+	sim_spawn_item_on_conveyor(Vector2i(9, 10), &"pyromite")
 
 	# Wait for both items to enter the splitter and advance
 	await sim_advance_seconds(3.0)
