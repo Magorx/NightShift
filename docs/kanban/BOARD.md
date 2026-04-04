@@ -1,43 +1,12 @@
 # Night Shift -- Project Board
 
+## Done
+
+### **3D.1** GridUtils 3D API + dual-API bridge `2h` ✓ `0.1h actual`
+
+### **3D.2** Game world scene tree: Node2D → Node3D `3h` ✓ `0.2h actual`
+
 ## Backlog
-
-### **3D.1** GridUtils 3D API + dual-API bridge `2h`
-
-  - tags: [3d-transition, foundation, de-risk]
-  - priority: critical
-  - steps:
-      - [ ] Add `grid_to_world_3d(grid_pos) -> Vector3` — maps grid X,Y to world X,Z (Y=0 ground plane)
-      - [ ] Add `world_to_grid_3d(world_pos: Vector3) -> Vector2i` — projects XZ back to grid
-      - [ ] Add `grid_offset_3d()`, `grid_dir_to_world_3d()`, `tile_transform_3d() -> Transform3D`
-      - [ ] Rename existing functions to `*_2d` aliases (backward compat, nothing breaks)
-      - [ ] Keep `grid_to_world()` as alias to `grid_to_world_2d()` temporarily
-      - [ ] Add unit tests for all 3D functions in `tests/unit/test_grid_utils.gd`
-    ```md
-    Dependency root — every rendering/placement system calls GridUtils.
-    Purely additive: existing 2D code keeps working via aliases.
-    Grid coordinate system (Vector2i) is unchanged.
-    ```
-
-### **3D.2** Game world scene tree: Node2D → Node3D `3h`
-
-  - tags: [3d-transition, scene-tree, high-risk]
-  - priority: critical
-  - depends: 3D.1
-  - steps:
-      - [ ] Recreate `game_world.tscn`: root Node3D, Camera3D (orthographic), remove TileMapLayer
-      - [ ] Add temporary MeshInstance3D ground plane (flat green) for visual reference
-      - [ ] Rewrite `game_camera.gd` as Camera3D: orthographic projection, follow player, zoom via `size`
-      - [ ] Mouse-to-world via `project_ray_origin` + ground plane intersection
-      - [ ] Update `game_world.gd`: extends Node3D, stub out `_setup_tileset()`, remove tile_map refs
-      - [ ] Update `game_manager.gd`: building_layer/item_layer → Node3D, remove z_index constants
-      - [ ] Temporarily disable `grid_overlay.gd`
-      - [ ] Verify: game launches, camera shows 3D scene, HUD renders, headless sims pass
-    ```md
-    Highest-risk card. Converts the scene container so all subsequent cards
-    plug into a 3D context. Game logic (pull system, conveyors) operates on
-    Vector2i grid coords and doesn't care about node types.
-    ```
 
 ### **3D.3** BuildSystem 3D input (mouse → grid via raycast) `2h`
 

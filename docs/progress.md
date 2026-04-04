@@ -221,14 +221,37 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 - **Blockers**: None
 - **Next session goal**: Remaining buildings with Iso library, then P3.1
 
+### Session 9 -- 3D Transition: GridUtils 3D API + Scene Tree Conversion (3D.1-3D.2)
+- **Date**: 2026-04-04
+- **Hours**: ~0.2h (evening session, 23:13-23:25 MSK)
+- **Work done**:
+  - **3D.1**: Added 3D API to GridUtils — `grid_to_world_3d()`, `world_to_grid_3d()`, `grid_offset_3d()`, `grid_dir_to_world_3d()`, `tile_transform_3d()`, `map_world_size_3d()`, `map_origin_3d()`. Maps grid (X,Y) → world (X, 0, Z) with 1 unit per tile. Purely additive, 2D functions untouched. 24 new unit tests (85 total).
+  - **3D.2**: Converted game_world scene tree from Node2D to Node3D. This was the highest-risk card:
+    - `game_world.tscn`: Node3D root, Camera3D orthographic (isometric angle), temp green ground plane, DirectionalLight3D, Node3D object layers, TileMapLayer removed, GridOverlay removed
+    - `game_camera.gd`: full rewrite for Camera3D — ortho projection, smooth follow via ground-plane tracking, zoom via camera size
+    - `game_world.gd`: extends Node3D, removed _setup_tileset() and all TileMapLayer code, terrain data via GameManager arrays only
+    - `game_manager.gd`: building_layer/item_layer typed as Node (generic)
+    - `world_generator.gd` + `stress_test_generator.gd`: tile_map parameter nullable
+    - `building_popup.gd` + `minimap.gd` + `hud.gd`: Camera type hints relaxed for Camera3D compat
+    - `simulation_base.gd`: game_world typed as Node, wall clearing simplified
+  - All 85 unit tests + all 10 simulations pass. Visual rendering temporarily broken (2D sprites in 3D scene) until 3D.3-3D.7.
+- **Stats**: 2 commits, 12 files changed. Planned: 5h → Actual: 0.2h
+- **Decisions made**:
+  - Buildings remain Node2D for now — logic works regardless of node type (3D.6 converts them)
+  - BuildSystem stays Node2D — mouse input broken in 3D but sims don't use it (3D.3 fixes)
+  - MultiMesh visual managers stay 2D — they'll render in their own canvas (3D.5, 3D.7 convert)
+  - TileMapLayer removed entirely — terrain data managed via byte arrays + MultiMesh (no wall collision until 3D.5)
+- **Blockers**: None
+- **Next session goal**: 3D.3 (BuildSystem input), 3D.4 (player), or 3D.5 (terrain) — these three can be done in parallel
+
 ---
 
 ## Velocity Tracking
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total sessions | 8 | |
-| Total hours | 10.2 | |
+| Total sessions | 9 | |
+| Total hours | 10.4 | |
 | Factor baseline | ~42h over 2 weeks | 3h/day evenings |
 | Estimated M1 hours | 40-60h | ~2-3 weeks at 3h/day |
 | Estimated M2 hours | 40-60h | ~2-3 weeks at 3h/day |
