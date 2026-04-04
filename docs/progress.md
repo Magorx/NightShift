@@ -249,8 +249,15 @@ Updates appended after each work session. Tracks velocity for timeline projectio
   - **3D.5**: Terrain rendering → MultiMesh3D with spatial shader. PlaneMesh quads on XZ, atlas UV encoding preserved. 1 file changed.
   - Fixed: conveyor_system.gd ground item pickup for Node3D items, sim_player.gd type inference
   - All 85 unit tests + all 8 sims pass (including sim_player with 3D physics).
-- **Stats total**: 7 commits, ~25 files changed. Planned: 11h (3D.1-3D.5) → Actual: 0.55h
-- **Next session goal**: 3D.6 (building Node3D), 3D.7 (conveyor/item 3D), 3D.8 (test infra)
+- **Session 9 continued** — 3D.6-3D.10 (23:46-00:26 MSK, +0.65h):
+  - **3D.6**: Buildings → Node3D with placeholder BoxMesh colored by BuildingDef.color. place_building creates Node3D directly, Y-axis rotation, logic from cached script. 12 files.
+  - **3D.7**: Conveyor + item visual managers → MultiMesh3D with spatial shaders. Item positioning uses 3D bezier paths. All building item paths updated (conveyor, splitter, junction, tunnel). 8 files.
+  - **3D.8**: Already done — all sims pass, simulation_base already updated. Just verified.
+  - **3D.9**: Removed all 2D GridUtils code (-649 lines). Renamed _3d suffixed functions. Deleted grid_overlay.gd + base_multi_mesh_manager.gd. Fixed Node2D→Node type annotations across build_system, building_popup, game_world. 25 files.
+  - **3D.10**: Camera serialize/deserialize updated for Camera3D.size (with legacy zoom detection). 1 file.
+- **Stats total**: 12 commits, ~50 files changed. Planned: 22h (3D.1-3D.10) → Actual: 1.2h
+- **Remaining**: 3D.11 (grid overlay, 1.5h) and 3D.12 (Blender models, 3h+) — both polish/art, not blocking
+- **Next session goal**: 3D.12 (Blender pipeline for real building models) or P3.1 (RoundManager)
 
 ---
 
@@ -259,7 +266,7 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 | Metric | Value | Notes |
 |--------|-------|-------|
 | Total sessions | 9 | |
-| Total hours | 10.75 | |
+| Total hours | 11.4 | |
 | Factor baseline | ~42h over 2 weeks | 3h/day evenings |
 | Estimated M1 hours | 40-60h | ~2-3 weeks at 3h/day |
 | Estimated M2 hours | 40-60h | ~2-3 weeks at 3h/day |
