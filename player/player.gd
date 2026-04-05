@@ -481,6 +481,25 @@ func _try_pickup() -> void:
 				nearest_item.quantity = remaining
 			return
 
+	# Try to pick up the nearest physics item within range
+	var nearest_phys: PhysicsItem = _find_nearest_physics_item()
+	if nearest_phys:
+		var remaining := add_item(nearest_phys.item_id, 1)
+		if remaining <= 0:
+			nearest_phys.queue_free()
+
+func _find_nearest_physics_item() -> PhysicsItem:
+	var best: PhysicsItem = null
+	var best_dist := PICKUP_RANGE + 1.0
+	for item in get_tree().get_nodes_in_group(&"physics_items"):
+		if not is_instance_valid(item):
+			continue
+		var dist_xz := Vector2(position.x - item.position.x, position.z - item.position.z).length()
+		if dist_xz < best_dist:
+			best_dist = dist_xz
+			best = item
+	return best
+
 func _try_drop(drop_stack: bool) -> void:
 	if inventory[selected_slot] == null:
 		return
