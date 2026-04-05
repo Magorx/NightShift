@@ -112,6 +112,7 @@ func _serialize_run() -> Dictionary:
 	if GameManager.player and is_instance_valid(GameManager.player):
 		data["player"] = GameManager.player.serialize()
 	data["ground_items"] = _serialize_ground_items()
+	data["physics_items"] = _serialize_physics_items()
 	return data
 
 func _serialize_ground_items() -> Array:
@@ -122,6 +123,24 @@ func _serialize_ground_items() -> Array:
 	for item in gw.get_tree().get_nodes_in_group("ground_items"):
 		if is_instance_valid(item) and item.has_method("serialize"):
 			result.append(item.serialize())
+	return result
+
+func _serialize_physics_items() -> Array:
+	var result: Array = []
+	var gw := _get_game_world()
+	if not gw:
+		return result
+	for item in gw.get_tree().get_nodes_in_group("physics_items"):
+		if is_instance_valid(item) and item is PhysicsItem:
+			result.append({
+				"item_id": str(item.item_id),
+				"x": item.position.x,
+				"y": item.position.y,
+				"z": item.position.z,
+				"vx": item.linear_velocity.x,
+				"vy": item.linear_velocity.y,
+				"vz": item.linear_velocity.z,
+			})
 	return result
 
 func _serialize_deposit_stocks() -> Dictionary:
@@ -243,6 +262,10 @@ func _deserialize_run(data: Dictionary) -> void:
 	var ground_items_data: Array = data.get("ground_items", [])
 	_deserialize_ground_items(ground_items_data)
 
+	# Restore physics items (items on conveyors / in transit)
+	var physics_items_data: Array = data.get("physics_items", [])
+	_deserialize_physics_items(physics_items_data)
+
 	# Restore camera (deferred so game world is ready)
 	var cam_data: Dictionary = data.get("camera", {})
 	if not cam_data.is_empty():
@@ -296,6 +319,28 @@ func _deserialize_ground_items(items_data: Array) -> void:
 		item.despawn_timer = float(entry.get("despawn", 120))
 		gw.add_child(item)
 
+func _deserialize_physics_items(items_data: Array) -> void:
+	if items_data.is_empty():
+		return
+	for entry in items_data:
+		var iid := StringName(entry.get("item_id", ""))
+		if not GameManager.is_valid_item_id(iid):
+			GameLogger.warn("Physics item: skipped invalid item '%s'" % iid)
+			continue
+		var pos := Vector3(
+			float(entry.get("x", 0)),
+			float(entry.get("y", 0.2)),
+			float(entry.get("z", 0)),
+		)
+		var vel := Vector3(
+			float(entry.get("vx", 0)),
+			float(entry.get("vy", 0)),
+			float(entry.get("vz", 0)),
+		)
+		var item := PhysicsItem.spawn(iid, pos)
+		if item:
+			item.linear_velocity = vel
+
 func _reset_max_physics_steps() -> void:
 	Engine.max_physics_steps_per_frame = _saved_max_physics_steps
 
@@ -314,7 +359,7 @@ func _restore_camera(cam_data: Dictionary) -> void:
 			var ortho_size: float = z if z > 5.0 else z * 40.0
 			cam.size = ortho_size
 			if cam.has_method("set_target_zoom"):
-				cam.set_target_zoom(z * 40.0)
+				cam.set_target_zoom(ortho_size)
 		else:
 			cam.zoom = Vector2(z, z)
 			if cam.has_method("set_target_zoom"):
