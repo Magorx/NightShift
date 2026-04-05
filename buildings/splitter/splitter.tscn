@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://caxs0e23nmsim"]
+[gd_scene load_steps=9 format=3 uid="uid://caxs0e23nmsim"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://c4tujtdf41td0" path="res://buildings/splitter/splitter.gd" id="2"]
@@ -11,6 +11,9 @@ size = Vector3(0.4, 0.4, 0.4)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_force"]
 size = Vector3(0.6, 0.4, 0.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_output"]
+size = Vector3(0.4, 0.3, 0.4)
 
 [node name="Splitter" type="Node3D"]
 script = ExtResource("1")
@@ -41,25 +44,37 @@ shape = SubResource("BoxShape3D_1")
 
 [node name="Outputs" type="Node3D" parent="."]
 
-[node name="Output_0" type="Marker3D" parent="Outputs"]
+[node name="Output_0" type="Area3D" parent="Outputs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.2, 0)
 script = ExtResource("4")
 allow_left = false
 
-[node name="Output_1" type="Marker3D" parent="Outputs"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outputs/Output_0"]
+shape = SubResource("BoxShape3D_output")
+
+[node name="Output_1" type="Area3D" parent="Outputs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 1)
 script = ExtResource("4")
 allow_up = false
 
-[node name="Output_2" type="Marker3D" parent="Outputs"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outputs/Output_1"]
+shape = SubResource("BoxShape3D_output")
+
+[node name="Output_2" type="Area3D" parent="Outputs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0.2, 0)
 script = ExtResource("4")
 allow_right = false
 
-[node name="Output_3" type="Marker3D" parent="Outputs"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outputs/Output_2"]
+shape = SubResource("BoxShape3D_output")
+
+[node name="Output_3" type="Area3D" parent="Outputs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -1)
 script = ExtResource("4")
 allow_down = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outputs/Output_3"]
+shape = SubResource("BoxShape3D_output")
 
 [node name="SplitterLogic" type="Node" parent="."]
 script = ExtResource("2")

@@ -1,9 +1,12 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://t32yw383pufq" path="res://buildings/tunnel/tunnel.gd" id="2"]
 [ext_resource type="Script" uid="uid://wn30a4e54j7j" path="res://buildings/shared/output_zone.gd" id="3"]
 [ext_resource type="PackedScene" uid="uid://cn4rrqteixr8i" path="res://buildings/tunnel/models/tunnel.glb" id="4"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_output"]
+size = Vector3(0.4, 0.3, 0.4)
 
 [node name="TunnelOutput" type="Node3D"]
 script = ExtResource("1")
@@ -19,10 +22,13 @@ transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.5, 0, 0.5)
 
 [node name="Outputs" type="Node3D" parent="."]
 
-[node name="Output_0" type="Marker3D" parent="Outputs"]
+[node name="Output_0" type="Area3D" parent="Outputs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.2, 0)
 script = ExtResource("3")
 allow_left = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outputs/Output_0"]
+shape = SubResource("BoxShape3D_output")
 
 [node name="TunnelLogic" type="Node" parent="."]
 script = ExtResource("2")

@@ -110,6 +110,9 @@ func _update_building_sprites(is_active: bool, delta: float) -> void:
 		var model := get_parent().get_node_or_null("Model")
 		if model:
 			_cached_anim_player = model.get_node_or_null("AnimationPlayer") as AnimationPlayer
+			if not _cached_anim_player:
+				# AnimationPlayer might be deeper in the tree (e.g. glb root > child)
+				_cached_anim_player = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 			if _cached_anim_player:
 				_use_3d_model = true
 				_cached_anim_player.animation_finished.connect(_on_3d_anim_finished)

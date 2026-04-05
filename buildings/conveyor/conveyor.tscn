@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://btb5ogl8k81hb"]
+[gd_scene load_steps=12 format=3 uid="uid://btb5ogl8k81hb"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://bdx0s4hpmxhou" path="res://buildings/conveyor/conveyor.gd" id="2"]
@@ -20,6 +20,9 @@ size = Vector3(0.9, 0.3, 0.7)
 
 [sub_resource type="PhysicsMaterial" id="PhysMat_walls"]
 friction = 0.1
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_output"]
+size = Vector3(0.4, 0.3, 0.4)
 
 [node name="Conveyor" type="Node3D"]
 script = ExtResource("1")
@@ -64,10 +67,13 @@ shape = SubResource("BoxShape3D_input")
 
 [node name="Outputs" type="Node3D" parent="."]
 
-[node name="Output_0" type="Marker3D" parent="Outputs"]
+[node name="Output_0" type="Area3D" parent="Outputs"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.2, 0)
 script = ExtResource("4")
 allow_left = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Outputs/Output_0"]
+shape = SubResource("BoxShape3D_output")
 
 [node name="ConveyorLogic" type="Node" parent="."]
 script = ExtResource("2")
