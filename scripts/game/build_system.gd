@@ -423,7 +423,7 @@ func _filter_placeable_blueprints() -> void:
 
 # ── Ghost preview ─────────────────────────────────────────────────────────────
 
-func _create_ghost_node(building_id: StringName, rotation: int) -> Node:
+func _create_ghost_node(building_id: StringName, rot: int) -> Node:
 	var def = GameManager.get_building_def(building_id)
 	if not def or not def.scene:
 		return null
@@ -433,12 +433,12 @@ func _create_ghost_node(building_id: StringName, rotation: int) -> Node:
 	if arrow:
 		arrow.visible = false
 	# Add to 3D ghost layer so the model renders properly
-	var parent: Node = _ghost_layer if _ghost_layer else self
+	var parent: Node = (_ghost_layer as Node) if _ghost_layer else (self as Node)
 	parent.add_child(ghost)
 	# Disable processing after add_child to override any _ready re-enables
 	_disable_processing_recursive(ghost)
 	if ghost is Node3D:
-		ghost.rotation.y = -rotation * PI / 2.0
+		ghost.rotation.y = -rot * PI / 2.0
 		# Make semi-transparent for ghost effect
 		_apply_ghost_transparency(ghost)
 	return ghost
@@ -489,17 +489,17 @@ func _update_ghosts() -> void:
 			_clear_ghosts()
 		return
 
-	var rotation := _drag_rotation if _dragging else current_rotation
+	var rot := _drag_rotation if _dragging else current_rotation
 	var def = GameManager.get_building_def(selected_building)
 	if not def:
 		_clear_ghosts()
 		return
 
 	# Rebuild ghosts if building or rotation changed
-	if selected_building != _ghost_building_id or rotation != _ghost_rotation:
+	if selected_building != _ghost_building_id or rot != _ghost_rotation:
 		_clear_ghosts()
 		_ghost_building_id = selected_building
-		_ghost_rotation = rotation
+		_ghost_rotation = rot
 
 	var can_afford := GameManager.can_afford_building(selected_building)
 
@@ -507,7 +507,7 @@ func _update_ghosts() -> void:
 		var count := _placeable_blueprints.size()
 		# Grow pool as needed (capped)
 		while _ghost_nodes.size() < count and _ghost_nodes.size() < GHOST_POOL_MAX:
-			var ghost = _create_ghost_node(selected_building, rotation)
+			var ghost = _create_ghost_node(selected_building, rot)
 			if ghost:
 				_ghost_nodes.append(ghost)
 			else:
@@ -530,7 +530,7 @@ func _update_ghosts() -> void:
 	else:
 		# Single cursor ghost
 		if _ghost_nodes.is_empty():
-			var ghost = _create_ghost_node(selected_building, rotation)
+			var ghost = _create_ghost_node(selected_building, rot)
 			if ghost:
 				_ghost_nodes.append(ghost)
 		if not _ghost_nodes.is_empty():
@@ -808,13 +808,13 @@ func _collect_building_and_linked(building: Node, seen: Dictionary, to_remove: A
 
 # ── Placement fail reason ───────────────────────────────────────────────────
 
-func _get_placement_fail_reason(id: StringName, grid_pos: Vector2i, rotation: int) -> String:
+func _get_placement_fail_reason(id: StringName, grid_pos: Vector2i, rot: int) -> String:
 	if not GameManager.can_afford_building(id):
 		return "Not enough resources"
 	var def = GameManager.get_building_def(id)
 	if not def:
 		return ""
-	var rotated_shape: Array = def.get_rotated_shape(rotation)
+	var rotated_shape: Array = def.get_rotated_shape(rot)
 	for cell in rotated_shape:
 		var check_pos: Vector2i = grid_pos + Vector2i(cell)
 		if check_pos.x < 0 or check_pos.y < 0 or check_pos.x >= GameManager.map_size or check_pos.y >= GameManager.map_size:
@@ -823,7 +823,7 @@ func _get_placement_fail_reason(id: StringName, grid_pos: Vector2i, rotation: in
 			return "Blocked by terrain"
 		if GameManager.buildings.has(check_pos):
 			return "Space is occupied"
-	var building_error: String = def.get_placement_error(grid_pos, rotation)
+	var building_error: String = def.get_placement_error(grid_pos, rot)
 	if building_error != "":
 		return building_error
 	return ""
