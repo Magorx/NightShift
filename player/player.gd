@@ -473,7 +473,7 @@ func _try_drop(drop_stack: bool) -> void:
 	var spawn_pos := drop_pos
 	if building:
 		spawn_pos = GridUtils.grid_to_world(drop_grid)
-	spawn_pos.y = 0.3  # above ground so items fall naturally
+	spawn_pos.y = GameManager.get_terrain_height(drop_grid) + 0.3
 	var impulse := drop_dir * 1.0
 	for i in dropped.quantity:
 		var offset := Vector3(randf_range(-0.1, 0.1), 0, randf_range(-0.1, 0.1))
@@ -488,7 +488,8 @@ func _spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
 		pos_3d = Vector3(pos.x, 0.0, pos.y)
 	else:
 		pos_3d = position
-	pos_3d.y = 0.3  # above ground so items fall naturally
+	var drop_grid := GridUtils.world_to_grid(pos_3d)
+	pos_3d.y = GameManager.get_terrain_height(drop_grid) + 0.3
 
 	# Spawn each item as an individual PhysicsItem
 	for i in quantity:
