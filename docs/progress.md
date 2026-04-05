@@ -405,14 +405,34 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 - **Blockers**: None
 - **Next session goal**: Visual tuning pass (scale, position, rotation of models); then P3.1 RoundManager
 
+### Session 16 -- 3D Fixes + Physics Factory Planning
+- **Date**: 2026-04-05
+- **Hours**: ~0.5h (morning session, 10:48-11:13 MSK)
+- **Work done**:
+  - Fixed checkered ground: replaced 3-layer atlas MultiMesh (isometric diamond sprites with transparent corners) with single flat-color MultiMesh quads per tile type
+  - Player rotation fix (user did this directly — removed negations in atan2)
+  - User added GhostLayer Node3D to game_world.tscn and modified game_manager.gd to instantiate buildings from .tscn scenes directly
+  - Investigated building IO system, ghost preview, and transport pipeline in depth
+  - **Major design pivot**: decided to replace the entire grid-based pull transport system with physics-based transport (RigidBody3D items, force-field conveyors, Area3D IO zones)
+  - Created 11 PHYS kanban cards (PHYS.1-11, ~22h estimated)
+  - Created `/start-physics-factory` session starter command
+- **Decisions made**:
+  - Items are individual RigidBody3D objects (no quantity/stacking)
+  - Conveyors apply directional force via Area3D, not discrete slot transfers
+  - Building input zones are slightly inside the mesh (items flow in visually)
+  - Buildings don't vacuum nearby items — only dedicated input Area3D zones consume
+  - The entire Factor pull system will be gutted (ConveyorSystem, ItemBuffer, pull_item)
+- **Blockers**: None
+- **Next session goal**: Implement PHYS.1-11 (physics factory transport system). Use `/start-physics-factory`.
+
 ---
 
 ## Velocity Tracking
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total sessions | 16 | |
-| Total hours | 18.9 | |
+| Total sessions | 17 | |
+| Total hours | 19.4 | |
 | Factor baseline | ~42h over 2 weeks | 3h/day evenings |
 | Estimated M1 hours | 40-60h | ~2-3 weeks at 3h/day |
 | Estimated M2 hours | 40-60h | ~2-3 weeks at 3h/day |
