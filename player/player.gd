@@ -52,9 +52,10 @@ var facing_direction: Vector3 = Vector3.RIGHT  # XZ plane direction
 var stamina: float = STAMINA_MAX
 
 # -- Collision layer constants ------------------------------------------------
-const PLAYER_COLLISION_LAYER := 1
-const BUILDING_COLLISION_LAYER := 2
-const ITEM_COLLISION_LAYER := 4  # bit value = 8
+const PLAYER_COLLISION_LAYER := 1  # bit 1
+const BUILDING_COLLISION_LAYER := 2  # bit 2
+const GROUND_COLLISION_LAYER := 3  # bit 4
+const ITEM_COLLISION_LAYER := 4  # bit 8
 
 # -- Hand mining --------------------------------------------------------------
 const HAND_MINE_TIME := 1.0       # seconds per ore mined by hand
@@ -95,6 +96,7 @@ func _physics_process(delta: float) -> void:
 
 	# Apply velocity and move
 	move_and_slide()
+	_update_collision_for_height()
 
 	# Update visuals
 	_update_visuals(delta)
@@ -209,16 +211,12 @@ func _get_ground_height() -> float:
 	return BUILDING_Z_HEIGHT
 
 func _update_collision_for_height() -> void:
-	# Always collide with ground (layer 1) and items (layer 4).
-	# Toggle building collision (layer 2) based on elevation —
-	# when on top of buildings, disable so player walks over.
-	var ground_bit := (1 << (PLAYER_COLLISION_LAYER - 1))
+	# Collide with ground (layer 3) and buildings (layer 2).
+	# Items are on a separate layer — player walks through them
+	# (pickup is range-based, not collision-based).
+	var ground_bit := (1 << (GROUND_COLLISION_LAYER - 1))
 	var building_bit := (1 << (BUILDING_COLLISION_LAYER - 1))
-	var item_bit := (1 << (ITEM_COLLISION_LAYER - 1))
-	if is_on_floor() and position.y < 0.01:
-		collision_mask = ground_bit | building_bit | item_bit
-	else:
-		collision_mask = ground_bit | item_bit
+	collision_mask = ground_bit | building_bit
 
 # -- Conveyor Push (match item transport speed) -------------------------------
 
@@ -511,23 +509,12 @@ func _spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
 		pos_3d = Vector3(pos.x, 0.0, pos.y)
 	else:
 		pos_3d = position
-	pos_3d.y = 0.1  # slightly above ground
+	pos_3d.y = 0.3  # above ground so items fall naturally
 
-	# Merge with nearby existing ground item of same type
-	for existing in get_tree().get_nodes_in_group("ground_items"):
-		if is_instance_valid(existing) and existing.item_id == item_id:
-			var dist_xz := Vector2(existing.position.x - pos_3d.x, existing.position.z - pos_3d.z).length()
-			if dist_xz < GroundItem.MERGE_RANGE:
-				existing.quantity += quantity
-				return
-	var ground_item_scene := preload("res://player/ground_item.tscn")
-	var item := ground_item_scene.instantiate()
-	item.item_id = item_id
-	item.quantity = quantity
-	item.position = pos_3d
-	var game_world = get_parent()
-	if game_world:
-		game_world.add_child(item)
+	# Spawn each item as an individual PhysicsItem
+	for i in quantity:
+		var offset := Vector3(randf_range(-0.15, 0.15), 0, randf_range(-0.15, 0.15))
+		PhysicsItem.spawn(item_id, pos_3d + offset)
 
 # -- Visuals ------------------------------------------------------------------
 

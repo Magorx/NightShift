@@ -43,19 +43,16 @@ func run_simulation() -> void:
 	player.velocity.y = player.JUMP_SPEED
 	sim_assert(player.velocity.y > 0, "Player has upward velocity after jump")
 
-	# -- Test 6: Collision mask changes with elevation ------------------------
+	# -- Test 6: Collision mask is ground + buildings (no items) --------------
 	player.position.y = 0.0
 	player._update_collision_for_height()
-	var ground_bit := (1 << (Player.PLAYER_COLLISION_LAYER - 1))
+	var ground_bit := (1 << (Player.GROUND_COLLISION_LAYER - 1))
 	var building_bit := (1 << (Player.BUILDING_COLLISION_LAYER - 1))
-	sim_assert(player.collision_mask == (ground_bit | building_bit), "Ground-level collision mask includes ground + buildings")
+	sim_assert(player.collision_mask == (ground_bit | building_bit), "Collision mask is ground + buildings (no items)")
 
 	player.position.y = 1.0
 	player._update_collision_for_height()
-	sim_assert(player.collision_mask == ground_bit, "Elevated collision mask is ground only (no building collision)")
-
-	player.position.y = 0.0
-	player._update_collision_for_height()
+	sim_assert(player.collision_mask == (ground_bit | building_bit), "Elevated collision mask unchanged")
 
 	# -- Test 7: Health system ------------------------------------------------
 	player.hp = 100.0
@@ -95,7 +92,7 @@ func run_simulation() -> void:
 	for i in player.INVENTORY_SLOTS:
 		player.inventory[i] = null
 
-	# -- Test 9: Ground item spawn and pickup ---------------------------------
+	# -- Test 9: Physics item spawn and pickup ---------------------------------
 	player.add_item(&"pyromite", 3)
 	player.selected_slot = 0
 	player.facing_direction = Vector3.RIGHT
@@ -103,18 +100,18 @@ func run_simulation() -> void:
 
 	sim_assert(player.inventory[0].quantity == 2, "Player has 2 after dropping 1")
 
-	var ground_items = get_tree().get_nodes_in_group("ground_items")
-	sim_assert(ground_items.size() > 0, "Ground item exists after drop")
+	# PhysicsItem.spawn adds to scene immediately — check right away before physics can despawn
+	var phys_items = get_tree().get_nodes_in_group("physics_items")
+	sim_assert(phys_items.size() > 0, "Physics item exists after drop")
 
-	# Pick it back up
-	if ground_items.size() > 0:
-		var gi = ground_items[0]
-		player.position = gi.position
-		gi._hovered = true
+	# Pick it back up (move player near the item)
+	if phys_items.size() > 0:
+		var pi = phys_items[0]
+		player.position = Vector3(pi.position.x, 0, pi.position.z)
 		player._try_pickup()
 		await sim_advance_ticks(5)
 		var total_pyromite: int = player.count_item(&"pyromite")
-		sim_assert(total_pyromite == 3, "Picked up ground item (total=%d)" % total_pyromite)
+		sim_assert(total_pyromite == 3, "Picked up physics item (total=%d)" % total_pyromite)
 
 	# -- Test 10: Serialization round-trip ------------------------------------
 	player.hp = 75.0
