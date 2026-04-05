@@ -23,10 +23,10 @@ const TILE_COLORS := {
 const DEFAULT_COLOR := Color(0.35, 0.50, 0.30)
 
 # Per-direction wall darkening (simulates directional light, makes corners visible)
-const WALL_DARKEN_PX := 0.55  # +X wall (right side, darkest)
-const WALL_DARKEN_NX := 0.70  # -X wall (left side)
-const WALL_DARKEN_PZ := 0.60  # +Z wall (front-facing in iso view)
-const WALL_DARKEN_NZ := 0.75  # -Z wall (back-facing, lightest)
+const WALL_DARKEN_PX := 0.42  # +X wall (right side, darkest)
+const WALL_DARKEN_NX := 0.62  # -X wall (left side)
+const WALL_DARKEN_PZ := 0.48  # +Z wall (front-facing in iso view)
+const WALL_DARKEN_NZ := 0.72  # -Z wall (back-facing, lightest)
 
 var _mesh_instance: MeshInstance3D
 var _map_size: int = 0
@@ -258,8 +258,8 @@ void fragment() {
 		float edge_x = abs(fract(v_world_pos.x + 0.5) - 0.5);
 		float edge_z = abs(fract(v_world_pos.z + 0.5) - 0.5);
 		float edge = max(edge_x, edge_z);
-		float line = smoothstep(0.45, 0.50, edge);
-		col *= mix(1.0, 0.82, line);
+		float line = smoothstep(0.42, 0.50, edge);
+		col *= mix(1.0, 0.72, line);
 	}
 	ALBEDO = col;
 }
