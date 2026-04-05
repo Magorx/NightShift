@@ -21,6 +21,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(BLENDER_DIR, "..", ".."))
 sys.path.insert(0, BLENDER_DIR)
 
+from export_helpers import export_glb
 from render import clear_scene
 from materials.pixel_art import create_flat_material
 from prefabs_src.box import generate_box
@@ -399,30 +400,6 @@ def bake_animations(obj):
         animate_static(part, "build", duration=1.0)
 
 
-# ---------------------------------------------------------------------------
-# Export
-# ---------------------------------------------------------------------------
-def export_glb(output_path):
-    """Select all and export as .glb with NLA animations."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_animation_mode='NLA_TRACKS',
-        export_merge_animation='NLA_TRACK',
-        export_animations=True,
-    )
-
-
-def export_blend(output_path):
-    """Save the current scene as a .blend file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=output_path)
-
-
 def main():
     output = parse_args()
     print(f"[player_model] Building player, exporting to {output}")
@@ -432,18 +409,13 @@ def main():
 
     # Export textured version (same as flat for this stylized character)
     export_glb(output)
-    blend_path = os.path.splitext(output)[0] + ".blend"
-    export_blend(blend_path)
 
     # Also export flat version (identical for this character)
     flat_output = output.replace(".glb", "_flat.glb")
     export_glb(flat_output)
-    flat_blend = flat_output.replace(".glb", ".blend")
-    export_blend(flat_blend)
 
     print(f"[player_model] Done: {output}")
     print(f"[player_model] Flat: {flat_output}")
-    print(f"[player_model] Blend: {blend_path}")
 
 
 if __name__ == "__main__":

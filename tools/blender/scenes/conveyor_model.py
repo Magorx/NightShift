@@ -38,6 +38,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(BLENDER_DIR, "..", ".."))
 sys.path.insert(0, BLENDER_DIR)
 
+from export_helpers import export_glb
 from render import clear_scene
 from materials.pixel_art import create_flat_material, load_palette
 from texture_library import apply_texture
@@ -439,30 +440,6 @@ def bake_animations(objects):
 
 
 # ---------------------------------------------------------------------------
-# Export
-# ---------------------------------------------------------------------------
-def export_glb(output_path):
-    """Select all and export as .glb with NLA animations."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_animation_mode='NLA_TRACKS',
-        export_merge_animation='NLA_TRACK',
-        export_animations=True,
-    )
-
-
-def export_blend(output_path):
-    """Save the current scene as a .blend file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=output_path)
-
-
-# ---------------------------------------------------------------------------
 # Texturing pass
 # ---------------------------------------------------------------------------
 def apply_textures(objects):
@@ -499,8 +476,6 @@ def main():
 
     flat_output = output.replace("conveyor.glb", "conveyor_flat.glb")
     export_glb(flat_output)
-    flat_blend = os.path.splitext(flat_output)[0] + ".blend"
-    export_blend(flat_blend)
     print(f"[conveyor_model] Flat: {flat_output}")
 
     # --- Pass 2: Textured version ---
@@ -509,11 +484,8 @@ def main():
     apply_textures(objects)
 
     export_glb(output)
-    blend_path = os.path.splitext(output)[0] + ".blend"
-    export_blend(blend_path)
 
     print(f"[conveyor_model] Textured: {output}")
-    print(f"[conveyor_model] Blend: {blend_path}")
     print(f"[conveyor_model] Done.")
 
 

@@ -22,6 +22,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(BLENDER_DIR, "..", ".."))
 sys.path.insert(0, BLENDER_DIR)
 
+from export_helpers import export_glb
 from render import clear_scene
 from materials.pixel_art import create_flat_material, load_palette
 from prefabs_src.box import generate_box
@@ -125,30 +126,6 @@ def animate_translation_oscillate(obj, state_name, duration=2.0, axis='Z',
     _set_linear(act)
     _push_to_nla(obj, act, state_name)
     obj.location[axis_idx] = base_value
-
-
-# ---------------------------------------------------------------------------
-# Export helpers (same pattern as deposit_models.py)
-# ---------------------------------------------------------------------------
-def export_glb(output_path):
-    """Select all and export as .glb with NLA animations."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_animation_mode='NLA_TRACKS',
-        export_merge_animation='NLA_TRACK',
-        export_animations=True,
-    )
-
-
-def export_blend(output_path):
-    """Save the current scene as a .blend file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=output_path)
 
 
 def try_apply_texture(obj, asset_id, resolution="1k"):
@@ -650,11 +627,6 @@ def build_and_export(name, build_fn, anim_fn, texture_fn):
     tex_path = os.path.join(OUTPUT_DIR, f"{name}.glb")
     export_glb(tex_path)
     print(f"[deposit] Exported textured: {tex_path}")
-
-    # Save blend of the textured version
-    blend_path = os.path.join(OUTPUT_DIR, f"{name}.blend")
-    export_blend(blend_path)
-    print(f"[deposit] Blend: {blend_path}")
 
 
 def main():

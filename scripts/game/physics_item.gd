@@ -5,7 +5,7 @@ extends RigidBody3D
 ## Replaces the old discrete conveyor slot system.
 
 const DESPAWN_TIME := 120.0
-const MODEL_SCALE := 2.0
+const MODEL_SCALE := 1.0
 const COLLISION_RADIUS := 0.12
 const MODEL_Y := 0.0
 
@@ -28,10 +28,6 @@ func _ready() -> void:
 	gravity_scale = 1.0
 	continuous_cd = true
 	physics_material_override = _make_physics_material()
-
-	# Don't collide with player
-	if GameManager.player and is_instance_valid(GameManager.player):
-		add_collision_exception_with(GameManager.player)
 
 	# Collision shape
 	var col := CollisionShape3D.new()

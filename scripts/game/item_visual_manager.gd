@@ -4,7 +4,7 @@ extends RefCounted
 ## Each item gets its own Node3D instance from the corresponding .glb model.
 ## Falls back to a small colored sphere if no model exists.
 
-const ITEM_SCALE := 2.0
+const ITEM_SCALE := 1.0
 const ITEM_Y_OFFSET := 0.15
 
 var _parent: Node

@@ -29,6 +29,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(BLENDER_DIR, "..", ".."))
 sys.path.insert(0, BLENDER_DIR)
 
+from export_helpers import export_glb
 from render import clear_scene
 from materials.pixel_art import create_flat_material, load_palette
 from texture_library import apply_texture
@@ -69,30 +70,6 @@ CHAMBER_DEEP = C["chamber_deep"]  # #0F0A08
 # Accents
 ACCENT_YELLOW = C["conv_yellow"]  # #D2B937
 SHADOW        = C["shadow"]       # #231C16
-
-
-# ---------------------------------------------------------------------------
-# Export helpers
-# ---------------------------------------------------------------------------
-def export_glb(output_path):
-    """Select all and export as .glb with NLA animations."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_animation_mode='NLA_TRACKS',
-        export_merge_animation='NLA_TRACK',
-        export_animations=True,
-    )
-
-
-def export_blend(output_path):
-    """Save the current scene as a .blend file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=output_path)
 
 
 # ---------------------------------------------------------------------------
@@ -644,16 +621,12 @@ def main():
     # Export flat version
     flat_glb = os.path.join(junction_dir, "junction_flat.glb")
     export_glb(flat_glb)
-    flat_blend = os.path.join(junction_dir, "junction_flat.blend")
-    export_blend(flat_blend)
     print(f"[junction_tunnel] Junction flat: {flat_glb}")
 
     # Apply textures and export textured version
     apply_junction_textures()
     tex_glb = os.path.join(junction_dir, "junction.glb")
     export_glb(tex_glb)
-    tex_blend = os.path.join(junction_dir, "junction.blend")
-    export_blend(tex_blend)
     print(f"[junction_tunnel] Junction textured: {tex_glb}")
 
     # ── TUNNEL ────────────────────────────────────────────────────────
@@ -666,16 +639,12 @@ def main():
     # Export flat version
     flat_glb = os.path.join(tunnel_dir, "tunnel_flat.glb")
     export_glb(flat_glb)
-    flat_blend = os.path.join(tunnel_dir, "tunnel_flat.blend")
-    export_blend(flat_blend)
     print(f"[junction_tunnel] Tunnel flat: {flat_glb}")
 
     # Apply textures and export textured version
     apply_tunnel_textures()
     tex_glb = os.path.join(tunnel_dir, "tunnel.glb")
     export_glb(tex_glb)
-    tex_blend = os.path.join(tunnel_dir, "tunnel.blend")
-    export_blend(tex_blend)
     print(f"[junction_tunnel] Tunnel textured: {tex_glb}")
 
     print("[junction_tunnel] Done!")

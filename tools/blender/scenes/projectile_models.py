@@ -1,7 +1,7 @@
 """Generate 6 elemental projectile models for Night Shift turrets.
 
 Each projectile is a tiny energy bolt (~0.2 Blender units) with element-specific
-geometry and color. Exported as .glb + .blend with a spinning "idle" animation.
+geometry and color. Exported as .glb with a spinning "idle" animation.
 
 Elements:
     Fire (Pyromite)     -- elongated teardrop/flame
@@ -26,6 +26,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(BLENDER_DIR, "..", ".."))
 sys.path.insert(0, BLENDER_DIR)
 
+from export_helpers import export_glb
 from render import clear_scene
 from materials.pixel_art import create_flat_material
 from prefabs_src.sphere import generate_sphere
@@ -40,36 +41,12 @@ from anim_helpers import animate_rotation, FPS
 OUTPUT_DIR = os.path.join(REPO_ROOT, "effects", "projectiles", "models")
 
 
-# ---------------------------------------------------------------------------
-# Export helpers
-# ---------------------------------------------------------------------------
-def export_glb(output_path):
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_animation_mode='NLA_TRACKS',
-        export_merge_animation='NLA_TRACK',
-        export_animations=True,
-    )
-
-
-def export_blend(output_path):
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=output_path)
-
-
 def export_projectile(name):
-    """Export a projectile as .glb, _flat.glb, .blend, and _flat.blend."""
+    """Export a projectile as .glb and _flat.glb."""
     base = os.path.join(OUTPUT_DIR, name)
     export_glb(base + ".glb")
-    export_blend(base + ".blend")
     # Flat version is identical for objects this small
     export_glb(base + "_flat.glb")
-    export_blend(base + "_flat.blend")
     print(f"  [projectile] Exported {name}")
 
 

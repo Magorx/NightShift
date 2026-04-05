@@ -39,6 +39,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(BLENDER_DIR, "..", ".."))
 sys.path.insert(0, BLENDER_DIR)
 
+from export_helpers import export_glb
 from render import clear_scene
 from materials.pixel_art import create_flat_material, load_palette
 from prefabs_src.cone import generate_cone
@@ -57,35 +58,10 @@ E = load_palette("elements")
 OUTPUT_DIR = os.path.join(REPO_ROOT, "resources", "items", "models")
 
 
-# ---------------------------------------------------------------------------
-# Export helpers (same as item_models.py)
-# ---------------------------------------------------------------------------
-def export_glb(output_path):
-    """Select all and export as .glb with NLA animations."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_animation_mode='NLA_TRACKS',
-        export_merge_animation='NLA_TRACK',
-        export_animations=True,
-    )
-
-
-def export_blend(output_path):
-    """Save the current scene as a .blend file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=output_path)
-
-
 def export_item(name):
-    """Export both textured and flat versions plus .blend."""
+    """Export both textured and flat versions."""
     base_path = os.path.join(OUTPUT_DIR, f"{name}_item")
     export_glb(base_path + ".glb")
-    export_blend(base_path + ".blend")
     export_glb(base_path + "_flat.glb")
     print(f"[combo_items] Exported: {name}")
 

@@ -23,6 +23,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(BLENDER_DIR, "..", ".."))
 sys.path.insert(0, BLENDER_DIR)
 
+from export_helpers import export_glb
 from render import clear_scene
 from materials.pixel_art import create_flat_material
 from texture_library import apply_texture
@@ -60,30 +61,6 @@ RUBBLE_BODY     = "#46372D"
 RUBBLE_RIVET    = "#5A4B3C"
 RUBBLE_STEEL    = "#7A8898"
 RUBBLE_STEEL_DK = "#6A7888"
-
-
-# ---------------------------------------------------------------------------
-# Export helpers
-# ---------------------------------------------------------------------------
-def export_glb(output_path):
-    """Select all and export as .glb with NLA animations."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_animation_mode='NLA_TRACKS',
-        export_merge_animation='NLA_TRACK',
-        export_animations=True,
-    )
-
-
-def export_blend(output_path):
-    """Save the current scene as a .blend file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=output_path)
 
 
 # ---------------------------------------------------------------------------
@@ -471,7 +448,7 @@ def main():
     build_rock()
     flat_path = os.path.join(OUTPUT_DIR, "rock_flat.glb")
     export_glb(flat_path)
-    export_blend(flat_path.replace(".glb", ".blend"))
+
     print(f"[terrain_models] Exported: {flat_path}")
 
     # -- Textured version --
@@ -490,7 +467,7 @@ def main():
     apply_textures_to_model(root, rock_textures)
     tex_path = os.path.join(OUTPUT_DIR, "rock.glb")
     export_glb(tex_path)
-    export_blend(tex_path.replace(".glb", ".blend"))
+
     print(f"[terrain_models] Exported: {tex_path}")
 
     # ======================================================================
@@ -503,7 +480,7 @@ def main():
     build_chasm()
     flat_path = os.path.join(OUTPUT_DIR, "chasm_flat.glb")
     export_glb(flat_path)
-    export_blend(flat_path.replace(".glb", ".blend"))
+
     print(f"[terrain_models] Exported: {flat_path}")
 
     # -- Textured version --
@@ -521,7 +498,7 @@ def main():
     apply_textures_to_model(root, chasm_textures)
     tex_path = os.path.join(OUTPUT_DIR, "chasm.glb")
     export_glb(tex_path)
-    export_blend(tex_path.replace(".glb", ".blend"))
+
     print(f"[terrain_models] Exported: {tex_path}")
 
     # ======================================================================
@@ -534,7 +511,7 @@ def main():
     build_rubble()
     flat_path = os.path.join(OUTPUT_DIR, "rubble_flat.glb")
     export_glb(flat_path)
-    export_blend(flat_path.replace(".glb", ".blend"))
+
     print(f"[terrain_models] Exported: {flat_path}")
 
     # -- Textured version --
@@ -555,7 +532,7 @@ def main():
     apply_textures_to_model(root, rubble_textures)
     tex_path = os.path.join(OUTPUT_DIR, "rubble.glb")
     export_glb(tex_path)
-    export_blend(tex_path.replace(".glb", ".blend"))
+
     print(f"[terrain_models] Exported: {tex_path}")
 
     print("[terrain_models] All terrain features complete!")

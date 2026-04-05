@@ -20,6 +20,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(BLENDER_DIR, "..", ".."))
 sys.path.insert(0, BLENDER_DIR)
 
+from export_helpers import export_glb
 from render import clear_scene
 from materials.pixel_art import create_flat_material, load_palette
 from texture_library import apply_texture
@@ -56,30 +57,6 @@ SINK_RED_LT     = "#EF5350"
 SINK_RED_DK     = "#8B1A1A"
 CHAMBER_DARK    = C["chamber_deep"]   # #0F0A08
 GRATE_COLOR     = C["grate"]          # #372319
-
-
-# ---------------------------------------------------------------------------
-# Export helpers
-# ---------------------------------------------------------------------------
-def export_glb(output_path):
-    """Select all and export as .glb with NLA animations."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_animation_mode='NLA_TRACKS',
-        export_merge_animation='NLA_TRACK',
-        export_animations=True,
-    )
-
-
-def export_blend(output_path):
-    """Save the current scene as a .blend file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=output_path)
 
 
 # ===========================================================================
@@ -449,16 +426,12 @@ def main():
     # Export flat version first
     flat_glb = os.path.join(source_dir, "source_flat.glb")
     export_glb(flat_glb)
-    flat_blend = os.path.join(source_dir, "source_flat.blend")
-    export_blend(flat_blend)
     print(f"[debug_buildings] Source flat: {flat_glb}")
 
     # Apply textures and export textured version
     apply_source_textures()
     tex_glb = os.path.join(source_dir, "source.glb")
     export_glb(tex_glb)
-    tex_blend = os.path.join(source_dir, "source.blend")
-    export_blend(tex_blend)
     print(f"[debug_buildings] Source textured: {tex_glb}")
 
     # ── SINK ──────────────────────────────────────────────────────────
@@ -471,16 +444,12 @@ def main():
     # Export flat version first
     flat_glb = os.path.join(sink_dir, "sink_flat.glb")
     export_glb(flat_glb)
-    flat_blend = os.path.join(sink_dir, "sink_flat.blend")
-    export_blend(flat_blend)
     print(f"[debug_buildings] Sink flat: {flat_glb}")
 
     # Apply textures and export textured version
     apply_sink_textures()
     tex_glb = os.path.join(sink_dir, "sink.glb")
     export_glb(tex_glb)
-    tex_blend = os.path.join(sink_dir, "sink.blend")
-    export_blend(tex_blend)
     print(f"[debug_buildings] Sink textured: {tex_glb}")
 
     print("[debug_buildings] Done!")

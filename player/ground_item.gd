@@ -103,7 +103,7 @@ func _add_item_model() -> void:
 		if scene:
 			var model: Node3D = scene.instantiate()
 			model.name = "Model"
-			model.scale = Vector3(2.0, 2.0, 2.0)
+			model.scale = Vector3(1.0, 1.0, 1.0)
 			model.position.y = 0.15
 			add_child(model)
 			var anim: AnimationPlayer = model.get_node_or_null("AnimationPlayer")

@@ -30,6 +30,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, ".."))
 REPO_ROOT = os.path.normpath(os.path.join(BLENDER_DIR, "..", ".."))
 sys.path.insert(0, BLENDER_DIR)
 
+from export_helpers import export_glb
 from render import clear_scene
 from materials.pixel_art import create_flat_material, load_palette
 from texture_library import apply_texture
@@ -75,28 +76,7 @@ YELLOW     = "#C8A82A"
 RED_WARN   = "#A03030"
 
 
-# ---------------------------------------------------------------------------
-# Export helpers
-# ---------------------------------------------------------------------------
-def export_glb(output_path):
-    """Select all and export as .glb with NLA animations."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.export_scene.gltf(
-        filepath=output_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_animation_mode='NLA_TRACKS',
-        export_merge_animation='NLA_TRACK',
-        export_animations=True,
-    )
 
-
-def export_blend(output_path):
-    """Save the current scene as a .blend file."""
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=output_path)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1264,8 +1244,6 @@ def build_and_export(name, build_fn, anim_fn, texture_fn, output_dir):
 
     flat_glb = os.path.join(output_dir, f"{name}_flat.glb")
     export_glb(flat_glb)
-    flat_blend = os.path.join(output_dir, f"{name}_flat.blend")
-    export_blend(flat_blend)
     print(f"[night_variants] Flat: {flat_glb}")
 
     # --- Pass 2: Textured version ---
@@ -1275,8 +1253,6 @@ def build_and_export(name, build_fn, anim_fn, texture_fn, output_dir):
 
     textured_glb = os.path.join(output_dir, f"{name}.glb")
     export_glb(textured_glb)
-    textured_blend = os.path.join(output_dir, f"{name}.blend")
-    export_blend(textured_blend)
     print(f"[night_variants] Textured: {textured_glb}")
 
 
