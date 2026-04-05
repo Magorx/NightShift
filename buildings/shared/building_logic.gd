@@ -115,6 +115,10 @@ func _on_3d_anim_finished(anim_name: StringName) -> void:
 		_cached_anim_player.play(&"active")
 	elif anim_name == &"winddown" and _cached_anim_player.has_animation(&"idle"):
 		_cached_anim_player.play(&"idle")
+	elif anim_name == &"active" and _anim_active:
+		_cached_anim_player.play(&"active")
+	elif anim_name == &"idle" and not _anim_active:
+		_cached_anim_player.play(&"idle")
 
 ## Return grid positions of buildings linked to this one (e.g. tunnel partner).
 func get_linked_positions() -> Array:
