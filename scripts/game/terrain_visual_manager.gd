@@ -2,11 +2,12 @@ extends RefCounted
 
 ## Renders terrain as elevated blocks via a single ArrayMesh.
 ## Each tile gets a top face at its terrain height, plus vertical side-wall
-## quads wherever adjacent tiles have a lower height.  Colors come from
-## TILE_COLORS; walls use a darkened variant of the top color for depth.
+## quads wherever adjacent tiles have a lower height.  Textured tiles sample
+## from baked procedural textures; non-textured tiles use vertex colors.
 
 # ── Tile color palette ──────────────────────────────────────────────────────
 # Indexed by TileDatabase tile type ID (0-8).
+# Still used for: wall darkening tint, side walls, and non-textured fallback.
 
 const TILE_COLORS := {
 	0: Color(0.35, 0.50, 0.30),   # TILE_GROUND       — base green
@@ -27,6 +28,31 @@ const WALL_DARKEN_PX := 0.42  # +X wall (right side, darkest)
 const WALL_DARKEN_NX := 0.62  # -X wall (left side)
 const WALL_DARKEN_PZ := 0.48  # +Z wall (front-facing in iso view)
 const WALL_DARKEN_NZ := 0.72  # -Z wall (back-facing, lightest)
+
+# ── Terrain texture mapping ────────────────────────────────────────────────
+# Texture array layer order (must match file loading order below)
+const TEXTURE_DIR := "res://textures/terrain/"
+const TEXTURE_LAYERS := [
+	"grassland_base",      # layer 0
+	"grassland_dark",      # layer 1
+	"grassland_light",     # layer 2
+	"pyromite_ground",     # layer 3
+	"crystalline_ground",  # layer 4
+	"biovine_ground",      # layer 5
+]
+
+# Map tile type ID → texture layer index.  Missing = vertex-color-only.
+const TILE_TEXTURE_LAYER := {
+	0: 0,   # GROUND       → grassland_base
+	1: 3,   # PYROMITE     → pyromite_ground
+	2: 4,   # CRYSTALLINE  → crystalline_ground
+	3: 5,   # BIOVINE      → biovine_ground
+	5: 1,   # GROUND_DARK  → grassland_dark
+	6: 2,   # GROUND_LIGHT → grassland_light
+}
+
+# UV.x sentinel: means "use vertex color, no texture"
+const NO_TEXTURE_LAYER := -1.0
 
 var _mesh_instance: MeshInstance3D
 var _map_size: int = 0
@@ -65,9 +91,10 @@ func build(map_size: int, tile_types: PackedByteArray, _variants: PackedByteArra
 			var h: float = _heights[idx]
 			var tile_type: int = tile_types[idx]
 			var col: Color = TILE_COLORS.get(tile_type, DEFAULT_COLOR)
+			var tex_layer: float = float(TILE_TEXTURE_LAYER.get(tile_type, -1))
 
 			# ── Top face (XZ quad at height h) ──
-			_add_top_face(st, x, y, h, col)
+			_add_top_face(st, x, y, h, col, tex_layer)
 
 			# ── Side walls (where this tile is higher than neighbor) ──
 			# Check 4 neighbors: +X, -X, +Z, -Z
@@ -167,13 +194,14 @@ func create_box_collision() -> ConcavePolygonShape3D:
 
 # ── Private ──────────────────────────────────────────────────────────────────
 
-func _add_top_face(st: SurfaceTool, x: int, y: int, h: float, col: Color) -> void:
+func _add_top_face(st: SurfaceTool, x: int, y: int, h: float, col: Color, tex_layer: float = NO_TEXTURE_LAYER) -> void:
 	var x0 := float(x) - 0.5
 	var x1 := float(x) + 0.5
 	var z0 := float(y) - 0.5
 	var z1 := float(y) + 0.5
 
 	st.set_color(col)
+	st.set_uv(Vector2(tex_layer, 0.0))
 
 	# Counter-clockwise winding from above → normals point UP (+Y)
 	# Triangle 1
@@ -217,6 +245,7 @@ func _add_side_walls(st: SurfaceTool, x: int, y: int, h: float, col: Color, map_
 
 func _add_wall_quad(st: SurfaceTool, x: int, y: int, h_top: float, h_bottom: float, dx: int, dz: int, col: Color) -> void:
 	st.set_color(col)
+	st.set_uv(Vector2(NO_TEXTURE_LAYER, 0.0))
 
 	# Determine the edge of this tile facing the neighbor
 	var x0: float
@@ -258,33 +287,56 @@ func _add_wall_quad(st: SurfaceTool, x: int, y: int, h_top: float, h_bottom: flo
 
 
 func _create_material() -> ShaderMaterial:
-	var shader := Shader.new()
-	shader.code = "shader_type spatial;
-render_mode unshaded, cull_disabled;
-
-varying vec3 v_color;
-varying vec3 v_world_pos;
-varying vec3 v_normal;
-
-void vertex() {
-	v_color = COLOR.rgb;
-	v_world_pos = VERTEX;  // terrain mesh is at origin
-	v_normal = NORMAL;
-}
-
-void fragment() {
-	vec3 col = v_color;
-	// Top faces only: draw thin dark border lines at tile boundaries
-	if (v_normal.y > 0.5) {
-		float edge_x = abs(fract(v_world_pos.x + 0.5) - 0.5);
-		float edge_z = abs(fract(v_world_pos.z + 0.5) - 0.5);
-		float edge = max(edge_x, edge_z);
-		float line = smoothstep(0.42, 0.50, edge);
-		col *= mix(1.0, 0.72, line);
-	}
-	ALBEDO = col;
-}
-"
+	var shader: Shader = load("res://shaders/terrain.gdshader")
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
+
+	# Load terrain textures into Texture2DArrays
+	var diffuse_array := _load_texture_array("_diffuse.png")
+	var normal_array := _load_texture_array("_normal.png")
+
+	if diffuse_array:
+		mat.set_shader_parameter("terrain_diffuse", diffuse_array)
+	if normal_array:
+		mat.set_shader_parameter("terrain_normal", normal_array)
+
 	return mat
+
+
+func _load_texture_array(suffix: String) -> Texture2DArray:
+	var images: Array[Image] = []
+	var first_size := Vector2i.ZERO
+
+	for layer_name in TEXTURE_LAYERS:
+		var tex_path: String = TEXTURE_DIR + layer_name + suffix
+		if not ResourceLoader.exists(tex_path):
+			push_warning("TerrainVisualManager: missing texture %s — falling back to vertex colors" % tex_path)
+			return null
+
+		var tex_res: Texture2D = load(tex_path)
+		if not tex_res:
+			push_warning("TerrainVisualManager: failed to load %s — falling back to vertex colors" % tex_path)
+			return null
+
+		var img: Image = tex_res.get_image()
+
+		if first_size == Vector2i.ZERO:
+			first_size = Vector2i(img.get_width(), img.get_height())
+		elif Vector2i(img.get_width(), img.get_height()) != first_size:
+			img.resize(first_size.x, first_size.y)
+
+		img.convert(Image.FORMAT_RGBA8)
+		# Downsample to match game pixel density — 1024px textures are
+		# invisible when displayed at ~10px per tile. 64px gives chunky,
+		# visible texels at isometric zoom.
+		if img.get_width() > 64:
+			img.resize(64, 64, Image.INTERPOLATE_LANCZOS)
+		images.append(img)
+
+	var tex := Texture2DArray.new()
+	var err := tex.create_from_images(images)
+	if err != OK:
+		push_warning("TerrainVisualManager: failed to create texture array — falling back to vertex colors")
+		return null
+
+	return tex
