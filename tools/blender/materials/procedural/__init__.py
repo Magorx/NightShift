@@ -19,6 +19,10 @@ from materials.procedural.grassland import grassland
 from materials.procedural.pyromite_ground import pyromite_ground
 from materials.procedural.crystalline_ground import crystalline_ground
 from materials.procedural.biovine_ground import biovine_ground
+from materials.procedural.item_materials import (
+    pyromite_item, crystalline_item, biovine_item,
+    voltite_item, umbrite_item, resonite_item,
+)
 
 __all__ = [
     'rocky_land',
@@ -26,4 +30,10 @@ __all__ = [
     'pyromite_ground',
     'crystalline_ground',
     'biovine_ground',
+    'pyromite_item',
+    'crystalline_item',
+    'biovine_item',
+    'voltite_item',
+    'umbrite_item',
+    'resonite_item',
 ]
