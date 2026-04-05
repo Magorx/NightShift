@@ -55,6 +55,29 @@ func wall_rect(top_left: Vector2i, bottom_right: Vector2i) -> void:
 func clear_walls() -> void:
 	GameManager.walls.clear()
 
+# ── Terrain Heights ─────────────────────────────────────────────────────────
+
+## Set terrain height at a single grid position.
+func set_height(pos: Vector2i, height: float) -> void:
+	if GameManager.terrain_heights.is_empty():
+		GameManager.terrain_heights.resize(GameManager.map_size * GameManager.map_size)
+		GameManager.terrain_heights.fill(0.0)
+	var idx := pos.y * GameManager.map_size + pos.x
+	if idx >= 0 and idx < GameManager.terrain_heights.size():
+		GameManager.terrain_heights[idx] = height
+
+## Set terrain height for a rectangular area.
+func set_height_rect(top_left: Vector2i, bottom_right: Vector2i, height: float) -> void:
+	for x in range(top_left.x, bottom_right.x + 1):
+		for y in range(top_left.y, bottom_right.y + 1):
+			set_height(Vector2i(x, y), height)
+
+## Set all terrain to a flat height.
+func set_flat_height(height: float) -> void:
+	if GameManager.terrain_heights.is_empty():
+		GameManager.terrain_heights.resize(GameManager.map_size * GameManager.map_size)
+	GameManager.terrain_heights.fill(height)
+
 # ── Buildings (pre-placed) ───────────────────────────────────────────────────
 
 ## Pre-place a building (instant, no player involvement).
@@ -93,7 +116,7 @@ func conveyor_line(from: Vector2i, to: Vector2i) -> int:
 ## Spawn a physics item at a grid position.
 func spawn_item(pos: Vector2i, item_id: StringName) -> void:
 	var world_pos := GridUtils.grid_to_world(pos)
-	world_pos.y = 0.3  # above ground so it falls naturally
+	world_pos.y = GameManager.get_terrain_height(pos) + 0.3  # above terrain
 	PhysicsItem.spawn(item_id, world_pos, Vector3.ZERO)
 
 # ── Player ───────────────────────────────────────────────────────────────────
@@ -103,6 +126,7 @@ func player_start(pos: Vector2i) -> void:
 	var player: Player = GameManager.player
 	if player:
 		var world_pos := GridUtils.grid_to_world(pos)
-		player.position = Vector3(world_pos.x, 0.0, world_pos.z)
+		world_pos.y = GameManager.get_terrain_height(pos) + 0.1
+		player.position = world_pos
 		player.spawn_position = player.position
 		player.velocity = Vector3.ZERO

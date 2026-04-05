@@ -37,6 +37,7 @@ var cluster_drain_manager
 # Terrain visual data (for MultiMesh rendering and save/load)
 var terrain_tile_types: PackedByteArray  # flat row-major, one byte per cell
 var terrain_variants: PackedByteArray    # low nibble = fg variant, high nibble = misc variant
+var terrain_heights: PackedFloat32Array  # elevation per cell (row-major, world units)
 var terrain_visual_manager  # TerrainVisualManager (set by game_world)
 
 # World generation seed (saved/loaded for reproducibility)
@@ -348,8 +349,9 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	# Instantiate building from its .tscn scene (contains Model + IO markers)
 	var building: Node3D = def.scene.instantiate()
 	building.init(id, grid_pos, rotation)
-	# Position so the anchor cell aligns with grid_pos
+	# Position so the anchor cell aligns with grid_pos, elevated to terrain
 	building.position = GridUtils.grid_to_world(grid_pos - def.anchor_cell)
+	building.position.y = get_terrain_height(grid_pos)
 	# Rotation: Y-axis rotation (0=right, 1=down, 2=left, 3=up)
 	building.rotation.y = -rotation * PI / 2.0
 
@@ -457,6 +459,14 @@ func get_building_group(building) -> Array:
 			group.append(linked)
 	return group
 
+func get_terrain_height(grid_pos: Vector2i) -> float:
+	if terrain_heights.is_empty():
+		return 0.0
+	var idx := grid_pos.y * map_size + grid_pos.x
+	if idx < 0 or idx >= terrain_heights.size():
+		return 0.0
+	return terrain_heights[idx]
+
 func get_deposit_at(grid_pos: Vector2i):
 	return deposits.get(grid_pos)
 
@@ -520,6 +530,7 @@ func clear_all() -> void:
 		terrain_visual_manager.clear()
 	terrain_tile_types = PackedByteArray()
 	terrain_variants = PackedByteArray()
+	terrain_heights = PackedFloat32Array()
 	deposit_stocks.clear()
 	total_currency = 0
 	items_delivered.clear()

@@ -87,6 +87,7 @@ func _ready() -> void:
 		var result: Array = gen.generate(null, GameManager.map_size, GameManager.world_seed)
 		GameManager.terrain_tile_types = result[0]
 		GameManager.terrain_variants = result[1]
+		GameManager.terrain_heights = result[2]
 
 	# Run stress test generator if requested
 	if GameManager.stress_test_pending:
@@ -120,19 +121,23 @@ func _ready() -> void:
 		SaveManager.pending_load = false
 		SaveManager.load_run()
 
-	# Build terrain MultiMesh visuals (tile_types + variants are set by gen or deserialize)
+	# Build terrain visuals (tile_types + variants + heights are set by gen or deserialize)
 	if GameManager.terrain_tile_types.size() > 0:
 		GameManager.terrain_visual_manager.build(
 			GameManager.map_size,
 			GameManager.terrain_tile_types,
-			GameManager.terrain_variants
+			GameManager.terrain_variants,
+			GameManager.terrain_heights
 		)
 
-	# Scale ground plane to match map size
+	# Replace infinite ground plane with terrain collision mesh
+	_setup_terrain_collision()
+
+	# Scale ground plane to match map size (sits below terrain as fallback floor)
 	var ground_plane: MeshInstance3D = $GroundPlane
 	if ground_plane:
 		var map_sz := float(GameManager.map_size)
-		ground_plane.position = Vector3(map_sz / 2.0, -0.01, map_sz / 2.0)
+		ground_plane.position = Vector3(map_sz / 2.0, -0.05, map_sz / 2.0)
 		var mesh: PlaneMesh = ground_plane.mesh
 		if mesh:
 			mesh.size = Vector2(map_sz, map_sz)
@@ -297,6 +302,28 @@ func _open_pause_menu() -> void:
 	var pause_menu := _pause_menu_scene.instantiate()
 	$UI.add_child(pause_menu)
 
+func _setup_terrain_collision() -> void:
+	if not GameManager.terrain_visual_manager:
+		return
+	var result: Array = GameManager.terrain_visual_manager.create_heightmap_collision()
+	if result.is_empty():
+		return
+	var shape: HeightMapShape3D = result[0]
+	var body_pos: Vector3 = result[1]
+	# Remove the infinite ground plane — heightmap replaces it
+	var old_ground := get_node_or_null("GroundCollision")
+	if old_ground:
+		old_ground.queue_free()
+	var body := StaticBody3D.new()
+	body.name = "TerrainCollision"
+	body.position = body_pos
+	body.collision_layer = 4  # layer 3 (ground)
+	body.collision_mask = 0
+	var col_shape := CollisionShape3D.new()
+	col_shape.shape = shape
+	body.add_child(col_shape)
+	add_child(body)
+
 func _spawn_deposit_models() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = GameManager.world_seed + 888
@@ -313,6 +340,7 @@ func _spawn_deposit_models() -> void:
 			continue
 		var inst: Node3D = _deposit_scenes[item_id].instantiate()
 		var world_pos := GridUtils.grid_to_world(pos)
+		world_pos.y = GameManager.get_terrain_height(pos)
 		inst.position = world_pos
 		inst.rotation.y = rng.randf() * TAU
 		var s := rng.randf_range(0.5, 0.8)
@@ -347,6 +375,7 @@ func _spawn_terrain_decorations() -> void:
 
 		var inst: Node3D = scene.instantiate()
 		var world_pos := GridUtils.grid_to_world(pos)
+		world_pos.y = GameManager.get_terrain_height(pos)
 		inst.position = world_pos
 		inst.rotation.y = rng.randf() * TAU
 		var s := rng.randf_range(0.4, 0.7)
@@ -356,8 +385,10 @@ func _spawn_terrain_decorations() -> void:
 func _spawn_player() -> void:
 	player = _player_scene.instantiate()
 	# Spawn at map center (grid midpoint)
+	@warning_ignore("integer_division")
 	var center_grid := Vector2i(GameManager.map_size / 2, GameManager.map_size / 2)
 	var center := GridUtils.grid_to_world(center_grid)
+	center.y = GameManager.get_terrain_height(center_grid) + 0.1
 	player.position = center
 	player.spawn_position = center
 	add_child(player)

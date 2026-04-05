@@ -48,6 +48,9 @@ func run_simulation() -> void:
 	setup_map()
 	setup_monitors()
 
+	# Rebuild terrain visuals + collision if heights were modified by setup_map
+	_rebuild_terrain()
+
 	# Small settle time for physics/visuals to initialize
 	await sim_advance_ticks(10)
 
@@ -84,6 +87,43 @@ func assert_eq_scenario(actual, expected, msg: String) -> void:
 
 func assert_gt_scenario(actual: float, threshold: float, msg: String) -> void:
 	sim_assert(actual > threshold, "[%s] %s (got %.2f, need > %.2f)" % [scenario_name(), msg, actual, threshold])
+
+# ── Terrain rebuild ─────────────────────────────────────────────────────────
+
+## Rebuild terrain visuals + collision after setup_map() modifies heights.
+func _rebuild_terrain() -> void:
+	if GameManager.terrain_heights.is_empty():
+		return
+	# Rebuild visual mesh
+	if GameManager.terrain_visual_manager:
+		GameManager.terrain_visual_manager.build(
+			GameManager.map_size,
+			GameManager.terrain_tile_types,
+			GameManager.terrain_variants,
+			GameManager.terrain_heights
+		)
+	# Replace terrain collision (remove old one if present)
+	var old_col := game_world.get_node_or_null("TerrainCollision")
+	if old_col:
+		old_col.queue_free()
+	if GameManager.terrain_visual_manager:
+		var result: Array = GameManager.terrain_visual_manager.create_heightmap_collision()
+		if not result.is_empty():
+			var shape: HeightMapShape3D = result[0]
+			var body_pos: Vector3 = result[1]
+			# Remove the infinite ground plane — heightmap replaces it
+			var old_ground := game_world.get_node_or_null("GroundCollision")
+			if old_ground:
+				old_ground.queue_free()
+			var body := StaticBody3D.new()
+			body.name = "TerrainCollision"
+			body.position = body_pos
+			body.collision_layer = 4
+			body.collision_mask = 0
+			var col_shape := CollisionShape3D.new()
+			col_shape.shape = shape
+			body.add_child(col_shape)
+			game_world.add_child(body)
 
 # ── Camera helpers ───────────────────────────────────────────────────────────
 

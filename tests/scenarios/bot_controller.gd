@@ -51,9 +51,11 @@ func walk_to(pos: Vector2i) -> bool:
 ## Teleport the player instantly to a grid position (no physics traversal).
 func teleport_to(pos: Vector2i) -> void:
 	var wpos := GridUtils.grid_to_world(pos)
-	_player.position = Vector3(wpos.x, _player.position.y, wpos.z)
-	_log("teleport_to %s" % str(pos))
-	await _sim.sim_advance_ticks(2)  # let physics settle
+	var terrain_y: float = GameManager.get_terrain_height(pos)
+	_player.position = Vector3(wpos.x, terrain_y + 0.1, wpos.z)
+	_player.velocity = Vector3.ZERO
+	_log("teleport_to %s (terrain_y=%.2f)" % [str(pos), terrain_y])
+	await _sim.sim_advance_ticks(5)  # let physics settle
 
 ## Sprint to a grid position (faster, drains stamina).
 func sprint_to(pos: Vector2i) -> bool:

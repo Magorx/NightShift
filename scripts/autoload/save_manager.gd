@@ -109,6 +109,9 @@ func _serialize_run() -> Dictionary:
 		# Save terrain visual variants (fg + misc per cell)
 		if GameManager.terrain_variants.size() > 0:
 			data["terrain_variants"] = Marshalls.raw_to_base64(GameManager.terrain_variants)
+		# Save terrain heights
+		if GameManager.terrain_heights.size() > 0:
+			data["terrain_heights"] = Marshalls.raw_to_base64(GameManager.terrain_heights.to_byte_array())
 	if GameManager.player and is_instance_valid(GameManager.player):
 		data["player"] = GameManager.player.serialize()
 	data["ground_items"] = _serialize_ground_items()
@@ -212,6 +215,16 @@ func _deserialize_run(data: Dictionary) -> void:
 			else:
 				# Legacy save without variants: generate them fresh
 				_regenerate_terrain_variants()
+			# Restore terrain heights
+			var height_data: String = data.get("terrain_heights", "")
+			if not height_data.is_empty():
+				var height_bytes := Marshalls.base64_to_raw(height_data)
+				GameManager.terrain_heights = height_bytes.to_float32_array()
+			else:
+				# Legacy save without heights: flat terrain
+				GameManager.terrain_heights = PackedFloat32Array()
+				GameManager.terrain_heights.resize(GameManager.map_size * GameManager.map_size)
+				GameManager.terrain_heights.fill(0.0)
 
 	# Restore buildings
 	var building_list: Array = data.get("buildings", [])

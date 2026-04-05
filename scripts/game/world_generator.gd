@@ -35,9 +35,10 @@ var _rng: RandomNumberGenerator
 var _seed: int
 
 
-## Returns [tile_types: PackedByteArray, variants: PackedByteArray]
+## Returns [tile_types: PackedByteArray, variants: PackedByteArray, heights: PackedFloat32Array]
 ## tile_types: flat row-major array of tile type IDs per cell
 ## variants:   flat row-major array, low nibble = fg variant, high nibble = misc variant
+## heights:    flat row-major array of terrain elevation in world units
 func generate(tile_map, map_size: int, world_seed: int) -> Array:
 	_seed = world_seed
 	_rng = RandomNumberGenerator.new()
@@ -71,7 +72,10 @@ func generate(tile_map, map_size: int, world_seed: int) -> Array:
 	# Step 7: Generate terrain visual variants (fg + misc per cell)
 	var variants := _generate_visual_variants(map_size, tile_types)
 
-	return [tile_types, variants]
+	# Step 8: Generate terrain height map (noise-based elevation)
+	var heights := _generate_heights(map_size, spawn)
+
+	return [tile_types, variants, heights]
 
 
 # ── Wall Generation ─────────────────────────────────────────────────────────
@@ -569,6 +573,60 @@ func _generate_visual_variants(map_size: int, tile_types: PackedByteArray) -> Pa
 		variants[i] = fg_var | (misc_var << 4)
 
 	return variants
+
+
+# ── Height Generation ──────────────────────────────────────────────────────
+
+const HEIGHT_STEP := 0.5       # quantization step for blocky terrain
+const MAX_HEIGHT := 2.0        # maximum elevation in world units
+const HEIGHT_FLAT_RADIUS := 8  # tiles around spawn that are guaranteed flat
+
+func _generate_heights(map_size: int, spawn: Vector2i) -> PackedFloat32Array:
+	var heights := PackedFloat32Array()
+	heights.resize(map_size * map_size)
+
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.seed = _seed + 1000
+	noise.frequency = 0.035
+	noise.fractal_octaves = 3
+	noise.fractal_lacunarity = 2.0
+	noise.fractal_gain = 0.5
+
+	# Secondary noise for local variation
+	var noise2 := FastNoiseLite.new()
+	noise2.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise2.seed = _seed + 1100
+	noise2.frequency = 0.08
+	noise2.fractal_octaves = 2
+
+	for y in range(map_size):
+		for x in range(map_size):
+			var idx := y * map_size + x
+			var dist := Vector2(x - spawn.x, y - spawn.y).length()
+
+			# Flat zone near spawn
+			if dist < HEIGHT_FLAT_RADIUS:
+				heights[idx] = 0.0
+				continue
+
+			# Smooth ramp from flat zone to full height
+			var ramp := clampf((dist - HEIGHT_FLAT_RADIUS) / 15.0, 0.0, 1.0)
+
+			# Combine two noise layers
+			var n1: float = noise.get_noise_2d(x, y)
+			var n2: float = noise2.get_noise_2d(x, y) * 0.3
+			var raw: float = (n1 + n2 + 1.0) * 0.5  # normalize to ~0..1
+
+			var h: float = raw * MAX_HEIGHT * ramp
+
+			# Quantize to discrete steps for blocky look
+			h = floor(h / HEIGHT_STEP) * HEIGHT_STEP
+			h = clampf(h, 0.0, MAX_HEIGHT)
+
+			heights[idx] = h
+
+	return heights
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
