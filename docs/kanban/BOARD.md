@@ -2,6 +2,202 @@
 
 ## Backlog
 
+### **PHYS.1** Physics item: RigidBody3D resource entity `2h`
+
+  - tags: [physics-factory, core]
+  - priority: critical
+  - steps:
+      - [ ] Create `scripts/game/physics_item.gd` extending `RigidBody3D`
+      - [ ] Properties: `item_id: StringName` (one item = one resource, no quantity/stacking)
+      - [ ] On `_ready`: load .glb model from `resources/items/models/{item_id}_item.glb`, add as child
+      - [ ] Collision: small `SphereShape3D` (radius ~0.1), physics material with moderate friction + bounce
+      - [ ] Auto-despawn timer (120s), no merging — each item is a distinct physical object
+      - [ ] Item spawning helper: `PhysicsItem.spawn(item_id, position, impulse)` static factory
+      - [ ] Player pickup: detect via `Area3D` overlap, E to collect
+    ```md
+    The atomic unit of the physics factory. Items are real rigid bodies that roll,
+    bounce, pile up, and get scattered by explosions. Replaces the old discrete
+    conveyor slot system entirely.
+    ```
+
+### **PHYS.2** Conveyor belt: physics surface transport `3h`
+
+  - tags: [physics-factory, transport]
+  - priority: critical
+  - depends: PHYS.1
+  - steps:
+      - [ ] Rewrite conveyor as `StaticBody3D` with conveyor.glb model
+      - [ ] Transport mechanism: `Area3D` trigger zone on top surface, applies constant force to overlapping RigidBody3D items in the conveyor's facing direction
+      - [ ] Tune force magnitude so items move at a satisfying speed (~2-3 tiles/sec)
+      - [ ] Side walls on the conveyor model prevent items from falling off
+      - [ ] Items pile up naturally at the end if blocked — no discrete slots
+      - [ ] Conveyor-to-conveyor: items roll from one onto the next via physics
+      - [ ] Update `conveyor.tscn` with the new StaticBody3D + Area3D structure
+    ```md
+    Conveyors are physical surfaces that push items. No pull system, no slots.
+    Items roll along via applied forces. The conveyor.glb model already has
+    side walls and rollers — use those as collision geometry.
+    ```
+
+### **PHYS.3** Building IO zones: 3D input/output areas `2h`
+
+  - tags: [physics-factory, buildings]
+  - priority: critical
+  - depends: PHYS.1
+  - steps:
+      - [ ] Define input zones as `Area3D` volumes slightly inside the building mesh — items roll/slide into the building visually
+      - [ ] Define output zones as `Area3D` volumes at the output edge — spawned items appear here with a small outward impulse
+      - [ ] Replace the old IO marker system (ColorRect, direction masks) with `Marker3D` + `Area3D` pairs in each building .tscn
+      - [ ] Input zone detects overlapping `PhysicsItem` nodes, building logic consumes them
+      - [ ] Output zone is just a spawn point — building logic calls `PhysicsItem.spawn()` at the output position
+      - [ ] Update `building_def.gd` to extract IO zone positions from `Marker3D` nodes instead of ColorRect offsets
+    ```md
+    Buildings don't blindly suck up all nearby items. Each building has dedicated
+    input zones (recessed into the mesh so items visually flow in) and output zones
+    (at the edge where products appear). The spatial design of IO creates natural
+    item flow without a pull system.
+    ```
+
+### **PHYS.4** Drill extractor: physics item spawner `1.5h`
+
+  - tags: [physics-factory, buildings]
+  - priority: critical
+  - depends: PHYS.1, PHYS.3
+  - steps:
+      - [ ] Rewrite drill logic to spawn `PhysicsItem` at its output zone on a timer
+      - [ ] Item gets a small outward impulse so it rolls onto an adjacent conveyor
+      - [ ] If no conveyor, items pile up at the output — player can pick them up manually
+      - [ ] Update `drill.tscn`: Node3D root + drill.glb model + output `Area3D`/`Marker3D` + logic script
+      - [ ] Remove all references to the old pull-based extraction
+    ```md
+    Drills periodically spawn physical resource items at their output. No pull
+    system — items just appear and roll. If nothing carries them away, they pile up.
+    ```
+
+### **PHYS.5** Smelter/Converter: physics-based processing `2h`
+
+  - tags: [physics-factory, buildings]
+  - priority: critical
+  - depends: PHYS.1, PHYS.3
+  - steps:
+      - [ ] Rewrite converter logic: input `Area3D` detects items entering, accumulates recipe ingredients
+      - [ ] When recipe is satisfied (e.g. 1 pyromite + 1 crystalline), consume both items (queue_free) and spawn output `PhysicsItem` at output zone
+      - [ ] Input zone positioned inside the mesh — items roll in and visually disappear into the building
+      - [ ] Output zone at the building edge with outward impulse
+      - [ ] Update `smelter.tscn` with input/output Area3D zones
+      - [ ] Visual: play "active" animation while processing
+    ```md
+    Converters have input zones slightly inside the building so items flow into them
+    visually. When the right combination arrives, the output appears at the other side.
+    No pull system — just spatial item detection.
+    ```
+
+### **PHYS.6** Splitter: physics deflector `1.5h`
+
+  - tags: [physics-factory, buildings]
+  - priority: high
+  - depends: PHYS.2
+  - steps:
+      - [ ] Rewrite splitter as a physical geometry that deflects items
+      - [ ] Rotating distributor hub in the model directs items to alternating output chutes
+      - [ ] Or: angled collision surfaces split incoming item stream mechanically
+      - [ ] 3 output directions (forward, left-forward, right-forward)
+      - [ ] Update `splitter.tscn` with collision geometry
+    ```md
+    The splitter physically redirects items using geometry, not logic. The rotating
+    hub or angled surfaces create a natural 3-way split. Items bounce and roll
+    to different outputs based on timing and physics.
+    ```
+
+### **PHYS.7** Source/Sink debug buildings + junction/tunnel `1.5h`
+
+  - tags: [physics-factory, buildings, debug]
+  - priority: medium
+  - depends: PHYS.1, PHYS.3
+  - steps:
+      - [ ] Source: spawns items at a configurable rate, outputs via physics
+      - [ ] Sink: Area3D consumes any item that enters, counts deliveries
+      - [ ] Junction: open crossover — items roll through in any direction (no blocking)
+      - [ ] Tunnel: pair of portals — item entering one teleports to the other with preserved velocity
+      - [ ] Update all .tscn files
+    ```md
+    Debug/utility buildings adapted for physics transport.
+    ```
+
+### **PHYS.8** Gut old transport system `2h`
+
+  - tags: [physics-factory, cleanup]
+  - priority: medium
+  - depends: PHYS.2, PHYS.4, PHYS.5
+  - steps:
+      - [ ] Remove `ConveyorSystem` (per-frame tick processing)
+      - [ ] Remove `GameManager.pull_item()` and the entire pull-based transfer system
+      - [ ] Remove `ItemBuffer` class and discrete item slot logic
+      - [ ] Remove `ConveyorBelt` class (replaced by physics conveyor)
+      - [ ] Remove old `item_visual_manager.gd` and `item_visual_handle.gd` (items are now real nodes)
+      - [ ] Remove `conveyor_visual_manager.gd` (conveyors are individual scene instances)
+      - [ ] Clean up `GameManager` references to removed systems
+      - [ ] Update/remove simulations that test the old transport
+    ```md
+    Delete everything from the Factor engine's discrete transport system.
+    The physics system replaces it entirely. Big cleanup card.
+    ```
+
+### **PHYS.9** Building .tscn 3D rewrite: all scenes `3h`
+
+  - tags: [physics-factory, scenes]
+  - priority: critical
+  - depends: PHYS.3
+  - steps:
+      - [ ] Rewrite `drill.tscn`: Node3D root + drill.glb (pre-scaled) + output Marker3D/Area3D + ExtractorLogic
+      - [ ] Rewrite `conveyor.tscn`: StaticBody3D root + conveyor.glb + transport Area3D + ConveyorLogic
+      - [ ] Rewrite `smelter.tscn`: Node3D root + smelter.glb + input/output Area3D + ConverterLogic
+      - [ ] Rewrite `splitter.tscn`: Node3D root + splitter.glb + deflection geometry + SplitterLogic
+      - [ ] Rewrite `source.tscn`, `sink.tscn`: debug buildings with Area3D zones
+      - [ ] Rewrite `junction.tscn`, `tunnel_input.tscn`, `tunnel_output.tscn`
+      - [ ] Each scene: .glb model pre-scaled to grid size, Marker3D for anchor, Area3D for IO
+      - [ ] Remove all Node2D/ColorRect/AnimatedSprite2D remnants
+      - [ ] Update `building_def.gd` extraction for the new 3D scene structure
+    ```md
+    Every building .tscn becomes a clean 3D scene: Node3D root, imported .glb model
+    at correct scale, Area3D IO zones, and logic script. No more 2D legacy nodes.
+    This is the central card — all physics building cards depend on the scene structure
+    defined here.
+    ```
+
+### **PHYS.10** Build system: 3D ghost preview + placement `2h`
+
+  - tags: [physics-factory, ui]
+  - priority: high
+  - depends: PHYS.9
+  - steps:
+      - [ ] Update `build_system.gd` ghost creation to instantiate the new 3D .tscn scenes
+      - [ ] Ghost tinting: iterate MeshInstance3D children, apply transparent overlay material
+      - [ ] Ghost placement: position in GhostLayer (Node3D), not Node2D
+      - [ ] Ghost rotation: Y-axis rotation matching building rotation
+      - [ ] Validity coloring: green tint = valid, red tint = blocked
+      - [ ] Disable physics/Area3D on ghost instances (set collision layers to 0)
+    ```md
+    Build mode shows proper 3D model ghosts. The ghost is the actual building scene
+    with physics disabled and a transparent tint applied to all meshes.
+    ```
+
+### **PHYS.11** Physics sim tests `1.5h`
+
+  - tags: [physics-factory, test]
+  - priority: medium
+  - depends: PHYS.4, PHYS.5, PHYS.6
+  - steps:
+      - [ ] Write sim: drill spawns items, items roll onto conveyor, reach sink
+      - [ ] Write sim: two resources converge at smelter, output produced
+      - [ ] Write sim: splitter divides item stream
+      - [ ] Write sim: items pile up when blocked (no crash, no leak)
+      - [ ] All sims must run headless with `--fixed-fps 60`
+    ```md
+    New simulation tests for the physics transport system. The old conveyor/pull
+    simulations will be removed in PHYS.8.
+    ```
+
 ### **3D.11** 3D grid overlay + debug visualization `1.5h`
 
   - tags: [3d-transition, polish]
