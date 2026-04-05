@@ -46,9 +46,6 @@ var selected_slot: int = 0
 
 # -- Conveyor push ------------------------------------------------------------
 var _conveyor_push: Vector3 = Vector3.ZERO
-var _conv_progress: float = 0.0           # 0->1 within current tile
-var _conv_entry_point: Vector3 = Vector3.ZERO  # player position when entering tile
-var _conv_grid: Vector2i = Vector2i(-999, -999)
 
 # -- Visual -------------------------------------------------------------------
 var facing_direction: Vector3 = Vector3.RIGHT  # XZ plane direction
@@ -57,6 +54,7 @@ var stamina: float = STAMINA_MAX
 # -- Collision layer constants ------------------------------------------------
 const PLAYER_COLLISION_LAYER := 1
 const BUILDING_COLLISION_LAYER := 2
+const ITEM_COLLISION_LAYER := 4  # bit value = 8
 
 # -- Hand mining --------------------------------------------------------------
 const HAND_MINE_TIME := 1.0       # seconds per ore mined by hand
@@ -211,57 +209,28 @@ func _get_ground_height() -> float:
 	return BUILDING_Z_HEIGHT
 
 func _update_collision_for_height() -> void:
-	# Always collide with ground (layer 1). Toggle building collision (layer 2)
-	# based on elevation — when on top of buildings, disable so player walks over.
+	# Always collide with ground (layer 1) and items (layer 4).
+	# Toggle building collision (layer 2) based on elevation —
+	# when on top of buildings, disable so player walks over.
 	var ground_bit := (1 << (PLAYER_COLLISION_LAYER - 1))
 	var building_bit := (1 << (BUILDING_COLLISION_LAYER - 1))
+	var item_bit := (1 << (ITEM_COLLISION_LAYER - 1))
 	if is_on_floor() and position.y < 0.01:
-		collision_mask = ground_bit | building_bit
+		collision_mask = ground_bit | building_bit | item_bit
 	else:
-		collision_mask = ground_bit
+		collision_mask = ground_bit | item_bit
 
-# -- Conveyor Push (bezier curve, same path as items) -------------------------
+# -- Conveyor Push (match item transport speed) -------------------------------
 
 func _handle_conveyor_push() -> void:
-	if not is_on_floor() or position.y > 0.01:
-		_conv_grid = Vector2i(-999, -999)
-		return
 	_conveyor_push = Vector3.ZERO
-
+	if not is_on_floor() or position.y > 0.01:
+		return
 	var grid_pos := _get_grid_pos()
 	var conv = GameManager.get_conveyor_at(grid_pos)
 	if not conv:
-		_conv_grid = Vector2i(-999, -999)
 		return
-
-	var conv_dir := Vector2(GameManager.DIRECTION_VECTORS[conv.direction])
-	var tile_center := GridUtils.grid_to_world(grid_pos)
-
-	# -- Entering a new conveyor tile: record actual position as entry point --
-	if grid_pos != _conv_grid:
-		_conv_entry_point = position
-		_conv_progress = 0.0
-		_conv_grid = grid_pos
-
-	# -- Advance progress and compute bezier push --
-	var dt := get_physics_process_delta_time()
-	var old_progress := _conv_progress
-	_conv_progress += conv.push_speed * dt
-
-	var exit_point := GridUtils.grid_offset(grid_pos, conv_dir, 0.5)
-
-	if _conv_progress >= 1.0:
-		# Past the exit edge -- push in world-space conveyor direction
-		var world_dir := GridUtils.grid_dir_to_world(conv_dir)
-		_conveyor_push = world_dir * conv.push_speed * GridUtils.TILE_SIZE
-	elif dt > 0:
-		var old_pos := _bezier_eval_3d(_conv_entry_point, tile_center, exit_point, old_progress)
-		var new_pos := _bezier_eval_3d(_conv_entry_point, tile_center, exit_point, _conv_progress)
-		_conveyor_push = (new_pos - old_pos) / dt
-
-static func _bezier_eval_3d(p0: Vector3, p1: Vector3, p2: Vector3, t: float) -> Vector3:
-	var u := 1.0 - t
-	return p0 * u * u + p1 * 2.0 * u * t + p2 * t * t
+	_conveyor_push = conv._get_world_forward() * ConveyorBelt.TARGET_SPEED
 
 # -- Health -------------------------------------------------------------------
 

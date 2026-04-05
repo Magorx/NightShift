@@ -1,14 +1,10 @@
-[gd_scene load_steps=10 format=3 uid="uid://caxs0e23nmsim"]
+[gd_scene load_steps=8 format=3 uid="uid://caxs0e23nmsim"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://c4tujtdf41td0" path="res://buildings/splitter/splitter.gd" id="2"]
-[ext_resource type="Script" uid="uid://xchn5wvkdcw7" path="res://buildings/shared/input_zone.gd" id="3"]
 [ext_resource type="Script" uid="uid://wn30a4e54j7j" path="res://buildings/shared/output_zone.gd" id="4"]
 [ext_resource type="PackedScene" uid="uid://clhx4phs6b6v6" path="res://buildings/splitter/models/splitter.glb" id="5"]
 [ext_resource type="Script" uid="uid://bxmh4nofh3dx3" path="res://buildings/shared/shape_cell_3d.gd" id="6"]
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
-size = Vector3(0.4, 0.4, 0.4)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_force"]
 size = Vector3(0.6, 0.4, 0.6)
@@ -35,15 +31,6 @@ shape = SubResource("BoxShape3D_force")
 [node name="Cell_0_0" type="MeshInstance3D" parent="Shape"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.5, 0.5)
 script = ExtResource("6")
-
-[node name="Inputs" type="Node3D" parent="."]
-
-[node name="Input_0" type="Area3D" parent="Inputs"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
-script = ExtResource("3")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Inputs/Input_0"]
-shape = SubResource("BoxShape3D_1")
 
 [node name="Outputs" type="Node3D" parent="."]
 

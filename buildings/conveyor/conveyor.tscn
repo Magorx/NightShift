@@ -1,20 +1,20 @@
-[gd_scene load_steps=10 format=3 uid="uid://btb5ogl8k81hb"]
+[gd_scene load_steps=8 format=3 uid="uid://btb5ogl8k81hb"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://bdx0s4hpmxhou" path="res://buildings/conveyor/conveyor.gd" id="2"]
-[ext_resource type="Script" uid="uid://xchn5wvkdcw7" path="res://buildings/shared/input_zone.gd" id="3"]
-[ext_resource type="Script" uid="uid://wn30a4e54j7j" path="res://buildings/shared/output_zone.gd" id="4"]
 [ext_resource type="PackedScene" uid="uid://byl5l54asm7ej" path="res://buildings/conveyor/models/conveyor.glb" id="5"]
-[ext_resource type="Script" uid="uid://bxmh4nofh3dx3" path="res://buildings/shared/shape_cell_3d.gd" id="6"]
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_input"]
-size = Vector3(0.4, 0.4, 0.4)
+[ext_resource type="Script" path="res://buildings/shared/shape_cell_3d.gd" id="6"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_force"]
 size = Vector3(0.9, 0.3, 0.7)
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_output"]
-size = Vector3(0.4, 0.3, 0.4)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ocpqq"]
+transparency = 1
+no_depth_test = true
+shading_mode = 0
+albedo_color = Color(0.3, 0.5, 0.8, 0.15)
+
+[sub_resource type="BoxMesh" id="BoxMesh_erubv"]
 
 [node name="Conveyor" type="Node3D"]
 script = ExtResource("1")
@@ -23,7 +23,7 @@ script = ExtResource("1")
 transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, 0)
 
 [node name="ForceZone" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.15, 0.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.32371354, 0)
 collision_layer = 0
 collision_mask = 8
 
@@ -33,28 +33,11 @@ shape = SubResource("BoxShape3D_force")
 [node name="Shape" type="Node3D" parent="."]
 
 [node name="Cell_0_0" type="MeshInstance3D" parent="Shape"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.5, 0.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+visible = false
+material_override = SubResource("StandardMaterial3D_ocpqq")
+mesh = SubResource("BoxMesh_erubv")
 script = ExtResource("6")
-
-[node name="Inputs" type="Node3D" parent="."]
-
-[node name="Input_0" type="Area3D" parent="Inputs"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
-script = ExtResource("3")
-allow_right = false
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Inputs/Input_0"]
-shape = SubResource("BoxShape3D_input")
-
-[node name="Outputs" type="Node3D" parent="."]
-
-[node name="Output_0" type="Area3D" parent="Outputs"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.2, 0)
-script = ExtResource("4")
-allow_left = false
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Outputs/Output_0"]
-shape = SubResource("BoxShape3D_output")
 
 [node name="ConveyorLogic" type="Node" parent="."]
 script = ExtResource("2")
