@@ -22,11 +22,11 @@ const TILE_COLORS := {
 
 const DEFAULT_COLOR := Color(0.35, 0.50, 0.30)
 
-# Per-direction wall darkening (simulates directional light, makes corners visible)
-const WALL_DARKEN_PX := 0.42  # +X wall (right side, darkest)
-const WALL_DARKEN_NX := 0.62  # -X wall (left side)
-const WALL_DARKEN_PZ := 0.48  # +Z wall (front-facing in iso view)
-const WALL_DARKEN_NZ := 0.72  # -Z wall (back-facing, lightest)
+# Per-direction wall darkening (supplements directional light for sharper corners)
+const WALL_DARKEN_PX := 0.72  # +X wall
+const WALL_DARKEN_NX := 0.85  # -X wall
+const WALL_DARKEN_PZ := 0.75  # +Z wall
+const WALL_DARKEN_NZ := 0.88  # -Z wall
 
 var _mesh_instance: MeshInstance3D
 var _map_size: int = 0
@@ -260,7 +260,7 @@ func _add_wall_quad(st: SurfaceTool, x: int, y: int, h_top: float, h_bottom: flo
 func _create_material() -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = "shader_type spatial;
-render_mode unshaded, cull_disabled;
+render_mode cull_disabled;
 
 varying vec3 v_color;
 varying vec3 v_world_pos;
