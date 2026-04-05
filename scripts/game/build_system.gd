@@ -698,11 +698,6 @@ func _update_destroy_highlights() -> void:
 				entry.node.material.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
 
 func _apply_highlight(building: Node) -> void:
-	# Conveyors use MultiMesh rendering — highlight via the visual manager
-	if building.logic is ConveyorBelt and GameManager.conveyor_visual_manager:
-		GameManager.conveyor_visual_manager.set_highlight(building.logic.grid_pos, true)
-		_highlighted_buildings[building.get_instance_id()] = {entries = [], building = building}
-		return
 	var entries: Array = []
 	for node in _get_visual_nodes(building):
 		var orig = node.material
@@ -739,9 +734,7 @@ func _remove_highlight(nid: int) -> void:
 		if is_instance_valid(entry.node):
 			entry.node.material = entry.original
 	if is_instance_valid(data.building):
-		# Clear conveyor multimesh highlight
-		if data.building.logic is ConveyorBelt and GameManager.conveyor_visual_manager:
-			GameManager.conveyor_visual_manager.set_highlight(data.building.logic.grid_pos, false)
+		pass
 	_highlighted_buildings.erase(nid)
 
 func _clear_all_highlights() -> void:
