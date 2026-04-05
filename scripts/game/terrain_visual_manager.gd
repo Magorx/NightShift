@@ -21,7 +21,12 @@ const TILE_COLORS := {
 }
 
 const DEFAULT_COLOR := Color(0.35, 0.50, 0.30)
-const WALL_DARKEN := 0.7  # side walls are darker for depth cue
+
+# Per-direction wall darkening (simulates directional light, makes corners visible)
+const WALL_DARKEN_PX := 0.55  # +X wall (right side, darkest)
+const WALL_DARKEN_NX := 0.70  # -X wall (left side)
+const WALL_DARKEN_PZ := 0.60  # +Z wall (front-facing in iso view)
+const WALL_DARKEN_NZ := 0.75  # -Z wall (back-facing, lightest)
 
 var _mesh_instance: MeshInstance3D
 var _map_size: int = 0
@@ -162,20 +167,20 @@ func _add_top_face(st: SurfaceTool, x: int, y: int, h: float, col: Color) -> voi
 
 
 func _add_side_walls(st: SurfaceTool, x: int, y: int, h: float, col: Color, map_size: int) -> void:
-	var wall_col := Color(col.r * WALL_DARKEN, col.g * WALL_DARKEN, col.b * WALL_DARKEN)
-
-	# Neighbor offsets: [dx, dz, and the 4 corner vertices of the wall quad]
-	# For each direction, we emit a wall from this tile's height down to the neighbor's height
-	var neighbors := [
-		[1, 0],   # +X
-		[-1, 0],  # -X
-		[0, 1],   # +Z
-		[0, -1],  # -Z
+	# Each direction gets its own darkening factor for directional shading
+	var dir_darken := [
+		[1, 0, WALL_DARKEN_PX],
+		[-1, 0, WALL_DARKEN_NX],
+		[0, 1, WALL_DARKEN_PZ],
+		[0, -1, WALL_DARKEN_NZ],
 	]
 
-	for n in neighbors:
-		var nx: int = x + n[0]
-		var nz: int = y + n[1]
+	for entry in dir_darken:
+		var dx: int = entry[0]
+		var dz: int = entry[1]
+		var darken: float = entry[2]
+		var nx: int = x + dx
+		var nz: int = y + dz
 
 		# Neighbor height (out-of-bounds = 0, so edges get walls)
 		var nh: float = 0.0
@@ -185,8 +190,8 @@ func _add_side_walls(st: SurfaceTool, x: int, y: int, h: float, col: Color, map_
 		if h <= nh:
 			continue  # no wall needed
 
-		# Wall quad from nh to h on the edge between this tile and neighbor
-		_add_wall_quad(st, x, y, h, nh, n[0], n[1], wall_col)
+		var wall_col := Color(col.r * darken, col.g * darken, col.b * darken)
+		_add_wall_quad(st, x, y, h, nh, dx, dz, wall_col)
 
 
 func _add_wall_quad(st: SurfaceTool, x: int, y: int, h_top: float, h_bottom: float, dx: int, dz: int, col: Color) -> void:
@@ -231,9 +236,34 @@ func _add_wall_quad(st: SurfaceTool, x: int, y: int, h_top: float, h_bottom: flo
 	st.add_vertex(Vector3(x0, h_bottom, z0))
 
 
-func _create_material() -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+func _create_material() -> ShaderMaterial:
+	var shader := Shader.new()
+	shader.code = "shader_type spatial;
+render_mode unshaded, cull_disabled;
+
+varying vec3 v_color;
+varying vec3 v_world_pos;
+varying vec3 v_normal;
+
+void vertex() {
+	v_color = COLOR.rgb;
+	v_world_pos = VERTEX;  // terrain mesh is at origin
+	v_normal = NORMAL;
+}
+
+void fragment() {
+	vec3 col = v_color;
+	// Top faces only: draw thin dark border lines at tile boundaries
+	if (v_normal.y > 0.5) {
+		float edge_x = abs(fract(v_world_pos.x + 0.5) - 0.5);
+		float edge_z = abs(fract(v_world_pos.z + 0.5) - 0.5);
+		float edge = max(edge_x, edge_z);
+		float line = smoothstep(0.45, 0.50, edge);
+		col *= mix(1.0, 0.82, line);
+	}
+	ALBEDO = col;
+}
+"
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
 	return mat
