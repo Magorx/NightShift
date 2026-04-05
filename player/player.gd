@@ -77,15 +77,12 @@ const CONV_HOVER_RADIUS := 0.375  # ~12px / 32px per tile
 @onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 
-var _shadow: MeshInstance3D
-
 func _ready() -> void:
 	# Initialize inventory with empty slots
 	inventory.resize(INVENTORY_SLOTS)
 	for i in INVENTORY_SLOTS:
 		inventory[i] = null
 	spawn_position = position
-	_create_blob_shadow()
 
 func _physics_process(delta: float) -> void:
 	if _is_dead:
@@ -498,30 +495,9 @@ func _spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
 
 # -- Visuals ------------------------------------------------------------------
 
-func _create_blob_shadow() -> void:
-	_shadow = MeshInstance3D.new()
-	var mesh := PlaneMesh.new()
-	mesh.size = Vector2(0.6, 0.6)
-	_shadow.mesh = mesh
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0, 0, 0, 0.35)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.no_depth_test = true
-	mat.render_priority = -1
-	_shadow.material_override = mat
-	_shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_shadow)
-
 func _update_visuals(_delta: float) -> void:
 	if not model:
 		return
-
-	# Blob shadow: project onto terrain height below the player
-	if _shadow:
-		var grid := _get_grid_pos()
-		var terrain_y: float = GameManager.get_terrain_height(grid)
-		_shadow.global_position = Vector3(position.x, terrain_y + 0.02, position.z)
 
 	# Direction rotation (rotate around Y axis)
 	model.rotation.y = atan2(facing_direction.x, facing_direction.z)
