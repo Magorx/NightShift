@@ -266,6 +266,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		camera.handle_zoom_input(event)
 	elif event is InputEventPanGesture:
 		camera.handle_zoom_input(event)
+	elif event.is_action("camera_rotate") or (event is InputEventMouseMotion and camera._is_rotating):
+		camera.handle_rotate_input(event)
 	elif event.is_action_pressed("toggle_buildings_panel"):
 		hud.toggle_buildings_panel()
 	elif event.is_action_pressed("toggle_inventory"):

@@ -449,6 +449,18 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 - **Blockers**: None
 - **Next session goal**: Playtest the physics system visually, tune forces/speeds, fix any issues
 
+### Session 18 -- Camera Rotation
+- **Date**: 2026-04-05
+- **Hours**: ~0.65h (afternoon session, 12:04-12:42 MSK)
+- **Work done**:
+  - Added free camera rotation (hold middle mouse or Z key + drag horizontally)
+  - Created `camera_rotate` input action in project.godot (Z key + middle mouse button)
+  - Rewrote camera to use explicit ground target tracking and deterministic Basis construction from yaw + fixed ISO pitch — eliminates wobble from Euler decomposition of baked .tscn transforms
+  - Removed cursor-based mouse-edge panning — camera now stays centered on player
+  - Player movement and build system raycasting auto-adapt (already read camera basis)
+- **Blockers**: None
+- **Next session goal**: Playtest physics system visually, tune forces/speeds
+
 ---
 
 ## Velocity Tracking
