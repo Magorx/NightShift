@@ -337,20 +337,11 @@ func _drop_held_item_at_cursor() -> void:
 	if not player or not is_instance_valid(player):
 		_clear_held()
 		return
-	var camera := get_viewport().get_camera_3d()
-	if not camera:
+	# Screen → world conversion via terrain-aware raycast
+	var world_pos: Vector3 = GridUtils.raycast_mouse_to_world(get_viewport())
+	if world_pos == Vector3.ZERO:
 		_return_held_item()
 		return
-	# Screen → world conversion via ground plane raycast
-	var screen_pos := get_viewport().get_mouse_position()
-	var ray_origin := camera.project_ray_origin(screen_pos)
-	var ray_dir := camera.project_ray_normal(screen_pos)
-	# Intersect with Y=0 ground plane
-	if absf(ray_dir.y) < 0.001:
-		_return_held_item()
-		return
-	var t := -ray_origin.y / ray_dir.y
-	var world_pos: Vector3 = ray_origin + ray_dir * t
 	# Clamp to max range from player
 	var to_target: Vector3 = world_pos - player.position
 	to_target.y = 0.0

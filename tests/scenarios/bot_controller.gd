@@ -39,6 +39,8 @@ func walk_to(pos: Vector2i) -> bool:
 			return true
 		# Set bot_input direction — player._handle_movement() uses this
 		_player.bot_input = diff.normalized()
+		# Auto-jump when facing a terrain step
+		_auto_jump_if_step()
 		return false
 	, MOVE_TIMEOUT)
 
@@ -58,6 +60,24 @@ func teleport_to(pos: Vector2i) -> void:
 	await _sim.sim_advance_ticks(5)  # let physics settle
 
 ## Sprint to a grid position (faster, drains stamina).
+## Auto-jump when the bot is on the floor and the terrain ahead is higher.
+## Uses bot_input direction (not velocity, which may be zeroed by step-block).
+func _auto_jump_if_step() -> void:
+	if not _player.is_on_floor():
+		return
+	var move_dir := _player.bot_input
+	if move_dir.length_squared() < 0.01:
+		return
+	var look_ahead := _player.position + Vector3(move_dir.x, 0.0, move_dir.z).normalized() * 0.6
+	var ahead_grid := GridUtils.world_to_grid(look_ahead)
+	var current_grid := GridUtils.world_to_grid(_player.position)
+	if ahead_grid == current_grid:
+		return
+	var h_ahead: float = GameManager.get_terrain_height(ahead_grid)
+	var h_current: float = GameManager.get_terrain_height(current_grid)
+	if h_ahead > h_current + Player.MAX_STEP_UP:
+		_player._try_jump()
+
 func sprint_to(pos: Vector2i) -> bool:
 	var target := GridUtils.grid_to_world(pos)
 	_log("sprint_to %s" % str(pos))
@@ -71,6 +91,7 @@ func sprint_to(pos: Vector2i) -> bool:
 			_player.bot_sprint = false
 			return true
 		_player.bot_input = diff.normalized()
+		_auto_jump_if_step()
 		return false
 	, MOVE_TIMEOUT)
 	_player.bot_input = Vector3.ZERO

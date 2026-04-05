@@ -522,6 +522,7 @@ func _update_ghosts() -> void:
 				can_place = GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation)
 			can_place = can_place and can_afford
 			var world_3d := GridUtils.grid_to_world(pos - def.anchor_cell)
+			world_3d.y = GameManager.get_terrain_height(pos)
 			_ghost_nodes[i].position = world_3d
 			_ghost_nodes[i].visible = true
 		# Hide excess
@@ -541,6 +542,7 @@ func _update_ghosts() -> void:
 				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, GameManager.map_size, current_rotation)
 			can_place = can_place and can_afford
 			var world_3d := GridUtils.grid_to_world(cursor_grid_pos - def.anchor_cell)
+			world_3d.y = GameManager.get_terrain_height(cursor_grid_pos)
 			_ghost_nodes[0].position = world_3d
 			_ghost_nodes[0].visible = true
 			for i in range(1, _ghost_nodes.size()):
@@ -781,18 +783,7 @@ func _get_building_visual_cells(building: Node) -> Array:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 func _get_grid_pos_under_mouse() -> Vector2i:
-	var camera := get_viewport().get_camera_3d()
-	if not camera:
-		return Vector2i.ZERO
-	var mouse_pos := get_viewport().get_mouse_position()
-	var ray_origin := camera.project_ray_origin(mouse_pos)
-	var ray_dir := camera.project_ray_normal(mouse_pos)
-	# Intersect with Y=0 ground plane
-	if absf(ray_dir.y) < 0.0001:
-		return Vector2i.ZERO
-	var t := -ray_origin.y / ray_dir.y
-	var hit := ray_origin + ray_dir * t
-	return GridUtils.world_to_grid(hit)
+	return GridUtils.raycast_mouse_to_grid(get_viewport())
 
 func _try_remove(pos: Vector2i) -> void:
 	GameManager.remove_building(pos)

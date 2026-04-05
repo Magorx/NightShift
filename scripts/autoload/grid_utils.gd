@@ -53,3 +53,53 @@ func map_world_size(map_tiles: int) -> Vector3:
 ## The origin corner (min X, Y=0, min Z) of the map in 3D.
 func map_origin(_map_tiles: int) -> Vector3:
 	return Vector3.ZERO
+
+## Raycast from a camera through the mouse position to find the terrain grid cell.
+## Uses physics raycast against the terrain HeightMapShape3D (ground layer, mask 4).
+## Falls back to Y=0 plane intersection if no terrain collision exists.
+func raycast_mouse_to_grid(viewport: Viewport) -> Vector2i:
+	var camera := viewport.get_camera_3d()
+	if not camera:
+		return Vector2i.ZERO
+	var mouse_pos := viewport.get_mouse_position()
+	var ray_origin := camera.project_ray_origin(mouse_pos)
+	var ray_dir := camera.project_ray_normal(mouse_pos)
+
+	# Raycast against terrain collision (ground layer, bit 3 = mask 4)
+	var space := viewport.get_world_3d().direct_space_state
+	if space:
+		var ray_end := ray_origin + ray_dir * 200.0
+		var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_end, 4)
+		var result := space.intersect_ray(query)
+		if result:
+			return world_to_grid(result.position)
+
+	# Fallback: intersect with Y=0 ground plane
+	if absf(ray_dir.y) < 0.0001:
+		return Vector2i.ZERO
+	var t := -ray_origin.y / ray_dir.y
+	var hit := ray_origin + ray_dir * t
+	return world_to_grid(hit)
+
+## Raycast from a camera through the mouse position, returning the 3D world hit point.
+## Falls back to Y=0 plane intersection if no terrain collision exists.
+func raycast_mouse_to_world(viewport: Viewport) -> Vector3:
+	var camera := viewport.get_camera_3d()
+	if not camera:
+		return Vector3.ZERO
+	var mouse_pos := viewport.get_mouse_position()
+	var ray_origin := camera.project_ray_origin(mouse_pos)
+	var ray_dir := camera.project_ray_normal(mouse_pos)
+
+	var space := viewport.get_world_3d().direct_space_state
+	if space:
+		var ray_end := ray_origin + ray_dir * 200.0
+		var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_end, 4)
+		var result := space.intersect_ray(query)
+		if result:
+			return result.position
+
+	if absf(ray_dir.y) < 0.0001:
+		return Vector3.ZERO
+	var t := -ray_origin.y / ray_dir.y
+	return ray_origin + ray_dir * t

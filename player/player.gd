@@ -96,6 +96,9 @@ func _physics_process(delta: float) -> void:
 	_handle_health_regen(delta)
 	_handle_hand_mining(delta)
 
+	# Block walking up terrain steps (must jump to reach higher ground)
+	_check_terrain_step_block()
+
 	# Apply velocity and move
 	move_and_slide()
 	_update_collision_for_height()
@@ -194,6 +197,28 @@ func _handle_vertical_physics(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= JUMP_GRAVITY * delta
 
+## Prevent the player from walking up terrain steps — must jump to climb.
+## Going down is allowed (gravity handles it naturally).
+const MAX_STEP_UP := 0.25  # max height diff the player can walk up without jumping
+
+func _check_terrain_step_block() -> void:
+	if not is_on_floor():
+		return  # airborne (jumping) — don't block
+	var xz_vel := Vector3(velocity.x, 0.0, velocity.z)
+	if xz_vel.length_squared() < 0.01:
+		return
+	# Check the tile we're moving toward
+	var look_ahead := position + xz_vel.normalized() * 0.6
+	var ahead_grid := GridUtils.world_to_grid(look_ahead)
+	var current_grid := _get_grid_pos()
+	if ahead_grid == current_grid:
+		return  # same tile, no step
+	var h_ahead: float = GameManager.get_terrain_height(ahead_grid)
+	var h_current: float = GameManager.get_terrain_height(current_grid)
+	if h_ahead > h_current + MAX_STEP_UP:
+		velocity.x = 0.0
+		velocity.z = 0.0
+
 var z_height: float:
 	get: return position.y
 	set(v): position.y = v
@@ -287,22 +312,8 @@ func _handle_hand_mining(delta: float) -> void:
 		_stop_mining()
 		return
 
-	# Get the grid cell under the mouse -- use camera raycasting in 3D
-	var camera := get_viewport().get_camera_3d()
-	if not camera:
-		_stop_mining()
-		return
-	var screen_pos := get_viewport().get_mouse_position()
-	# Project mouse onto ground plane (Y=0) using camera ray
-	var ray_origin := camera.project_ray_origin(screen_pos)
-	var ray_dir := camera.project_ray_normal(screen_pos)
-	# Intersect with Y=0 plane
-	if absf(ray_dir.y) < 0.001:
-		_stop_mining()
-		return
-	var t := -ray_origin.y / ray_dir.y
-	var world_pos := ray_origin + ray_dir * t
-	var grid_pos := GridUtils.world_to_grid(world_pos)
+	# Get the grid cell under the mouse -- terrain-aware raycast
+	var grid_pos: Vector2i = GridUtils.raycast_mouse_to_grid(get_viewport())
 
 	# Must be a deposit with no building on it
 	if not GameManager.deposits.has(grid_pos) or GameManager.buildings.has(grid_pos):
