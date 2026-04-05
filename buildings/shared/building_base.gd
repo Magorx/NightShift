@@ -26,8 +26,8 @@ func _ready() -> void:
 ## This makes buildings physically solid — player and items collide with the
 ## actual 3D model geometry instead of invisible placeholder boxes.
 func _generate_model_collision() -> void:
-	if not is_processing() and not is_physics_processing():
-		return  # Ghost node — skip collision generation
+	if building_id == &"":
+		return  # Ghost node (never init'd) — skip collision generation
 	var model: Node3D = get_node_or_null("Model")
 	if not model:
 		return

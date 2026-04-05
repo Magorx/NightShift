@@ -1,16 +1,26 @@
 """Export smelter as a 3D model (.glb) for Godot import.
 
-The smelter is the primary converter building: 2 inputs, 1 output.
-Design: wide, low, hot, industrial — distinct from the tall drill.
-Features: main housing, open furnace crucible, two input hoppers,
-output chute, chimney, gears, pipes, bolts, control panel.
+The smelter is the primary converter building: multiple inputs, 1 output.
+Design: L-shaped (2x2 grid with bottom-right cell missing for output),
+wide, low, hot, industrial — distinct from the tall drill.
+Features: L-shaped housing, open furnace crucible, two input hoppers,
+output chute facing the gap, chimney, gears, pipes, bolts, control panel.
+
+Blender coordinate mapping (1 BU = 1 Godot unit, root_scale=1.0):
+  Blender X -> Godot X
+  Blender Y -> Godot -Z
+  Blender Z -> Godot Y (up)
+
+Model node in Godot is at (1, 0, 1) — center of the 2x2 bounding box.
+Cell centers in Blender XY:
+  (0,0) -> (-0.5,  0.5)  top-left
+  (1,0) -> ( 0.5,  0.5)  top-right
+  (0,1) -> (-0.5, -0.5)  bottom-left
+  (1,1) -> ( 0.5, -0.5)  MISSING — output gap
 
 Usage:
     BLENDER="/Applications/Blender.app/Contents/MacOS/Blender"
     $BLENDER --background --python tools/blender/scenes/smelter_model.py
-
-    # Custom output path:
-    $BLENDER --background --python tools/blender/scenes/smelter_model.py -- --output path/to/smelter.glb
 """
 
 import bpy
@@ -92,312 +102,333 @@ SOOT       = C["soot"]
 
 # Animation constants
 GEAR_RATIO = 10 / 6   # main gear has 10 teeth, small has 6
-SHAKE_AMP  = 0.012    # body vibration amplitude
+SHAKE_AMP  = 0.006    # body vibration amplitude
 
 
 # ---------------------------------------------------------------------------
 # Build the scene
 # ---------------------------------------------------------------------------
 def build_smelter():
-    """Build the full smelter as a parented hierarchy under a root empty."""
+    """Build the full L-shaped smelter under a root empty.
+
+    L-shape layout in Blender XY (Z is up):
+        (-0.95, 0.95) -------- (0.95, 0.95)
+             |    cell(0,0)   |  cell(1,0)  |
+        (-0.95, 0.05) ---------(0.95, 0.05)
+             |    cell(0,1)   |
+        (-0.95,-0.95) -- (0.05,-0.95)
+    Missing corner: X > 0, Y < 0 = output gap.
+    """
     clear_scene()
 
     root = bpy.data.objects.new("Smelter", None)
     root.empty_display_type = 'PLAIN_AXES'
-    root.empty_display_size = 0.5
+    root.empty_display_size = 0.25
     bpy.context.scene.collection.objects.link(root)
 
     def add(obj):
         obj.parent = root
         return obj
 
-    # ── BASE PLATFORM ─────────────────────────────────────────────────
-    # Wide, low foundation slab
-    base = add(generate_box(w=2.6, d=2.6, h=0.12, hex_color=STEEL_DK))
-    base.name = "BasePlatform"
+    # ── L-SHAPED BASE PLATFORM ────────────────────────────────────────
+    # Two overlapping bars forming an L, slight overlap at junction
+    base_top = add(generate_box(w=1.9, d=0.9, h=0.06, hex_color=STEEL_DK))
+    base_top.name = "BasePlatformTop"
+    base_top.location = (0, 0.5, 0)
 
-    # Corner feet — squat pads
-    for i, (fx, fy) in enumerate([(-1.1, -1.1), (1.1, -1.1), (1.1, 1.1), (-1.1, 1.1)]):
-        foot = add(generate_cylinder(radius=0.14, height=0.06, segments=8,
+    base_left = add(generate_box(w=0.9, d=1.0, h=0.06, hex_color=STEEL_DK))
+    base_left.name = "BasePlatformLeft"
+    base_left.location = (-0.5, -0.45, 0)
+
+    # Corner feet at L extremities
+    foot_positions = [
+        (-0.85, 0.85),   # top-left
+        (0.85, 0.85),    # top-right
+        (-0.85, -0.85),  # bottom-left
+        (-0.05, -0.85),  # bottom-left inner corner
+        (0.85, 0.15),    # right edge bottom
+        (-0.05, 0.15),   # inner corner
+    ]
+    for i, (fx, fy) in enumerate(foot_positions):
+        foot = add(generate_cylinder(radius=0.05, height=0.03, segments=8,
                                      hex_color=STEEL_DK))
         foot.name = f"Foot_{i}"
-        foot.location = (fx, fy, -0.06)
+        foot.location = (fx, fy, -0.03)
 
-    # ── MAIN HOUSING ──────────────────────────────────────────────────
-    # Wider and lower than drill body (2.2x2.2x0.8)
-    body = add(generate_box(w=2.2, d=2.2, h=0.8, hex_color=BODY_MAIN, seam_count=2))
-    body.name = "Body"
-    body.location = (0, 0, 0.12)
+    # ── L-SHAPED MAIN HOUSING ─────────────────────────────────────────
+    body_top = add(generate_box(w=1.7, d=0.8, h=0.45, hex_color=BODY_MAIN,
+                                seam_count=2))
+    body_top.name = "BodyTop"
+    body_top.location = (0, 0.5, 0.06)
 
-    # Lower reinforcement band
-    band_lo = add(generate_box(w=2.3, d=2.3, h=0.1, hex_color=STEEL_DK))
-    band_lo.name = "BandLo"
-    band_lo.location = (0, 0, 0.18)
+    body_left = add(generate_box(w=0.8, d=0.85, h=0.45, hex_color=BODY_MAIN,
+                                 seam_count=2))
+    body_left.name = "BodyLeft"
+    body_left.location = (-0.5, -0.475, 0.06)
 
-    # Upper reinforcement band
-    band_hi = add(generate_box(w=2.3, d=2.3, h=0.1, hex_color=STEEL_DK))
-    band_hi.name = "BandHi"
-    band_hi.location = (0, 0, 0.75)
+    # Lower reinforcement bands (L-shaped)
+    band_lo_top = add(generate_box(w=1.75, d=0.85, h=0.04, hex_color=STEEL_DK))
+    band_lo_top.name = "BandLoTop"
+    band_lo_top.location = (0, 0.5, 0.1)
 
-    # Hazard stripe near base
-    hazard = add(generate_box(w=2.25, d=2.25, h=0.04, hex_color=YELLOW))
-    hazard.name = "HazardStripe"
-    hazard.location = (0, 0, 0.15)
+    band_lo_left = add(generate_box(w=0.85, d=0.9, h=0.04, hex_color=STEEL_DK))
+    band_lo_left.name = "BandLoLeft"
+    band_lo_left.location = (-0.5, -0.475, 0.1)
+
+    # Upper reinforcement bands (L-shaped)
+    band_hi_top = add(generate_box(w=1.75, d=0.85, h=0.04, hex_color=STEEL_DK))
+    band_hi_top.name = "BandHiTop"
+    band_hi_top.location = (0, 0.5, 0.44)
+
+    band_hi_left = add(generate_box(w=0.85, d=0.9, h=0.04, hex_color=STEEL_DK))
+    band_hi_left.name = "BandHiLeft"
+    band_hi_left.location = (-0.5, -0.475, 0.44)
+
+    # Hazard stripes near base
+    hazard_top = add(generate_box(w=1.725, d=0.825, h=0.02, hex_color=YELLOW))
+    hazard_top.name = "HazardStripeTop"
+    hazard_top.location = (0, 0.5, 0.075)
+
+    hazard_left = add(generate_box(w=0.825, d=0.875, h=0.02, hex_color=YELLOW))
+    hazard_left.name = "HazardStripeLeft"
+    hazard_left.location = (-0.5, -0.475, 0.075)
 
     # ── FURNACE CRUCIBLE ──────────────────────────────────────────────
-    # Open-top chamber sitting on the body — the hot core of the smelter
-    # Outer wall: truncated cone (wider at top = crucible shape)
-    crucible_outer = add(generate_cone(radius_bottom=0.7, radius_top=0.85,
-                                       height=0.55, segments=12,
+    # Centered on cell (0,0) — the top-left cell, heart of the L
+    crucible_outer = add(generate_cone(radius_bottom=0.25, radius_top=0.3,
+                                       height=0.2, segments=12,
                                        hex_color=BODY_LIGHT))
     crucible_outer.name = "CrucibleOuter"
-    crucible_outer.location = (0, 0, 0.92)
+    crucible_outer.location = (-0.5, 0.5, 0.51)
 
-    # Crucible rim — a ring at the top showing the opening
-    crucible_rim = add(generate_cylinder(radius=0.9, height=0.06, segments=12,
+    crucible_rim = add(generate_cylinder(radius=0.32, height=0.025, segments=12,
                                          hex_color=STEEL_DK))
     crucible_rim.name = "CrucibleRim"
-    crucible_rim.location = (0, 0, 1.47)
+    crucible_rim.location = (-0.5, 0.5, 0.71)
 
-    # Fire glow interior — a glowing disc visible from above
-    fire_glow = add(generate_cylinder(radius=0.65, height=0.04, segments=10,
+    fire_glow = add(generate_cylinder(radius=0.22, height=0.02, segments=10,
                                       hex_color=FIRE_MID))
     fire_glow.name = "FireGlow"
-    fire_glow.location = (0, 0, 1.05)
+    fire_glow.location = (-0.5, 0.5, 0.56)
 
-    # Inner fire core — brighter center
-    fire_core = add(generate_cylinder(radius=0.35, height=0.05, segments=8,
+    fire_core = add(generate_cylinder(radius=0.12, height=0.025, segments=8,
                                       hex_color=FIRE_CORE))
     fire_core.name = "FireCore"
-    fire_core.location = (0, 0, 1.06)
+    fire_core.location = (-0.5, 0.5, 0.565)
 
-    # Heat-discolored walls around crucible (darker, soot-stained bands)
-    heat_band = add(generate_cylinder(radius=0.76, height=0.15, segments=12,
+    heat_band = add(generate_cylinder(radius=0.27, height=0.06, segments=12,
                                       hex_color=GLOW_WALL))
     heat_band.name = "HeatBand"
-    heat_band.location = (0, 0, 0.95)
+    heat_band.location = (-0.5, 0.5, 0.52)
 
-    # ── INPUT HOPPERS (two truncated cones on opposite sides) ─────────
-    # Left hopper (negative X side)
-    hopper_l_base = add(generate_cone(radius_bottom=0.18, radius_top=0.35,
-                                       height=0.5, segments=8,
-                                       hex_color=STEEL))
-    hopper_l_base.name = "HopperLeft"
-    hopper_l_base.location = (-1.15, 0, 0.52)
+    # Crucible reinforcement rivets
+    for i in range(6):
+        angle = (i / 6) * 2 * math.pi
+        rx = -0.5 + 0.31 * math.cos(angle)
+        ry = 0.5 + 0.31 * math.sin(angle)
+        rivet = add(generate_bolt(head_radius=0.015, head_height=0.008,
+                                   hex_color=C["rivet"]))
+        rivet.name = f"CrucibleRivet_{i}"
+        rivet.location = (rx, ry, 0.715)
 
-    # Hopper rim
-    hopper_l_rim = add(generate_cylinder(radius=0.37, height=0.04, segments=8,
-                                          hex_color=STEEL_DK))
-    hopper_l_rim.name = "HopperLeftRim"
-    hopper_l_rim.location = (-1.15, 0, 1.02)
+    # ── INPUT HOPPERS ─────────────────────────────────────────────────
+    # Hopper on the top edge (feeds from +Y / Godot -Z direction)
+    hopper_top = add(generate_cone(radius_bottom=0.07, radius_top=0.13,
+                                    height=0.2, segments=8, hex_color=STEEL))
+    hopper_top.name = "HopperTop"
+    hopper_top.location = (0.5, 0.85, 0.275)
 
-    # Hopper support bracket — wedge connecting to body
-    hopper_l_bracket = add(generate_wedge(w=0.3, d=0.25, h_front=0.0, h_back=0.2,
-                                           hex_color=STEEL_DK))
-    hopper_l_bracket.name = "HopperLeftBracket"
-    hopper_l_bracket.location = (-1.0, 0, 0.52)
-    hopper_l_bracket.rotation_euler = (0, 0, math.radians(90))
+    hopper_top_rim = add(generate_cylinder(radius=0.14, height=0.015, segments=8,
+                                            hex_color=STEEL_DK))
+    hopper_top_rim.name = "HopperTopRim"
+    hopper_top_rim.location = (0.5, 0.85, 0.475)
 
-    # Right hopper (positive X side)
-    hopper_r_base = add(generate_cone(radius_bottom=0.18, radius_top=0.35,
-                                       height=0.5, segments=8,
-                                       hex_color=STEEL))
-    hopper_r_base.name = "HopperRight"
-    hopper_r_base.location = (1.15, 0, 0.52)
+    hopper_top_bracket = add(generate_wedge(w=0.1, d=0.08, h_front=0.0,
+                                             h_back=0.07, hex_color=STEEL_DK))
+    hopper_top_bracket.name = "HopperTopBracket"
+    hopper_top_bracket.location = (0.5, 0.75, 0.275)
 
-    hopper_r_rim = add(generate_cylinder(radius=0.37, height=0.04, segments=8,
-                                          hex_color=STEEL_DK))
-    hopper_r_rim.name = "HopperRightRim"
-    hopper_r_rim.location = (1.15, 0, 1.02)
+    # Hopper on the left edge (feeds from -X)
+    hopper_left = add(generate_cone(radius_bottom=0.07, radius_top=0.13,
+                                     height=0.2, segments=8, hex_color=STEEL))
+    hopper_left.name = "HopperLeft"
+    hopper_left.location = (-0.85, -0.5, 0.275)
 
-    hopper_r_bracket = add(generate_wedge(w=0.3, d=0.25, h_front=0.0, h_back=0.2,
-                                           hex_color=STEEL_DK))
-    hopper_r_bracket.name = "HopperRightBracket"
-    hopper_r_bracket.location = (1.0, 0, 0.52)
-    hopper_r_bracket.rotation_euler = (0, 0, math.radians(-90))
+    hopper_left_rim = add(generate_cylinder(radius=0.14, height=0.015, segments=8,
+                                             hex_color=STEEL_DK))
+    hopper_left_rim.name = "HopperLeftRim"
+    hopper_left_rim.location = (-0.85, -0.5, 0.475)
 
-    # ── OUTPUT CHUTE (front, negative Y) ──────────────────────────────
-    # A tilted pipe/channel where product exits
-    chute_pipe = add(generate_pipe(length=0.7, radius=0.15, wall_thickness=0.04,
+    hopper_left_bracket = add(generate_wedge(w=0.1, d=0.08, h_front=0.0,
+                                              h_back=0.07, hex_color=STEEL_DK))
+    hopper_left_bracket.name = "HopperLeftBracket"
+    hopper_left_bracket.location = (-0.75, -0.5, 0.275)
+    hopper_left_bracket.rotation_euler = (0, 0, math.radians(90))
+
+    # ── OUTPUT CHUTE (toward missing cell: +X, -Y) ───────────────────
+    chute_pipe = add(generate_pipe(length=0.3, radius=0.06, wall_thickness=0.015,
                                    hex_color=C["pipe"]))
     chute_pipe.name = "OutputChute"
-    # Tilt downward toward front
-    chute_pipe.rotation_euler = (math.radians(55), 0, 0)
-    chute_pipe.location = (0, -1.0, 0.45)
+    chute_pipe.rotation_euler = (math.radians(-35), 0, math.radians(-45))
+    chute_pipe.location = (0.15, -0.15, 0.3)
 
-    # Chute mounting plate on body face
-    chute_mount = add(generate_box(w=0.45, d=0.08, h=0.45, hex_color=STEEL_DK))
+    chute_mount = add(generate_box(w=0.15, d=0.04, h=0.15, hex_color=STEEL_DK))
     chute_mount.name = "ChuteMountPlate"
-    chute_mount.location = (0, -1.12, 0.52)
+    chute_mount.rotation_euler = (0, 0, math.radians(-45))
+    chute_mount.location = (0.05, -0.05, 0.3)
 
-    # Small funnel at chute entrance (where it meets the body)
-    chute_funnel = add(generate_cone(radius_bottom=0.12, radius_top=0.2,
-                                      height=0.12, segments=8,
-                                      hex_color=STEEL))
+    chute_funnel = add(generate_cone(radius_bottom=0.045, radius_top=0.075,
+                                      height=0.05, segments=8, hex_color=STEEL))
     chute_funnel.name = "ChuteFunnel"
-    chute_funnel.rotation_euler = (math.radians(55), 0, 0)
-    chute_funnel.location = (0, -0.85, 0.6)
+    chute_funnel.rotation_euler = (math.radians(-35), 0, math.radians(-45))
+    chute_funnel.location = (0.05, -0.05, 0.35)
 
-    # ── CHIMNEY / EXHAUST STACK ───────────────────────────────────────
-    # Shorter and wider than drill's exhaust — squat industrial chimney
-    chimney = add(generate_cylinder(radius=0.22, height=0.7, segments=10,
+    # ── CHIMNEY (back-left corner, cell 0,1) ──────────────────────────
+    chimney = add(generate_cylinder(radius=0.08, height=0.3, segments=10,
                                     hex_color=C["pipe"]))
     chimney.name = "Chimney"
-    chimney.location = (-0.55, 0.65, 0.92)
+    chimney.location = (-0.75, -0.75, 0.51)
 
-    # Chimney cap — wider disc
-    chimney_cap = add(generate_cylinder(radius=0.28, height=0.06, segments=10,
+    chimney_cap = add(generate_cylinder(radius=0.1, height=0.025, segments=10,
                                          hex_color=STEEL_DK))
     chimney_cap.name = "ChimneyCap"
-    chimney_cap.location = (-0.55, 0.65, 1.62)
+    chimney_cap.location = (-0.75, -0.75, 0.81)
 
-    # Chimney rain hood — small cone with gap
-    chimney_hood = add(generate_cone(radius_bottom=0.26, radius_top=0.06,
-                                      height=0.12, segments=8,
-                                      hex_color=RUST))
+    chimney_hood = add(generate_cone(radius_bottom=0.09, radius_top=0.025,
+                                      height=0.05, segments=8, hex_color=RUST))
     chimney_hood.name = "ChimneyHood"
-    chimney_hood.location = (-0.55, 0.65, 1.73)
+    chimney_hood.location = (-0.75, -0.75, 0.86)
 
-    # Soot ring at chimney base
-    soot_ring = add(generate_cylinder(radius=0.26, height=0.04, segments=10,
+    soot_ring = add(generate_cylinder(radius=0.09, height=0.015, segments=10,
                                        hex_color=SOOT))
     soot_ring.name = "SootRing"
-    soot_ring.location = (-0.55, 0.65, 0.92)
+    soot_ring.location = (-0.75, -0.75, 0.51)
 
-    # Chimney bracket wedge
-    chimney_bracket = add(generate_wedge(w=0.25, d=0.25, h_front=0.0, h_back=0.2,
-                                          hex_color=STEEL_DK))
+    chimney_bracket = add(generate_wedge(w=0.09, d=0.09, h_front=0.0,
+                                          h_back=0.08, hex_color=STEEL_DK))
     chimney_bracket.name = "ChimneyBracket"
-    chimney_bracket.location = (-0.55, 0.45, 0.92)
+    chimney_bracket.location = (-0.75, -0.65, 0.51)
 
-    # ── GEARS (side-mounted, visible on back-right) ──────────────────
-    main_gear = add(generate_cog(outer_radius=0.7, inner_radius=0.45,
-                                 teeth=10, thickness=0.25, hex_color=STEEL_LT))
+    # ── GEARS (visible on back face of top row) ──────────────────────
+    main_gear = add(generate_cog(outer_radius=0.25, inner_radius=0.16,
+                                 teeth=10, thickness=0.1, hex_color=STEEL_LT))
     main_gear.name = "MainGear"
-    main_gear.location = (0.4, 1.15, 0.55)
+    main_gear.location = (0.1, 0.95, 0.3)
 
-    small_gear = add(generate_cog(outer_radius=0.4, inner_radius=0.28,
-                                  teeth=6, thickness=0.25, hex_color=STEEL))
+    small_gear = add(generate_cog(outer_radius=0.15, inner_radius=0.1,
+                                  teeth=6, thickness=0.1, hex_color=STEEL))
     small_gear.name = "SmallGear"
-    small_gear.location = (-0.35, 1.15, 0.55)
+    small_gear.location = (-0.25, 0.95, 0.3)
 
     # Gear axle caps
-    for name, pos in [("MainAxle", (0.4, 1.15, 0.69)),
-                      ("SmallAxle", (-0.35, 1.15, 0.69))]:
-        axle = add(generate_cylinder(radius=0.07, height=0.05, segments=8,
+    for name, pos in [("MainAxle", (0.1, 0.95, 0.36)),
+                      ("SmallAxle", (-0.25, 0.95, 0.36))]:
+        axle = add(generate_cylinder(radius=0.025, height=0.02, segments=8,
                                      hex_color=STEEL_DK))
         axle.name = name
         axle.location = pos
 
-    # ── PLUMBING — pipes along body ───────────────────────────────────
-    # Vertical pipe on back-left corner
-    vert_pipe = add(generate_pipe(length=0.6, radius=0.06, wall_thickness=0.015,
+    # ── PLUMBING ──────────────────────────────────────────────────────
+    # Vertical pipe on right face of top-right cell
+    vert_pipe = add(generate_pipe(length=0.25, radius=0.025, wall_thickness=0.006,
                                   hex_color=COPPER))
     vert_pipe.name = "VertPipe"
-    vert_pipe.location = (0.9, 0.9, 0.35)
+    vert_pipe.location = (0.8, 0.35, 0.2)
 
-    # Horizontal connecting pipe from body to vertical pipe
-    h_pipe = add(generate_pipe(length=0.25, radius=0.05, wall_thickness=0.012,
+    h_pipe = add(generate_pipe(length=0.1, radius=0.02, wall_thickness=0.005,
                                hex_color=COPPER))
     h_pipe.name = "HPipe"
     h_pipe.rotation_euler = (0, math.radians(90), 0)
-    h_pipe.location = (0.75, 0.9, 0.6)
+    h_pipe.location = (0.7, 0.35, 0.35)
 
-    # Pipe from crucible area down to body (heat transfer pipe)
-    heat_pipe = add(generate_pipe(length=0.35, radius=0.07, wall_thickness=0.018,
+    # Heat transfer pipe from crucible area
+    heat_pipe = add(generate_pipe(length=0.15, radius=0.03, wall_thickness=0.008,
                                   hex_color=COPPER_DK))
     heat_pipe.name = "HeatPipe"
-    heat_pipe.location = (0.7, -0.5, 0.55)
+    heat_pipe.location = (-0.2, 0.5, 0.3)
 
-    # Pipe elbow on left side
-    elbow_v = add(generate_pipe(length=0.3, radius=0.05, wall_thickness=0.012,
+    # Pipe on bottom-left cell
+    elbow_v = add(generate_pipe(length=0.12, radius=0.02, wall_thickness=0.005,
                                 hex_color=COPPER_DK))
     elbow_v.name = "ElbowV"
-    elbow_v.location = (-0.9, -0.7, 0.35)
+    elbow_v.location = (-0.2, -0.8, 0.2)
 
-    # ── CONTROL PANEL (front-right face) ──────────────────────────────
-    panel = add(generate_box(w=0.55, d=0.08, h=0.35, hex_color=BODY_LIGHT))
+    # ── CONTROL PANEL (front of top-right cell) ──────────────────────
+    panel = add(generate_box(w=0.2, d=0.03, h=0.14, hex_color=BODY_LIGHT))
     panel.name = "ControlPanel"
-    panel.location = (0.55, -1.12, 0.45)
+    panel.location = (0.5, 0.1, 0.25)
 
-    # Gauge — flat cylinder on panel
-    gauge = add(generate_cylinder(radius=0.1, height=0.03, segments=10,
+    gauge = add(generate_cylinder(radius=0.035, height=0.012, segments=10,
                                   hex_color=GAUGE_FACE))
     gauge.name = "Gauge"
     gauge.rotation_euler = (math.radians(90), 0, 0)
-    gauge.location = (0.45, -1.17, 0.55)
+    gauge.location = (0.45, 0.07, 0.3)
 
-    # Gauge rim
-    gauge_rim = add(generate_cylinder(radius=0.12, height=0.02, segments=10,
+    gauge_rim = add(generate_cylinder(radius=0.042, height=0.008, segments=10,
                                       hex_color=COPPER))
     gauge_rim.name = "GaugeRim"
     gauge_rim.rotation_euler = (math.radians(90), 0, 0)
-    gauge_rim.location = (0.45, -1.18, 0.55)
+    gauge_rim.location = (0.45, 0.065, 0.3)
 
-    # Toggle knobs
-    for ki, kx in enumerate([0.6, 0.7]):
-        knob = add(generate_cylinder(radius=0.03, height=0.04, segments=6,
+    for ki, kx in enumerate([0.52, 0.56]):
+        knob = add(generate_cylinder(radius=0.012, height=0.015, segments=6,
                                      hex_color=RED_WARN if ki == 0 else YELLOW))
         knob.name = f"Knob_{ki}"
         knob.rotation_euler = (math.radians(90), 0, 0)
-        knob.location = (kx, -1.17, 0.47)
+        knob.location = (kx, 0.065, 0.26)
 
-    # Temperature indicator — a small bar on the panel
-    temp_bar = add(generate_box(w=0.04, d=0.03, h=0.2, hex_color=FIRE_OUTER))
+    temp_bar = add(generate_box(w=0.015, d=0.012, h=0.08, hex_color=FIRE_OUTER))
     temp_bar.name = "TempIndicator"
-    temp_bar.location = (0.75, -1.15, 0.52)
+    temp_bar.location = (0.58, 0.08, 0.28)
 
-    # ── VALVE WHEEL (on pipe, left side) ──────────────────────────────
-    valve = add(generate_cog(outer_radius=0.14, inner_radius=0.09,
-                             teeth=5, thickness=0.04, hex_color=RED_WARN))
+    # ── VALVE WHEEL (left face of bottom-left cell) ──────────────────
+    valve = add(generate_cog(outer_radius=0.05, inner_radius=0.035,
+                             teeth=5, thickness=0.015, hex_color=RED_WARN))
     valve.name = "ValveWheel"
     valve.rotation_euler = (0, math.radians(90), 0)
-    valve.location = (-1.12, -0.45, 0.5)
+    valve.location = (-0.95, -0.35, 0.3)
 
-    valve_stem = add(generate_cylinder(radius=0.025, height=0.08, segments=6,
+    valve_stem = add(generate_cylinder(radius=0.01, height=0.03, segments=6,
                                        hex_color=STEEL_DK))
     valve_stem.name = "ValveStem"
     valve_stem.rotation_euler = (0, math.radians(90), 0)
-    valve_stem.location = (-1.14, -0.45, 0.5)
+    valve_stem.location = (-0.96, -0.35, 0.3)
 
-    # ── SIDE TANK (coolant canister, front-left) ──────────────────────
-    tank = add(generate_cylinder(radius=0.16, height=0.45, segments=10,
+    # ── SIDE TANK (on bottom-left cell, front face) ──────────────────
+    tank = add(generate_cylinder(radius=0.06, height=0.18, segments=10,
                                  hex_color=BODY_LIGHT))
     tank.name = "SideTank"
-    tank.location = (-0.9, -0.7, 0.12)
+    tank.location = (-0.25, -0.9, 0.06)
 
-    tank_cap = add(generate_hemisphere(radius=0.16, rings=3, segments=10,
+    tank_cap = add(generate_hemisphere(radius=0.06, rings=3, segments=10,
                                         hex_color=BODY_ROOF))
     tank_cap.name = "TankCap"
-    tank_cap.location = (-0.9, -0.7, 0.57)
+    tank_cap.location = (-0.25, -0.9, 0.24)
 
-    # Tank bands
-    for ti, tz in enumerate([0.22, 0.42]):
-        tband = add(generate_cylinder(radius=0.18, height=0.03, segments=10,
+    for ti, tz in enumerate([0.1, 0.18]):
+        tband = add(generate_cylinder(radius=0.068, height=0.012, segments=10,
                                       hex_color=STEEL_DK))
         tband.name = f"TankBand_{ti}"
-        tband.location = (-0.9, -0.7, tz)
+        tband.location = (-0.25, -0.9, tz)
 
-    # Tank feed pipe to body
-    tank_pipe = add(generate_pipe(length=0.2, radius=0.04, wall_thickness=0.01,
+    tank_pipe = add(generate_pipe(length=0.08, radius=0.015, wall_thickness=0.004,
                                   hex_color=COPPER))
     tank_pipe.name = "TankPipe"
-    tank_pipe.rotation_euler = (0, math.radians(90), math.radians(30))
-    tank_pipe.location = (-0.72, -0.7, 0.35)
+    tank_pipe.rotation_euler = (0, math.radians(90), math.radians(25))
+    tank_pipe.location = (-0.25, -0.8, 0.15)
 
-    # ── WIRING / CABLES ──────────────────────────────────────────────
+    # ── CABLES ────────────────────────────────────────────────────────
     cable_runs = [
-        {"start": (-0.3, 1.0, 0.9), "end": (-0.35, 1.15, 0.55), "name": "Cable_0"},
-        {"start": (0.5, -0.8, 0.9), "end": (0.55, -1.1, 0.6), "name": "Cable_1"},
-        {"start": (-0.55, 0.65, 1.3), "end": (-0.3, 0.2, 1.0), "name": "Cable_2"},
+        {"start": (-0.3, 0.85, 0.5), "end": (-0.25, 0.95, 0.3), "name": "Cable_0"},
+        {"start": (0.35, 0.1, 0.5), "end": (0.5, 0.08, 0.35), "name": "Cable_1"},
+        {"start": (-0.75, -0.6, 0.55), "end": (-0.5, -0.3, 0.51), "name": "Cable_2"},
     ]
     for ci, run in enumerate(cable_runs):
         sx, sy, sz = run["start"]
         ex, ey, ez = run["end"]
         dx, dy, dz = ex - sx, ey - sy, ez - sz
         length = math.sqrt(dx*dx + dy*dy + dz*dz)
-
-        cable = add(generate_cylinder(radius=0.02, height=length, segments=6,
+        cable = add(generate_cylinder(radius=0.008, height=length, segments=6,
                                       hex_color=CABLE))
         cable.name = run["name"]
         cable.location = (sx, sy, sz)
@@ -405,61 +436,55 @@ def build_smelter():
         yaw = math.atan2(dy, dx)
         cable.rotation_euler = (0, pitch, yaw)
 
-    # ── BOLTS — scattered on roof, bands, and sides ───────────────────
+    # ── BOLTS ─────────────────────────────────────────────────────────
+    # Roof bolts — around crucible and on body top
     bolt_positions = [
-        # Body top corners (around crucible)
-        (0.85, 0.85, 0.93), (-0.85, 0.85, 0.93),
-        (0.85, -0.85, 0.93), (-0.85, -0.85, 0.93),
-        # Body top mid-edges
-        (0.0, 0.95, 0.93), (0.0, -0.95, 0.93),
-        (0.95, 0.0, 0.93), (-0.95, 0.0, 0.93),
-        # Band bolts (lower band)
-        (1.15, 0.7, 0.22), (1.15, -0.7, 0.22),
-        (-1.15, 0.7, 0.22), (-1.15, -0.7, 0.22),
-        # Band bolts (upper band)
-        (1.15, 0.7, 0.78), (1.15, -0.7, 0.78),
-        (-1.15, 0.7, 0.78), (-1.15, -0.7, 0.78),
+        # Around crucible on body top
+        (-0.15, 0.85, 0.51), (-0.85, 0.85, 0.51),
+        (-0.85, 0.15, 0.51), (-0.15, 0.15, 0.51),
+        # Top-right cell roof
+        (0.15, 0.85, 0.51), (0.85, 0.85, 0.51),
+        (0.85, 0.15, 0.51), (0.15, 0.15, 0.51),
+        # Bottom-left cell roof
+        (-0.15, -0.15, 0.51), (-0.85, -0.15, 0.51),
+        (-0.85, -0.85, 0.51), (-0.15, -0.85, 0.51),
     ]
     for i, (bx, by, bz) in enumerate(bolt_positions):
-        b = add(generate_bolt(head_radius=0.05, head_height=0.03, hex_color=C["rivet"]))
+        b = add(generate_bolt(head_radius=0.018, head_height=0.012,
+                               hex_color=C["rivet"]))
         b.name = f"Bolt_{i}"
         b.location = (bx, by, bz)
 
     # Side bolts on body faces
     side_bolt_positions = [
-        # Front face
-        (-0.6, -1.11, 0.35), (0.6, -1.11, 0.35),
-        (-0.6, -1.11, 0.72), (0.6, -1.11, 0.72),
-        # Right face
-        (1.11, -0.6, 0.35), (1.11, 0.6, 0.35),
-        (1.11, -0.6, 0.72), (1.11, 0.6, 0.72),
-        # Left face
-        (-1.11, -0.3, 0.35), (-1.11, 0.3, 0.35),
-        # Back face
-        (0.7, 1.11, 0.35), (-0.7, 1.11, 0.35),
+        # Top-right cell front face (Y ~ 0.1)
+        (0.3, 0.1, 0.2), (0.7, 0.1, 0.2),
+        (0.3, 0.1, 0.4), (0.7, 0.1, 0.4),
+        # Top-right cell right face (X ~ 0.85)
+        (0.85, 0.3, 0.2), (0.85, 0.7, 0.2),
+        # Bottom-left cell front face (Y ~ -0.9)
+        (-0.7, -0.9, 0.2), (-0.3, -0.9, 0.2),
+        # Bottom-left cell left face (X ~ -0.95)
+        (-0.95, -0.7, 0.2), (-0.95, -0.3, 0.2),
+        # Top-left cell left face
+        (-0.95, 0.3, 0.2), (-0.95, 0.7, 0.2),
     ]
     for i, (bx, by, bz) in enumerate(side_bolt_positions):
-        sb = add(generate_bolt(head_radius=0.04, head_height=0.025, hex_color=C["rivet"]))
+        sb = add(generate_bolt(head_radius=0.015, head_height=0.01,
+                                hex_color=C["rivet"]))
         sb.name = f"SideBolt_{i}"
         sb.location = (bx, by, bz)
-
-    # ── CRUCIBLE REINFORCEMENT RIVETS (around the crucible rim) ───────
-    for i in range(8):
-        angle = (i / 8) * 2 * math.pi
-        rx = 0.88 * math.cos(angle)
-        ry = 0.88 * math.sin(angle)
-        rivet = add(generate_bolt(head_radius=0.04, head_height=0.02,
-                                   hex_color=C["rivet"]))
-        rivet.name = f"CrucibleRivet_{i}"
-        rivet.location = (rx, ry, 1.48)
 
     return {
         "root": root,
         "main_gear": main_gear,
         "small_gear": small_gear,
-        "body": body,
-        "band_lo": band_lo,
-        "band_hi": band_hi,
+        "body_top": body_top,
+        "body_left": body_left,
+        "band_lo_top": band_lo_top,
+        "band_lo_left": band_lo_left,
+        "band_hi_top": band_hi_top,
+        "band_hi_left": band_hi_left,
         "crucible_outer": crucible_outer,
         "fire_glow": fire_glow,
         "fire_core": fire_core,
@@ -474,17 +499,21 @@ def bake_animations(objects):
     """Bake all animation states using high-level helpers."""
     mg = objects["main_gear"]
     sg = objects["small_gear"]
-    body = objects["body"]
-    band_lo = objects["band_lo"]
-    band_hi = objects["band_hi"]
+    body_top = objects["body_top"]
+    body_left = objects["body_left"]
+    blt = objects["band_lo_top"]
+    bll = objects["band_lo_left"]
+    bht = objects["band_hi_top"]
+    bhl = objects["band_hi_left"]
     crucible = objects["crucible_outer"]
     fire_glow = objects["fire_glow"]
     fire_core = objects["fire_core"]
     valve = objects["valve"]
 
     # ── idle (2 sec): very subtle heat shimmer ────────────────────────
-    animate_shake(body, "idle", duration=2.0, amplitude=0.005, frequency=3)
-    animate_shake(crucible, "idle", duration=2.0, amplitude=0.003, frequency=4)
+    animate_shake(body_top, "idle", duration=2.0, amplitude=0.002, frequency=3)
+    animate_shake(body_left, "idle", duration=2.0, amplitude=0.002, frequency=3)
+    animate_shake(crucible, "idle", duration=2.0, amplitude=0.0012, frequency=4)
     animate_rotation(mg, "idle", duration=2.0, axis='Z',
                      angle_fn=lambda t: 0.02 * math.sin(t * math.pi * 2))
     animate_rotation(sg, "idle", duration=2.0, axis='Z',
@@ -498,30 +527,32 @@ def bake_animations(objects):
                      angle_fn=lambda t: t * t * math.pi * 2)
     animate_rotation(sg, "windup", duration=1.0, axis='Z',
                      angle_fn=lambda t: -t * t * math.pi * 2 * GEAR_RATIO)
-    animate_shake(body, "windup", duration=1.0, amplitude=SHAKE_AMP * 0.5, frequency=5)
-    animate_shake(crucible, "windup", duration=1.0, amplitude=0.005, frequency=6)
-    # Valve wheel turns during windup
+    animate_shake(body_top, "windup", duration=1.0, amplitude=SHAKE_AMP * 0.5, frequency=5)
+    animate_shake(body_left, "windup", duration=1.0, amplitude=SHAKE_AMP * 0.5, frequency=5)
+    animate_shake(crucible, "windup", duration=1.0, amplitude=0.002, frequency=6)
     animate_rotation(valve, "windup", duration=1.0, axis='Y',
                      total_angle=math.pi)
     animate_static(fire_glow, "windup", duration=1.0)
     animate_static(fire_core, "windup", duration=1.0)
 
-    # ── active (2 sec): full operation — gears spinning, heat maxed ──
+    # ── active (2 sec): full operation ────────────────────────────────
     animate_rotation(mg, "active", duration=2.0, axis='Z',
                      total_angle=math.pi * 4)
     animate_rotation(sg, "active", duration=2.0, axis='Z',
                      total_angle=-math.pi * 4 * GEAR_RATIO)
-    animate_shake(body, "active", duration=2.0, amplitude=SHAKE_AMP, frequency=10)
-    animate_shake(band_lo, "active", duration=2.0, amplitude=SHAKE_AMP, frequency=10)
-    animate_shake(band_hi, "active", duration=2.0, amplitude=SHAKE_AMP, frequency=10)
-    animate_shake(crucible, "active", duration=2.0, amplitude=0.008, frequency=12)
-    # Fire glow pulsation (subtle Z oscillation to simulate heat shimmer)
+    animate_shake(body_top, "active", duration=2.0, amplitude=SHAKE_AMP, frequency=10)
+    animate_shake(body_left, "active", duration=2.0, amplitude=SHAKE_AMP, frequency=10)
+    animate_shake(blt, "active", duration=2.0, amplitude=SHAKE_AMP, frequency=10)
+    animate_shake(bll, "active", duration=2.0, amplitude=SHAKE_AMP, frequency=10)
+    animate_shake(bht, "active", duration=2.0, amplitude=SHAKE_AMP, frequency=10)
+    animate_shake(bhl, "active", duration=2.0, amplitude=SHAKE_AMP, frequency=10)
+    animate_shake(crucible, "active", duration=2.0, amplitude=0.003, frequency=12)
     fire_base_z = fire_glow.location.z
     animate_translation(fire_glow, "active", duration=2.0, axis='Z',
-                        value_fn=lambda t: fire_base_z + 0.02 * math.sin(t * math.pi * 8))
+                        value_fn=lambda t: fire_base_z + 0.008 * math.sin(t * math.pi * 8))
     core_base_z = fire_core.location.z
     animate_translation(fire_core, "active", duration=2.0, axis='Z',
-                        value_fn=lambda t: core_base_z + 0.03 * math.sin(t * math.pi * 6 + 0.5))
+                        value_fn=lambda t: core_base_z + 0.012 * math.sin(t * math.pi * 6 + 0.5))
     animate_static(valve, "active", duration=2.0)
 
     # ── winddown (1 sec): decelerating, cooling ──────────────────────
@@ -529,15 +560,17 @@ def bake_animations(objects):
                      angle_fn=lambda t: (2 * t - t * t) * math.pi * 2)
     animate_rotation(sg, "winddown", duration=1.0, axis='Z',
                      angle_fn=lambda t: -(2 * t - t * t) * math.pi * 2 * GEAR_RATIO)
-    animate_shake(body, "winddown", duration=1.0, amplitude=SHAKE_AMP, frequency=10, decay=1.0)
-    animate_shake(band_lo, "winddown", duration=1.0, amplitude=SHAKE_AMP, frequency=10, decay=1.0)
-    animate_shake(band_hi, "winddown", duration=1.0, amplitude=SHAKE_AMP, frequency=10, decay=1.0)
-    animate_shake(crucible, "winddown", duration=1.0, amplitude=0.008, frequency=12, decay=1.0)
+    animate_shake(body_top, "winddown", duration=1.0, amplitude=SHAKE_AMP, frequency=10, decay=1.0)
+    animate_shake(body_left, "winddown", duration=1.0, amplitude=SHAKE_AMP, frequency=10, decay=1.0)
+    animate_shake(blt, "winddown", duration=1.0, amplitude=SHAKE_AMP, frequency=10, decay=1.0)
+    animate_shake(bll, "winddown", duration=1.0, amplitude=SHAKE_AMP, frequency=10, decay=1.0)
+    animate_shake(bht, "winddown", duration=1.0, amplitude=SHAKE_AMP, frequency=10, decay=1.0)
+    animate_shake(bhl, "winddown", duration=1.0, amplitude=SHAKE_AMP, frequency=10, decay=1.0)
+    animate_shake(crucible, "winddown", duration=1.0, amplitude=0.003, frequency=12, decay=1.0)
     animate_translation(fire_glow, "winddown", duration=1.0, axis='Z',
-                        value_fn=lambda t: fire_base_z + 0.02 * (1 - t) * math.sin(t * math.pi * 4))
+                        value_fn=lambda t: fire_base_z + 0.008 * (1 - t) * math.sin(t * math.pi * 4))
     animate_translation(fire_core, "winddown", duration=1.0, axis='Z',
-                        value_fn=lambda t: core_base_z + 0.03 * (1 - t) * math.sin(t * math.pi * 3))
-    # Valve turns back
+                        value_fn=lambda t: core_base_z + 0.012 * (1 - t) * math.sin(t * math.pi * 3))
     animate_rotation(valve, "winddown", duration=1.0, axis='Y',
                      angle_fn=lambda t: (1 - t) * math.pi)
 
@@ -546,21 +579,25 @@ def bake_animations(objects):
 # Texture application
 # ---------------------------------------------------------------------------
 def apply_textures():
-    """Apply PBR textures to all named objects for the textured export."""
+    """Apply PBR textures to named objects for the textured export."""
     texture_map = {
-        "BasePlatform": "metal_plate_02",
-        "Body": "painted_metal_shutter",
-        "BandLo": "metal_plate",
-        "BandHi": "metal_plate",
+        "BasePlatformTop": "metal_plate_02",
+        "BasePlatformLeft": "metal_plate_02",
+        "BodyTop": "painted_metal_shutter",
+        "BodyLeft": "painted_metal_shutter",
+        "BandLoTop": "metal_plate",
+        "BandLoLeft": "metal_plate",
+        "BandHiTop": "metal_plate",
+        "BandHiLeft": "metal_plate",
         "CrucibleOuter": "rusty_metal_02",
         "CrucibleRim": "metal_plate",
         "Chimney": "corrugated_iron",
         "ChimneyCap": "rusty_metal_02",
         "ChimneyHood": "rusty_metal_02",
+        "HopperTop": "metal_plate",
         "HopperLeft": "metal_plate",
-        "HopperRight": "metal_plate",
+        "HopperTopRim": "metal_plate",
         "HopperLeftRim": "metal_plate",
-        "HopperRightRim": "metal_plate",
         "OutputChute": "rusty_metal_02",
         "ChuteMountPlate": "metal_plate",
         "MainGear": "metal_plate",
@@ -572,8 +609,7 @@ def apply_textures():
         "HeatPipe": "rusty_metal_02",
         "ElbowV": "rusty_metal_02",
     }
-    # Also apply to feet
-    for i in range(4):
+    for i in range(6):
         texture_map[f"Foot_{i}"] = "metal_plate"
 
     for obj_name, tex_id in texture_map.items():
@@ -587,7 +623,7 @@ def apply_textures():
 
 def main():
     output = parse_args()
-    print(f"[smelter_model] Building smelter, exporting to {output}")
+    print(f"[smelter_model] Building L-shaped smelter, exporting to {output}")
 
     # -- Build geometry --
     objects = build_smelter()

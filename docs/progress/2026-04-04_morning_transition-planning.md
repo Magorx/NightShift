@@ -1,0 +1,21 @@
+### Session 1 -- Transition Planning
+- **Date**: 2026-04-04
+- **Hours**: ~1h (planning session with Claude)
+- **Work done**:
+  - Full codebase audit: mapped all files to keep, remove, and create
+  - Identified 14 files referencing ResearchManager, 11 for ContractManager, 14 for EnergySystem
+  - Created 6-phase transition plan with 30 tasks, ordered by dependency
+  - Each task has specific file paths, function changes, and validation steps
+  - Estimated 48h total (~16 sessions) for M1 core loop prototype
+  - Identified 3 highest-risk tasks: energy removal, pathfinding performance, turret behavior
+  - Updated BOARD.md with full kanban breakdown
+  - Created TRANSITION_PLAN.md with detailed file-level change specs
+- **Decisions made**:
+  - Keep 8 building types for M1: conveyor, drill, smelter, splitter, junction, tunnel, sink, source
+  - Delete 24 building types, 4 autoload singletons, energy system
+  - Phase order: Strip -> Resources -> RoundManager -> Transform -> Monsters -> Polish
+  - M1 uses creative_mode (free placement), no shop system yet
+  - 3 elemental resources for M1: Pyromite, Crystalline, Biovine (other 3 deferred)
+  - 1 monster type for M1: Tendril Crawler
+- **Blockers**: None
+- **Next session goal**: P1.1-P1.3 -- strip ResearchManager, ContractManager, AccountManager, TutorialManager

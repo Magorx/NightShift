@@ -68,7 +68,7 @@ def build_source():
 
     root = bpy.data.objects.new("Source", None)
     root.empty_display_type = 'PLAIN_AXES'
-    root.empty_display_size = 0.5
+    root.empty_display_size = 0.25
     bpy.context.scene.collection.objects.link(root)
 
     def add(obj):
@@ -76,96 +76,96 @@ def build_source():
         return obj
 
     # -- BASE PLATFORM --
-    base = add(generate_box(w=1.8, d=1.8, h=0.1, hex_color=STEEL_DK))
+    base = add(generate_box(w=0.9, d=0.9, h=0.05, hex_color=STEEL_DK))
     base.name = "BasePlatform"
 
     # Corner feet
-    for i, (fx, fy) in enumerate([(-0.7, -0.7), (0.7, -0.7), (0.7, 0.7), (-0.7, 0.7)]):
-        foot = add(generate_cylinder(radius=0.09, height=0.06, segments=8,
+    for i, (fx, fy) in enumerate([(-0.35, -0.35), (0.35, -0.35), (0.35, 0.35), (-0.35, 0.35)]):
+        foot = add(generate_cylinder(radius=0.045, height=0.03, segments=8,
                                      hex_color=STEEL_DK))
         foot.name = f"Foot_{i}"
-        foot.location = (fx, fy, -0.06)
+        foot.location = (fx, fy, -0.03)
 
     # -- MAIN BODY --
-    body = add(generate_box(w=1.6, d=1.6, h=0.6, hex_color=BODY_MAIN, seam_count=1))
+    body = add(generate_box(w=0.8, d=0.8, h=0.3, hex_color=BODY_MAIN, seam_count=1))
     body.name = "Body"
-    body.location = (0, 0, 0.1)
+    body.location = (0, 0, 0.05)
 
     # Reinforcement band around body
-    band = add(generate_box(w=1.65, d=1.65, h=0.08, hex_color=STEEL_DK))
+    band = add(generate_box(w=0.825, d=0.825, h=0.04, hex_color=STEEL_DK))
     band.name = "Band"
-    band.location = (0, 0, 0.35)
+    band.location = (0, 0, 0.175)
 
     # Green accent stripe near top of body
-    stripe = add(generate_box(w=1.62, d=1.62, h=0.04, hex_color=SOURCE_GREEN))
+    stripe = add(generate_box(w=0.81, d=0.81, h=0.02, hex_color=SOURCE_GREEN))
     stripe.name = "GreenStripe"
-    stripe.location = (0, 0, 0.62)
+    stripe.location = (0, 0, 0.31)
 
     # -- ROOF PLATFORM --
-    roof = add(generate_box(w=1.7, d=1.7, h=0.08, hex_color=BODY_ROOF))
+    roof = add(generate_box(w=0.85, d=0.85, h=0.04, hex_color=BODY_ROOF))
     roof.name = "Roof"
-    roof.location = (0, 0, 0.7)
+    roof.location = (0, 0, 0.35)
 
     # -- CENTRAL APERTURE (open top cylinder for items to emerge from) --
-    aperture_ring = add(generate_cylinder(radius=0.5, height=0.12, segments=12,
+    aperture_ring = add(generate_cylinder(radius=0.25, height=0.06, segments=12,
                                           hex_color=STEEL))
     aperture_ring.name = "ApertureRing"
-    aperture_ring.location = (0, 0, 0.76)
+    aperture_ring.location = (0, 0, 0.38)
 
     # Dark chamber inside (smaller cylinder)
-    chamber = add(generate_cylinder(radius=0.38, height=0.06, segments=12,
+    chamber = add(generate_cylinder(radius=0.19, height=0.03, segments=12,
                                     hex_color=CHAMBER_DARK))
     chamber.name = "Chamber"
-    chamber.location = (0, 0, 0.78)
+    chamber.location = (0, 0, 0.39)
 
     # -- UPWARD ARROW -- the signature silhouette element
     # Central column (post) rising from the body
-    post = add(generate_cylinder(radius=0.15, height=0.8, segments=8,
+    post = add(generate_cylinder(radius=0.075, height=0.4, segments=8,
                                  hex_color=SOURCE_GREEN))
     post.name = "ArrowPost"
-    post.location = (0, 0, 0.85)
+    post.location = (0, 0, 0.425)
 
     # Arrow cone pointing up
-    arrow_cone = add(generate_cone(radius_bottom=0.35, radius_top=0.0, height=0.4,
+    arrow_cone = add(generate_cone(radius_bottom=0.175, radius_top=0.0, height=0.2,
                                    segments=8, hex_color=SOURCE_GREEN_LT))
     arrow_cone.name = "ArrowCone"
-    arrow_cone.location = (0, 0, 1.65)
+    arrow_cone.location = (0, 0, 0.825)
 
     # Arrow base disc (where cone meets post)
-    arrow_base = add(generate_cylinder(radius=0.35, height=0.06, segments=8,
+    arrow_base = add(generate_cylinder(radius=0.175, height=0.03, segments=8,
                                        hex_color=SOURCE_GREEN_DK))
     arrow_base.name = "ArrowBase"
-    arrow_base.location = (0, 0, 1.60)
+    arrow_base.location = (0, 0, 0.80)
 
     # -- SIDE DETAILS --
     # Small exhaust pipe on back-left
-    exhaust = add(generate_pipe(length=0.4, radius=0.06, wall_thickness=0.015,
+    exhaust = add(generate_pipe(length=0.2, radius=0.03, wall_thickness=0.0075,
                                 hex_color=C["pipe"]))
     exhaust.name = "Exhaust"
-    exhaust.location = (-0.6, 0.65, 0.3)
+    exhaust.location = (-0.3, 0.325, 0.15)
 
     # Control panel on front face
-    panel = add(generate_box(w=0.35, d=0.06, h=0.25, hex_color=BODY_LIGHT))
+    panel = add(generate_box(w=0.175, d=0.03, h=0.125, hex_color=BODY_LIGHT))
     panel.name = "ControlPanel"
-    panel.location = (0.3, -0.82, 0.35)
+    panel.location = (0.15, -0.41, 0.175)
 
     # Status light on panel (green)
-    light = add(generate_cylinder(radius=0.04, height=0.02, segments=6,
+    light = add(generate_cylinder(radius=0.02, height=0.01, segments=6,
                                   hex_color=SOURCE_GREEN_LT))
     light.name = "StatusLight"
     light.rotation_euler = (math.radians(90), 0, 0)
-    light.location = (0.3, -0.86, 0.5)
+    light.location = (0.15, -0.43, 0.25)
 
     # -- BOLTS --
     bolt_positions = [
         # Roof corners
-        (0.7, 0.7, 0.82), (-0.7, 0.7, 0.82), (0.7, -0.7, 0.82), (-0.7, -0.7, 0.82),
+        (0.35, 0.35, 0.41), (-0.35, 0.35, 0.41), (0.35, -0.35, 0.41), (-0.35, -0.35, 0.41),
         # Band bolts
-        (0.83, 0.5, 0.45), (0.83, -0.5, 0.45), (-0.83, 0.5, 0.45), (-0.83, -0.5, 0.45),
-        (0.5, 0.83, 0.45), (-0.5, 0.83, 0.45), (0.5, -0.83, 0.45), (-0.5, -0.83, 0.45),
+        (0.415, 0.25, 0.225), (0.415, -0.25, 0.225), (-0.415, 0.25, 0.225), (-0.415, -0.25, 0.225),
+        (0.25, 0.415, 0.225), (-0.25, 0.415, 0.225), (0.25, -0.415, 0.225), (-0.25, -0.415, 0.225),
     ]
     for i, (bx, by, bz) in enumerate(bolt_positions):
-        b = add(generate_bolt(head_radius=0.04, head_height=0.025, hex_color=C["rivet"]))
+        b = add(generate_bolt(head_radius=0.02, head_height=0.0125, hex_color=C["rivet"]))
         b.name = f"Bolt_{i}"
         b.location = (bx, by, bz)
 
@@ -193,23 +193,23 @@ def bake_source_animations(objects):
 
     # -- idle (2 sec): gentle up/down bob of arrow --
     animate_translation(cone, "idle", duration=2.0, axis='Z',
-                        value_fn=lambda t: cone_z + 0.03 * math.sin(t * math.pi * 2))
+                        value_fn=lambda t: cone_z + 0.015 * math.sin(t * math.pi * 2))
     animate_translation(post, "idle", duration=2.0, axis='Z',
-                        value_fn=lambda t: post_z + 0.03 * math.sin(t * math.pi * 2))
+                        value_fn=lambda t: post_z + 0.015 * math.sin(t * math.pi * 2))
     animate_translation(base, "idle", duration=2.0, axis='Z',
-                        value_fn=lambda t: base_z + 0.03 * math.sin(t * math.pi * 2))
+                        value_fn=lambda t: base_z + 0.015 * math.sin(t * math.pi * 2))
     animate_static(body, "idle", duration=2.0)
     animate_static(band, "idle", duration=2.0)
 
     # -- active (2 sec): faster pulsing bob + body shake --
     animate_translation(cone, "active", duration=2.0, axis='Z',
-                        value_fn=lambda t: cone_z + 0.08 * abs(math.sin(t * math.pi * 6)))
+                        value_fn=lambda t: cone_z + 0.04 * abs(math.sin(t * math.pi * 6)))
     animate_translation(post, "active", duration=2.0, axis='Z',
-                        value_fn=lambda t: post_z + 0.08 * abs(math.sin(t * math.pi * 6)))
+                        value_fn=lambda t: post_z + 0.04 * abs(math.sin(t * math.pi * 6)))
     animate_translation(base, "active", duration=2.0, axis='Z',
-                        value_fn=lambda t: base_z + 0.08 * abs(math.sin(t * math.pi * 6)))
-    animate_shake(body, "active", duration=2.0, amplitude=0.01, frequency=6)
-    animate_shake(band, "active", duration=2.0, amplitude=0.01, frequency=6)
+                        value_fn=lambda t: base_z + 0.04 * abs(math.sin(t * math.pi * 6)))
+    animate_shake(body, "active", duration=2.0, amplitude=0.005, frequency=6)
+    animate_shake(band, "active", duration=2.0, amplitude=0.005, frequency=6)
 
 
 # ===========================================================================
@@ -221,7 +221,7 @@ def build_sink():
 
     root = bpy.data.objects.new("Sink", None)
     root.empty_display_type = 'PLAIN_AXES'
-    root.empty_display_size = 0.5
+    root.empty_display_size = 0.25
     bpy.context.scene.collection.objects.link(root)
 
     def add(obj):
@@ -229,115 +229,115 @@ def build_sink():
         return obj
 
     # -- BASE PLATFORM --
-    base = add(generate_box(w=1.8, d=1.8, h=0.1, hex_color=STEEL_DK))
+    base = add(generate_box(w=0.9, d=0.9, h=0.05, hex_color=STEEL_DK))
     base.name = "BasePlatform"
 
     # Corner feet
-    for i, (fx, fy) in enumerate([(-0.7, -0.7), (0.7, -0.7), (0.7, 0.7), (-0.7, 0.7)]):
-        foot = add(generate_cylinder(radius=0.09, height=0.06, segments=8,
+    for i, (fx, fy) in enumerate([(-0.35, -0.35), (0.35, -0.35), (0.35, 0.35), (-0.35, 0.35)]):
+        foot = add(generate_cylinder(radius=0.045, height=0.03, segments=8,
                                      hex_color=STEEL_DK))
         foot.name = f"Foot_{i}"
-        foot.location = (fx, fy, -0.06)
+        foot.location = (fx, fy, -0.03)
 
     # -- MAIN BODY (taller than source, more "pit" feel) --
-    body = add(generate_box(w=1.6, d=1.6, h=0.7, hex_color=BODY_MAIN, seam_count=1))
+    body = add(generate_box(w=0.8, d=0.8, h=0.35, hex_color=BODY_MAIN, seam_count=1))
     body.name = "Body"
-    body.location = (0, 0, 0.1)
+    body.location = (0, 0, 0.05)
 
     # Reinforcement band
-    band = add(generate_box(w=1.65, d=1.65, h=0.08, hex_color=STEEL_DK))
+    band = add(generate_box(w=0.825, d=0.825, h=0.04, hex_color=STEEL_DK))
     band.name = "Band"
-    band.location = (0, 0, 0.4)
+    band.location = (0, 0, 0.2)
 
     # Red warning stripe
-    stripe = add(generate_box(w=1.62, d=1.62, h=0.04, hex_color=SINK_RED))
+    stripe = add(generate_box(w=0.81, d=0.81, h=0.02, hex_color=SINK_RED))
     stripe.name = "RedStripe"
-    stripe.location = (0, 0, 0.72)
+    stripe.location = (0, 0, 0.36)
 
     # -- HOPPER RIM (wider funnel opening at top) --
-    hopper_rim = add(generate_cylinder(radius=0.85, height=0.1, segments=12,
+    hopper_rim = add(generate_cylinder(radius=0.425, height=0.05, segments=12,
                                        hex_color=STEEL))
     hopper_rim.name = "HopperRim"
-    hopper_rim.location = (0, 0, 0.8)
+    hopper_rim.location = (0, 0, 0.4)
 
     # Inner hopper ring (slightly smaller, darker)
-    hopper_inner = add(generate_cylinder(radius=0.72, height=0.06, segments=12,
+    hopper_inner = add(generate_cylinder(radius=0.36, height=0.03, segments=12,
                                          hex_color=STEEL_DK))
     hopper_inner.name = "HopperInner"
-    hopper_inner.location = (0, 0, 0.82)
+    hopper_inner.location = (0, 0, 0.41)
 
     # -- FUNNEL (downward-pointing cone = inverted frustum inside) --
     # This is the signature visual: an inverted cone suggesting items fall in.
     # We create it as a cone pointing DOWN (rotated 180 degrees around X).
-    funnel = add(generate_cone(radius_bottom=0.65, radius_top=0.2, height=0.5,
+    funnel = add(generate_cone(radius_bottom=0.325, radius_top=0.1, height=0.25,
                                segments=10, hex_color=SINK_RED_DK))
     funnel.name = "Funnel"
     funnel.rotation_euler = (math.radians(180), 0, 0)
-    funnel.location = (0, 0, 0.82)
+    funnel.location = (0, 0, 0.41)
 
     # Dark void at center (the "hole" items fall into)
-    void = add(generate_cylinder(radius=0.2, height=0.04, segments=10,
+    void = add(generate_cylinder(radius=0.1, height=0.02, segments=10,
                                  hex_color=CHAMBER_DARK))
     void.name = "Void"
-    void.location = (0, 0, 0.3)
+    void.location = (0, 0, 0.15)
 
     # -- GRATE BARS over the opening (cross pattern) --
     # Two crossing bars over the hopper opening
     for i, rot_z in enumerate([0, math.radians(90)]):
-        grate_bar = add(generate_box(w=1.3, d=0.06, h=0.04, hex_color=GRATE_COLOR))
+        grate_bar = add(generate_box(w=0.65, d=0.03, h=0.02, hex_color=GRATE_COLOR))
         grate_bar.name = f"GrateBar_{i}"
-        grate_bar.location = (0, 0, 0.9)
+        grate_bar.location = (0, 0, 0.45)
         grate_bar.rotation_euler = (0, 0, rot_z)
 
     # Diagonal bars
     for i, rot_z in enumerate([math.radians(45), math.radians(-45)]):
-        grate_diag = add(generate_box(w=1.1, d=0.04, h=0.03, hex_color=GRATE_COLOR))
+        grate_diag = add(generate_box(w=0.55, d=0.02, h=0.015, hex_color=GRATE_COLOR))
         grate_diag.name = f"GrateDiag_{i}"
-        grate_diag.location = (0, 0, 0.88)
+        grate_diag.location = (0, 0, 0.44)
         grate_diag.rotation_euler = (0, 0, rot_z)
 
     # -- SIDE DETAILS --
     # Warning pipe on side (suggests drainage)
-    drain = add(generate_pipe(length=0.35, radius=0.07, wall_thickness=0.015,
+    drain = add(generate_pipe(length=0.175, radius=0.035, wall_thickness=0.0075,
                               hex_color=C["pipe"]))
     drain.name = "DrainPipe"
     drain.rotation_euler = (0, math.radians(90), 0)
-    drain.location = (0.9, 0.3, 0.3)
+    drain.location = (0.45, 0.15, 0.15)
 
     # Control panel on front face
-    panel = add(generate_box(w=0.35, d=0.06, h=0.25, hex_color=BODY_LIGHT))
+    panel = add(generate_box(w=0.175, d=0.03, h=0.125, hex_color=BODY_LIGHT))
     panel.name = "ControlPanel"
-    panel.location = (-0.3, -0.82, 0.35)
+    panel.location = (-0.15, -0.41, 0.175)
 
     # Warning light on panel (red)
-    light = add(generate_cylinder(radius=0.04, height=0.02, segments=6,
+    light = add(generate_cylinder(radius=0.02, height=0.01, segments=6,
                                   hex_color=SINK_RED_LT))
     light.name = "WarningLight"
     light.rotation_euler = (math.radians(90), 0, 0)
-    light.location = (-0.3, -0.86, 0.5)
+    light.location = (-0.15, -0.43, 0.25)
 
     # -- CORNER POSTS (visual weight at corners, shorter than source arrow) --
-    for i, (px, py) in enumerate([(-0.7, -0.7), (0.7, -0.7), (0.7, 0.7), (-0.7, 0.7)]):
-        corner = add(generate_cylinder(radius=0.06, height=0.2, segments=6,
+    for i, (px, py) in enumerate([(-0.35, -0.35), (0.35, -0.35), (0.35, 0.35), (-0.35, 0.35)]):
+        corner = add(generate_cylinder(radius=0.03, height=0.1, segments=6,
                                        hex_color=SINK_RED_DK))
         corner.name = f"CornerPost_{i}"
-        corner.location = (px, py, 0.8)
+        corner.location = (px, py, 0.4)
 
-        cap = add(generate_cylinder(radius=0.08, height=0.03, segments=6,
+        cap = add(generate_cylinder(radius=0.04, height=0.015, segments=6,
                                     hex_color=SINK_RED))
         cap.name = f"CornerCap_{i}"
-        cap.location = (px, py, 1.0)
+        cap.location = (px, py, 0.5)
 
     # -- BOLTS --
     bolt_positions = [
         # Rim edge bolts
-        (0.6, 0.6, 0.92), (-0.6, 0.6, 0.92), (0.6, -0.6, 0.92), (-0.6, -0.6, 0.92),
+        (0.3, 0.3, 0.46), (-0.3, 0.3, 0.46), (0.3, -0.3, 0.46), (-0.3, -0.3, 0.46),
         # Band bolts
-        (0.83, 0.5, 0.5), (0.83, -0.5, 0.5), (-0.83, 0.5, 0.5), (-0.83, -0.5, 0.5),
-        (0.5, 0.83, 0.5), (-0.5, 0.83, 0.5), (0.5, -0.83, 0.5), (-0.5, -0.83, 0.5),
+        (0.415, 0.25, 0.25), (0.415, -0.25, 0.25), (-0.415, 0.25, 0.25), (-0.415, -0.25, 0.25),
+        (0.25, 0.415, 0.25), (-0.25, 0.415, 0.25), (0.25, -0.415, 0.25), (-0.25, -0.415, 0.25),
     ]
     for i, (bx, by, bz) in enumerate(bolt_positions):
-        b = add(generate_bolt(head_radius=0.04, head_height=0.025, hex_color=C["rivet"]))
+        b = add(generate_bolt(head_radius=0.02, head_height=0.0125, hex_color=C["rivet"]))
         b.name = f"Bolt_{i}"
         b.location = (bx, by, bz)
 
@@ -358,17 +358,17 @@ def bake_sink_animations(objects):
     rim = objects["hopper_rim"]
 
     # -- idle (2 sec): subtle vibration --
-    animate_shake(body, "idle", duration=2.0, amplitude=0.005, frequency=3)
-    animate_shake(band, "idle", duration=2.0, amplitude=0.005, frequency=3)
+    animate_shake(body, "idle", duration=2.0, amplitude=0.0025, frequency=3)
+    animate_shake(band, "idle", duration=2.0, amplitude=0.0025, frequency=3)
     animate_static(funnel, "idle", duration=2.0)
     animate_static(rim, "idle", duration=2.0)
 
     # -- active (2 sec): stronger shake + funnel spin --
-    animate_shake(body, "active", duration=2.0, amplitude=0.015, frequency=8)
-    animate_shake(band, "active", duration=2.0, amplitude=0.015, frequency=8)
+    animate_shake(body, "active", duration=2.0, amplitude=0.0075, frequency=8)
+    animate_shake(band, "active", duration=2.0, amplitude=0.0075, frequency=8)
     animate_rotation(funnel, "active", duration=2.0, axis='Z',
                      total_angle=math.pi * 4)
-    animate_shake(rim, "active", duration=2.0, amplitude=0.008, frequency=6)
+    animate_shake(rim, "active", duration=2.0, amplitude=0.004, frequency=6)
 
 
 # ===========================================================================

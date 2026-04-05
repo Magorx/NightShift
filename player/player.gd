@@ -44,8 +44,8 @@ const DROP_RANGE := 1.0          # 1 tile
 var inventory: Array = []
 var selected_slot: int = 0
 
-# -- Conveyor push ------------------------------------------------------------
-var _conveyor_push: Vector3 = Vector3.ZERO
+# -- Conveyor push (set by ConveyorBelt ForceZone each physics frame) ---------
+var conveyor_push: Vector3 = Vector3.ZERO
 
 # -- Visual -------------------------------------------------------------------
 var facing_direction: Vector3 = Vector3.RIGHT  # XZ plane direction
@@ -90,7 +90,7 @@ func _physics_process(delta: float) -> void:
 	_handle_invulnerability(delta)
 	_handle_vertical_physics(delta)
 	_handle_movement(delta)
-	_handle_conveyor_push()
+	conveyor_push = Vector3.ZERO  # reset after movement consumes it
 	_handle_health_regen(delta)
 	_handle_hand_mining(delta)
 
@@ -163,13 +163,13 @@ func _handle_movement(delta: float) -> void:
 		stamina = minf(stamina, STAMINA_MAX)
 
 	# Apply acceleration/friction (XZ plane only, preserve Y)
-	var target_xz := input_dir * max_speed + _conveyor_push
+	var target_xz := input_dir * max_speed + conveyor_push
 	var current_xz := Vector3(velocity.x, 0.0, velocity.z)
 	var accel := ACCELERATION if input_dir != Vector3.ZERO else FRICTION
 	if input_dir != Vector3.ZERO:
 		current_xz = current_xz.move_toward(target_xz, ACCELERATION * delta)
 	else:
-		current_xz = current_xz.move_toward(_conveyor_push, FRICTION * delta)
+		current_xz = current_xz.move_toward(conveyor_push, FRICTION * delta)
 	velocity.x = current_xz.x
 	velocity.z = current_xz.z
 
@@ -211,24 +211,11 @@ func _get_ground_height() -> float:
 	return BUILDING_Z_HEIGHT
 
 func _update_collision_for_height() -> void:
-	# Collide with ground (layer 3) and buildings (layer 2).
-	# Items are on a separate layer — player walks through them
-	# (pickup is range-based, not collision-based).
+	# Collide with ground, buildings, and items.
 	var ground_bit := (1 << (GROUND_COLLISION_LAYER - 1))
 	var building_bit := (1 << (BUILDING_COLLISION_LAYER - 1))
-	collision_mask = ground_bit | building_bit
-
-# -- Conveyor Push (match item transport speed) -------------------------------
-
-func _handle_conveyor_push() -> void:
-	_conveyor_push = Vector3.ZERO
-	if not is_on_floor() or position.y > 0.01:
-		return
-	var grid_pos := _get_grid_pos()
-	var conv = GameManager.get_conveyor_at(grid_pos)
-	if not conv:
-		return
-	_conveyor_push = conv._get_world_forward() * ConveyorBelt.TARGET_SPEED
+	var item_bit := (1 << (ITEM_COLLISION_LAYER - 1))
+	collision_mask = ground_bit | building_bit | item_bit
 
 # -- Health -------------------------------------------------------------------
 

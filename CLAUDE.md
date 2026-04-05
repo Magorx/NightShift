@@ -1,5 +1,22 @@
 # CLAUDE.md
 
+## Quota tracking
+
+Run `/check-quota` to fetch live usage data. This invokes `bash ~/.claude/hooks/fetch-quota.sh` which reads `~/.claude/session-usage.txt`.
+
+**Checking frequency depends on your entrypoint:**
+- **CLI**: the statusLine hook fires automatically and writes both session (5hr) and weekly (7d) limits. Check every **5 tool calls**.
+- **VSCode**: the statusLine hook does not fire, so `fetch-quota.sh` falls back to a CLI call that only returns the **bottleneck** (whichever bucket is more constrained). The other bucket is shown as `<N% (not bottleneck)` -- this means it is guaranteed to be lower than the bottleneck percentage. Check every **15 tool calls** (each check costs one API call).
+
+**Output fields:**
+- `Status: OK` -- continue normally
+- `Status: PAUSE` -- **STOP all work immediately**. Tell the user quota is at 97%+, then run `sleep <N>` where N is the `Sleep:` value (seconds until reset). Resume after sleep completes.
+
+**Pacing guidelines (based on session 5hr quota, or bottleneck if session is unavailable):**
+- **> 80%**: use `/compact`, be concise, batch related reads, avoid unnecessary tool calls
+- **> 90%**: warn the user, finish only the current task, skip nice-to-haves
+- **> 97%**: PAUSE -- sleep until reset (mandatory, see above)
+
 ## Project: Night Shift
 
 **Factory roguelite** built with **Godot 4.5** (GDScript). 30-minute session-based runs: build a factory during day phases, survive psychedelic monster attacks at night. Conveyors become walls, converters become elemental turrets. Built on the "Factor" engine (a Factorio clone used for prototyping).
@@ -33,22 +50,10 @@ $GODOT --path .
 ## Workflow & Tracking
 
 ### Project board
-- **Kanban board**: `docs/kanban/BOARD.md` -- tasks organized as Backlog / In Progress / Done
-- **Progress log**: `docs/progress.md` -- session-by-session log with hours, work done, velocity
+- **Kanban board**: `docs/kanban/BOARD.md` -- active tasks (Backlog / In Progress). Solved cards in `BOARD_SOLVED.md`
+- **Progress log**: `docs/progress/` -- individual session reports, summary in `SUMMARY.md`
 - **Business tracker**: `docs/business.md` -- revenue projections, wishlist targets, timeline, costs
 - **Design doc**: `docs/design.md` -- single source of truth for game design decisions
-
-### Quota tracking
-Run `/check-quota` every ~15 tool calls to fetch live usage data. This invokes `bash ~/.claude/hooks/fetch-quota.sh`, which sends a minimal CLI message to get fresh rate limits and writes them to `~/.claude/session-usage.txt`.
-
-The output contains `Status:` and `Sleep:` fields:
-- `Status: OK` -- continue normally
-- `Status: PAUSE` -- **STOP all work immediately**. Tell the user quota is at 97%+, then run `sleep <N>` where N is the `Sleep:` value (seconds until reset). Resume work after the sleep completes.
-
-Pacing guidelines:
-- **> 80%**: use `/compact`, be concise, batch related reads, avoid unnecessary tool calls
-- **> 90%**: warn the user, finish only the current task, skip nice-to-haves
-- **> 97%**: PAUSE -- sleep until reset (mandatory, see above)
 
 ### Session workflow
 1. **At session start**: run `date` to record the start time, read the kanban board and progress log
@@ -59,7 +64,7 @@ Pacing guidelines:
 6. **MANDATORY at session end:**
    - Run `date` again and calculate elapsed time for the progress log
    - Update BOARD.md (move cards between columns)
-   - Append to progress.md (date, **actual measured hours**, work done, blockers, next goal)
+   - Create new session file in docs/progress/ named `[date]_[time]_[name].md` (date, **actual measured hours**, work done, blockers, next goal)
    - Update business.md timeline if estimates change
 
 ### Time tracking
@@ -193,8 +198,8 @@ Each building type lives in `buildings/<name>/` with `.tscn` scene + `.tres` Bui
 
 ## Documentation
 - `docs/design.md` -- Night Shift game design document
-- `docs/kanban/BOARD.md` -- project task board
-- `docs/progress.md` -- development session log
+- `docs/kanban/BOARD.md` -- active project task board (`BOARD_SOLVED.md` for completed cards)
+- `docs/progress/` -- development session reports (one file per session)
 - `docs/business.md` -- business metrics and projections
 - `docs/indie_game_market.md` -- market analysis
 - `docs/archive/` -- archived Factor design documents

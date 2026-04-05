@@ -1,0 +1,17 @@
+### Session 4 -- Isometric Conversion Planning
+- **Date**: 2026-04-04
+- **Hours**: ~0.3h (afternoon session, 13:05-13:26 MSK)
+- **Work done**:
+  - Researched Godot 4.x isometric approaches: isometric TileMapLayer, 3D billboard sprites, oblique 3/4 view
+  - Evaluated 3 options: oblique 3/4 (Graveyard Keeper style), dimetric isometric (Factorio style), 3D+billboard (Don't Starve style)
+  - Decision: dimetric isometric (Option B) for strongest visual hook / viral potential
+  - Full codebase audit: found 80+ coordinate conversions across 26 files, 16 duplicate TILE_SIZE constants, hardcoded 32 values in shaders and tests
+  - Created 9-card Isometric Phase (ISO.1-ISO.9) on kanban board, inserted before Phase 3
+  - Critical path: centralize coord math → switch projection → (art + code fixes parallel) → integration test
+- **Decisions made**:
+  - Dimetric 2:1 diamond grid (64x32 tiles) over oblique rectangular or 3D billboard
+  - De-risk via GridUtils centralization before any visual changes
+  - Y-sort replaces manual z_index layering
+  - 4 rotation sprite variants per building (isometric shows different faces)
+- **Blockers**: None
+- **Next session goal**: ISO.1 -- centralize all coordinate math into GridUtils autoload

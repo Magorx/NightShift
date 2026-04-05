@@ -1,0 +1,21 @@
+### Session 6 -- Art Pass: Elevation & Depth (ART.1-ART.4)
+- **Date**: 2026-04-04
+- **Hours**: ~2h (evening session, 18:56-20:57 MSK)
+- **Work done**:
+  - ART.1: Rewrote terrain atlas with front-edge depth, raised ore formations, textured walls
+  - ART.2: Converted all 7 buildings to isometric. Created new generate.lua for splitter, junction, tunnel
+  - ART.3: Rewrote conveyor atlas, fixed tiling (removed ELEV side walls), added UV rotation in shader for correct ridge direction
+  - ART.4: Item atlas with volumetric 3D shading, 8 tones per item
+  - Created shared tools/iso_box.lua module for 3D isometric box geometry
+  - Multiple iteration rounds on drill+source: flat diamond → 3D box → critic review → brown palette + derrick/hopper
+  - Fixed building sprite positions: (32,32) → (0,-8) → (0,-11) → (0,-19) as canvas grew
+  - Fixed conveyor shader: added direction-based UV rotation so ridges flow correctly
+- **Stats**: 48 files changed, +4274 / -1525 lines. ~12 agent runs (artists, programmers, critic)
+- **Decisions made**:
+  - 3D isometric box approach: roof + left wall + right wall, no diamond platform
+  - Brown shared palette for structure, identity colors as accents only
+  - Silhouette-breaking features extend above roofline (derrick, hopper)
+  - Base layer = shadow only (transparent, terrain shows through)
+  - iso_box.lua shared module for geometry reuse
+- **Blockers**: Art quality still unsatisfactory -- buildings look like crude boxes despite correct 3D structure. Need better pixel art technique or different approach (3D renders?)
+- **Next session goal**: Revisit art approach (possibly 3D pre-renders), then P3.1-P3.6

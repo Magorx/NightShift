@@ -1,0 +1,20 @@
+### Session 8 -- Scene Lighting System (LIB.2)
+- **Date**: 2026-04-04
+- **Hours**: ~0.2h (evening session, 22:36-22:48 MSK)
+- **Work done**:
+  - Added scene-level lighting module (`tools/rendering/iso/lighting.lua`)
+  - Three light types: ambient (flat uniform), directional (parallel rays), point (positional with quadratic falloff)
+  - All lights support colored tinting via `{r, g, b}` normalized channels
+  - Scene API: `scene:add_light()` — lights are scene-level objects alongside shapes
+  - Backward compatible: scenes with no explicit lights use default setup matching old shading
+  - Fixed 05_textures example: larger boxes (28x28x20), scene-based rendering makes textures visible
+  - Added 09_lighting.png example: 6-cell grid showing all light types and colored multi-light scenes
+  - Updated CLAUDE.md docs (both project-level and iso library)
+  - Added kanban card LIB.2
+- **Stats**: 1 new file (lighting.lua), 5 modified files, 16 files in commit
+- **Decisions made**:
+  - Lights are scene-level (not per-shape) — added to scene like shapes
+  - `render_shape()` (quick render) keeps legacy shading path for simplicity
+  - Point light attenuation: `(1 - (d/r)²)²` — smooth falloff to zero at radius
+- **Blockers**: None
+- **Next session goal**: Remaining buildings with Iso library, then P3.1

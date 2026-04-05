@@ -89,7 +89,7 @@ HUB_ACCENT = "#A0ACB8"
 
 # Animation constants
 HUB_ACTIVE_RPM = 3       # Revolutions in 2 seconds active state
-SHAKE_AMP      = 0.010
+SHAKE_AMP      = 0.005
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ def build_splitter():
 
     root = bpy.data.objects.new("Splitter", None)
     root.empty_display_type = 'PLAIN_AXES'
-    root.empty_display_size = 0.5
+    root.empty_display_size = 0.25
     bpy.context.scene.collection.objects.link(root)
 
     def add(obj):
@@ -110,103 +110,103 @@ def build_splitter():
 
     # ── BASE PLATFORM ─────────────────────────────────────────────────
     # Round base platform to distinguish from drill/smelter square bases
-    base = add(generate_cylinder(radius=1.3, height=0.10, segments=16,
+    base = add(generate_cylinder(radius=0.65, height=0.05, segments=16,
                                   hex_color=STEEL_DK))
     base.name = "BasePlatform"
 
     # Corner/edge support feet -- 6 pads in hexagonal arrangement
     for i in range(6):
         angle = (i / 6) * 2 * math.pi
-        fx = 1.1 * math.cos(angle)
-        fy = 1.1 * math.sin(angle)
-        foot = add(generate_cylinder(radius=0.10, height=0.06, segments=8,
+        fx = 0.55 * math.cos(angle)
+        fy = 0.55 * math.sin(angle)
+        foot = add(generate_cylinder(radius=0.05, height=0.03, segments=8,
                                      hex_color=STEEL_DK))
         foot.name = f"Foot_{i}"
-        foot.location = (fx, fy, -0.06)
+        foot.location = (fx, fy, -0.03)
 
     # ── MAIN HOUSING (octagonal feel via 16-segment cylinder) ─────────
     # Low, wide cylinder body -- the splitter is squat, hub-shaped
-    body = add(generate_cylinder(radius=1.1, height=0.55, segments=16,
+    body = add(generate_cylinder(radius=0.55, height=0.275, segments=16,
                                   hex_color=BODY_MAIN))
     body.name = "Body"
-    body.location = (0, 0, 0.10)
+    body.location = (0, 0, 0.05)
 
     # Lower reinforcement ring
-    ring_lo = add(generate_cylinder(radius=1.15, height=0.08, segments=16,
+    ring_lo = add(generate_cylinder(radius=0.575, height=0.04, segments=16,
                                      hex_color=STEEL_DK))
     ring_lo.name = "RingLo"
-    ring_lo.location = (0, 0, 0.14)
+    ring_lo.location = (0, 0, 0.07)
 
     # Upper reinforcement ring
-    ring_hi = add(generate_cylinder(radius=1.15, height=0.08, segments=16,
+    ring_hi = add(generate_cylinder(radius=0.575, height=0.04, segments=16,
                                      hex_color=STEEL_DK))
     ring_hi.name = "RingHi"
-    ring_hi.location = (0, 0, 0.52)
+    ring_hi.location = (0, 0, 0.26)
 
     # Roof plate -- slightly wider, flat disc on top of body
-    roof = add(generate_cylinder(radius=1.18, height=0.08, segments=16,
+    roof = add(generate_cylinder(radius=0.59, height=0.04, segments=16,
                                   hex_color=BODY_ROOF))
     roof.name = "Roof"
-    roof.location = (0, 0, 0.65)
+    roof.location = (0, 0, 0.325)
 
     # Hazard stripe ring near base
-    hazard = add(generate_cylinder(radius=1.12, height=0.03, segments=16,
+    hazard = add(generate_cylinder(radius=0.56, height=0.015, segments=16,
                                     hex_color=YELLOW))
     hazard.name = "HazardStripe"
-    hazard.location = (0, 0, 0.13)
+    hazard.location = (0, 0, 0.065)
 
     # ── CENTRAL HUB / DISTRIBUTOR (rotating element) ──────────────────
     # This is the visual signature -- a raised turntable/carousel on top
 
     # Hub pedestal -- short cylinder raising the hub above the roof
-    hub_pedestal = add(generate_cylinder(radius=0.45, height=0.15, segments=12,
+    hub_pedestal = add(generate_cylinder(radius=0.225, height=0.075, segments=12,
                                           hex_color=STEEL_DK))
     hub_pedestal.name = "HubPedestal"
-    hub_pedestal.location = (0, 0, 0.73)
+    hub_pedestal.location = (0, 0, 0.365)
 
     # Hub body -- the main rotating disc
-    hub = add(generate_cylinder(radius=0.55, height=0.20, segments=12,
+    hub = add(generate_cylinder(radius=0.275, height=0.10, segments=12,
                                  hex_color=HUB_MAIN))
     hub.name = "Hub"
-    hub.location = (0, 0, 0.88)
+    hub.location = (0, 0, 0.44)
 
     # Hub dome cap -- hemisphere on top for a polished look
-    hub_dome = add(generate_hemisphere(radius=0.30, rings=3, segments=10,
+    hub_dome = add(generate_hemisphere(radius=0.15, rings=3, segments=10,
                                         hex_color=HUB_ACCENT))
     hub_dome.name = "HubDome"
-    hub_dome.location = (0, 0, 1.08)
+    hub_dome.location = (0, 0, 0.54)
 
     # Hub rim ring -- decorative ring around the spinning disc
-    hub_rim = add(generate_cylinder(radius=0.58, height=0.04, segments=12,
+    hub_rim = add(generate_cylinder(radius=0.29, height=0.02, segments=12,
                                      hex_color=STEEL_LT))
     hub_rim.name = "HubRim"
-    hub_rim.location = (0, 0, 0.92)
+    hub_rim.location = (0, 0, 0.46)
 
     # Hub gear ring (decorative, visible between pedestal and hub)
-    hub_gear = add(generate_cog(outer_radius=0.50, inner_radius=0.38,
-                                teeth=12, thickness=0.08, hex_color=STEEL))
+    hub_gear = add(generate_cog(outer_radius=0.25, inner_radius=0.19,
+                                teeth=12, thickness=0.04, hex_color=STEEL))
     hub_gear.name = "HubGear"
-    hub_gear.location = (0, 0, 0.80)
+    hub_gear.location = (0, 0, 0.40)
 
     # Distributor arms -- 3 prominent radial fins on the hub (rotate with it)
     # These are paddle/vanes that visually "push" items to outputs
     for i in range(3):
         angle = (i / 3) * 2 * math.pi
-        arm = add(generate_box(w=0.10, d=0.55, h=0.18, hex_color=HUB_ACCENT))
+        arm = add(generate_box(w=0.05, d=0.275, h=0.09, hex_color=HUB_ACCENT))
         arm.name = f"DistArm_{i}"
         # Position at hub edge, rotated around center
-        ax = 0.32 * math.cos(angle)
-        ay = 0.32 * math.sin(angle)
-        arm.location = (ax, ay, 0.92)
+        ax = 0.16 * math.cos(angle)
+        ay = 0.16 * math.sin(angle)
+        arm.location = (ax, ay, 0.46)
         arm.rotation_euler = (0, 0, angle)
 
     # Arm tip markers -- yellow dots at the end of each arm
     for i in range(3):
         angle = (i / 3) * 2 * math.pi
-        tip = add(generate_cylinder(radius=0.04, height=0.06, segments=6,
+        tip = add(generate_cylinder(radius=0.02, height=0.03, segments=6,
                                      hex_color=YELLOW))
         tip.name = f"ArmTip_{i}"
-        tip.location = (0.55 * math.cos(angle), 0.55 * math.sin(angle), 0.96)
+        tip.location = (0.275 * math.cos(angle), 0.275 * math.sin(angle), 0.48)
         tip.rotation_euler = (0, 0, angle)
 
     # ── OUTPUT CHUTES (3 at 120-degree intervals) ─────────────────────
@@ -219,11 +219,11 @@ def build_splitter():
         sin_a = math.sin(angle)
 
         # Chute pipe -- angled downward from body edge
-        chute = add(generate_pipe(length=0.6, radius=0.12, wall_thickness=0.03,
+        chute = add(generate_pipe(length=0.3, radius=0.06, wall_thickness=0.015,
                                   hex_color=C["pipe"]))
         chute.name = f"OutputChute_{ci}"
         # Position at body edge, tilted outward and down
-        chute.location = (cos_a * 0.95, sin_a * 0.95, 0.40)
+        chute.location = (cos_a * 0.475, sin_a * 0.475, 0.20)
         # Tilt outward: rotate around the perpendicular axis
         # The pipe runs along Z, so we tilt it outward
         chute.rotation_euler = (
@@ -234,144 +234,144 @@ def build_splitter():
         chute_objects.append(chute)
 
         # Chute mounting plate (where chute meets body)
-        mount = add(generate_cylinder(radius=0.16, height=0.05, segments=8,
+        mount = add(generate_cylinder(radius=0.08, height=0.025, segments=8,
                                        hex_color=STEEL_DK))
         mount.name = f"ChuteMountPlate_{ci}"
-        mount.location = (cos_a * 1.08, sin_a * 1.08, 0.40)
+        mount.location = (cos_a * 0.54, sin_a * 0.54, 0.20)
 
         # Yellow directional marker arrow/band on each chute
-        marker = add(generate_cylinder(radius=0.14, height=0.03, segments=8,
+        marker = add(generate_cylinder(radius=0.07, height=0.015, segments=8,
                                         hex_color=YELLOW))
         marker.name = f"ChuteMarker_{ci}"
         # Place along chute pipe, offset outward
-        marker.location = (cos_a * 1.25, sin_a * 1.25, 0.22)
+        marker.location = (cos_a * 0.625, sin_a * 0.625, 0.11)
 
         # Chute tip flare -- wider exit
-        tip = add(generate_cone(radius_bottom=0.10, radius_top=0.16,
-                                 height=0.08, segments=8, hex_color=STEEL))
+        tip = add(generate_cone(radius_bottom=0.05, radius_top=0.08,
+                                 height=0.04, segments=8, hex_color=STEEL))
         tip.name = f"ChuteTip_{ci}"
-        tip.location = (cos_a * 1.35, sin_a * 1.35, 0.12)
+        tip.location = (cos_a * 0.675, sin_a * 0.675, 0.06)
 
     # ── INPUT HOPPER (single, on one side -- between two output chutes) ──
     # Positioned at 180 degrees (opposite from the 0-degree chute)
     # This is a truncated cone funnel that items enter through
     hopper_angle = math.pi  # 180 degrees -- back of the splitter
-    hx = math.cos(hopper_angle) * 0.85
-    hy = math.sin(hopper_angle) * 0.85
+    hx = math.cos(hopper_angle) * 0.425
+    hy = math.sin(hopper_angle) * 0.425
 
     # Hopper funnel -- wider at top, narrows into body. Taller and more prominent.
-    hopper = add(generate_cone(radius_bottom=0.18, radius_top=0.35,
-                                height=0.55, segments=8, hex_color=STEEL))
+    hopper = add(generate_cone(radius_bottom=0.09, radius_top=0.175,
+                                height=0.275, segments=8, hex_color=STEEL))
     hopper.name = "InputHopper"
-    hopper.location = (hx, hy, 0.52)
+    hopper.location = (hx, hy, 0.26)
 
     # Hopper rim -- wide ring at top
-    hopper_rim = add(generate_cylinder(radius=0.38, height=0.05, segments=8,
+    hopper_rim = add(generate_cylinder(radius=0.19, height=0.025, segments=8,
                                         hex_color=STEEL_DK))
     hopper_rim.name = "HopperRim"
-    hopper_rim.location = (hx, hy, 1.07)
+    hopper_rim.location = (hx, hy, 0.535)
 
     # Hopper interior darkness (visible from above)
-    hopper_dark = add(generate_cylinder(radius=0.25, height=0.03, segments=8,
+    hopper_dark = add(generate_cylinder(radius=0.125, height=0.015, segments=8,
                                          hex_color=C["intake_dark"]))
     hopper_dark.name = "HopperDark"
-    hopper_dark.location = (hx, hy, 1.04)
+    hopper_dark.location = (hx, hy, 0.52)
 
     # Hopper support bracket -- wedge connecting to body
-    hopper_bracket = add(generate_wedge(w=0.25, d=0.20, h_front=0.0, h_back=0.18,
+    hopper_bracket = add(generate_wedge(w=0.125, d=0.10, h_front=0.0, h_back=0.09,
                                          hex_color=STEEL_DK))
     hopper_bracket.name = "HopperBracket"
-    hopper_bracket.location = (hx * 0.75, hy * 0.75, 0.55)
+    hopper_bracket.location = (hx * 0.75, hy * 0.75, 0.275)
     hopper_bracket.rotation_euler = (0, 0, hopper_angle + math.radians(90))
 
     # ── GEAR MECHANISM (visible on one side, pushed outward for visibility) ──
     # Drive gear -- connects to the hub rotation mechanism
-    main_gear = add(generate_cog(outer_radius=0.50, inner_radius=0.35,
-                                 teeth=10, thickness=0.20, hex_color=STEEL_LT))
+    main_gear = add(generate_cog(outer_radius=0.25, inner_radius=0.175,
+                                 teeth=10, thickness=0.10, hex_color=STEEL_LT))
     main_gear.name = "MainGear"
-    main_gear.location = (0.90, 0.80, 0.52)
+    main_gear.location = (0.45, 0.40, 0.26)
 
-    small_gear = add(generate_cog(outer_radius=0.30, inner_radius=0.22,
-                                  teeth=6, thickness=0.20, hex_color=STEEL))
+    small_gear = add(generate_cog(outer_radius=0.15, inner_radius=0.11,
+                                  teeth=6, thickness=0.10, hex_color=STEEL))
     small_gear.name = "SmallGear"
-    small_gear.location = (0.45, 1.15, 0.52)
+    small_gear.location = (0.225, 0.575, 0.26)
 
     # Gear axle caps
-    for name, pos in [("MainAxle", (0.90, 0.80, 0.63)),
-                      ("SmallAxle", (0.45, 1.15, 0.63))]:
-        axle = add(generate_cylinder(radius=0.06, height=0.04, segments=8,
+    for name, pos in [("MainAxle", (0.45, 0.40, 0.315)),
+                      ("SmallAxle", (0.225, 0.575, 0.315))]:
+        axle = add(generate_cylinder(radius=0.03, height=0.02, segments=8,
                                      hex_color=STEEL_DK))
         axle.name = name
         axle.location = pos
 
     # ── PLUMBING -- pipes along body ──────────────────────────────────
     # Vertical pipe on one side
-    vert_pipe = add(generate_pipe(length=0.5, radius=0.05, wall_thickness=0.012,
+    vert_pipe = add(generate_pipe(length=0.25, radius=0.025, wall_thickness=0.006,
                                   hex_color=COPPER))
     vert_pipe.name = "VertPipe"
-    vert_pipe.location = (0.75, -0.75, 0.25)
+    vert_pipe.location = (0.375, -0.375, 0.125)
 
     # Horizontal connecting pipe
-    h_pipe = add(generate_pipe(length=0.22, radius=0.04, wall_thickness=0.010,
+    h_pipe = add(generate_pipe(length=0.11, radius=0.02, wall_thickness=0.005,
                                hex_color=COPPER))
     h_pipe.name = "HPipe"
     h_pipe.rotation_euler = (0, math.radians(90), 0)
-    h_pipe.location = (0.62, -0.75, 0.5)
+    h_pipe.location = (0.31, -0.375, 0.25)
 
     # Small pipe on back
-    back_pipe = add(generate_pipe(length=0.30, radius=0.05, wall_thickness=0.012,
+    back_pipe = add(generate_pipe(length=0.15, radius=0.025, wall_thickness=0.006,
                                   hex_color=COPPER_DK))
     back_pipe.name = "BackPipe"
-    back_pipe.location = (-0.70, 0.70, 0.25)
+    back_pipe.location = (-0.35, 0.35, 0.125)
 
     # ── CONTROL PANEL (front face area) ───────────────────────────────
-    panel = add(generate_box(w=0.45, d=0.07, h=0.28, hex_color=BODY_LIGHT))
+    panel = add(generate_box(w=0.225, d=0.035, h=0.14, hex_color=BODY_LIGHT))
     panel.name = "ControlPanel"
-    panel.location = (0.35, -1.05, 0.35)
+    panel.location = (0.175, -0.525, 0.175)
 
     # Gauge
-    gauge = add(generate_cylinder(radius=0.08, height=0.03, segments=10,
+    gauge = add(generate_cylinder(radius=0.04, height=0.015, segments=10,
                                   hex_color=GAUGE_FACE))
     gauge.name = "Gauge"
     gauge.rotation_euler = (math.radians(90), 0, 0)
-    gauge.location = (0.25, -1.09, 0.45)
+    gauge.location = (0.125, -0.545, 0.225)
 
     # Gauge rim
-    gauge_rim = add(generate_cylinder(radius=0.10, height=0.02, segments=10,
+    gauge_rim = add(generate_cylinder(radius=0.05, height=0.01, segments=10,
                                       hex_color=COPPER))
     gauge_rim.name = "GaugeRim"
     gauge_rim.rotation_euler = (math.radians(90), 0, 0)
-    gauge_rim.location = (0.25, -1.10, 0.45)
+    gauge_rim.location = (0.125, -0.55, 0.225)
 
     # Toggle knobs
-    for ki, kx in enumerate([0.40, 0.48]):
-        knob = add(generate_cylinder(radius=0.025, height=0.035, segments=6,
+    for ki, kx in enumerate([0.20, 0.24]):
+        knob = add(generate_cylinder(radius=0.0125, height=0.0175, segments=6,
                                      hex_color=RED_WARN if ki == 0 else YELLOW))
         knob.name = f"Knob_{ki}"
         knob.rotation_euler = (math.radians(90), 0, 0)
-        knob.location = (kx, -1.09, 0.38)
+        knob.location = (kx, -0.545, 0.19)
 
     # ── VALVE WHEEL (on pipe) ─────────────────────────────────────────
-    valve = add(generate_cog(outer_radius=0.12, inner_radius=0.08,
-                             teeth=5, thickness=0.03, hex_color=RED_WARN))
+    valve = add(generate_cog(outer_radius=0.06, inner_radius=0.04,
+                             teeth=5, thickness=0.015, hex_color=RED_WARN))
     valve.name = "ValveWheel"
     valve.rotation_euler = (math.radians(90), 0, 0)
-    valve.location = (-0.55, -0.95, 0.40)
+    valve.location = (-0.275, -0.475, 0.20)
 
-    valve_stem = add(generate_cylinder(radius=0.02, height=0.07, segments=6,
+    valve_stem = add(generate_cylinder(radius=0.01, height=0.035, segments=6,
                                        hex_color=STEEL_DK))
     valve_stem.name = "ValveStem"
     valve_stem.rotation_euler = (math.radians(90), 0, 0)
-    valve_stem.location = (-0.55, -0.97, 0.40)
+    valve_stem.location = (-0.275, -0.485, 0.20)
 
     # ── WIRING / CABLES ──────────────────────────────────────────────
     cable_runs = [
         # From panel area to body top
-        {"start": (0.35, -0.90, 0.60), "end": (0.20, -0.40, 0.70), "name": "Cable_0"},
+        {"start": (0.175, -0.45, 0.30), "end": (0.10, -0.20, 0.35), "name": "Cable_0"},
         # From gear area to hub pedestal
-        {"start": (0.65, 0.60, 0.65), "end": (0.25, 0.20, 0.75), "name": "Cable_1"},
+        {"start": (0.325, 0.30, 0.325), "end": (0.125, 0.10, 0.375), "name": "Cable_1"},
         # Along body side
-        {"start": (-0.60, -0.60, 0.50), "end": (-0.70, 0.40, 0.50), "name": "Cable_2"},
+        {"start": (-0.30, -0.30, 0.25), "end": (-0.35, 0.20, 0.25), "name": "Cable_2"},
     ]
     for ci, run in enumerate(cable_runs):
         sx, sy, sz = run["start"]
@@ -379,7 +379,7 @@ def build_splitter():
         dx, dy, dz = ex - sx, ey - sy, ez - sz
         length = math.sqrt(dx*dx + dy*dy + dz*dz)
 
-        cable = add(generate_cylinder(radius=0.018, height=length, segments=6,
+        cable = add(generate_cylinder(radius=0.009, height=length, segments=6,
                                       hex_color=CABLE))
         cable.name = run["name"]
         cable.location = (sx, sy, sz)
@@ -391,30 +391,30 @@ def build_splitter():
     # Roof bolts (around the edge of the roof disc)
     for i in range(8):
         angle = (i / 8) * 2 * math.pi
-        bx = 1.05 * math.cos(angle)
-        by = 1.05 * math.sin(angle)
-        b = add(generate_bolt(head_radius=0.04, head_height=0.025, hex_color=C["rivet"]))
+        bx = 0.525 * math.cos(angle)
+        by = 0.525 * math.sin(angle)
+        b = add(generate_bolt(head_radius=0.02, head_height=0.0125, hex_color=C["rivet"]))
         b.name = f"RoofBolt_{i}"
-        b.location = (bx, by, 0.74)
+        b.location = (bx, by, 0.37)
 
     # Ring bolts on lower and upper rings
-    for ri, rz in enumerate([0.18, 0.56]):
+    for ri, rz in enumerate([0.09, 0.28]):
         for i in range(6):
             angle = (i / 6) * 2 * math.pi + (ri * math.pi / 6)  # stagger
-            bx = 1.14 * math.cos(angle)
-            by = 1.14 * math.sin(angle)
-            b = add(generate_bolt(head_radius=0.035, head_height=0.02, hex_color=C["rivet"]))
+            bx = 0.57 * math.cos(angle)
+            by = 0.57 * math.sin(angle)
+            b = add(generate_bolt(head_radius=0.0175, head_height=0.01, hex_color=C["rivet"]))
             b.name = f"RingBolt_{ri}_{i}"
             b.location = (bx, by, rz)
 
     # Hub pedestal bolts (around the pedestal)
     for i in range(4):
         angle = (i / 4) * 2 * math.pi + math.pi / 8
-        bx = 0.42 * math.cos(angle)
-        by = 0.42 * math.sin(angle)
-        b = add(generate_bolt(head_radius=0.03, head_height=0.02, hex_color=C["rivet"]))
+        bx = 0.21 * math.cos(angle)
+        by = 0.21 * math.sin(angle)
+        b = add(generate_bolt(head_radius=0.015, head_height=0.01, hex_color=C["rivet"]))
         b.name = f"PedestalBolt_{i}"
-        b.location = (bx, by, 0.89)
+        b.location = (bx, by, 0.445)
 
     return {
         "root": root,
@@ -509,7 +509,7 @@ def bake_animations(objects):
         phase_offset = ci * 2 * math.pi / 3
         animate_translation(chute, "active", duration=2.0, axis='Z',
                             value_fn=lambda t, bz=base_z, po=phase_offset:
-                                bz + 0.015 * math.sin(t * math.pi * 12 + po))
+                                bz + 0.0075 * math.sin(t * math.pi * 12 + po))
 
     # ── winddown (1 sec): hub decelerating ────────────────────────────
     decel_hub_angle = math.pi * 2 * 1.5  # 1.5 rotations, decelerating
@@ -531,7 +531,7 @@ def bake_animations(objects):
         phase_offset = ci * 2 * math.pi / 3
         animate_translation(chute, "winddown", duration=1.0, axis='Z',
                             value_fn=lambda t, bz=base_z, po=phase_offset:
-                                bz + 0.015 * (1 - t) * math.sin(t * math.pi * 6 + po))
+                                bz + 0.0075 * (1 - t) * math.sin(t * math.pi * 6 + po))
 
 
 # ---------------------------------------------------------------------------

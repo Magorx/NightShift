@@ -1,0 +1,21 @@
+### Session 19 -- Physics Fixes + Model Pipeline Cleanup
+- **Date**: 2026-04-05
+- **Hours**: ~1.5h (afternoon session, 11:54-13:29 MSK)
+- **Work done**:
+  - Fixed 4 physics bugs: conveyor_system reference error, missing animations, dropped items not becoming PhysicsItems, conveyor model 90° rotation
+  - Fixed destroy mode error: removed dead conveyor_visual_manager references from build_system.gd
+  - Ran critic review — found critical InputZone overlap fragility, PhysicsItem.spawn leak, missing animation calls, dead code in UndergroundTransportLogic
+  - Redesigned OutputZone as Area3D with BoxShape3D — items spawn at random points within the volume
+  - Added model-based collision: BuildingBase auto-generates trimesh StaticBody3D from .glb mesh geometry. Sink delivery jumped 13→70→117→225 items as collision improved
+  - Created ShapeCell3D: @tool MeshInstance3D that renders translucent unit cubes in editor for grid footprint visualization
+  - Moved all building models to origin (0,0,0) — removed legacy (0.5, 0, 0.5) offset
+  - Consolidated Blender export: all 16 model scripts now use shared export_glb from export_helpers.py
+  - Fixed model scaling: moved 0.5x scale from broken Blender export hack to Godot import settings (nodes/root_scale=0.5 in 104 .glb.import files)
+  - Rebuilt all .glb models — verified with inspect_model.py that conveyor and source render correctly
+- **Decisions made**:
+  - Building collision from actual model mesh (trimesh), not placeholder boxes
+  - Scale handled at Godot import time, not in Blender pipeline
+  - ShapeCell3D visible in editor only, hidden at runtime
+  - OutputZone is Area3D with random spawn volume, not a point marker
+- **Blockers**: None
+- **Next session goal**: Fix remaining critic issues (InputZone overlap, dead UndergroundTransportLogic code, splitter dict growth), playtest visually

@@ -1,0 +1,19 @@
+### Session 0 -- Design & Planning
+- **Date**: 2026-04-03
+- **Hours**: ~3h (evening session)
+- **Work done**:
+  - Market analysis of 20 successful indie games (docs/indie_game_market.md)
+  - Evaluated 2 game concepts, selected "Night Shift"
+  - Core design: elemental resources, factory-as-defense, build/fight/shop cycle
+  - Identified direct competitor (Tower Factory) and market positioning
+  - Set up project tracking system (board, design doc, progress, business)
+- **Decisions made**:
+  - 30-min session-based roguelite with factory building
+  - 6 elemental resources with 15 pairwise combinations
+  - Conveyors = walls, converters = turrets at night
+  - Psychedelic aesthetic (not horror)
+  - 128x128 fixed map, 8-slot inventory
+  - Meta-progression via planet biome map
+  - Reuse Factor's engine (pull system, conveyors, building framework)
+- **Blockers**: None
+- **Next session goal**: Begin M1 prototype -- strip Factor systems, implement round manager

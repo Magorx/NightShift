@@ -1,0 +1,21 @@
+### Session 2 -- Phase 1: Strip Factor Systems
+- **Date**: 2026-04-04
+- **Hours**: ~1h (morning session, 11:20-12:27 MSK)
+- **Work done**:
+  - P1.1: Gutted ResearchManager -- removed from game_manager, save_manager, build_system, game_camera, buildings_panel. Deleted research_manager.gd, research_panel.gd, research_lab/ folder
+  - P1.2: Gutted ContractManager -- removed from game_manager, save_manager, hud. Simplified sink to accept all items. Deleted contract_manager.gd
+  - P1.3: Gutted TutorialManager -- removed from game_world, hud. Deleted tutorial_manager.gd, tutorial_panel.gd. **AccountManager retained** (needed for save slots)
+  - P1.4: Gutted EnergySystem -- removed energy_system var, energy registration/unregistration, energy link mode from build_system, energy checks from converter. Deleted scripts/energy/ folder, 6 energy building folders, building_energy.gd, energy_node.gd
+  - P1.5: Deleted 24 unused building folders (assembler, centrifuge, chemical_plant, press, etc.). Removed research panel, recipe browser, tutorial panel, building info panel from HUD scene
+  - P1.6: Updated simulation_base.gd (removed contract/tutorial setup). Deleted 8 obsolete sims. All kept sims pass (conveyor_transport, unified_pull, splitter, merge_and_source_sink)
+  - Fixed player.gd energy_link_mode reference crash
+  - Cleaned up stress_test_generator (removed energy infrastructure)
+  - Simplified settings_menu (removed tutorial reset)
+- **Stats**: 286 files changed, +265 / -26,278 lines
+- **Decisions made**:
+  - AccountManager kept (user requested) -- save slots still useful
+  - Camera zoom range fixed at 0.5-3.0 (was research-gated)
+  - Converters work without power (energy_cost ignored)
+  - Sinks accept all items (no contract filtering)
+- **Blockers**: None
+- **Next session goal**: P2.1-P2.5 -- new elemental resource system (3 resources, recipes, world gen)

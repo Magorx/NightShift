@@ -1,0 +1,26 @@
+### Session 5 -- Isometric Conversion (ISO.1-ISO.9)
+- **Date**: 2026-04-04
+- **Hours**: ~0.5h (afternoon session, 16:10-16:44 MSK)
+- **Work done**:
+  - ISO.1: Created GridUtils autoload -- centralized 80+ coordinate conversions from 28 files into 7 static functions. Removed 14 duplicate TILE_SIZE constants. All sims pass.
+  - ISO.2: Switched GridUtils to isometric diamond projection (64x32 dimetric). grid_to_world/world_to_grid use isometric transform. TileSet configured with TILE_SHAPE_ISOMETRIC, TILE_LAYOUT_DIAMOND_DOWN. Diamond tile images for terrain.
+  - ISO.3: Restructured scene hierarchy with ObjectLayer for y-sort depth sorting. Removed manual z_index layering.
+  - ISO.4: Updated BuildSystem for diamond grid -- diamond grid overlay, isometric ghost preview, diamond destroy area visualization.
+  - ISO.5: Updated conveyor/junction/splitter/tunnel item paths for isometric. Entry/exit points use GridUtils.grid_offset. MultiMesh quad sizing updated to 64x32.
+  - ISO.6-8: New isometric terrain atlas (512x480, 8x15 grid of 64x32 diamonds). New isometric conveyor atlas (256x192, 4x6 grid). Updated item sprites (slightly less cartoonish). Building sprites kept at 32x32 (functional, art upgrade post-M1).
+  - ISO.9: Full verification -- 45 unit tests for GridUtils coordinate math, all 9 simulations pass. Critic review found 5 issues, all fixed: diamond collision shape, player conveyor push direction, dead parameters, stale comments.
+  - Fixed building_def.gd scene parsing (SCENE_CELL_SIZE=32 for .tscn files vs display TILE_WIDTH=64)
+  - Fixed sim_player.gd spawn position test for isometric center
+  - Added Aseprite Lua generation scripts for terrain/conveyor/item art
+- **Stats**: ~30 files changed across 6 commits. 45 unit tests + 9 simulations all pass.
+- **Decisions made**:
+  - Building sprites stay 32x32 for M1 (top-down in iso world is acceptable, upgrade post-M1)
+  - Minimap uses top-down grid view (standard for iso games)
+  - SCENE_CELL_SIZE constant separates scene-file parsing from display tile size
+- **Doubts for user clarification**:
+  - Building sprite art: currently top-down 32x32 in isometric world. Looks functional but not polished. Should we invest time now or wait for post-M1?
+  - Stress test sim still fails item delivery (pre-existing issue, not related to iso conversion). Should we investigate?
+  - Player movement is still in screen-space (WASD moves in screen directions, not grid directions). Is this desired for isometric?
+  - Conveyor shader highlight stripe effect uses FRAGCOORD which is screen-space -- looks different in isometric. Worth adjusting?
+- **Blockers**: None
+- **Next session goal**: P3.1-P3.6 -- RoundManager, phase HUD, build/fight cycle

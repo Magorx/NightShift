@@ -1,0 +1,15 @@
+### Session 14 -- Cleanup & Tooling
+- **Date**: 2026-04-05
+- **Hours**: ~1.2h (morning session, 09:27-10:38 MSK, excludes 2h sleep)
+- **Work done**:
+  - Removed `.blend` file exports from all 17 Blender scene scripts — only `.glb` output now
+  - Deleted 113 `.blend`/`.blend1` files from the repo
+  - Removed `export_blend()` function from `export_helpers.py` and all scene scripts
+  - Fixed `fetch-quota.sh`: CLI (statusLine) gets both rate limit buckets; VSCode falls back to single-bucket bottleneck via CLI call
+  - Rewrote quota tracking section in CLAUDE.md: CLI checks every 5 calls, VSCode every 15
+  - Investigated statusLine hook behavior: fires in CLI terminal sessions but not in VSCode extension
+- **Decisions made**:
+  - `.blend` files are unnecessary — only `.glb` needed for Godot import
+  - VSCode quota display uses `<N% (not bottleneck)` notation for the non-constrained bucket
+- **Blockers**: None
+- **Next session goal**: P3.1 RoundManager (gameplay mechanics) or 3D.11 grid overlay

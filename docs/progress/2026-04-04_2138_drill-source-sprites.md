@@ -1,0 +1,20 @@
+### Session 7 -- Drill & Source Sprites with Iso 3D Library
+- **Date**: 2026-04-04
+- **Hours**: ~1h (evening session, 21:38-22:38 MSK)
+- **Work done**:
+  - Rewrote drill and source building sprites from scratch using Iso 3D geometry library
+  - **Drill**: industrial rig with dual gears (main + secondary counter-rotating), derrick column with cap/cone, piston assembly, exhaust stack with smoke particles. 4 animation states (idle/windup/active/winddown)
+  - **Source**: item dispenser with central corrugated silo, 3-blade spinning fan, output/intake pipes, green energy bands and pulsing indicator lights. 4-frame default animation
+  - Fixed critical bug in Iso library: **negated view direction** in config.lua — z-buffer was sorting backwards, causing buildings to render upside-down (bottom faces drawn over top faces)
+  - Fixed grid alignment: scene origin OY changed from 60 to 55 to match tile diamond center (sprite position (0,-19) + centered=true → center at pixel 55)
+  - Fixed source canvas overflow: scaled shapes down (box 30→22, cylinder r=10→7) to fit 64x72 canvas
+  - Fixed drill gear rotation: changed frames_per_rev from 4 to 5 so 8-tooth gear doesn't produce identical frames (90° = 2×45° tooth symmetry)
+  - Removed gear center holes, bore hole, status LED per user feedback
+  - Reduced idle to single static frame
+- **Stats**: ~8 files changed across sprites, .tscn scenes, and iso library
+- **Decisions made**:
+  - Iso 3D library is the standard for building sprites going forward (replaces iso_box.lua)
+  - Scene origin formula: OY = sprite_height/2 + sprite_position_y_offset (36+19=55)
+  - Gear tooth count must not divide evenly into frame rotation to avoid symmetry stasis
+- **Blockers**: None
+- **Next session goal**: Remaining buildings (smelter, splitter, junction, tunnel, sink) with Iso library, then P3.1

@@ -56,8 +56,12 @@ func _ready() -> void:
 	GameManager.building_collision = building_collision
 
 	# Create ground collision plane for CharacterBody3D floor detection
+	# Ground is on layer 3 (bit 4) — separate from player (layer 1) so items
+	# can rest on the ground without physically interacting with the player.
 	var ground_body := StaticBody3D.new()
 	ground_body.name = "GroundCollision"
+	ground_body.collision_layer = 4  # layer 3 (bit 4) — ground
+	ground_body.collision_mask = 0
 	var ground_shape := CollisionShape3D.new()
 	ground_shape.shape = WorldBoundaryShape3D.new()  # infinite Y=0 plane
 	ground_body.add_child(ground_shape)

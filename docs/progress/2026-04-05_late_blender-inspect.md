@@ -1,0 +1,12 @@
+### Session 11 -- Blender Inspect Tool
+- **Date**: 2026-04-05
+- **Hours**: ~0.2h (late night, 10 min)
+- **Work done**:
+  - Created `tools/blender/inspect_model.py` — model inspection tool that renders 4 screenshots of a `.glb` from multiple angles (2 fixed isometric + 2 random/custom)
+  - Auto-fit zoom from bounding box, 3-point lighting, 16x AA, track-to constraint
+  - CLI options: `--ortho-scale`, `--cam3`/`--cam4` (override random angles), `--seed`, `-w`/`-o`
+  - Created `tools/blender/CLAUDE.md` documenting the tool
+  - Updated artist agent: added "Inspecting results" section — always run after building a model
+  - Updated critic agent: added "3D model review" section with inspection command + checklist
+- **Blockers**: None
+- **Next session goal**: Create remaining building models (smelter, splitter, junction, tunnel, sink) or P3.1 (RoundManager)

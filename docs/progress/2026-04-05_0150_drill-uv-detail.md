@@ -1,0 +1,15 @@
+### Session 12 -- Drill UV Fix + Detail Pass
+- **Date**: 2026-04-05
+- **Hours**: ~0.5h (late night session, ~01:50-02:20 MSK)
+- **Work done**:
+  - **UV fix**: Added proper UV generation to all cylindrical/box prefabs — cylinder, box, cone, pipe, piston. Textures were stretching badly because prefabs had no UVs and relied on Blender's `smart_project` which produces poor islands for cylinders. Now each prefab generates world-space-proportional UVs (cylindrical for round surfaces, per-face planar for boxes).
+  - **Drill detail pass**: Expanded drill model from ~15 parts to ~60+. Added: base platform with corner feet, derrick reinforcement rings (x3), diagonal support struts (x4), control panel with gauge (copper rim) + colored knobs, valve wheel on pipe, side tank with hemisphere cap + bands + feed pipe, plumbing (vertical pipe, connecting pipe, elbow), wiring/cables (x3), exhaust rain cap + mounting bracket wedge, hazard stripe, gear axle caps, ~24 extra bolts on body sides and band.
+  - Removed BackPipe and GearGuard after user review (pipe stuck out, panel clipped into gears).
+  - Added hemisphere and wedge prefab imports to drill model.
+- **Stats**: 6 prefab files edited (UV), 1 scene file rewritten, drill rebuilt 3 times
+- **Decisions made**:
+  - Prefabs own their UVs — no more relying on smart_project fallback
+  - UV normalization: divide by max_dim so texture_library mapping node scales correctly
+  - Detail density: every viewing angle should have visual interest (pipes, knobs, brackets)
+- **Blockers**: None
+- **Next session goal**: Create remaining building models (ART3D.1 smelter, ART3D.2 splitter, etc.) or P3.1 (RoundManager)

@@ -15,18 +15,18 @@ albedo_color = Color(0.3, 0.5, 0.8, 0.15)
 [sub_resource type="BoxMesh" id="BoxMesh_s6nj5"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_output"]
-size = Vector3(0.4, 0.3, 1.307544)
+size = Vector3(0.17460938, 0.1876709, 0.34763795)
 
 [node name="Drill" type="Node3D"]
 script = ExtResource("1")
 
 [node name="Model" parent="." instance=ExtResource("4")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="Shape" type="Node3D" parent="."]
 
 [node name="Cell_0_0" type="MeshInstance3D" parent="Shape"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.5, 0.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+visible = false
 material_override = SubResource("StandardMaterial3D_ot8he")
 mesh = SubResource("BoxMesh_s6nj5")
 script = ExtResource("5")
@@ -41,7 +41,7 @@ script = ExtResource("3")
 allow_left = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Outputs/Output_0"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7605324, 0, 0.45377198)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.24932545, -0.014074698, 0.0020118356)
 shape = SubResource("BoxShape3D_output")
 
 [node name="ExtractorLogic" type="Node" parent="."]

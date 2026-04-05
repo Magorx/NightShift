@@ -10,7 +10,7 @@ Tunnel: Underground passage that monsters can't cross.
 - Flat cover plate connecting them
 - Sturdy, reinforced look
 
-Both are 2.0x2.0 footprint utility buildings, simpler than the main
+Both are 1.0x1.0 footprint utility buildings, simpler than the main
 production buildings.
 
 Usage:
@@ -75,8 +75,8 @@ SHADOW        = C["shadow"]       # #231C16
 # ---------------------------------------------------------------------------
 # Custom mesh: generate_arch_portal
 # ---------------------------------------------------------------------------
-def generate_arch_portal(width=0.8, depth=0.15, height=0.5, arch_segments=8,
-                         wall_thickness=0.08, hex_outer="#7A8898",
+def generate_arch_portal(width=0.4, depth=0.075, height=0.25, arch_segments=8,
+                         wall_thickness=0.04, hex_outer="#7A8898",
                          hex_inner="#0F0A08"):
     """Generate an arch-shaped portal frame (like a tunnel entrance).
 
@@ -207,7 +207,7 @@ def generate_arch_portal(width=0.8, depth=0.15, height=0.5, arch_segments=8,
 # ---------------------------------------------------------------------------
 # Generate a cross-channel track (for junction)
 # ---------------------------------------------------------------------------
-def generate_channel_track(length=2.0, width=0.4, depth=0.06,
+def generate_channel_track(length=1.0, width=0.2, depth=0.03,
                            hex_base="#3D3D43", hex_rail="#5A5C62"):
     """Generate a recessed channel track for items to travel along.
 
@@ -224,8 +224,8 @@ def generate_channel_track(length=2.0, width=0.4, depth=0.06,
     Returns:
         Tuple of (channel_base, rail_left, rail_right).
     """
-    rail_width = 0.06
-    rail_height = 0.04
+    rail_width = 0.03
+    rail_height = 0.02
 
     # Channel base (recessed surface)
     channel = generate_box(w=width - rail_width * 2, d=length, h=depth,
@@ -256,7 +256,7 @@ def build_junction():
 
     root = bpy.data.objects.new("Junction", None)
     root.empty_display_type = 'PLAIN_AXES'
-    root.empty_display_size = 0.5
+    root.empty_display_size = 0.25
     bpy.context.scene.collection.objects.link(root)
 
     def add(obj):
@@ -265,97 +265,97 @@ def build_junction():
 
     # ── BASE PLATFORM ─────────────────────────────────────────────────
     # Low profile square platform
-    base = add(generate_box(w=2.0, d=2.0, h=0.08, hex_color=STEEL_DK))
+    base = add(generate_box(w=1.0, d=1.0, h=0.04, hex_color=STEEL_DK))
     base.name = "BasePlatform"
 
     # Slightly raised edge frame around the platform
     for side_i, (sx, sy, sw, sd) in enumerate([
-        (0, -0.95, 2.0, 0.1),   # front edge
-        (0, 0.95, 2.0, 0.1),    # back edge
-        (-0.95, 0, 0.1, 1.8),   # left edge
-        (0.95, 0, 0.1, 1.8),    # right edge
+        (0, -0.475, 1.0, 0.05),   # front edge
+        (0, 0.475, 1.0, 0.05),    # back edge
+        (-0.475, 0, 0.05, 0.9),   # left edge
+        (0.475, 0, 0.05, 0.9),    # right edge
     ]):
-        edge = add(generate_box(w=sw, d=sd, h=0.14, hex_color=STEEL))
+        edge = add(generate_box(w=sw, d=sd, h=0.07, hex_color=STEEL))
         edge.name = f"PlatformEdge_{side_i}"
         edge.location = (sx, sy, 0)
 
     # ── CHANNEL TRACKS (X-shaped crossing) ────────────────────────────
     # Track running along Y axis (north-south)
-    track_ns_base = add(generate_box(w=0.36, d=2.0, h=0.04, hex_color=CONV_BASE))
+    track_ns_base = add(generate_box(w=0.18, d=1.0, h=0.02, hex_color=CONV_BASE))
     track_ns_base.name = "TrackNS_Base"
-    track_ns_base.location = (0, 0, 0.08)
+    track_ns_base.location = (0, 0, 0.04)
 
     # Rails for NS track
-    for ri, rx in enumerate([-0.21, 0.21]):
-        rail = add(generate_box(w=0.06, d=2.0, h=0.08, hex_color=CONV_GROOVE))
+    for ri, rx in enumerate([-0.105, 0.105]):
+        rail = add(generate_box(w=0.03, d=1.0, h=0.04, hex_color=CONV_GROOVE))
         rail.name = f"TrackNS_Rail_{ri}"
-        rail.location = (rx, 0, 0.08)
+        rail.location = (rx, 0, 0.04)
 
     # Track running along X axis (east-west)
-    track_ew_base = add(generate_box(w=2.0, d=0.36, h=0.04, hex_color=CONV_BASE))
+    track_ew_base = add(generate_box(w=1.0, d=0.18, h=0.02, hex_color=CONV_BASE))
     track_ew_base.name = "TrackEW_Base"
-    track_ew_base.location = (0, 0, 0.08)
+    track_ew_base.location = (0, 0, 0.04)
 
     # Rails for EW track
-    for ri, ry in enumerate([-0.21, 0.21]):
-        rail = add(generate_box(w=2.0, d=0.06, h=0.08, hex_color=CONV_GROOVE))
+    for ri, ry in enumerate([-0.105, 0.105]):
+        rail = add(generate_box(w=1.0, d=0.03, h=0.04, hex_color=CONV_GROOVE))
         rail.name = f"TrackEW_Rail_{ri}"
-        rail.location = (0, ry, 0.08)
+        rail.location = (0, ry, 0.04)
 
     # ── CENTER HUB ────────────────────────────────────────────────────
     # Raised octagonal-ish hub where tracks cross
-    hub = add(generate_cylinder(radius=0.28, height=0.12, segments=8,
+    hub = add(generate_cylinder(radius=0.14, height=0.06, segments=8,
                                 hex_color=STEEL_LT))
     hub.name = "CenterHub"
-    hub.location = (0, 0, 0.08)
+    hub.location = (0, 0, 0.04)
 
     # Hub cap - slightly smaller, darker
-    hub_cap = add(generate_cylinder(radius=0.22, height=0.04, segments=8,
+    hub_cap = add(generate_cylinder(radius=0.11, height=0.02, segments=8,
                                     hex_color=CONV_MID))
     hub_cap.name = "HubCap"
-    hub_cap.location = (0, 0, 0.20)
+    hub_cap.location = (0, 0, 0.10)
 
     # Small center bolt on hub
-    center_bolt = add(generate_bolt(head_radius=0.06, head_height=0.03,
+    center_bolt = add(generate_bolt(head_radius=0.03, head_height=0.015,
                                     hex_color=RIVET_COL))
     center_bolt.name = "CenterBolt"
-    center_bolt.location = (0, 0, 0.24)
+    center_bolt.location = (0, 0, 0.12)
 
     # ── CORNER REINFORCEMENT PLATES ───────────────────────────────────
-    for ci, (cx, cy) in enumerate([(-0.7, -0.7), (0.7, -0.7),
-                                    (0.7, 0.7), (-0.7, 0.7)]):
-        plate = add(generate_box(w=0.35, d=0.35, h=0.10, hex_color=BODY_MAIN))
+    for ci, (cx, cy) in enumerate([(-0.35, -0.35), (0.35, -0.35),
+                                    (0.35, 0.35), (-0.35, 0.35)]):
+        plate = add(generate_box(w=0.175, d=0.175, h=0.05, hex_color=BODY_MAIN))
         plate.name = f"CornerPlate_{ci}"
-        plate.location = (cx, cy, 0.08)
+        plate.location = (cx, cy, 0.04)
 
         # Corner bolt
-        bolt = add(generate_bolt(head_radius=0.04, head_height=0.025,
+        bolt = add(generate_bolt(head_radius=0.02, head_height=0.0125,
                                  hex_color=RIVET_COL))
         bolt.name = f"CornerBolt_{ci}"
-        bolt.location = (cx, cy, 0.18)
+        bolt.location = (cx, cy, 0.09)
 
     # ── DIRECTIONAL ARROWS (subtle accent marks on tracks) ────────────
     # Small yellow accent marks near track ends to show direction
     for ai, (ax, ay, rot) in enumerate([
-        (0, -0.75, 0),           # south arrow (NS track)
-        (0, 0.75, math.pi),      # north arrow (NS track)
-        (-0.75, 0, math.pi/2),   # west arrow (EW track)
-        (0.75, 0, -math.pi/2),   # east arrow (EW track)
+        (0, -0.375, 0),           # south arrow (NS track)
+        (0, 0.375, math.pi),      # north arrow (NS track)
+        (-0.375, 0, math.pi/2),   # west arrow (EW track)
+        (0.375, 0, -math.pi/2),   # east arrow (EW track)
     ]):
-        arrow = add(generate_box(w=0.08, d=0.12, h=0.02, hex_color=ACCENT_YELLOW))
+        arrow = add(generate_box(w=0.04, d=0.06, h=0.01, hex_color=ACCENT_YELLOW))
         arrow.name = f"Arrow_{ai}"
-        arrow.location = (ax, ay, 0.12)
+        arrow.location = (ax, ay, 0.06)
         arrow.rotation_euler = (0, 0, rot)
 
     # ── EDGE BOLTS ────────────────────────────────────────────────────
     bolt_positions = [
-        (-0.85, -0.85, 0.14), (0.85, -0.85, 0.14),
-        (-0.85, 0.85, 0.14), (0.85, 0.85, 0.14),
-        (0, -0.92, 0.14), (0, 0.92, 0.14),
-        (-0.92, 0, 0.14), (0.92, 0, 0.14),
+        (-0.425, -0.425, 0.07), (0.425, -0.425, 0.07),
+        (-0.425, 0.425, 0.07), (0.425, 0.425, 0.07),
+        (0, -0.46, 0.07), (0, 0.46, 0.07),
+        (-0.46, 0, 0.07), (0.46, 0, 0.07),
     ]
     for bi, (bx, by, bz) in enumerate(bolt_positions):
-        b = add(generate_bolt(head_radius=0.035, head_height=0.02,
+        b = add(generate_bolt(head_radius=0.0175, head_height=0.01,
                               hex_color=RIVET_COL))
         b.name = f"EdgeBolt_{bi}"
         b.location = (bx, by, bz)
@@ -363,39 +363,39 @@ def build_junction():
     # ── RAISED GUIDE ARCHES (vertical profile for silhouette) ────────
     # Two crossing arch frames over the tracks to make the junction
     # visually distinctive from a flat floor tile
-    arch_h = 0.50  # total arch height above platform
-    arch_w = 0.10  # arch beam width
-    arch_d = 0.08  # arch beam depth
+    arch_h = 0.25  # total arch height above platform
+    arch_w = 0.05  # arch beam width
+    arch_d = 0.04  # arch beam depth
 
     # NS arch: two uprights + crossbar along Y axis
-    for ui, ux in enumerate([-0.30, 0.30]):
+    for ui, ux in enumerate([-0.15, 0.15]):
         upright = add(generate_box(w=arch_w, d=arch_d, h=arch_h,
                                    hex_color=STEEL))
         upright.name = f"ArchNS_Upright_{ui}"
-        upright.location = (ux, 0, 0.14)
+        upright.location = (ux, 0, 0.07)
 
-    crossbar_ns = add(generate_box(w=0.70, d=arch_d, h=arch_w,
+    crossbar_ns = add(generate_box(w=0.35, d=arch_d, h=arch_w,
                                    hex_color=STEEL_LT))
     crossbar_ns.name = "ArchNS_Crossbar"
-    crossbar_ns.location = (0, 0, 0.14 + arch_h)
+    crossbar_ns.location = (0, 0, 0.07 + arch_h)
 
     # EW arch: two uprights + crossbar along X axis
-    for ui, uy in enumerate([-0.30, 0.30]):
+    for ui, uy in enumerate([-0.15, 0.15]):
         upright = add(generate_box(w=arch_d, d=arch_w, h=arch_h,
                                    hex_color=STEEL))
         upright.name = f"ArchEW_Upright_{ui}"
-        upright.location = (0, uy, 0.14)
+        upright.location = (0, uy, 0.07)
 
-    crossbar_ew = add(generate_box(w=arch_d, d=0.70, h=arch_w,
+    crossbar_ew = add(generate_box(w=arch_d, d=0.35, h=arch_w,
                                    hex_color=STEEL_LT))
     crossbar_ew.name = "ArchEW_Crossbar"
-    crossbar_ew.location = (0, 0, 0.14 + arch_h)
+    crossbar_ew.location = (0, 0, 0.07 + arch_h)
 
     # Top cap where the two arches cross
-    arch_cap = add(generate_cylinder(radius=0.12, height=0.06, segments=8,
+    arch_cap = add(generate_cylinder(radius=0.06, height=0.03, segments=8,
                                      hex_color=ACCENT_YELLOW))
     arch_cap.name = "ArchCap"
-    arch_cap.location = (0, 0, 0.14 + arch_h + arch_w)
+    arch_cap.location = (0, 0, 0.07 + arch_h + arch_w)
 
     return {
         "root": root,
@@ -417,9 +417,9 @@ def bake_junction_animations(objects):
     animate_static(arch_cap, "idle", duration=2.0)
 
     # active (2s): Center hub vibrates to show items crossing
-    animate_shake(hub, "active", duration=2.0, amplitude=0.008, frequency=10)
-    animate_shake(hub_cap, "active", duration=2.0, amplitude=0.008, frequency=10)
-    animate_shake(arch_cap, "active", duration=2.0, amplitude=0.005, frequency=10)
+    animate_shake(hub, "active", duration=2.0, amplitude=0.004, frequency=10)
+    animate_shake(hub_cap, "active", duration=2.0, amplitude=0.004, frequency=10)
+    animate_shake(arch_cap, "active", duration=2.0, amplitude=0.0025, frequency=10)
 
 
 def apply_junction_textures():
@@ -447,7 +447,7 @@ def build_tunnel():
 
     root = bpy.data.objects.new("Tunnel", None)
     root.empty_display_type = 'PLAIN_AXES'
-    root.empty_display_size = 0.5
+    root.empty_display_size = 0.25
     bpy.context.scene.collection.objects.link(root)
 
     def add(obj):
@@ -456,107 +456,107 @@ def build_tunnel():
 
     # ── BASE PLATFORM ─────────────────────────────────────────────────
     # Sturdy ground-level slab
-    base = add(generate_box(w=2.0, d=2.0, h=0.10, hex_color=STEEL_DK))
+    base = add(generate_box(w=1.0, d=1.0, h=0.05, hex_color=STEEL_DK))
     base.name = "BasePlatform"
 
     # ── COVER PLATE (center) ──────────────────────────────────────────
     # The flat plate that covers the underground passage
     # Runs between the two portals
-    cover = add(generate_box(w=1.4, d=1.2, h=0.08, hex_color=STEEL))
+    cover = add(generate_box(w=0.7, d=0.6, h=0.04, hex_color=STEEL))
     cover.name = "CoverPlate"
-    cover.location = (0, 0, 0.10)
+    cover.location = (0, 0, 0.05)
 
     # Reinforcement strips across the cover plate
-    for si, sy in enumerate([-0.3, 0.0, 0.3]):
-        strip = add(generate_box(w=1.5, d=0.08, h=0.04, hex_color=STEEL_LT))
+    for si, sy in enumerate([-0.15, 0.0, 0.15]):
+        strip = add(generate_box(w=0.75, d=0.04, h=0.02, hex_color=STEEL_LT))
         strip.name = f"CoverStrip_{si}"
-        strip.location = (0, sy, 0.18)
+        strip.location = (0, sy, 0.09)
 
     # ── ENTRANCE PORTAL (front, -Y) ──────────────────────────────────
-    # Arch frame -- taller walls (0.25) for more dramatic openings
+    # Arch frame -- taller walls (0.125) for more dramatic openings
     portal_front, void_front = generate_arch_portal(
-        width=1.0, depth=0.20, height=0.25, arch_segments=8,
-        wall_thickness=0.10, hex_outer=STEEL, hex_inner=CHAMBER_DEEP)
+        width=0.5, depth=0.10, height=0.125, arch_segments=8,
+        wall_thickness=0.05, hex_outer=STEEL, hex_inner=CHAMBER_DEEP)
     portal_front.name = "PortalFront"
     void_front.name = "VoidFront"
-    portal_front.location = (0, -0.7, 0.10)
-    void_front.location = (0, -0.7, 0.10)
+    portal_front.location = (0, -0.35, 0.05)
+    void_front.location = (0, -0.35, 0.05)
     add(portal_front)
     add(void_front)
 
     # Front portal reinforcement - heavy frame pieces on sides
-    for ri, rx in enumerate([-0.55, 0.55]):
-        post = add(generate_box(w=0.14, d=0.22, h=0.60, hex_color=BODY_MAIN))
+    for ri, rx in enumerate([-0.275, 0.275]):
+        post = add(generate_box(w=0.07, d=0.11, h=0.30, hex_color=BODY_MAIN))
         post.name = f"FrontPost_{ri}"
-        post.location = (rx, -0.7, 0.10)
+        post.location = (rx, -0.35, 0.05)
 
     # Front portal top beam
-    top_beam_f = add(generate_box(w=1.2, d=0.22, h=0.12, hex_color=BODY_LIGHT))
+    top_beam_f = add(generate_box(w=0.6, d=0.11, h=0.06, hex_color=BODY_LIGHT))
     top_beam_f.name = "FrontTopBeam"
-    top_beam_f.location = (0, -0.7, 0.65)
+    top_beam_f.location = (0, -0.35, 0.325)
 
     # ── EXIT PORTAL (back, +Y) ───────────────────────────────────────
     portal_back, void_back = generate_arch_portal(
-        width=1.0, depth=0.20, height=0.25, arch_segments=8,
-        wall_thickness=0.10, hex_outer=STEEL, hex_inner=CHAMBER_DEEP)
+        width=0.5, depth=0.10, height=0.125, arch_segments=8,
+        wall_thickness=0.05, hex_outer=STEEL, hex_inner=CHAMBER_DEEP)
     portal_back.name = "PortalBack"
     void_back.name = "VoidBack"
-    portal_back.location = (0, 0.7, 0.10)
+    portal_back.location = (0, 0.35, 0.05)
     portal_back.rotation_euler = (0, 0, math.pi)  # face opposite direction
-    void_back.location = (0, 0.7, 0.10)
+    void_back.location = (0, 0.35, 0.05)
     void_back.rotation_euler = (0, 0, math.pi)
     add(portal_back)
     add(void_back)
 
     # Back portal reinforcement posts
-    for ri, rx in enumerate([-0.55, 0.55]):
-        post = add(generate_box(w=0.14, d=0.22, h=0.60, hex_color=BODY_MAIN))
+    for ri, rx in enumerate([-0.275, 0.275]):
+        post = add(generate_box(w=0.07, d=0.11, h=0.30, hex_color=BODY_MAIN))
         post.name = f"BackPost_{ri}"
-        post.location = (rx, 0.7, 0.10)
+        post.location = (rx, 0.35, 0.05)
 
     # Back portal top beam
-    top_beam_b = add(generate_box(w=1.2, d=0.22, h=0.12, hex_color=BODY_LIGHT))
+    top_beam_b = add(generate_box(w=0.6, d=0.11, h=0.06, hex_color=BODY_LIGHT))
     top_beam_b.name = "BackTopBeam"
-    top_beam_b.location = (0, 0.7, 0.65)
+    top_beam_b.location = (0, 0.35, 0.325)
 
     # ── SIDE WALLS ────────────────────────────────────────────────────
     # Low walls connecting the two portals (makes it look solid/protective)
-    for wi, wx in enumerate([-0.75, 0.75]):
-        wall = add(generate_box(w=0.10, d=1.2, h=0.35, hex_color=BODY_MAIN))
+    for wi, wx in enumerate([-0.375, 0.375]):
+        wall = add(generate_box(w=0.05, d=0.6, h=0.175, hex_color=BODY_MAIN))
         wall.name = f"SideWall_{wi}"
-        wall.location = (wx, 0, 0.10)
+        wall.location = (wx, 0, 0.05)
 
     # ── HAZARD STRIPES on portal tops ─────────────────────────────────
-    for hi, hy in enumerate([-0.7, 0.7]):
-        stripe = add(generate_box(w=1.1, d=0.06, h=0.03, hex_color=ACCENT_YELLOW))
+    for hi, hy in enumerate([-0.35, 0.35]):
+        stripe = add(generate_box(w=0.55, d=0.03, h=0.015, hex_color=ACCENT_YELLOW))
         stripe.name = f"HazardStripe_{hi}"
-        stripe.location = (0, hy, 0.77)
+        stripe.location = (0, hy, 0.385)
 
     # ── BOLTS scattered for industrial detail ─────────────────────────
     bolt_positions = [
         # Cover plate bolts
-        (-0.55, -0.3, 0.22), (0.55, -0.3, 0.22),
-        (-0.55, 0.3, 0.22), (0.55, 0.3, 0.22),
+        (-0.275, -0.15, 0.11), (0.275, -0.15, 0.11),
+        (-0.275, 0.15, 0.11), (0.275, 0.15, 0.11),
         # Front portal bolts
-        (-0.55, -0.84, 0.40), (0.55, -0.84, 0.40),
+        (-0.275, -0.42, 0.20), (0.275, -0.42, 0.20),
         # Back portal bolts
-        (-0.55, 0.84, 0.40), (0.55, 0.84, 0.40),
+        (-0.275, 0.42, 0.20), (0.275, 0.42, 0.20),
         # Side wall bolts
-        (-0.80, -0.4, 0.30), (-0.80, 0.4, 0.30),
-        (0.80, -0.4, 0.30), (0.80, 0.4, 0.30),
+        (-0.40, -0.2, 0.15), (-0.40, 0.2, 0.15),
+        (0.40, -0.2, 0.15), (0.40, 0.2, 0.15),
     ]
     for bi, (bx, by, bz) in enumerate(bolt_positions):
-        b = add(generate_bolt(head_radius=0.04, head_height=0.025,
+        b = add(generate_bolt(head_radius=0.02, head_height=0.0125,
                               hex_color=RIVET_COL))
         b.name = f"Bolt_{bi}"
         b.location = (bx, by, bz)
 
     # ── GRATE DETAIL on cover plate ───────────────────────────────────
     # Small grate strips to suggest ventilation / underground visibility
-    for gi, gx in enumerate([-0.3, 0.0, 0.3]):
-        grate = add(generate_box(w=0.06, d=0.8, h=0.02, hex_color=C["grate"]))
+    for gi, gx in enumerate([-0.15, 0.0, 0.15]):
+        grate = add(generate_box(w=0.03, d=0.4, h=0.01, hex_color=C["grate"]))
         grate.name = f"Grate_{gi}"
-        grate.location = (gx, 0, 0.18)
+        grate.location = (gx, 0, 0.09)
 
     return {
         "root": root,
@@ -581,10 +581,10 @@ def bake_tunnel_animations(objects):
     animate_static(beam_b, "idle", duration=2.0)
 
     # active (2s): Subtle portal frame vibration (items moving through)
-    animate_shake(portal_f, "active", duration=2.0, amplitude=0.006, frequency=12)
-    animate_shake(portal_b, "active", duration=2.0, amplitude=0.006, frequency=12)
-    animate_shake(beam_f, "active", duration=2.0, amplitude=0.006, frequency=12)
-    animate_shake(beam_b, "active", duration=2.0, amplitude=0.006, frequency=12)
+    animate_shake(portal_f, "active", duration=2.0, amplitude=0.003, frequency=12)
+    animate_shake(portal_b, "active", duration=2.0, amplitude=0.003, frequency=12)
+    animate_shake(beam_f, "active", duration=2.0, amplitude=0.003, frequency=12)
+    animate_shake(beam_b, "active", duration=2.0, amplitude=0.003, frequency=12)
 
 
 def apply_tunnel_textures():

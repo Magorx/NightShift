@@ -1,0 +1,19 @@
+### Session 3 -- Phase 2: Elemental Resource System
+- **Date**: 2026-04-04
+- **Hours**: ~0.5h (morning session, 12:30-12:58 MSK)
+- **Work done**:
+  - P2.1: Created 3 elemental resources (pyromite, crystalline, biovine) + 3 combo items (steam_burst, verdant_compound, frozen_flame). New item atlas with 6 pixel art sprites (unique silhouettes). Deleted 63 Factor items
+  - P2.2: Created 3 smelter recipes (2-input elemental combinations). Deleted 58 Factor recipes
+  - P2.3: Rewrote world_generator.gd for 128x128 arena -- 3 deposit types at 3 distance tiers (close/medium/far), noise walls with distance-based density creating natural chokepoints, stone veins, connectivity guarantee. Updated TileDatabase
+  - P2.4: Updated all 9 BuildingDefs -- removed build_cost for free placement, removed iron_plate references. Updated all code references (source, extractor, player, build_system, stress_test_generator, hud)
+  - P2.5: New sim_elemental_flow.gd testing full drill→conveyor→smelter→sink with 2-input recipes. Both steam_burst and verdant_compound chains verified
+  - Fixed simulation exit hang: reset Engine.time_scale before quit() to prevent getting stuck in physics batch
+  - Added sim_map_size=64 to simulation_base for fast test execution (game default is 128)
+  - Updated sim_smelter_converter for 2-input recipes
+- **Stats**: 151 files changed, +952 / -5,444 lines. All 8 sims pass
+- **Decisions made**:
+  - 6 items total for M1 (3 raw + 3 combo), not just 3+1 as originally planned
+  - All deposits infinite (-1 stock) -- no biomass finite mechanic
+  - Combo names: steam_burst (fire+ice), verdant_compound (ice+nature), frozen_flame (fire+nature)
+- **Blockers**: None
+- **Next session goal**: P3.1-P3.6 -- RoundManager, phase HUD, build/fight cycle, day/night visuals

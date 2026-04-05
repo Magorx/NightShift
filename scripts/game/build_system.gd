@@ -106,6 +106,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					exit_building_mode()
 				elif _dragging:
 					_cancel_drag()
+					exit_building_mode()
 				else:
 					exit_building_mode()
 			elif destroy_mode:
@@ -219,7 +220,7 @@ func _cancel_drag() -> void:
 	_drag_axis = -1
 	_blueprints.clear()
 	_placeable_blueprints.clear()
-	_trim_ghosts()
+	_clear_ghosts()
 
 func _commit_drag() -> void:
 	if not _dragging:
@@ -474,6 +475,11 @@ func _apply_ghost_transparency(node: Node, valid: bool = true) -> void:
 					tint.a
 				)
 				mesh_inst.set_surface_override_material(i, mat)
+			elif src_mat == null:
+				var mat := StandardMaterial3D.new()
+				mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				mat.albedo_color = tint
+				mesh_inst.set_surface_override_material(i, mat)
 	for child in node.get_children():
 		_apply_ghost_transparency(child, valid)
 
@@ -544,16 +550,32 @@ func _update_ghosts() -> void:
 func _trim_ghosts() -> void:
 	while _ghost_nodes.size() > GHOST_POOL_BASELINE:
 		var ghost = _ghost_nodes.pop_back()
-		if is_instance_valid(ghost):
-			ghost.queue_free()
+		_free_ghost(ghost)
 
 func _clear_ghosts() -> void:
 	for ghost in _ghost_nodes:
-		if is_instance_valid(ghost):
-			ghost.queue_free()
+		_free_ghost(ghost)
 	_ghost_nodes.clear()
 	_ghost_building_id = &""
 	_ghost_rotation = -1
+
+## Clear surface override materials then free.
+## Workaround for Godot engine bug godotengine/godot#85817:
+## queue_free on meshes with surface overrides triggers null-material
+## errors in the renderer because overrides are torn down before the
+## rendering server removes the instance.
+func _free_ghost(ghost: Node) -> void:
+	if not is_instance_valid(ghost):
+		return
+	_clear_surface_overrides(ghost)
+	ghost.queue_free()
+
+func _clear_surface_overrides(node: Node) -> void:
+	if node is MeshInstance3D:
+		for i in node.get_surface_override_material_count():
+			node.set_surface_override_material(i, null)
+	for child in node.get_children():
+		_clear_surface_overrides(child)
 
 # ── Destroy ──────────────────────────────────────────────────────────────────
 

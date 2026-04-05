@@ -43,16 +43,17 @@ func run_simulation() -> void:
 	player.velocity.y = player.JUMP_SPEED
 	sim_assert(player.velocity.y > 0, "Player has upward velocity after jump")
 
-	# -- Test 6: Collision mask is ground + buildings (no items) --------------
+	# -- Test 6: Collision mask is ground + buildings + items -----------------
 	player.position.y = 0.0
 	player._update_collision_for_height()
 	var ground_bit := (1 << (Player.GROUND_COLLISION_LAYER - 1))
 	var building_bit := (1 << (Player.BUILDING_COLLISION_LAYER - 1))
-	sim_assert(player.collision_mask == (ground_bit | building_bit), "Collision mask is ground + buildings (no items)")
+	var item_bit := (1 << (Player.ITEM_COLLISION_LAYER - 1))
+	sim_assert(player.collision_mask == (ground_bit | building_bit | item_bit), "Collision mask is ground + buildings + items")
 
 	player.position.y = 1.0
 	player._update_collision_for_height()
-	sim_assert(player.collision_mask == (ground_bit | building_bit), "Elevated collision mask unchanged")
+	sim_assert(player.collision_mask == (ground_bit | building_bit | item_bit), "Elevated collision mask unchanged")
 
 	# -- Test 7: Health system ------------------------------------------------
 	player.hp = 100.0

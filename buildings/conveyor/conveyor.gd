@@ -56,6 +56,8 @@ func _physics_process(delta: float) -> void:
 			var lat_speed: float = item.linear_velocity.dot(lateral)
 			if absf(lat_speed) > 0.1:
 				item.apply_central_force(-lateral * lat_speed * DAMPING_FORCE)
+		elif body is Player:
+			body.conveyor_push = fwd * TARGET_SPEED
 	_update_building_sprites(has_items, delta)
 
 func _get_world_forward() -> Vector3:

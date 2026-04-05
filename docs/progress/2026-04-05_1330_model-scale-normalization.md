@@ -1,0 +1,16 @@
+### Session 21 -- Model Scale Normalization
+- **Date**: 2026-04-05
+- **Hours**: ~1.2h (afternoon session, 13:30-14:42 MSK)
+- **Work done**:
+  - Fixed model scaling pipeline: models now authored at 1 Blender unit = 1 game tile (was 2x)
+  - Removed all import-time scaling: set `root_scale=1.0` in all 24 `.glb.import` files (was 0.5)
+  - Rescaled all 7 Blender model scripts (conveyor, drill, smelter, splitter, junction+tunnel, source+sink, night variants) — halved every spatial dimension and position
+  - Removed scene-time scaling: all 9 `.tscn` Model transforms set to identity (no scaling)
+  - Rebuilt all `.glb` models at correct 1:1 scale
+  - User manually adjusted building .tscn scenes: centered Shape cells, repositioned IO collision shapes, simplified junction/splitter scenes
+- **Decisions made**:
+  - 1 Blender unit = 1 game tile (no import or scene scaling needed)
+  - Shape cells centered at origin (0, 0.5, 0) not (0.5, 0.5, 0.5)
+  - Model transforms are identity — scale is baked into the .glb geometry
+- **Blockers**: None
+- **Next session goal**: Playtest physics system visually, tune forces/speeds
