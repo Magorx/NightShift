@@ -377,6 +377,7 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	# Model collision is generated automatically by BuildingBase._ready()
 
 	building_placed.emit(id, grid_pos)
+	_notify_adjacent_conveyors(grid_pos)
 	return building
 
 ## Find the first BuildingLogic child of a building node.
@@ -416,6 +417,15 @@ func remove_building(grid_pos: Vector2i) -> void:
 	unique_buildings.erase(building)
 
 	building.queue_free()
+	_notify_adjacent_conveyors(grid_pos)
+
+## Tell adjacent conveyors to re-evaluate their shape after a placement or removal.
+func _notify_adjacent_conveyors(grid_pos: Vector2i) -> void:
+	for dir_idx in 4:
+		var adj_pos: Vector2i = grid_pos + BuildingLogic.DIRECTION_VECTORS[dir_idx]
+		var conveyor = get_conveyor_at(adj_pos)
+		if conveyor:
+			conveyor.update_shape()
 
 func get_building_at(grid_pos: Vector2i):
 	return buildings.get(grid_pos)

@@ -1,0 +1,28 @@
+### Session -- Conveyor Model Variants & Auto-Shape
+
+- **Date**: 2026-04-05
+- **Hours**: ~1.5h (afternoon)
+- **Work done**:
+  - **Conveyor model cleanup**: removed hidden rollers and cross-members from conveyor 3D model, replaced two small arrows with one large arrow
+  - **Shared parts module**: created `tools/blender/prefabs_src/conveyor_parts.py` — reusable functions for assembling conveyor models (base plate, walls, caps, lips, ribs, bolts, belt surface, grooves, arrows, textures)
+  - **5 conveyor variants**: refactored `tools/blender/scenes/conveyor_model.py` to data-driven variant system, exports all variants in one run:
+    - Straight (walls left/right)
+    - Turn / L-shape (walls left/front)
+    - Two-straight (wall right only — straight + side input)
+    - Two-turn / T-shape (wall front only)
+    - Cross / + shape (no walls)
+  - **Auto-shape system in GDScript**: conveyors detect adjacent conveyors and swap their model variant to match the connection pattern
+    - `ConveyorBelt._determine_shape()` — analyzes 4 building-local directions, returns variant + rotation
+    - `ConveyorBelt._swap_model()` — removes old Model node, instances new GLB, applies transform + rotation, resets animation cache, regenerates collision
+    - `GameManager._notify_adjacent_conveyors()` — called after place/remove, triggers neighbor updates
+    - `BuildingBase.regenerate_collision()` — rebuilds trimesh collision from new model meshes
+  - **Arrow fix**: removed arrows from turn/junction variants (turn, two_straight, two_turn, cross) — only straight keeps its arrow. Arrows on rotated models pointed wrong direction.
+- **Files changed**:
+  - `tools/blender/prefabs_src/conveyor_parts.py` (new)
+  - `tools/blender/scenes/conveyor_model.py` (rewritten)
+  - `buildings/conveyor/conveyor.gd` (auto-shape logic)
+  - `buildings/shared/building_base.gd` (regenerate_collision)
+  - `scripts/autoload/game_manager.gd` (neighbor notification)
+  - `buildings/conveyor/models/*.glb` (all rebuilt)
+- **Blockers**: none
+- **Next**: test in-game with visual mode, verify all 5 shapes appear correctly when placing conveyors

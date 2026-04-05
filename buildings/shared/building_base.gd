@@ -26,6 +26,8 @@ func _ready() -> void:
 ## This makes buildings physically solid — player and items collide with the
 ## actual 3D model geometry instead of invisible placeholder boxes.
 func _generate_model_collision() -> void:
+	if not is_processing() and not is_physics_processing():
+		return  # Ghost node — skip collision generation
 	var model: Node3D = get_node_or_null("Model")
 	if not model:
 		return
@@ -36,6 +38,14 @@ func _generate_model_collision() -> void:
 	add_child(_model_collision)
 
 	_collect_trimesh_shapes(model)
+
+## Rebuild collision from current Model meshes (call after model swap).
+func regenerate_collision() -> void:
+	if _model_collision:
+		remove_child(_model_collision)
+		_model_collision.queue_free()
+		_model_collision = null
+	_generate_model_collision()
 
 func _collect_trimesh_shapes(node: Node) -> void:
 	if node is MeshInstance3D:
