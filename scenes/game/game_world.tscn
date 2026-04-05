@@ -1,9 +1,8 @@
-[gd_scene load_steps=10 format=3 uid="uid://game_world"]
+[gd_scene load_steps=9 format=3 uid="uid://game_world"]
 
 [ext_resource type="Script" path="res://scripts/game/game_world.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/game/build_system.gd" id="3"]
 [ext_resource type="PackedScene" uid="uid://hud" path="res://scenes/ui/hud.tscn" id="4"]
-[ext_resource type="Script" path="res://scripts/game/conveyor_system.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/game/game_camera.gd" id="8"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
@@ -62,8 +61,6 @@ shadow_bias = 0.03
 z_index = 100
 script = ExtResource("3")
 
-[node name="ConveyorSystem" type="Node" parent="."]
-script = ExtResource("5")
 
 [node name="UI" type="CanvasLayer" parent="."]
 
