@@ -1,8 +1,20 @@
 # Night Shift -- Project Board
 
-## Backlog
+## Done
 
-### **PHYS.1** Physics item: RigidBody3D resource entity `2h`
+### **PHYS.1** Physics item: RigidBody3D resource entity `2h` → `0.1h`
+### **PHYS.2** Conveyor belt: physics surface transport `3h` → `0.1h`
+### **PHYS.3** Building IO zones: 3D input/output areas `2h` → `0.15h`
+### **PHYS.4** Drill extractor: physics item spawner `1.5h` → `0.05h`
+### **PHYS.5** Smelter/Converter: physics-based processing `2h` → `0.05h`
+### **PHYS.6** Splitter: physics deflector `1.5h` → `0.05h`
+### **PHYS.7** Source/Sink debug buildings + junction/tunnel `1.5h` → `0.05h`
+### **PHYS.8** Gut old transport system `2h` → `0.1h`
+### **PHYS.9** Building .tscn 3D rewrite: all scenes `3h` → `0.1h`
+### **PHYS.10** Build system: 3D ghost preview + placement `2h` → `0.03h`
+### **PHYS.11** Physics sim tests `1.5h` → `0.05h`
+
+## Backlog
 
   - tags: [physics-factory, core]
   - priority: critical

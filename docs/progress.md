@@ -425,14 +425,38 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 - **Blockers**: None
 - **Next session goal**: Implement PHYS.1-11 (physics factory transport system). Use `/start-physics-factory`.
 
+### Session 17 -- Physics Factory Transport (PHYS.1-11)
+- **Date**: 2026-04-05
+- **Hours**: ~0.7h (morning session, 11:13-11:54 MSK)
+- **Work done**:
+  - **PHYS.1**: PhysicsItem RigidBody3D — the atomic resource unit. SphereShape3D collision, auto-despawn, static spawn factory, player pickup.
+  - **PHYS.3+9**: Rewrote all 9 building .tscn scenes to pure 3D Node3D hierarchies. Created InputZone (Area3D) and OutputZone (Marker3D) scripts. Updated BuildingDef extraction to support both 2D (legacy) and 3D (Marker3D) scene formats. Removed ~1400 lines of 2D sprite resources.
+  - **PHYS.2**: Conveyor rewritten as physics surface transport — Area3D force zone pushes items, StaticBody3D side walls, lateral damping.
+  - **PHYS.4+5+6**: Drill spawns PhysicsItem at output zone. Smelter uses InputZone to detect items, consumes for recipes, spawns output. Splitter deflects items via round-robin force impulse.
+  - **PHYS.7**: Source/Sink/Junction/Tunnel adapted. Source spawns items. Sink consumes from InputZone. Junction is pass-through. Tunnel teleports items to paired output.
+  - **PHYS.10**: Ghost preview improved with physics isolation (disabled collision/monitoring on all Area3D/StaticBody3D).
+  - **PHYS.8**: Gutted old transport system — deleted ConveyorSystem, ConveyorVisualManager, ItemVisualHandle, ConveyorSprite (553 lines). Cleaned up GameManager, GameWorld, BuildSystem references. Removed ConveyorSystem node from game_world.tscn.
+  - **PHYS.11**: Physics simulation tests — drill→conveyor→sink chain (11 items delivered), item pileup stability (69 items no crash), smelter processing.
+- **Metrics**:
+  - Estimated: 22h across 11 cards
+  - Actual: 0.7h (31x faster than estimate)
+  - 8 commits, ~2500 lines changed
+- **Decisions made**:
+  - BuildingDef auto-detects 3D vs 2D scene format (no Rotatable = 3D path)
+  - Pull interface methods stubbed to return false/empty on all physics buildings
+  - ConveyorBelt still registered with ConveyorSystem placeholder for compat
+  - OutputZone spawns items offset 0.4 units back from marker (at building edge)
+- **Blockers**: None
+- **Next session goal**: Playtest the physics system visually, tune forces/speeds, fix any issues
+
 ---
 
 ## Velocity Tracking
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total sessions | 17 | |
-| Total hours | 19.4 | |
+| Total sessions | 18 | |
+| Total hours | 20.1 | |
 | Factor baseline | ~42h over 2 weeks | 3h/day evenings |
 | Estimated M1 hours | 40-60h | ~2-3 weeks at 3h/day |
 | Estimated M2 hours | 40-60h | ~2-3 weeks at 3h/day |
