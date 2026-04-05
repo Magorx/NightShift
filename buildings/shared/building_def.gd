@@ -78,21 +78,22 @@ func _extract_shape() -> void:
 		shape = [Vector2i(0, 0)]
 
 func _extract_shape_3d(instance: Node) -> void:
-	# 3D scenes: BuildAnchor is a Marker3D, shape cells are Marker3D children
+	# 3D scenes: shape cells are Node3D children positioned at cell centers
+	# (cell_x + 0.5, y, cell_z + 0.5) — use floori to get cell index.
 	var a_cell := Vector2i(0, 0)
 	var anchor_node = instance.find_child("BuildAnchor", false, false)
-	if anchor_node and anchor_node is Marker3D:
-		a_cell.x = roundi(anchor_node.position.x)
-		a_cell.y = roundi(anchor_node.position.z)
+	if anchor_node and anchor_node is Node3D:
+		a_cell.x = floori(anchor_node.position.x)
+		a_cell.y = floori(anchor_node.position.z)
 	anchor_cell = a_cell
 
 	var cells: Array = []
 	var shape_node = instance.find_child("Shape", false, false)
 	if shape_node:
 		for child in shape_node.get_children():
-			if child is Marker3D:
-				var gx := roundi(child.position.x)
-				var gz := roundi(child.position.z)
+			if child is Node3D:
+				var gx := floori(child.position.x)
+				var gz := floori(child.position.z)
 				cells.append(Vector2i(gx, gz) - anchor_cell)
 	shape = cells
 
