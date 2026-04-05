@@ -52,7 +52,6 @@ var _conv_grid: Vector2i = Vector2i(-999, -999)
 
 # -- Visual -------------------------------------------------------------------
 var facing_direction: Vector3 = Vector3.RIGHT  # XZ plane direction
-var _walk_bob_timer: float = 0.0
 var stamina: float = STAMINA_MAX
 
 # -- Collision layer constants ------------------------------------------------
@@ -73,7 +72,8 @@ var _hovered_conv = null  # ConveyorBelt or null
 var _hovered_conv_item_idx: int = -1
 
 # -- References ---------------------------------------------------------------
-@onready var mesh: MeshInstance3D = $Mesh
+@onready var model: Node3D = $Model
+@onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 
 func _ready() -> void:
@@ -539,32 +539,30 @@ func _spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
 
 # -- Visuals ------------------------------------------------------------------
 
-func _update_visuals(delta: float) -> void:
-	if not mesh:
+func _update_visuals(_delta: float) -> void:
+	if not model:
 		return
 
-	# Walk bob -- only when actively walking (input held)
-	var speed_xz := Vector2(velocity.x, velocity.z).length()
-	var is_walking: bool = speed_xz > 0.3 and _has_movement_input()
-	if is_walking:
-		_walk_bob_timer += delta
-		var bob: float = sin(_walk_bob_timer * 8.0) * 0.03
-		# Bob perpendicular to facing direction in XZ
-		var perp := Vector3(-facing_direction.z, 0.0, facing_direction.x).normalized()
-		mesh.position = perp * bob
-	else:
-		mesh.position = mesh.position.lerp(Vector3.ZERO, 1.0 - exp(-10.0 * delta))
-		if mesh.position.length() < 0.003:
-			_walk_bob_timer = 0.0
+	# Direction rotation (rotate around Y axis)
+	model.rotation.y = atan2(-facing_direction.x, -facing_direction.z)
 
-	# Direction indicator rotation (rotate around Y axis)
-	mesh.rotation.y = atan2(-facing_direction.x, -facing_direction.z)
+	# Animation state
+	var speed_xz := Vector2(velocity.x, velocity.z).length()
+	var target_anim: StringName
+	if speed_xz > SPRINT_SPEED * 0.8:
+		target_anim = &"run"
+	elif speed_xz > 0.3 and _has_movement_input():
+		target_anim = &"walk"
+	else:
+		target_anim = &"idle"
+	if anim_player and anim_player.current_animation != target_anim:
+		anim_player.play(target_anim)
 
 	# Invulnerability flicker
 	if _invuln_timer > 0:
-		mesh.visible = fmod(_invuln_timer, 0.2) > 0.1
+		model.visible = fmod(_invuln_timer, 0.2) > 0.1
 	else:
-		mesh.visible = true
+		model.visible = true
 
 # -- Helpers ------------------------------------------------------------------
 

@@ -21,6 +21,14 @@ var _conv_visual_mgr_script = preload("res://scripts/game/conveyor_visual_manage
 var _terrain_visual_mgr_script = preload("res://scripts/game/terrain_visual_manager.gd")
 var _player_scene: PackedScene = preload("res://player/player.tscn")
 var _building_collision_script = preload("res://scripts/game/building_collision.gd")
+var _rock_scene: PackedScene = preload("res://terrain/models/rock.glb")
+var _chasm_scene: PackedScene = preload("res://terrain/models/chasm.glb")
+var _rubble_scene: PackedScene = preload("res://terrain/models/rubble.glb")
+var _deposit_scenes: Dictionary = {
+	&"pyromite": preload("res://resources/deposits/models/pyromite.glb"),
+	&"crystalline": preload("res://resources/deposits/models/crystalline.glb"),
+	&"biovine": preload("res://resources/deposits/models/biovine.glb"),
+}
 var _popup: PanelContainer
 var _ground_tooltip: PanelContainer
 var _ground_tooltip_timer: float = 0.0
@@ -128,6 +136,12 @@ func _ready() -> void:
 		var mesh: PlaneMesh = ground_plane.mesh
 		if mesh:
 			mesh.size = Vector2(map_sz, map_sz)
+
+	# Scatter 3D terrain decorations on wall/stone tiles
+	_spawn_terrain_decorations()
+
+	# Place 3D deposit models on deposit tiles
+	_spawn_deposit_models()
 
 	camera.target_node = player
 
@@ -283,6 +297,62 @@ func _open_pause_menu() -> void:
 		return
 	var pause_menu := _pause_menu_scene.instantiate()
 	$UI.add_child(pause_menu)
+
+func _spawn_deposit_models() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = GameManager.world_seed + 888
+	var deposit_layer := Node3D.new()
+	deposit_layer.name = "DepositModels"
+	add_child(deposit_layer)
+
+	# Place one 3D model per ~5 deposit tiles to avoid clutter
+	for pos: Vector2i in GameManager.deposits:
+		if rng.randf() > 0.2:
+			continue
+		var item_id: StringName = GameManager.deposits[pos]
+		if not _deposit_scenes.has(item_id):
+			continue
+		var inst: Node3D = _deposit_scenes[item_id].instantiate()
+		var world_pos := GridUtils.grid_to_world(pos)
+		inst.position = world_pos
+		inst.rotation.y = rng.randf() * TAU
+		var s := rng.randf_range(0.5, 0.8)
+		inst.scale = Vector3(s, s, s)
+		deposit_layer.add_child(inst)
+		# Play idle animation if present
+		var anim: AnimationPlayer = inst.get_node_or_null("AnimationPlayer")
+		if anim and anim.has_animation(&"idle"):
+			anim.play(&"idle")
+
+func _spawn_terrain_decorations() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = GameManager.world_seed + 999
+	var decoration_layer := Node3D.new()
+	decoration_layer.name = "TerrainDecorations"
+	add_child(decoration_layer)
+
+	for pos: Vector2i in GameManager.walls:
+		var wall_type: int = GameManager.walls[pos]
+		var scene: PackedScene = null
+		var chance: float = 0.0
+
+		if wall_type == TILE_WALL:
+			scene = _rock_scene
+			chance = 0.08
+		elif wall_type == TILE_STONE:
+			scene = [_rubble_scene, _chasm_scene][rng.randi() % 2]
+			chance = 0.12
+
+		if scene == null or rng.randf() > chance:
+			continue
+
+		var inst: Node3D = scene.instantiate()
+		var world_pos := GridUtils.grid_to_world(pos)
+		inst.position = world_pos
+		inst.rotation.y = rng.randf() * TAU
+		var s := rng.randf_range(0.4, 0.7)
+		inst.scale = Vector3(s, s, s)
+		decoration_layer.add_child(inst)
 
 func _spawn_player() -> void:
 	player = _player_scene.instantiate()

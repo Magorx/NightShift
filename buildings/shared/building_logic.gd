@@ -24,7 +24,6 @@ static func opposite_dir(dir_idx: int) -> int:
 ## Hold timer prevents active→idle flicker between craft cycles.
 var _active_hold_timer: float = 0.0
 var _anim_active: bool = false
-var _anim_connected: bool = false
 var _anim_initialized: bool = false
 const ACTIVE_HOLD_TIME := 0.3
 
@@ -94,9 +93,10 @@ func on_removing() -> void:
 
 ## Call each frame with the building's functional active state.
 ## Handles hold timer (anti-flicker) and windup/winddown transitions.
-var _cached_sprite_base: AnimatedSprite2D
-var _cached_sprite_top: AnimatedSprite2D
-var _sprites_cached: bool = false
+## Supports both legacy AnimatedSprite2D and 3D model AnimationPlayer.
+var _cached_anim_player: AnimationPlayer
+var _visuals_cached: bool = false
+var _use_3d_model: bool = false
 
 func _update_building_sprites(is_active: bool, delta: float) -> void:
 	if is_active:
@@ -104,55 +104,46 @@ func _update_building_sprites(is_active: bool, delta: float) -> void:
 	elif _active_hold_timer > 0.0:
 		_active_hold_timer -= delta
 	var want_active := is_active or _active_hold_timer > 0.0
-	if not _sprites_cached:
-		_sprites_cached = true
-		_cached_sprite_base = get_parent().get_node_or_null("Rotatable/SpriteBottom") as AnimatedSprite2D
-		_cached_sprite_top = get_parent().get_node_or_null("Rotatable/SpriteTop") as AnimatedSprite2D
-	var base := _cached_sprite_base
-	var top := _cached_sprite_top
-	if not base:
+	if not _visuals_cached:
+		_visuals_cached = true
+		# Try 3D model AnimationPlayer first
+		var model := get_parent().get_node_or_null("Model")
+		if model:
+			_cached_anim_player = model.get_node_or_null("AnimationPlayer") as AnimationPlayer
+			if _cached_anim_player:
+				_use_3d_model = true
+				_cached_anim_player.animation_finished.connect(_on_3d_anim_finished)
+	if not _use_3d_model or not _cached_anim_player:
 		return
-	if not _anim_connected:
-		base.animation_finished.connect(_on_building_anim_finished)
-		_anim_connected = true
-	# First call: jump directly to correct state (no transition on load)
+	# First call: jump directly to correct state
 	if not _anim_initialized:
 		_anim_initialized = true
 		_anim_active = want_active
 		var anim: StringName = &"active" if want_active else &"idle"
-		if base.sprite_frames.has_animation(anim):
-			_set_building_anim(base, top, anim)
+		if _cached_anim_player.has_animation(anim):
+			_cached_anim_player.play(anim)
 		return
 	if want_active == _anim_active:
 		return
 	_anim_active = want_active
 	if want_active:
-		if base.sprite_frames.has_animation(&"windup"):
-			_set_building_anim(base, top, &"windup")
-		else:
-			_set_building_anim(base, top, &"active")
+		if _cached_anim_player.has_animation(&"windup"):
+			_cached_anim_player.play(&"windup")
+		elif _cached_anim_player.has_animation(&"active"):
+			_cached_anim_player.play(&"active")
 	else:
-		if base.sprite_frames.has_animation(&"winddown"):
-			_set_building_anim(base, top, &"winddown")
-		else:
-			_set_building_anim(base, top, &"idle")
+		if _cached_anim_player.has_animation(&"winddown"):
+			_cached_anim_player.play(&"winddown")
+		elif _cached_anim_player.has_animation(&"idle"):
+			_cached_anim_player.play(&"idle")
 
-func _set_building_anim(base: AnimatedSprite2D, top: AnimatedSprite2D, anim: StringName) -> void:
-	base.animation = anim
-	base.play()
-	if top and top.sprite_frames and top.sprite_frames.has_animation(anim):
-		top.animation = anim
-		top.play()
-
-func _on_building_anim_finished() -> void:
-	var base := _cached_sprite_base
-	if not base:
+func _on_3d_anim_finished(anim_name: StringName) -> void:
+	if not _cached_anim_player:
 		return
-	var top := _cached_sprite_top
-	if base.animation == &"windup":
-		_set_building_anim(base, top, &"active")
-	elif base.animation == &"winddown":
-		_set_building_anim(base, top, &"idle")
+	if anim_name == &"windup" and _cached_anim_player.has_animation(&"active"):
+		_cached_anim_player.play(&"active")
+	elif anim_name == &"winddown" and _cached_anim_player.has_animation(&"idle"):
+		_cached_anim_player.play(&"idle")
 
 ## Return grid positions of buildings linked to this one (e.g. tunnel partner).
 func get_linked_positions() -> Array:

@@ -1,28 +1,136 @@
 # Night Shift -- Project Board
 
-## Done
-
-### **3D.1** GridUtils 3D API + dual-API bridge `2h` ✓ `0.1h actual`
-
-### **3D.2** Game world scene tree: Node2D → Node3D `3h` ✓ `0.2h actual`
-
-### **3D.3** BuildSystem 3D input (mouse → grid via raycast) `2h` ✓ `0.1h actual`
-
-### **3D.4** Player CharacterBody2D → CharacterBody3D `2h` ✓ `0.2h actual`
-
-### **3D.5** Terrain rendering: MultiMesh3D ground plane `2h` ✓ `0.1h actual`
-
-### **3D.6** Building base Node3D + placeholder meshes `2h` ✓ `0.1h actual`
-
-### **3D.7** Conveyor + item visual manager 3D `3h` ✓ `0.2h actual`
-
-### **3D.8** Simulation + test infrastructure update `1.5h` ✓ `0.05h actual`
-
-### **3D.9** GridUtils 2D API removal (cleanup) `1h` ✓ `0.3h actual`
-
-### **3D.10** Save/load migration `1h` ✓ `0.05h actual`
-
 ## Backlog
+
+### **INT3D.1** Ground plane: 2D tile floor + 3D decoration + collision `3h`
+
+  - tags: [3d-integration, terrain, collision, art]
+  - priority: critical
+  - steps:
+      - [ ] Create or source ground tile sprites (e.g. dirt, stone, grass variants) — 2D textures tiled across the playable area as the base floor visual
+      - [ ] Apply ground tiles to a textured `PlaneMesh` or `QuadMesh` (UV-tiled) in `game_world.tscn` — the floor is fundamentally a 2D sprite/texture, not a 3D model
+      - [ ] Add `StaticBody3D` + `CollisionShape3D` to the ground so the player's `CharacterBody3D` stands on it without falling through
+      - [ ] Verify player spawns on top of the ground and `move_and_slide()` keeps them grounded
+      - [ ] Scatter 3D decoration models (rock.glb, chasm.glb, rubble.glb) sparingly on top of the tiled ground — these are occasional decorative accents, not the base surface
+      - [ ] Wire decoration placement into `world_generator.gd` obstacle data (rocks already block grid placement — just add the visual)
+      - [ ] Run game, confirm player walks on ground without clipping, floor looks thematic with tile texture + scattered 3D props
+    ```md
+    Ground approach: 2D tiled sprites/textures as the base floor surface (dirt, stone,
+    industrial grating — whatever fits the factory-planet theme). 3D models (rocks,
+    chasms, rubble) placed occasionally on top as decoration, not as the floor itself.
+    May need to create new ground tile textures or source them. The PlaneMesh gets a
+    collision body so the player stops falling through.
+    ```
+
+### **INT3D.2** Player model: swap capsule mesh for player.glb `1.5h`
+
+  - tags: [3d-integration, player]
+  - priority: critical
+  - depends: INT3D.1
+  - steps:
+      - [ ] In `player/player.tscn`, replace the `CapsuleMesh` MeshInstance3D with an imported `player.glb` scene instance
+      - [ ] Adjust transform (position, rotation, scale) so the model sits on the ground plane and faces the movement direction
+      - [ ] Wire up `AnimationPlayer` from the .glb to play idle/walk/run animations based on movement state in `player.gd`
+      - [ ] Verify collision shape still works (may need to resize capsule collider to match model bounds)
+      - [ ] Run game, confirm player renders with the 3D model and animates on movement
+    ```md
+    player.glb has 4 NLA animation states (idle, walk, run, build). Currently
+    player.tscn uses a hardcoded CapsuleMesh. Swap in the real model and hook up
+    animation playback to the existing movement code in player.gd.
+    ```
+
+### **INT3D.3** Deposit models: create scenes + wire to world gen `2h`
+
+  - tags: [3d-integration, deposits, resources]
+  - priority: critical
+  - steps:
+      - [ ] Create `.tscn` deposit scenes for M1 deposits (Pyromite, Crystalline, Biovine) that instance the corresponding `.glb` models from `resources/deposits/models/`
+      - [ ] Each deposit scene: Node3D root + imported .glb model + `StaticBody3D` collision shape
+      - [ ] Wire `world_generator.gd` to instantiate deposit scenes at grid positions where deposits are placed
+      - [ ] Verify drills can still target and extract from deposits (the logical system should be unaffected)
+      - [ ] Play deposit idle animations from the .glb NLA tracks
+      - [ ] Run existing drill simulation to confirm extraction still works
+    ```md
+    Deposit .glb models exist (pyromite, crystalline, biovine) with idle animations
+    but have zero integration. world_generator.gd places deposits as grid data —
+    this card adds the visual representation using the 3D models.
+    ```
+
+### **INT3D.4** Building models: swap AnimatedSprite2D for .glb scenes `3h`
+
+  - tags: [3d-integration, buildings]
+  - priority: critical
+  - depends: INT3D.1
+  - steps:
+      - [ ] Create a reusable pattern for loading a .glb model into a building scene (replace AnimatedSprite2D nodes with imported .glb instance)
+      - [ ] Swap `buildings/drill/drill.tscn` — remove SpriteBottom/SpriteTop AnimatedSprite2D, add drill.glb model instance
+      - [ ] Swap `buildings/conveyor/conveyor.tscn` — replace sprite with conveyor.glb
+      - [ ] Swap `buildings/smelter/smelter.tscn` — replace sprite with smelter.glb
+      - [ ] Swap `buildings/splitter/splitter.tscn` — replace sprite with splitter.glb
+      - [ ] Swap `buildings/junction/junction.tscn` — replace sprite with junction.glb (from junction_tunnel models)
+      - [ ] Swap `buildings/tunnel/tunnel_input.tscn` + `tunnel_output.tscn` — replace sprites with tunnel.glb
+      - [ ] Swap `buildings/source/source.tscn` + `buildings/sink/sink.tscn` — replace sprites with source.glb/sink.glb
+      - [ ] For each building: adjust transform to align with grid, set correct rotation pivot, verify IO port positions match
+      - [ ] Wire AnimationPlayer from .glb to play idle/active animations where applicable
+      - [ ] Run conveyor simulation and drill simulation to verify buildings render and function
+    ```md
+    All 8 building types currently use AnimatedSprite2D (2D sprites) but have .glb
+    3D models ready. Swap each building scene to instance its .glb model. The building
+    logic layer (BuildingLogic, pull system, tick system) is unchanged — only visuals.
+    ```
+
+### **INT3D.5** Item models: visual items on conveyors + ground `2h`
+
+  - tags: [3d-integration, items, conveyors]
+  - priority: high
+  - depends: INT3D.4
+  - steps:
+      - [ ] Update the conveyor item visual manager to instance item .glb models instead of current representation
+      - [ ] Map each `ItemDef` to its corresponding .glb model path (pyromite_item.glb, crystalline_item.glb, etc.)
+      - [ ] Items should render at correct scale (~0.2 units) riding on conveyor belts
+      - [ ] Play item idle animation (spinning/floating) from NLA tracks
+      - [ ] Update `GroundItem` scene to render the item .glb model when items are on the ground
+      - [ ] Run conveyor + smelter simulations to verify items render on belts and through processing
+    ```md
+    Item .glb models exist for all 6 base + 15 combo resources. Currently items on
+    conveyors are either invisible or placeholder. Wire up the real models so resources
+    are visually identifiable as they move through the factory.
+    ```
+
+### **INT3D.6** Camera + lighting tuning for 3D scene `1h`
+
+  - tags: [3d-integration, polish]
+  - priority: medium
+  - depends: INT3D.1, INT3D.4
+  - steps:
+      - [ ] Review isometric camera settings — ensure all buildings/deposits are visible and properly framed
+      - [ ] Add DirectionalLight3D to `game_world.tscn` if not present (consistent with Blender export lighting)
+      - [ ] Tune ambient light so flat-palette models look correct (match Blender EEVEE preview)
+      - [ ] Verify shadow rendering doesn't kill performance (may need to disable or limit shadow distance)
+      - [ ] Test at different zoom levels — models should remain readable
+    ```md
+    Once 3D models are in-scene, lighting and camera may need adjustment. The Blender
+    pipeline uses EEVEE with specific lighting — match that in Godot so colors/materials
+    look correct.
+    ```
+
+### **INT3D.7** Integration smoke test: full factory playthrough `1h`
+
+  - tags: [3d-integration, test]
+  - priority: medium
+  - depends: INT3D.1, INT3D.2, INT3D.3, INT3D.4, INT3D.5
+  - steps:
+      - [ ] Run all existing simulations (conveyor, drill, smelter, splitter, etc.) — all must pass
+      - [ ] Manual playthrough: spawn, walk around, place drill on deposit, build conveyor chain, process items in smelter
+      - [ ] Verify no visual glitches: Z-fighting, models inside each other, items clipping through belts
+      - [ ] Verify player collision: can't walk through buildings, stays on ground
+      - [ ] Check performance: maintain 60fps with ~20 buildings placed
+      - [ ] Screenshot baseline of the integrated 3D scene
+    ```md
+    Final validation card. Everything should work together: player walks on ground,
+    places 3D buildings, drills extract from 3D deposits, items ride 3D conveyors.
+    No new mechanics — just verifying the visual integration is solid.
+    ```
 
 ### **3D.11** 3D grid overlay + debug visualization `1.5h`
 
@@ -451,6 +559,26 @@
     splitter multi-turret (3 barrels), drill cache (armored + retracted derrick).
     3 NLA states: idle/active/transition. Flat + textured.
     ```
+  
+### **3D.1** GridUtils 3D API + dual-API bridge `2h` ✓ `0.1h actual`
+
+### **3D.2** Game world scene tree: Node2D → Node3D `3h` ✓ `0.2h actual`
+
+### **3D.3** BuildSystem 3D input (mouse → grid via raycast) `2h` ✓ `0.1h actual`
+
+### **3D.4** Player CharacterBody2D → CharacterBody3D `2h` ✓ `0.2h actual`
+
+### **3D.5** Terrain rendering: MultiMesh3D ground plane `2h` ✓ `0.1h actual`
+
+### **3D.6** Building base Node3D + placeholder meshes `2h` ✓ `0.1h actual`
+
+### **3D.7** Conveyor + item visual manager 3D `3h` ✓ `0.2h actual`
+
+### **3D.8** Simulation + test infrastructure update `1.5h` ✓ `0.05h actual`
+
+### **3D.9** GridUtils 2D API removal (cleanup) `1h` ✓ `0.3h actual`
+
+### **3D.10** Save/load migration `1h` ✓ `0.05h actual`
 
 ### **LIB.2** Scene lighting: ambient + point lights (2026-04-04)
 

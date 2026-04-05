@@ -55,6 +55,19 @@ var _item_def_cache: Dictionary = {}
 var item_visual_manager  # ItemVisualManager (preloaded in game_world)
 var _ItemVisualHandle = preload("res://scripts/game/item_visual_handle.gd")
 
+# 3D model scenes for buildings (building_id -> PackedScene)
+var _building_model_scenes: Dictionary = {
+	&"drill": preload("res://buildings/drill/models/drill.glb"),
+	&"conveyor": preload("res://buildings/conveyor/models/conveyor.glb"),
+	&"smelter": preload("res://buildings/smelter/models/smelter.glb"),
+	&"splitter": preload("res://buildings/splitter/models/splitter.glb"),
+	&"source": preload("res://buildings/source/models/source.glb"),
+	&"sink": preload("res://buildings/sink/models/sink.glb"),
+	&"junction": preload("res://buildings/junction/models/junction.glb"),
+	&"tunnel_input": preload("res://buildings/tunnel/models/tunnel.glb"),
+	&"tunnel_output": preload("res://buildings/tunnel/models/tunnel.glb"),
+}
+
 # Currency earned from sinks
 var total_currency: int = 0
 
@@ -167,21 +180,20 @@ func _load_recipes() -> void:
 				recipes_by_type[ctype].append(recipe)
 		file_name = dir.get_next()
 
-# ── Item visuals (MultiMesh) ──────────────────────────────────────────────────
+# ── Item visuals (3D models) ─────────────────────────────────────────────────
 
-## Acquire an item visual handle backed by the shared MultiMesh.
-## Accepts either an atlas_index (int) or item_id (StringName) to look up the index.
+## Acquire an item visual handle backed by a 3D model instance.
+## Accepts either an item_id (StringName/String) or legacy atlas_index (int, ignored).
 func acquire_visual(item_id_or_index) -> RefCounted:
-	var atlas_index: int = 0
-	if item_id_or_index is int:
-		atlas_index = item_id_or_index
-	elif item_id_or_index is StringName or item_id_or_index is String:
-		var def = get_item_def(item_id_or_index)
-		if def:
-			atlas_index = def.icon_atlas_index
-	return _ItemVisualHandle.new(item_visual_manager, item_visual_manager.allocate(atlas_index))
+	var item_id: StringName = &""
+	if item_id_or_index is StringName or item_id_or_index is String:
+		item_id = StringName(item_id_or_index)
+	elif item_id_or_index is int:
+		item_id = &"pyromite"  # fallback for legacy int callers
+	var node: Node3D = item_visual_manager.create_item_visual(item_id)
+	return _ItemVisualHandle.new(node)
 
-## Release an item visual handle back to the MultiMesh free pool.
+## Release an item visual handle (frees the 3D node).
 func release_visual(handle) -> void:
 	if handle and handle is RefCounted and handle.has_method("release"):
 		handle.release()
@@ -390,7 +402,8 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		# Register conveyors with ConveyorSystem, others with BuildingTickSystem
 		if logic is ConveyorBelt and conveyor_system:
 			conveyor_system.register_conveyor(logic)
-			if conveyor_visual_manager:
+			# Skip MultiMesh visual if building has a 3D model
+			if conveyor_visual_manager and not _building_model_scenes.has(id):
 				conveyor_visual_manager.register(grid_pos, logic)
 		elif building_tick_system:
 			building_tick_system.register(logic)
@@ -412,12 +425,33 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	building_placed.emit(id, grid_pos)
 	return building
 
-## Add a placeholder colored box mesh to a building for visual identification.
+## Add a 3D model (or placeholder box fallback) to a building.
 func _add_placeholder_mesh(building: Node3D, def: BuildingDef, rotation: int) -> void:
+	var bid: StringName = building.building_id
+	if _building_model_scenes.has(bid):
+		var model: Node3D = _building_model_scenes[bid].instantiate()
+		model.name = "Model"
+		# Center the model on the building's footprint (local unrotated space)
+		var unrotated_shape: Array = def.shape
+		var un_min := Vector2i(999, 999)
+		var un_max := Vector2i(-999, -999)
+		for cell in unrotated_shape:
+			un_min = un_min.min(cell)
+			un_max = un_max.max(cell)
+		var uw := float(un_max.x - un_min.x + 1) * GridUtils.TILE_SIZE
+		var ud := float(un_max.y - un_min.y + 1) * GridUtils.TILE_SIZE
+		model.position = Vector3(uw / 2.0, 0.0, ud / 2.0)
+		building.add_child(model)
+		# Play idle animation
+		var anim: AnimationPlayer = model.get_node_or_null("AnimationPlayer")
+		if anim and anim.has_animation(&"idle"):
+			anim.play(&"idle")
+		return
+
+	# Fallback: colored box placeholder
 	var placeholder := MeshInstance3D.new()
 	placeholder.name = "Placeholder"
 	var box := BoxMesh.new()
-	# Size based on building shape footprint
 	var rotated_shape: Array = def.get_rotated_shape(rotation)
 	var min_cell := Vector2i(999, 999)
 	var max_cell := Vector2i(-999, -999)
@@ -426,23 +460,18 @@ func _add_placeholder_mesh(building: Node3D, def: BuildingDef, rotation: int) ->
 		max_cell = max_cell.max(cell)
 	var w := float(max_cell.x - min_cell.x + 1) * GridUtils.TILE_SIZE * 0.9
 	var d := float(max_cell.y - min_cell.y + 1) * GridUtils.TILE_SIZE * 0.9
-	# Ground-level buildings (conveyors, junctions) get flat boxes; others get taller ones
 	var h := 0.1 if def.is_ground_level else 0.8
 	box.size = Vector3(w, h, d)
 	placeholder.mesh = box
-	# Center above origin (origin is at anchor cell corner, mesh centered in footprint)
-	# Rotation is handled by the parent node, so position in local (unrotated) space
-	# For rotated buildings, we use the unrotated shape to compute local offset
-	var unrotated_shape: Array = def.shape
-	var un_min := Vector2i(999, 999)
-	var un_max := Vector2i(-999, -999)
-	for cell in unrotated_shape:
-		un_min = un_min.min(cell)
-		un_max = un_max.max(cell)
-	var uw := float(un_max.x - un_min.x + 1) * GridUtils.TILE_SIZE
-	var ud := float(un_max.y - un_min.y + 1) * GridUtils.TILE_SIZE
-	placeholder.position = Vector3(uw / 2.0, h / 2.0, ud / 2.0)
-	# Color by building identity
+	var unrotated_shape2: Array = def.shape
+	var un_min2 := Vector2i(999, 999)
+	var un_max2 := Vector2i(-999, -999)
+	for cell in unrotated_shape2:
+		un_min2 = un_min2.min(cell)
+		un_max2 = un_max2.max(cell)
+	var uw2 := float(un_max2.x - un_min2.x + 1) * GridUtils.TILE_SIZE
+	var ud2 := float(un_max2.y - un_min2.y + 1) * GridUtils.TILE_SIZE
+	placeholder.position = Vector3(uw2 / 2.0, h / 2.0, ud2 / 2.0)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = def.color
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED

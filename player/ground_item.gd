@@ -19,6 +19,7 @@ func _ready() -> void:
 	add_to_group("ground_items")
 	_merge_timer = randf() * MERGE_INTERVAL  # stagger merge checks
 	_feed_timer = randf() * FEED_INTERVAL
+	_add_item_model()
 
 func _process(delta: float) -> void:
 	despawn_timer -= delta
@@ -94,6 +95,35 @@ func _try_feed_building() -> void:
 		quantity = leftover
 		if quantity <= 0:
 			queue_free()
+
+func _add_item_model() -> void:
+	var model_path := "res://resources/items/models/%s_item.glb" % str(item_id)
+	if ResourceLoader.exists(model_path):
+		var scene: PackedScene = load(model_path)
+		if scene:
+			var model: Node3D = scene.instantiate()
+			model.name = "Model"
+			model.scale = Vector3(2.0, 2.0, 2.0)
+			model.position.y = 0.15
+			add_child(model)
+			var anim: AnimationPlayer = model.get_node_or_null("AnimationPlayer")
+			if anim and anim.has_animation(&"idle"):
+				anim.play(&"idle")
+			return
+	# Fallback: small colored sphere
+	var mesh_inst := MeshInstance3D.new()
+	mesh_inst.name = "Model"
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.12
+	sphere.height = 0.24
+	mesh_inst.mesh = sphere
+	mesh_inst.position.y = 0.15
+	var mat := StandardMaterial3D.new()
+	var item_def = GameManager.get_item_def(item_id)
+	mat.albedo_color = item_def.color if item_def else Color.WHITE
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh_inst.material_override = mat
+	add_child(mesh_inst)
 
 func set_pickup_immunity(time: float) -> void:
 	_pickup_immunity = time
