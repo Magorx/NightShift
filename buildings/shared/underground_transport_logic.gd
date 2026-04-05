@@ -93,14 +93,7 @@ func _advance_items(delta: float) -> void:
 		_update_item_visual(item)
 
 func _try_pull_input() -> void:
-	if not can_accept():
-		return
-	var back_dir_idx: int = (direction + 2) % 4
-	var result = GameManager.pull_item(grid_pos, back_dir_idx)
-	if result.is_empty():
-		return
-	var item: Dictionary = buffer.add_item(result.id)
-	_update_item_visual(item)
+	pass  # Old pull system removed — TunnelLogic overrides _physics_process
 
 func can_accept() -> bool:
 	if partner == null:

@@ -17,7 +17,6 @@ var _world_gen_script = preload("res://scripts/game/world_generator.gd")
 var _stress_gen_script = preload("res://scripts/game/stress_test_generator.gd")
 var _visual_mgr_script = preload("res://scripts/game/item_visual_manager.gd")
 var _tick_system_script = preload("res://scripts/game/building_tick_system.gd")
-var _conv_visual_mgr_script = preload("res://scripts/game/conveyor_visual_manager.gd")
 var _terrain_visual_mgr_script = preload("res://scripts/game/terrain_visual_manager.gd")
 var _player_scene: PackedScene = preload("res://player/player.tscn")
 var _building_collision_script = preload("res://scripts/game/building_collision.gd")
@@ -38,7 +37,6 @@ var _last_time_usec: int = 0
 func _ready() -> void:
 	GameManager.building_layer = $ObjectLayer/BuildingLayer
 	GameManager.item_layer = $ObjectLayer/ItemLayer
-	GameManager.conveyor_system = $ConveyorSystem
 	# Initialize MultiMesh item visual system
 	GameManager.item_visual_manager = _visual_mgr_script.new()
 	GameManager.item_visual_manager.attach_to($ObjectLayer/ItemLayer)
@@ -47,9 +45,6 @@ func _ready() -> void:
 	tick_system.name = "BuildingTickSystem"
 	add_child(tick_system)
 	GameManager.building_tick_system = tick_system
-	# Initialize MultiMesh conveyor visual system
-	GameManager.conveyor_visual_manager = _conv_visual_mgr_script.new()
-	GameManager.conveyor_visual_manager.attach_to($ObjectLayer/BuildingLayer)
 	GameManager.clear_all()
 	GameManager.deposits.clear()
 	GameManager.walls.clear()
@@ -260,9 +255,6 @@ func _process(delta: float) -> void:
 	_last_time_usec = now
 	real_delta = minf(real_delta, 0.1) # cap to avoid jumps
 	camera.update_camera(real_delta)
-	# Advance conveyor MultiMesh animation frame
-	if GameManager.conveyor_visual_manager:
-		GameManager.conveyor_visual_manager.update_animation()
 	# Autosave
 	_autosave_timer += delta
 	if _autosave_timer >= AUTOSAVE_INTERVAL:

@@ -53,7 +53,6 @@ var _item_def_cache: Dictionary = {}
 
 # MultiMesh-based item visual manager (replaces per-item Node2D)
 var item_visual_manager  # ItemVisualManager (preloaded in game_world)
-var _ItemVisualHandle = preload("res://scripts/game/item_visual_handle.gd")
 
 # Currency earned from sinks
 var total_currency: int = 0
@@ -88,9 +87,7 @@ var last_selected_building: StringName = &"conveyor"
 # Reference to scene layer nodes (set by game_world on ready)
 var building_layer: Node
 var item_layer: Node
-var conveyor_system: Node
 var building_tick_system: Node  # BuildingTickSystem
-var conveyor_visual_manager  # ConveyorVisualManager (MultiMesh rendering)
 var building_collision  # BuildingCollision (StaticBody2D for player collision)
 var player  # Player (CharacterBody2D)
 
@@ -169,21 +166,20 @@ func _load_recipes() -> void:
 
 # ── Item visuals (3D models) ─────────────────────────────────────────────────
 
-## Acquire an item visual handle backed by a 3D model instance.
+## Acquire an item visual as a 3D model node.
 ## Accepts either an item_id (StringName/String) or legacy atlas_index (int, ignored).
-func acquire_visual(item_id_or_index) -> RefCounted:
+func acquire_visual(item_id_or_index) -> Node3D:
 	var item_id: StringName = &""
 	if item_id_or_index is StringName or item_id_or_index is String:
 		item_id = StringName(item_id_or_index)
 	elif item_id_or_index is int:
 		item_id = &"pyromite"  # fallback for legacy int callers
-	var node: Node3D = item_visual_manager.create_item_visual(item_id)
-	return _ItemVisualHandle.new(node)
+	return item_visual_manager.create_item_visual(item_id)
 
-## Release an item visual handle (frees the 3D node).
+## Release an item visual (frees the 3D node).
 func release_visual(handle) -> void:
-	if handle and handle is RefCounted and handle.has_method("release"):
-		handle.release()
+	if handle and is_instance_valid(handle) and handle is Node3D:
+		handle.queue_free()
 
 ## Get a cached ItemDef resource by id. Loads from disk on first access.
 func get_item_def(item_id: StringName):
@@ -375,27 +371,13 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	if logic:
 		logic.configure(def, grid_pos, rotation)
 		building.logic = logic
-		# Register conveyors with ConveyorSystem, others with BuildingTickSystem
-		if logic is ConveyorBelt and conveyor_system:
-			conveyor_system.register_conveyor(logic)
-			# Conveyors with 3D models don't need MultiMesh visual
-			pass
-		elif building_tick_system:
+		if building_tick_system:
 			building_tick_system.register(logic)
 
 	# Update collision for player
 	if building_collision and not def.is_ground_level:
 		for cell in rotated_shape:
 			building_collision.add_tile(grid_pos + cell)
-
-	# Update conveyor sprites for the placed building and its neighbors
-	if def.category == "conveyor":
-		_update_conveyor_sprites(grid_pos)
-	elif rotated_shape.size() > 1:
-		for cell in rotated_shape:
-			_update_neighbor_conveyor_sprites(grid_pos + cell)
-	else:
-		_update_neighbor_conveyor_sprites(grid_pos)
 
 	building_placed.emit(id, grid_pos)
 	return building
@@ -412,7 +394,6 @@ func remove_building(grid_pos: Vector2i) -> void:
 	if not building:
 		return
 	var def = get_building_def(building.building_id)
-	var removed_pos: Vector2i = building.grid_pos
 
 	# Refund partial build cost to player
 	refund_building_cost(building.building_id)
@@ -420,10 +401,6 @@ func remove_building(grid_pos: Vector2i) -> void:
 	# Unregister from BuildingTickSystem
 	if building.logic and building_tick_system:
 		building_tick_system.unregister(building.logic)
-
-	# Unregister from ConveyorVisualManager
-	if building.logic is ConveyorBelt and conveyor_visual_manager:
-		conveyor_visual_manager.unregister(building.logic.grid_pos)
 
 	# Let the logic node handle its own cleanup (unregistration, partner unlinking, visuals)
 	if building.logic:
@@ -445,10 +422,6 @@ func remove_building(grid_pos: Vector2i) -> void:
 	unique_buildings.erase(building)
 
 	building.queue_free()
-
-	# Queue neighbor sprite updates
-	for cell in rotated_shape:
-		_update_neighbor_conveyor_sprites(removed_pos + cell)
 
 func get_building_at(grid_pos: Vector2i):
 	return buildings.get(grid_pos)
@@ -519,30 +492,6 @@ func convert_tile_to_ash(pos: Vector2i) -> void:
 	if cluster_drain_manager:
 		cluster_drain_manager.invalidate_cache()
 
-# ── Conveyor sprite updates ───────────────────────────────────────────────────
-
-func _update_conveyor_sprites(grid_pos: Vector2i) -> void:
-	_update_single_conveyor_sprite(grid_pos)
-	_update_neighbor_conveyor_sprites(grid_pos)
-
-func _update_neighbor_conveyor_sprites(grid_pos: Vector2i) -> void:
-	for dir in DIRECTION_VECTORS:
-		_update_single_conveyor_sprite(grid_pos + dir)
-
-## Update a single conveyor's sprite variant if it exists.
-func _update_single_conveyor_sprite(grid_pos: Vector2i) -> void:
-	var building = buildings.get(grid_pos)
-	if not building or not is_instance_valid(building):
-		return
-	if not building.logic is ConveyorBelt:
-		return
-	if conveyor_visual_manager:
-		conveyor_visual_manager.update_variant(building.logic)
-	else:
-		var sprite = building.find_child("ConveyorSprite", true, false)
-		if sprite and conveyor_system:
-			sprite.update_variant(building.logic, conveyor_system)
-
 func clear_all() -> void:
 	# Clean up item visuals via logic nodes
 	var seen: Dictionary = {}
@@ -563,8 +512,6 @@ func clear_all() -> void:
 	# Reset the MultiMesh visual pools
 	if item_visual_manager:
 		item_visual_manager.clear_all()
-	if conveyor_visual_manager:
-		conveyor_visual_manager.clear_all()
 	if terrain_visual_manager:
 		terrain_visual_manager.clear()
 	terrain_tile_types = PackedByteArray()
@@ -572,9 +519,6 @@ func clear_all() -> void:
 	deposit_stocks.clear()
 	total_currency = 0
 	items_delivered.clear()
-	if conveyor_system:
-		conveyor_system.conveyors.clear()
-		conveyor_system._pull_rr.clear()
 	if building_tick_system:
 		building_tick_system.clear_all()
 	if building_collision:
@@ -596,28 +540,6 @@ func has_input_at(cell: Vector2i, from_dir_idx: int) -> bool:
 	if not building or not building.logic:
 		return false
 	return building.logic.has_input_from(cell, from_dir_idx)
-
-## Peek at the item available from direction from_dir_idx without removing it.
-func peek_output_item(target_pos: Vector2i, from_dir_idx: int) -> StringName:
-	var neighbor_pos: Vector2i = target_pos + DIRECTION_VECTORS[from_dir_idx]
-	var building = buildings.get(neighbor_pos)
-	if not building or not building.logic:
-		return &""
-	return building.logic.peek_output_for(target_pos)
-
-## Pull (remove) one item from a building's output in direction from_dir_idx.
-## Returns {id: StringName, entry_from: Vector2i} or empty dict.
-func pull_item(target_pos: Vector2i, from_dir_idx: int) -> Dictionary:
-	var neighbor_pos: Vector2i = target_pos + DIRECTION_VECTORS[from_dir_idx]
-	var building = buildings.get(neighbor_pos)
-	if not building or not building.logic:
-		return {}
-	if not building.logic.can_provide_to(target_pos):
-		return {}
-	var item_id: StringName = building.logic.take_item_for(target_pos)
-	if item_id == &"":
-		return {}
-	return {id = item_id, entry_from = DIRECTION_VECTORS[from_dir_idx], entry_dist = building.logic.get_output_visual_distance()}
 
 ## Hide guide ColorRect nodes (Shape/Input/Output cells) to reduce draw calls.
 ## These nodes have alpha=0 but are still processed by the renderer.

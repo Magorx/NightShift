@@ -520,7 +520,6 @@ func _update_ghosts() -> void:
 			var world_3d := GridUtils.grid_to_world(pos - def.anchor_cell)
 			_ghost_nodes[i].position = world_3d
 			_ghost_nodes[i].visible = true
-			_update_ghost_conveyor_variant(_ghost_nodes[i], pos, rotation, _placeable_blueprints)
 		# Hide excess
 		for i in range(count, _ghost_nodes.size()):
 			_ghost_nodes[i].visible = false
@@ -540,7 +539,6 @@ func _update_ghosts() -> void:
 			var world_3d := GridUtils.grid_to_world(cursor_grid_pos - def.anchor_cell)
 			_ghost_nodes[0].position = world_3d
 			_ghost_nodes[0].visible = true
-			_update_ghost_conveyor_variant(_ghost_nodes[0], cursor_grid_pos, rotation, [])
 			for i in range(1, _ghost_nodes.size()):
 				_ghost_nodes[i].visible = false
 
