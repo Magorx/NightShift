@@ -22,11 +22,6 @@ func setup_pair(p_partner: UndergroundTransportLogic, p_length: int) -> void:
 	partner = p_partner
 	tunnel_length = p_length
 
-func has_input_from(_cell: Vector2i, from_dir_idx: int) -> bool:
-	if not is_input or not partner:
-		return false
-	return from_dir_idx == (direction + 2) % 4
-
 func get_linked_positions() -> Array:
 	if partner:
 		return [partner.grid_pos]

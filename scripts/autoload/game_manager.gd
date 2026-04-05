@@ -518,23 +518,6 @@ func clear_all() -> void:
 	if building_collision:
 		building_collision.clear_all()
 
-# ── Unified pull system ──────────────────────────────────────────────────────
-
-## Check if a building has an output feeding into target_pos from direction from_dir_idx.
-func has_output_at(target_pos: Vector2i, from_dir_idx: int) -> bool:
-	var neighbor_pos: Vector2i = target_pos + DIRECTION_VECTORS[from_dir_idx]
-	var building = buildings.get(neighbor_pos)
-	if not building or not building.logic:
-		return false
-	return building.logic.has_output_toward(target_pos)
-
-## Check if the building at cell accepts input from direction from_dir_idx.
-func has_input_at(cell: Vector2i, from_dir_idx: int) -> bool:
-	var building = buildings.get(cell)
-	if not building or not building.logic:
-		return false
-	return building.logic.has_input_from(cell, from_dir_idx)
-
 ## Hide guide ColorRect nodes (Shape/Input/Output cells) to reduce draw calls.
 ## These nodes have alpha=0 but are still processed by the renderer.
 ## No-op for Node3D buildings (they don't have 2D guide nodes).

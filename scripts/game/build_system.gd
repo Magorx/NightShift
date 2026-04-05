@@ -128,8 +128,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			enter_destroy_mode()
 	elif event.is_action_pressed(&"lock_rotation"):
 		rotation_locked = not rotation_locked
-	elif event.is_action_pressed(&"debug_spawn_item"):
-		_debug_spawn_item(cursor_grid_pos)
 	elif event.is_action_pressed(&"build_mode_toggle"):
 		if building_mode:
 			exit_building_mode()
@@ -549,66 +547,6 @@ func _trim_ghosts() -> void:
 		if is_instance_valid(ghost):
 			ghost.queue_free()
 
-func _update_ghost_conveyor_variant(ghost: Node, grid_pos: Vector2i, rot: int, blueprint_positions: Array) -> void:
-	if selected_building != &"conveyor":
-		return
-	var sprite = ghost.find_child("ConveyorSprite", true, false)
-	if not sprite or not (sprite is AnimatedSprite2D):
-		return
-
-	var dir_vec: Vector2i = GameManager.DIRECTION_VECTORS[rot]
-	var back := -dir_vec
-	var right_side := Vector2i(-dir_vec.y, dir_vec.x)
-	var left_side := Vector2i(dir_vec.y, -dir_vec.x)
-
-	var has_back: bool = _ghost_has_feeder(grid_pos, back, blueprint_positions, rot)
-	var has_right: bool = _ghost_has_feeder(grid_pos, right_side, blueprint_positions, rot)
-	var has_left: bool = _ghost_has_feeder(grid_pos, left_side, blueprint_positions, rot)
-
-	var variant: StringName = &"start"
-	var flip := false
-
-	if has_right and has_left and has_back:
-		variant = &"crossroad"
-	elif has_right and has_left:
-		variant = &"dual_side_input"
-	elif has_back and has_right:
-		variant = &"side_input"
-	elif has_back and has_left:
-		variant = &"side_input"
-		flip = true
-	elif has_right and not has_back:
-		variant = &"turn"
-	elif has_left and not has_back:
-		variant = &"turn"
-		flip = true
-	elif has_back:
-		variant = &"straight"
-
-	sprite.animation = variant
-	sprite.flip_v = flip
-
-func _ghost_has_feeder(grid_pos: Vector2i, dir_offset: Vector2i, blueprint_positions: Array, drag_rotation: int) -> bool:
-	# Check existing buildings
-	var dir_idx: int
-	if dir_offset == Vector2i.RIGHT: dir_idx = 0
-	elif dir_offset == Vector2i.DOWN: dir_idx = 1
-	elif dir_offset == Vector2i.LEFT: dir_idx = 2
-	elif dir_offset == Vector2i.UP: dir_idx = 3
-	else: return false
-
-	if GameManager.has_output_at(grid_pos, dir_idx):
-		return true
-
-	# Check if another blueprint in the drag would feed this position
-	var neighbor_pos := grid_pos + dir_offset
-	if neighbor_pos in blueprint_positions:
-		var neighbor_output: Vector2i = neighbor_pos + Vector2i(GameManager.DIRECTION_VECTORS[drag_rotation])
-		if neighbor_output == grid_pos:
-			return true
-
-	return false
-
 func _clear_ghosts() -> void:
 	for ghost in _ghost_nodes:
 		if is_instance_valid(ghost):
@@ -845,11 +783,6 @@ func _collect_building_and_linked(building: Node, seen: Dictionary, to_remove: A
 			continue
 		seen[nid] = true
 		to_remove.append(bld.grid_pos)
-
-func _debug_spawn_item(pos: Vector2i) -> void:
-	var conv = GameManager.get_conveyor_at(pos)
-	if conv and conv.can_accept():
-		conv.place_item(&"pyromite")
 
 # ── Placement fail reason ───────────────────────────────────────────────────
 

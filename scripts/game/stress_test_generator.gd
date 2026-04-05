@@ -330,25 +330,11 @@ func _place_output_chain(start_x: int, y: int, map_size: int) -> void:
 # ── Output relay ──────────────────────────────────────────────────────────────
 
 ## Place a conveyor at the converter's output cell to relay items out.
-## Converter output cells are NOT shape cells, so a conveyor fits there.
-## The relay conveyor pulls items from the converter and forwards them downstream.
-func _place_output_relay(conv_id: StringName, conv_pos: Vector2i, rotation: int, map_size: int) -> Vector2i:
-	var def: Resource = GameManager.building_defs.get(conv_id)
-	if not def:
-		return conv_pos + Vector2i(1, 0)
-	var outputs: Array = def.get_rotated_outputs(rotation)
-	if outputs.is_empty():
-		return conv_pos + Vector2i(1, 0)
-	var output_cell: Vector2i = Vector2i(outputs[0].cell)
-	var output_pos: Vector2i = conv_pos + output_cell
-	# Determine conveyor direction from output mask
-	var conv_rot := 0
-	var mask: Array = outputs[0].mask
-	for d in range(4):
-		if mask[d]:
-			conv_rot = d
-			break
-	_try_place(_bids.conveyor, output_pos, map_size, conv_rot)
+## Output is always one cell ahead in the building's facing direction.
+func _place_output_relay(_conv_id: StringName, conv_pos: Vector2i, rotation: int, map_size: int) -> Vector2i:
+	var dir_vec: Vector2i = GameManager.DIRECTION_VECTORS[rotation]
+	var output_pos: Vector2i = conv_pos + dir_vec
+	_try_place(_bids.conveyor, output_pos, map_size, rotation)
 	return output_pos
 
 # ── Placement helpers ─────────────────────────────────────────────────────────

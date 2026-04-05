@@ -23,12 +23,6 @@ func _ready() -> void:
 	monitoring = false
 	monitorable = false
 
-func get_mask() -> Array:
-	return [allow_right, allow_down, allow_left, allow_up]
-
-func get_cell() -> Vector2i:
-	return Vector2i(roundi(position.x), roundi(position.z))
-
 ## Spawn a PhysicsItem at a random point within this zone's box volume.
 func spawn_item(item_id: StringName, impulse_scale: float = 1.0) -> PhysicsItem:
 	var spawn_pos := _random_point_in_box()

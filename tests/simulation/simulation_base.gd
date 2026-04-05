@@ -114,13 +114,10 @@ func sim_remove_building(grid_pos: Vector2i) -> void:
 	print("[SIM] Removed building at %s" % str(grid_pos))
 
 func sim_spawn_item_on_conveyor(grid_pos: Vector2i, item_id: StringName) -> bool:
-	var conv = GameManager.get_conveyor_at(grid_pos)
-	if conv and conv.can_accept():
-		conv.place_item(item_id)
-		print("[SIM] Spawned %s on conveyor at %s" % [item_id, str(grid_pos)])
-		return true
-	print("[SIM] Failed to spawn %s on conveyor at %s" % [item_id, str(grid_pos)])
-	return false
+	var pos := Vector3(grid_pos.x + 0.5, 0.3, grid_pos.y + 0.5)
+	PhysicsItem.spawn(item_id, pos, Vector3.ZERO)
+	print("[SIM] Spawned %s at %s" % [item_id, str(grid_pos)])
+	return true
 
 func sim_get_conveyor_at(grid_pos: Vector2i):
 	return GameManager.get_conveyor_at(grid_pos)

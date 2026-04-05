@@ -15,14 +15,14 @@ Each building lives in `buildings/<name>/` with:
 5. Register the `.tres` in `scripts/autoload/game_manager.gd` building list
 
 ## Key Patterns
-- **Pull system**: buildings never push items. All transfers go through `GameManager.pull_item()`
+- **Physics items**: buildings use InputZone/OutputZone Area3Ds for item detection and spawning
 - **BuildingDef auto-extraction**: shape, IO points, and anchor are read from the `.tscn` at load time — don't duplicate in code
 - **Direction system**: `DIRECTION_VECTORS = [RIGHT, DOWN, LEFT, UP]` (indices 0-3), opposite = `(dir + 2) % 4`
 - **Animation state**: use `_anim_active`/`_active_hold_timer` from BuildingLogic base class, not custom timers
 - **Visual resources in scenes**: sprites, materials, shaders go in `.tscn`, never constructed in code
 
 ## Shared Classes (`shared/`)
-- `BuildingLogic` — base class, pull interface, animation state, serialization
+- `BuildingLogic` — base class, animation state, serialization
 - `BuildingDef` — resource definition, auto-extracts shape/IO from scenes
 - `BuildingBase` — scene root script (placement, grid registration)
 - `BuildingFill` — visual fill rendering

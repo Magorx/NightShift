@@ -136,23 +136,6 @@ func get_progress() -> float:
 func mark_configs_dirty() -> void:
 	_configs_dirty = true
 
-# ── Pull interface stubs ──────────────────────────────────────────────────────
-
-func has_output_toward(_target_pos: Vector2i) -> bool:
-	return false
-
-func can_provide_to(_target_pos: Vector2i) -> bool:
-	return false
-
-func peek_output_for(_target_pos: Vector2i) -> StringName:
-	return &""
-
-func take_item_for(_target_pos: Vector2i) -> StringName:
-	return &""
-
-func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
-	return true
-
 # ── Serialization ──────────────────────────────────────────────────────────────
 
 func serialize_state() -> Dictionary:

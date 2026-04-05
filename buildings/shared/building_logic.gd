@@ -1,8 +1,8 @@
 class_name BuildingLogic
 extends Node
 
-## Base class for all building logic nodes. Provides the unified pull interface,
-## self-configuration, serialization, and info panel data.
+## Base class for all building logic nodes. Provides self-configuration,
+## serialization, and info panel data.
 ##
 ## Every building logic script (ConveyorBelt, SplitterLogic, etc.) extends this.
 ## GameManager finds the logic node by type (`child is BuildingLogic`) rather than
@@ -41,38 +41,6 @@ func get_placement_error(_grid_pos: Vector2i, _rotation: int) -> String:
 ## Override in subclass and call super() first.
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, _rotation: int) -> void:
 	grid_pos = p_grid_pos
-
-# ── Pull interface ──────────────────────────────────────────────────────────
-
-func has_output_toward(_target_pos: Vector2i) -> bool:
-	return false
-
-func can_provide_to(_target_pos: Vector2i) -> bool:
-	return false
-
-func peek_output_for(_target_pos: Vector2i) -> StringName:
-	return &""
-
-func take_item_for(_target_pos: Vector2i) -> StringName:
-	return &""
-
-func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
-	return false
-
-# ── Visual origin ──────────────────────────────────────────────────────────
-
-## How far (in tile-halves) from the pulling conveyor's center the item visual
-## should originate.  0.5 = tile edge (conveyors), 1.0 = source center (default).
-func get_output_visual_distance() -> float:
-	return 1.0
-
-# ── Downstream acceptance ───────────────────────────────────────────────────
-
-## Returns true if this building can currently accept an item from the given
-## direction. Used by splitters/routers to check downstream capacity without
-## type-checking every building kind.
-func can_accept_from(_from_dir_idx: int) -> bool:
-	return false
 
 # ── Player item insertion ──────────────────────────────────────────────────
 

@@ -24,14 +24,6 @@ func _physics_process(_delta: float) -> void:
 			GameManager.record_delivery(id, export_val)
 			id = zone.consume_any()
 
-# ── Pull interface stubs ──────────────────────────────────────────────────────
-
-func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
-	return true
-
-func can_accept_from(_from_dir_idx: int) -> bool:
-	return true
-
 func get_inventory_items() -> Array:
 	return []
 

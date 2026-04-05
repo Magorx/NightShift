@@ -46,60 +46,6 @@ func get_direction_vector() -> Vector2i:
 func get_next_pos() -> Vector2i:
 	return grid_pos + get_direction_vector()
 
-# ── Conveyor push (player) ────────────────────────────────────────────────────
-
-var push_speed: float = 1.0
-
-# ── Stub pull interface (old system compat, returns empty/false) ──────────────
-
-func has_item() -> bool:
-	return false
-
-func is_full() -> bool:
-	return false
-
-func can_accept() -> bool:
-	return true
-
-func place_item(_item_id: StringName, _entry_from: Vector2i = Vector2i.ZERO, _entry_dist: float = 0.5) -> bool:
-	return false
-
-func try_insert_item(_item_id: StringName, _quantity: int = 1) -> int:
-	return _quantity
-
-func pop_front_item() -> Dictionary:
-	return {}
-
-func get_front_item() -> Dictionary:
-	return {}
-
-func update_items(_delta: float, _speed: float) -> void:
-	pass
-
-func has_output_toward(target_pos: Vector2i) -> bool:
-	return get_next_pos() == target_pos
-
-func can_provide_to(_target_pos: Vector2i) -> bool:
-	return false
-
-func peek_output_for(_target_pos: Vector2i) -> StringName:
-	return &""
-
-func take_item_for(_target_pos: Vector2i) -> StringName:
-	return &""
-
-func has_input_from(_cell: Vector2i, from_dir_idx: int) -> bool:
-	return from_dir_idx != direction
-
-func can_accept_from(_from_dir_idx: int) -> bool:
-	return true
-
-func cleanup_visuals() -> void:
-	pass
-
-func on_removing() -> void:
-	pass
-
 # ── Serialization (no buffer state to save) ───────────────────────────────────
 
 func serialize_state() -> Dictionary:

@@ -34,37 +34,9 @@ func _physics_process(delta: float) -> void:
 		_timer = produce_interval  # cap timer while full
 	_update_building_sprites(inventory.has_space(item_id), delta)
 
-func get_output_cell() -> Vector2i:
-	return grid_pos + DIRECTION_VECTORS[direction]
-
-func can_provide_to(target_pos: Vector2i) -> bool:
-	return not inventory.is_empty() and target_pos == get_output_cell()
-
-func take_item() -> StringName:
-	inventory.remove(item_id)
-	return item_id
-
 ## Returns production progress as 0.0–1.0 for the progress bar.
 func get_progress() -> float:
 	return clampf(_timer / produce_interval, 0.0, 1.0)
-
-# ── Pull interface ─────────────────────────────────────────────────────────────
-
-func has_output_toward(target_pos: Vector2i) -> bool:
-	return target_pos == get_output_cell()
-
-func peek_output_for(target_pos: Vector2i) -> StringName:
-	if can_provide_to(target_pos):
-		return item_id
-	return &""
-
-func take_item_for(target_pos: Vector2i) -> StringName:
-	if can_provide_to(target_pos):
-		return take_item()
-	return &""
-
-func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
-	return false
 
 # ── Serialization ──────────────────────────────────────────────────────────────
 

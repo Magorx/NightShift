@@ -5,13 +5,6 @@ extends Area3D
 ## Position in building-local space encodes the grid cell offset:
 ##   cell = Vector2i(round(position.x), round(position.z))
 
-## Directional mask — which directions items can arrive from at this cell.
-## Defined in the building's default orientation (facing right).
-@export var allow_right: bool = true
-@export var allow_down: bool = true
-@export var allow_left: bool = true
-@export var allow_up: bool = true
-
 ## Items currently overlapping this zone.
 var _overlapping_items: Array[PhysicsItem] = []
 
@@ -20,13 +13,6 @@ func _ready() -> void:
 	collision_mask = PhysicsItem.ITEM_COLLISION_LAYER
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
-
-func get_mask() -> Array:
-	return [allow_right, allow_down, allow_left, allow_up]
-
-## Return the grid cell offset this zone represents.
-func get_cell() -> Vector2i:
-	return Vector2i(roundi(position.x), roundi(position.z))
 
 ## Get all PhysicsItems currently inside the zone.
 func get_items() -> Array[PhysicsItem]:

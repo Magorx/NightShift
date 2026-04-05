@@ -43,23 +43,6 @@ func _get_output_zone() -> OutputZone:
 func get_progress() -> float:
 	return clampf(_timer / produce_interval, 0.0, 1.0)
 
-# ── Pull interface stubs (old system compat) ──────────────────────────────────
-
-func has_output_toward(target_pos: Vector2i) -> bool:
-	return target_pos == grid_pos + DIRECTION_VECTORS[direction]
-
-func can_provide_to(_target_pos: Vector2i) -> bool:
-	return false
-
-func peek_output_for(_target_pos: Vector2i) -> StringName:
-	return &""
-
-func take_item_for(_target_pos: Vector2i) -> StringName:
-	return &""
-
-func has_input_from(_cell: Vector2i, _from_dir_idx: int) -> bool:
-	return false
-
 # ── Serialization ──────────────────────────────────────────────────────────────
 
 func serialize_state() -> Dictionary:

@@ -26,12 +26,6 @@ var anchor_cell: Vector2i = Vector2i(0, 0)
 ## Array of Vector2i cell offsets relative to the anchor.
 var shape: Array = []
 
-## IO points extracted from Inputs/Outputs sub-nodes at load time.
-## Each entry: {cell: Vector2i, mask: [right, down, left, up]}
-## Defined in default orientation (facing right); rotate at placement time.
-var inputs: Array = []
-var outputs: Array = []
-
 ## Logic script cached for placement validation (extracted from scene).
 var _logic_script: GDScript = null
 var _logic_node_name: StringName = &"Logic"
@@ -46,10 +40,9 @@ func get_logic_node_name() -> StringName:
 
 # ── Scene extraction (called once at load time) ────────────────────────────
 
-## Extract anchor, shape, IO data, and logic script from the scene.
+## Extract anchor, shape, and logic script from the scene.
 func extract_from_scene() -> void:
 	_extract_shape()
-	_extract_io()
 	_extract_logic_script()
 
 ## Find the Rotatable container inside a building (or fall back to the node itself).
@@ -120,24 +113,6 @@ func _extract_shape_2d(instance: Node) -> void:
 				cells.append(Vector2i(gx, gy) - anchor_cell)
 	shape = cells
 
-func _extract_io() -> void:
-	if not scene:
-		inputs = []
-		outputs = []
-		return
-
-	var instance = scene.instantiate()
-	var is_3d := not instance.find_child("Rotatable", false, false)
-
-	if is_3d:
-		inputs = _read_io_group_3d(instance, "Inputs")
-		outputs = _read_io_group_3d(instance, "Outputs")
-	else:
-		var container = get_rotatable(instance)
-		inputs = _read_io_group(container, "Inputs")
-		outputs = _read_io_group(container, "Outputs")
-	instance.free()
-
 func _extract_logic_script() -> void:
 	if not scene:
 		return
@@ -163,42 +138,6 @@ func get_placement_error(grid_pos: Vector2i, rotation: int) -> String:
 	tmp.free()
 	return error
 
-func _read_io_group(container: Node, group_name: String) -> Array:
-	var result: Array = []
-	var group_node = container.find_child(group_name, false, false)
-	if not group_node:
-		return result
-	for child in group_node.get_children():
-		if child is ColorRect:
-			@warning_ignore("integer_division")
-			var gx := int(round(child.offset_left)) / SCENE_CELL_SIZE
-			@warning_ignore("integer_division")
-			var gy := int(round(child.offset_top)) / SCENE_CELL_SIZE
-			var mask: Array
-			if child.has_method("get_mask"):
-				mask = child.get_mask()
-			else:
-				mask = [true, true, true, true]
-			result.append({cell = Vector2i(gx, gy) - anchor_cell, mask = mask})
-	return result
-
-func _read_io_group_3d(instance: Node, group_name: String) -> Array:
-	var result: Array = []
-	var group_node = instance.find_child(group_name, false, false)
-	if not group_node:
-		return result
-	for child in group_node.get_children():
-		if child is Node3D:
-			var gx := roundi(child.position.x)
-			var gz := roundi(child.position.z)
-			var mask: Array
-			if child.has_method("get_mask"):
-				mask = child.get_mask()
-			else:
-				mask = [true, true, true, true]
-			result.append({cell = Vector2i(gx, gz) - anchor_cell, mask = mask})
-	return result
-
 # ── Rotation utilities ──────────────────────────────────────────────────────
 
 ## Rotate a cell position by the given rotation index (0-3, CW).
@@ -208,15 +147,6 @@ static func rotate_cell(cell: Vector2i, rotation: int) -> Vector2i:
 		2: return Vector2i(-cell.x, -cell.y)
 		3: return Vector2i(cell.y, -cell.x)
 	return cell
-
-## Rotate a direction mask [right, down, left, up] by rotation steps CW.
-static func rotate_mask(mask: Array, rotation: int) -> Array:
-	if rotation == 0:
-		return mask.duplicate()
-	var result := [false, false, false, false]
-	for i in 4:
-		result[(i + rotation) % 4] = mask[i]
-	return result
 
 ## Get shape cells rotated for the given placement rotation.
 ## Returns a cached array — callers must NOT modify the result.
@@ -247,26 +177,6 @@ func get_rotated_shape_bbox(rotation: int) -> Dictionary:
 		if cell.x + 1 > max_c.x: max_c.x = cell.x + 1
 		if cell.y + 1 > max_c.y: max_c.y = cell.y + 1
 	return {min_cell = min_c, size = max_c - min_c}
-
-## Get outputs rotated for the given placement rotation.
-func get_rotated_outputs(rotation: int) -> Array:
-	var result: Array = []
-	for out in outputs:
-		result.append({
-			cell = rotate_cell(out.cell, rotation),
-			mask = rotate_mask(out.mask, rotation)
-		})
-	return result
-
-## Get inputs rotated for the given placement rotation.
-func get_rotated_inputs(rotation: int) -> Array:
-	var result: Array = []
-	for inp in inputs:
-		result.append({
-			cell = rotate_cell(inp.cell, rotation),
-			mask = rotate_mask(inp.mask, rotation)
-		})
-	return result
 
 # ── Visual rotation ───────────────────────────────────────────────────────────
 
