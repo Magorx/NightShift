@@ -43,6 +43,12 @@ $GODOT --path . --script res://tests/run_simulation.gd -- <sim_name> --visual
 # Screenshot mode (needs rendering, no --headless)
 $GODOT --fixed-fps 60 --path . --script res://tests/run_simulation.gd -- <sim_name> --screenshot-baseline
 
+# Run a scenario (scripted integration test with player control)
+# Visual (default, 4x speed, watchable):
+$GODOT --fixed-fps 60 --path . --script res://tests/scenarios/run_scenario.gd -- <scn_name>
+# Fast (headless, 10x speed, for CI):
+$GODOT --headless --fixed-fps 60 --path . --script res://tests/scenarios/run_scenario.gd -- <scn_name> --fast
+
 # Launch game
 $GODOT --path .
 ```
@@ -191,10 +197,12 @@ $BLENDER --background --python tools/blender/scenes/drill_model.py -- --output p
 Each building type lives in `buildings/<name>/` with `.tscn` scene + `.tres` BuildingDef + logic script extending `BuildingLogic`. No changes to GameManager needed to add new buildings.
 
 ### Testing
-- Tests extend `BaseTest` (`tests/base_test.gd`), methods prefixed `test_` are auto-discovered
-- Simulations extend `SimulationBase` in `tests/simulation/`
+- **Unit tests**: extend `BaseTest` (`tests/base_test.gd`), methods prefixed `test_` are auto-discovered
+- **Simulations**: extend `SimulationBase` in `tests/simulation/` — headless at 100x, test systems without player
+- **Scenarios**: extend `ScenarioBase` in `tests/scenarios/` — scripted integration tests that physically move the player through the world, place buildings, and verify metrics + screenshots. See `tests/scenarios/CLAUDE.md` for full API.
 - Always run at least the parse check after changes
-- Run relevant simulations before reporting work as complete
+- Run relevant simulations/scenarios before reporting work as complete
+- When building a new feature, write a scenario that tests it end-to-end with player involvement
 
 ## Documentation
 - `docs/design.md` -- Night Shift game design document
