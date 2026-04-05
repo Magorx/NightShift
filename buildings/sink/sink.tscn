@@ -1,10 +1,11 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" path="res://buildings/sink/sink.gd" id="3"]
 [ext_resource type="Script" path="res://buildings/shared/shape_cell.gd" id="4"]
 [ext_resource type="Script" path="res://buildings/shared/input_cell.gd" id="5"]
 [ext_resource type="Texture2D" path="res://buildings/sink/sprites/main.png" id="6_sheet"]
+[ext_resource type="PackedScene" uid="uid://d3vq61pa45tph" path="res://buildings/sink/models/sink.glb" id="glb_model"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b1"]
 atlas = ExtResource("6_sheet")
@@ -115,6 +116,9 @@ texture_filter = 1
 position = Vector2(0, -8)
 sprite_frames = SubResource("SpriteFrames_top")
 autoplay = "default"
+
+[node name="Model" parent="." instance=ExtResource("glb_model")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.5, 0, 0.5)
 
 [node name="SinkLogic" type="Node" parent="."]
 script = ExtResource("3")

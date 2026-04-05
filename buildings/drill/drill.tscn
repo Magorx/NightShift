@@ -1,10 +1,11 @@
-[gd_scene load_steps=29 format=3 uid="uid://cas2sgdt0e4jq"]
+[gd_scene load_steps=30 format=3 uid="uid://cas2sgdt0e4jq"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://6mvwwob8xwe" path="res://buildings/drill/extractor.gd" id="3"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="5"]
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="6"]
 [ext_resource type="Texture2D" path="res://buildings/drill/sprites/main.png" id="7_sheet"]
+[ext_resource type="PackedScene" uid="uid://dpkx1qqoerkw4" path="res://buildings/drill/models/drill.glb" id="glb_model"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bi0"]
 atlas = ExtResource("7_sheet")
@@ -227,6 +228,9 @@ position = Vector2(0, -19)
 sprite_frames = SubResource("SpriteFrames_top")
 animation = &"idle"
 autoplay = "idle"
+
+[node name="Model" parent="." instance=ExtResource("glb_model")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.5, 0, 0.5)
 
 [node name="ExtractorLogic" type="Node" parent="."]
 script = ExtResource("3")

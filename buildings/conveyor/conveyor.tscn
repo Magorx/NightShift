@@ -1,4 +1,4 @@
-[gd_scene load_steps=33 format=3 uid="uid://btb5ogl8k81hb"]
+[gd_scene load_steps=34 format=3 uid="uid://btb5ogl8k81hb"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://bdx0s4hpmxhou" path="res://buildings/conveyor/conveyor.gd" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="7_shape"]
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="8_input"]
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="9_output"]
+[ext_resource type="PackedScene" uid="uid://byl5l54asm7ej" path="res://buildings/conveyor/models/conveyor.glb" id="glb_model"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_erubv"]
 atlas = ExtResource("5_vcsde")
@@ -248,6 +249,9 @@ position = Vector2(16, 16)
 sprite_frames = SubResource("SpriteFrames_d3tmi")
 animation = &"turn"
 script = ExtResource("3")
+
+[node name="Model" parent="." instance=ExtResource("glb_model")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.5, 0, 0.5)
 
 [node name="ConveyorLogic" type="Node2D" parent="."]
 script = ExtResource("2")

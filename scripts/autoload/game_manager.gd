@@ -55,19 +55,6 @@ var _item_def_cache: Dictionary = {}
 var item_visual_manager  # ItemVisualManager (preloaded in game_world)
 var _ItemVisualHandle = preload("res://scripts/game/item_visual_handle.gd")
 
-# 3D model scenes for buildings (building_id -> PackedScene)
-var _building_model_scenes: Dictionary = {
-	&"drill": preload("res://buildings/drill/models/drill.glb"),
-	&"conveyor": preload("res://buildings/conveyor/models/conveyor.glb"),
-	&"smelter": preload("res://buildings/smelter/models/smelter.glb"),
-	&"splitter": preload("res://buildings/splitter/models/splitter.glb"),
-	&"source": preload("res://buildings/source/models/source.glb"),
-	&"sink": preload("res://buildings/sink/models/sink.glb"),
-	&"junction": preload("res://buildings/junction/models/junction.glb"),
-	&"tunnel_input": preload("res://buildings/tunnel/models/tunnel.glb"),
-	&"tunnel_output": preload("res://buildings/tunnel/models/tunnel.glb"),
-}
-
 # Currency earned from sinks
 var total_currency: int = 0
 
@@ -362,14 +349,12 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	for replace_pos in to_replace:
 		remove_building(replace_pos)
 
-	# Create Node3D building (no longer instantiates 2D scene for runtime)
-	var base_script = load("res://buildings/shared/building_base.gd")
-	var building: Node3D = base_script.new()
+	# Instantiate building from its .tscn scene (contains Model + IO markers)
+	var building: Node3D = def.scene.instantiate()
 	building.init(id, grid_pos, rotation)
-	# Position so the anchor cell aligns with grid_pos (3D: grid X -> world X, grid Y -> world Z)
+	# Position so the anchor cell aligns with grid_pos
 	building.position = GridUtils.grid_to_world(grid_pos - def.anchor_cell)
 	# Rotation: Y-axis rotation (0=right, 1=down, 2=left, 3=up)
-	# Negative because Godot's Y rotation is counter-clockwise viewed from above
 	building.rotation.y = -rotation * PI / 2.0
 
 	building_layer.add_child(building)
@@ -377,16 +362,7 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 	# Deduct build cost from player inventory
 	deduct_building_cost(id)
 
-	# Add placeholder mesh for visibility
-	_add_placeholder_mesh(building, def, rotation)
-
-	# Create and attach the logic node from the cached logic script
-	var logic_script: GDScript = def.get_logic_script()
-	if logic_script:
-		var logic_node := Node.new()
-		logic_node.set_script(logic_script)
-		logic_node.name = def.get_logic_node_name()
-		building.add_child(logic_node)
+	# Logic node is already in the .tscn scene — no dynamic creation needed
 
 	# Register all occupied cells (rotated)
 	for cell in rotated_shape:
@@ -402,9 +378,8 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		# Register conveyors with ConveyorSystem, others with BuildingTickSystem
 		if logic is ConveyorBelt and conveyor_system:
 			conveyor_system.register_conveyor(logic)
-			# Skip MultiMesh visual if building has a 3D model
-			if conveyor_visual_manager and not _building_model_scenes.has(id):
-				conveyor_visual_manager.register(grid_pos, logic)
+			# Conveyors with 3D models don't need MultiMesh visual
+			pass
 		elif building_tick_system:
 			building_tick_system.register(logic)
 
@@ -424,59 +399,6 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 
 	building_placed.emit(id, grid_pos)
 	return building
-
-## Add a 3D model (or placeholder box fallback) to a building.
-func _add_placeholder_mesh(building: Node3D, def: BuildingDef, rotation: int) -> void:
-	var bid: StringName = building.building_id
-	if _building_model_scenes.has(bid):
-		var model: Node3D = _building_model_scenes[bid].instantiate()
-		model.name = "Model"
-		# Center the model on the building's footprint (local unrotated space)
-		var unrotated_shape: Array = def.shape
-		var un_min := Vector2i(999, 999)
-		var un_max := Vector2i(-999, -999)
-		for cell in unrotated_shape:
-			un_min = un_min.min(cell)
-			un_max = un_max.max(cell)
-		var uw := float(un_max.x - un_min.x + 1) * GridUtils.TILE_SIZE
-		var ud := float(un_max.y - un_min.y + 1) * GridUtils.TILE_SIZE
-		model.position = Vector3(uw / 2.0, 0.0, ud / 2.0)
-		building.add_child(model)
-		# Play idle animation
-		var anim: AnimationPlayer = model.get_node_or_null("AnimationPlayer")
-		if anim and anim.has_animation(&"idle"):
-			anim.play(&"idle")
-		return
-
-	# Fallback: colored box placeholder
-	var placeholder := MeshInstance3D.new()
-	placeholder.name = "Placeholder"
-	var box := BoxMesh.new()
-	var rotated_shape: Array = def.get_rotated_shape(rotation)
-	var min_cell := Vector2i(999, 999)
-	var max_cell := Vector2i(-999, -999)
-	for cell in rotated_shape:
-		min_cell = min_cell.min(cell)
-		max_cell = max_cell.max(cell)
-	var w := float(max_cell.x - min_cell.x + 1) * GridUtils.TILE_SIZE * 0.9
-	var d := float(max_cell.y - min_cell.y + 1) * GridUtils.TILE_SIZE * 0.9
-	var h := 0.1 if def.is_ground_level else 0.8
-	box.size = Vector3(w, h, d)
-	placeholder.mesh = box
-	var unrotated_shape2: Array = def.shape
-	var un_min2 := Vector2i(999, 999)
-	var un_max2 := Vector2i(-999, -999)
-	for cell in unrotated_shape2:
-		un_min2 = un_min2.min(cell)
-		un_max2 = un_max2.max(cell)
-	var uw2 := float(un_max2.x - un_min2.x + 1) * GridUtils.TILE_SIZE
-	var ud2 := float(un_max2.y - un_min2.y + 1) * GridUtils.TILE_SIZE
-	placeholder.position = Vector3(uw2 / 2.0, h / 2.0, ud2 / 2.0)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = def.color
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	placeholder.material_override = mat
-	building.add_child(placeholder)
 
 ## Find the first BuildingLogic child of a building node.
 func _find_logic_node(building: Node) -> BuildingLogic:

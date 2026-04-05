@@ -100,6 +100,7 @@ func _ready() -> void:
 	hud.set_camera(camera)
 
 	# Wire build system signals
+	build_system._ghost_layer = $GhostLayer
 	build_system.building_clicked.connect(_on_building_clicked)
 	build_system.ground_inspected.connect(_on_ground_inspected)
 

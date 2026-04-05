@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://caxs0e23nmsim"]
+[gd_scene load_steps=18 format=3 uid="uid://caxs0e23nmsim"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://c4tujtdf41td0" path="res://buildings/splitter/splitter.gd" id="3"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="5"]
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="6"]
 [ext_resource type="Texture2D" uid="uid://d120krmmn15j5" path="res://buildings/splitter/sprites/main.png" id="7_ceadv"]
+[ext_resource type="PackedScene" uid="uid://clhx4phs6b6v6" path="res://buildings/splitter/models/splitter.glb" id="glb_model"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b1"]
 atlas = ExtResource("7_ceadv")
@@ -142,6 +143,9 @@ texture_filter = 1
 position = Vector2(0, -8)
 sprite_frames = SubResource("SpriteFrames_dgf0f")
 autoplay = "default"
+
+[node name="Model" parent="." instance=ExtResource("glb_model")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.5, 0, 0.5)
 
 [node name="SpriteTop" type="AnimatedSprite2D" parent="Rotatable"]
 z_index = 10

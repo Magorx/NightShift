@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=3 uid="uid://dmmfpftg5syl2"]
+[gd_scene load_steps=32 format=3 uid="uid://dmmfpftg5syl2"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="2"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://cu412df6kqpv" path="res://buildings/smelter/smelter_progress.gd" id="7"]
 [ext_resource type="Texture2D" path="res://buildings/smelter/sprites/main.png" id="8_sheet"]
 [ext_resource type="Script" path="res://buildings/smelter/smelter_bars.gd" id="9_bars"]
+[ext_resource type="PackedScene" uid="uid://d1jxy1qtx0wus" path="res://buildings/smelter/models/smelter.glb" id="glb_model"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bi0"]
 atlas = ExtResource("8_sheet")
@@ -311,6 +312,9 @@ position = Vector2(32, 48)
 sprite_frames = SubResource("SpriteFrames_top")
 animation = &"idle"
 autoplay = "idle"
+
+[node name="Model" parent="." instance=ExtResource("glb_model")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 1, 0, 1.5)
 
 [node name="ConverterLogic" type="Node" parent="."]
 script = ExtResource("6")

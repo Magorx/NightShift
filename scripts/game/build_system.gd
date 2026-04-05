@@ -57,6 +57,7 @@ var _ghost_nodes: Array = []
 var _ghost_building_id: StringName = &""
 var _ghost_rotation: int = -1
 var _was_drawing: bool = false
+var _ghost_layer: Node3D  # 3D parent for ghost nodes (set via game_world)
 
 func _process(_delta: float) -> void:
 	var prev_grid_pos := cursor_grid_pos
@@ -432,12 +433,15 @@ func _create_ghost_node(building_id: StringName, rotation: int) -> Node:
 	var arrow = ghost.find_child("Arrow", true, false)
 	if arrow:
 		arrow.visible = false
-	add_child(ghost)
+	# Add to 3D ghost layer so the model renders properly
+	var parent: Node = _ghost_layer if _ghost_layer else self
+	parent.add_child(ghost)
 	# Disable processing after add_child to override any _ready re-enables
 	_disable_processing_recursive(ghost)
-	# In 3D, rotation is handled by the parent node transform — apply_rotation is 2D-only
 	if ghost is Node3D:
 		ghost.rotation.y = -rotation * PI / 2.0
+		# Make semi-transparent for ghost effect
+		_apply_ghost_transparency(ghost)
 	return ghost
 
 func _disable_processing_recursive(node: Node) -> void:
@@ -445,6 +449,19 @@ func _disable_processing_recursive(node: Node) -> void:
 	node.set_physics_process(false)
 	for child in node.get_children():
 		_disable_processing_recursive(child)
+
+func _apply_ghost_transparency(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mesh_inst: MeshInstance3D = node
+		for i in mesh_inst.get_surface_override_material_count():
+			var src_mat = mesh_inst.get_active_material(i)
+			if src_mat is StandardMaterial3D:
+				var mat: StandardMaterial3D = src_mat.duplicate()
+				mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				mat.albedo_color.a = 0.5
+				mesh_inst.set_surface_override_material(i, mat)
+	for child in node.get_children():
+		_apply_ghost_transparency(child)
 
 func _update_ghosts() -> void:
 	if not building_mode:

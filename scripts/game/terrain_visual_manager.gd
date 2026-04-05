@@ -104,12 +104,14 @@ func attach_to(parent: Node, _z_unused: int = -1) -> void:
 	_fg_mm = fg_result[0]
 	_fg_inst = fg_result[1]
 	_fg_inst.name = "TerrainFG"
+	_fg_inst.position.y = 0.001  # above bg to prevent z-fighting
 	parent.add_child(_fg_inst)
 
 	var misc_result := _create_layer(texture, shader, mesh)
 	_misc_mm = misc_result[0]
 	_misc_inst = misc_result[1]
 	_misc_inst.name = "TerrainMisc"
+	_misc_inst.position.y = 0.002  # above fg to prevent z-fighting
 	parent.add_child(_misc_inst)
 
 

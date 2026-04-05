@@ -56,6 +56,8 @@ shadow_bias = 0.03
 
 [node name="ItemLayer" type="Node3D" parent="ObjectLayer"]
 
+[node name="GhostLayer" type="Node3D" parent="."]
+
 [node name="BuildSystem" type="Node2D" parent="."]
 z_index = 100
 script = ExtResource("3")

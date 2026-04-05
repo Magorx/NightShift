@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://bgk5i1pp0m4tc"]
+[gd_scene load_steps=18 format=3 uid="uid://bgk5i1pp0m4tc"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://x3t3x00qid6f" path="res://buildings/junction/junction.gd" id="3"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="5"]
 [ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="6"]
 [ext_resource type="Texture2D" uid="uid://coou8ib7hwb10" path="res://buildings/junction/sprites/main.png" id="7_m8v5y"]
+[ext_resource type="PackedScene" uid="uid://dkb76i82juja0" path="res://buildings/junction/models/junction.glb" id="glb_model"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_b1"]
 atlas = ExtResource("7_m8v5y")
@@ -133,6 +134,9 @@ script = ExtResource("6")
 allow_down = false
 
 [node name="BuildAnchor" type="Node2D" parent="Rotatable"]
+
+[node name="Model" parent="." instance=ExtResource("glb_model")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.5, 0, 0.5)
 
 [node name="JunctionLogic" type="Node" parent="."]
 script = ExtResource("3")

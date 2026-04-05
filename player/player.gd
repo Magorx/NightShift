@@ -544,7 +544,7 @@ func _update_visuals(_delta: float) -> void:
 		return
 
 	# Direction rotation (rotate around Y axis)
-	model.rotation.y = atan2(-facing_direction.x, -facing_direction.z)
+	model.rotation.y = atan2(facing_direction.x, facing_direction.z)
 
 	# Animation state
 	var speed_xz := Vector2(velocity.x, velocity.z).length()
