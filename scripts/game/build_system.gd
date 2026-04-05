@@ -17,7 +17,9 @@ const GHOST_POOL_MAX := 64
 const GHOST_POOL_BASELINE := 4
 
 
-var _destroy_shader: Shader = preload("res://buildings/shared/destroy_highlight.gdshader")
+var _destroy_shader_3d: Shader = preload("res://buildings/shared/destroy_highlight_3d.gdshader")
+var _outline_shader_3d: Shader = preload("res://buildings/shared/destroy_outline_3d.gdshader")
+var _cursor_shader_3d: Shader = preload("res://buildings/shared/destroy_cursor_3d.gdshader")
 
 var cursor_grid_pos := Vector2i.ZERO
 var selected_building: StringName = &"conveyor"
@@ -31,12 +33,17 @@ var building_mode: bool = false
 var destroy_mode: bool = false
 var _destroy_dragging: bool = false
 var _destroy_drag_start := Vector2i.ZERO
-# Shader highlight tracking: instance_id -> Array of {node, original}
+# Shader highlight tracking: instance_id -> {entries: Array of {node, original_overlay}, building}
 var _highlighted_buildings: Dictionary = {}
 
 # Selection highlight (info panel)
 var _selected_building: Node = null
-var _select_highlighted: Dictionary = {} # instance_id -> Array of {node, original}
+var _select_highlighted: Dictionary = {} # instance_id -> Array of {node, original_overlay}
+
+# Destroy cursor cell (flat red quads on ground, one per cell in drag area)
+var _cursor_mesh: MeshInstance3D = null
+var _cursor_area_min := Vector2i(-9999, -9999)
+var _cursor_area_max := Vector2i(-9999, -9999)
 
 
 # Drag state (build mode)
@@ -56,7 +63,6 @@ var _phase_placements: Array = [] # Array of Arrays of {pos: Vector2i, rotation:
 var _ghost_nodes: Array = []
 var _ghost_building_id: StringName = &""
 var _ghost_rotation: int = -1
-var _was_drawing: bool = false
 var _ghost_layer: Node3D  # 3D parent for ghost nodes (set via game_world)
 
 func _process(_delta: float) -> void:
@@ -66,17 +72,14 @@ func _process(_delta: float) -> void:
 		_update_blueprints()
 	if _selected_building and not is_instance_valid(_selected_building):
 		clear_select_highlight()
-	_update_select_highlight_uvs()
 	if destroy_mode:
 		_update_destroy_highlights()
+		_update_destroy_cursor()
 	elif not _highlighted_buildings.is_empty():
 		_clear_all_highlights()
+	if not destroy_mode:
+		_hide_destroy_cursor()
 	_update_ghosts()
-	# Only redraw when there's something to draw and cursor moved
-	var needs_draw := destroy_mode or (_phase_index > 0 and not _phase_placements.is_empty())
-	if needs_draw or _was_drawing:
-		queue_redraw()
-	_was_drawing = needs_draw
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -174,6 +177,7 @@ func exit_destroy_mode() -> void:
 	destroy_mode = false
 	_destroy_dragging = false
 	_clear_all_highlights()
+	_hide_destroy_cursor()
 
 func select_building(id: StringName) -> void:
 	enter_building_mode(id)
@@ -650,58 +654,99 @@ func _update_destroy_highlights() -> void:
 		if not _highlighted_buildings.has(nid):
 			_apply_highlight(new_set[nid])
 
-	# Update frame UV bounds for animated sprites (frame changes each tick)
-	for nid in _highlighted_buildings:
-		var entries: Array = _highlighted_buildings[nid].entries
-		for entry in entries:
-			if is_instance_valid(entry.node) and entry.node is AnimatedSprite2D:
-				var bounds := _get_frame_uv_bounds(entry.node)
-				entry.node.material.set_shader_parameter("frame_uv_min", bounds.position)
-				entry.node.material.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
+func _create_highlight_overlay(tint: Color, stripe: Color, outline: Color) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = _destroy_shader_3d
+	mat.set_shader_parameter("tint_color", tint)
+	mat.set_shader_parameter("stripe_color", stripe)
+	var outline_mat := ShaderMaterial.new()
+	outline_mat.shader = _outline_shader_3d
+	outline_mat.set_shader_parameter("outline_color", outline)
+	mat.next_pass = outline_mat
+	return mat
 
 func _apply_highlight(building: Node) -> void:
 	var entries: Array = []
+	var mat := _create_highlight_overlay(
+		Color(1.0, 0.15, 0.1, 0.3),
+		Color(1.0, 0.25, 0.2, 0.1),
+		DESTROY_OUTLINE_COLOR)
 	for node in _get_visual_nodes(building):
-		var orig = node.material
-		var mat := ShaderMaterial.new()
-		mat.shader = _destroy_shader
-		mat.set_shader_parameter("enabled", true)
-		mat.set_shader_parameter("darken", 0.3)
-		var bounds := _get_frame_uv_bounds(node)
-		mat.set_shader_parameter("frame_uv_min", bounds.position)
-		mat.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
-		node.material = mat
-		entries.append({node = node, original = orig})
+		var orig_overlay = node.material_overlay
+		node.material_overlay = mat
+		entries.append({node = node, original_overlay = orig_overlay})
 	_highlighted_buildings[building.get_instance_id()] = {entries = entries, building = building}
-
-## Get the UV bounds of the current frame within the atlas texture.
-func _get_frame_uv_bounds(node: CanvasItem) -> Rect2:
-	if node is AnimatedSprite2D:
-		var frame_tex = node.sprite_frames.get_frame_texture(node.animation, node.frame)
-		if frame_tex is AtlasTexture:
-			var atlas_size: Vector2 = frame_tex.atlas.get_size()
-			var region: Rect2 = frame_tex.region
-			return Rect2(region.position / atlas_size, region.size / atlas_size)
-	elif node is Sprite2D and node.region_enabled:
-		var tex_size: Vector2 = node.texture.get_size()
-		return Rect2(node.region_rect.position / tex_size, node.region_rect.size / tex_size)
-	return Rect2(0, 0, 1, 1)
 
 func _remove_highlight(nid: int) -> void:
 	if not _highlighted_buildings.has(nid):
 		return
 	var data: Dictionary = _highlighted_buildings[nid]
-	var entries: Array = data.entries
-	for entry in entries:
+	for entry in data.entries:
 		if is_instance_valid(entry.node):
-			entry.node.material = entry.original
-	if is_instance_valid(data.building):
-		pass
+			entry.node.material_overlay = entry.original_overlay
 	_highlighted_buildings.erase(nid)
 
 func _clear_all_highlights() -> void:
 	for nid in _highlighted_buildings.keys():
 		_remove_highlight(nid)
+
+# ── Destroy cursor cell ─────────────────────────────────────────────────────
+
+func _update_destroy_cursor() -> void:
+	if not _cursor_mesh:
+		_cursor_mesh = MeshInstance3D.new()
+		_cursor_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var mat := ShaderMaterial.new()
+		mat.shader = _cursor_shader_3d
+		_cursor_mesh.material_override = mat
+		var parent: Node = (_ghost_layer as Node) if _ghost_layer else (self as Node)
+		parent.add_child(_cursor_mesh)
+
+	var min_pos: Vector2i
+	var max_pos: Vector2i
+	if _destroy_dragging:
+		min_pos = Vector2i(
+			mini(_destroy_drag_start.x, cursor_grid_pos.x),
+			mini(_destroy_drag_start.y, cursor_grid_pos.y))
+		max_pos = Vector2i(
+			maxi(_destroy_drag_start.x, cursor_grid_pos.x),
+			maxi(_destroy_drag_start.y, cursor_grid_pos.y))
+	else:
+		min_pos = cursor_grid_pos
+		max_pos = cursor_grid_pos
+
+	if min_pos != _cursor_area_min or max_pos != _cursor_area_max:
+		_cursor_area_min = min_pos
+		_cursor_area_max = max_pos
+		_rebuild_cursor_mesh(min_pos, max_pos)
+
+	_cursor_mesh.visible = true
+
+func _rebuild_cursor_mesh(min_pos: Vector2i, max_pos: Vector2i) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for y in range(min_pos.y, max_pos.y + 1):
+		for x in range(min_pos.x, max_pos.x + 1):
+			var h: float = GameManager.get_terrain_height(Vector2i(x, y)) + 0.01
+			var x0 := float(x) - 0.5
+			var x1 := float(x) + 0.5
+			var z0 := float(y) - 0.5
+			var z1 := float(y) + 0.5
+			# Tri 1
+			st.set_uv(Vector2(0, 0)); st.add_vertex(Vector3(x0, h, z0))
+			st.set_uv(Vector2(0, 1)); st.add_vertex(Vector3(x0, h, z1))
+			st.set_uv(Vector2(1, 1)); st.add_vertex(Vector3(x1, h, z1))
+			# Tri 2
+			st.set_uv(Vector2(0, 0)); st.add_vertex(Vector3(x0, h, z0))
+			st.set_uv(Vector2(1, 1)); st.add_vertex(Vector3(x1, h, z1))
+			st.set_uv(Vector2(1, 0)); st.add_vertex(Vector3(x1, h, z0))
+	_cursor_mesh.mesh = st.commit()
+
+func _hide_destroy_cursor() -> void:
+	if _cursor_mesh:
+		_cursor_mesh.visible = false
+		_cursor_area_min = Vector2i(-9999, -9999)
+		_cursor_area_max = Vector2i(-9999, -9999)
 
 # ── Selection highlight (info panel) ─────────────────────────────────────────
 
@@ -710,64 +755,40 @@ func _set_select_highlight(building: Node) -> void:
 		return
 	clear_select_highlight()
 	_selected_building = building
+	var mat := _create_highlight_overlay(
+		Color(1.0, 1.0, 1.0, 0.1),
+		Color(0, 0, 0, 0),
+		SELECT_OUTLINE_COLOR)
 	for bld in GameManager.get_building_group(building):
 		var entries: Array = []
 		for node in _get_visual_nodes(bld):
-			var orig = node.material
-			var mat := ShaderMaterial.new()
-			mat.shader = _destroy_shader
-			mat.set_shader_parameter("enabled", true)
-			mat.set_shader_parameter("outline_color", SELECT_OUTLINE_COLOR)
-			mat.set_shader_parameter("stripe_color", Color(0, 0, 0, 0))
-			var bounds := _get_frame_uv_bounds(node)
-			mat.set_shader_parameter("frame_uv_min", bounds.position)
-			mat.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
-			node.material = mat
-			entries.append({node = node, original = orig})
+			var orig_overlay = node.material_overlay
+			node.material_overlay = mat
+			entries.append({node = node, original_overlay = orig_overlay})
 		_select_highlighted[bld.get_instance_id()] = entries
-
-func _update_select_highlight_uvs() -> void:
-	for nid in _select_highlighted:
-		var entries: Array = _select_highlighted[nid]
-		for entry in entries:
-			if is_instance_valid(entry.node) and entry.node is AnimatedSprite2D:
-				var bounds := _get_frame_uv_bounds(entry.node)
-				entry.node.material.set_shader_parameter("frame_uv_min", bounds.position)
-				entry.node.material.set_shader_parameter("frame_uv_max", bounds.position + bounds.size)
 
 func clear_select_highlight() -> void:
 	for nid in _select_highlighted.keys():
 		var entries: Array = _select_highlighted[nid]
 		for entry in entries:
 			if is_instance_valid(entry.node):
-				entry.node.material = entry.original
+				entry.node.material_overlay = entry.original_overlay
 	_select_highlighted.clear()
 	_selected_building = null
 
-## Find visual children of a building to apply the destroy shader to.
+## Find visible MeshInstance3D nodes in a building's Model subtree.
 func _get_visual_nodes(building: Node) -> Array:
 	var result: Array = []
-	var rotatable = building.find_child("Rotatable", false, false)
-	var container = rotatable if rotatable else building
-	# Shape ColorRects
-	var shape_node = container.find_child("Shape", false, false)
-	if shape_node:
-		for child in shape_node.get_children():
-			if child is ColorRect:
-				result.append(child)
-	# Sprite2D and AnimatedSprite2D inside Rotatable
-	for child in container.get_children():
-		if child is Sprite2D or child is AnimatedSprite2D:
-			result.append(child)
+	var model = building.find_child("Model", false, false)
+	if model:
+		_collect_mesh_instances(model, result)
 	return result
 
-# ── Drawing ──────────────────────────────────────────────────────────────────
-
-func _draw() -> void:
-	# TODO 3D.11: Rewrite overlays for 3D (ImmediateMesh or CanvasLayer projection).
-	# The 2D _draw() calls (draw_colored_polygon, draw_line) don't render correctly
-	# in the 3D scene. Stubbed until the grid overlay card.
-	pass
+func _collect_mesh_instances(node: Node, result: Array) -> void:
+	if node is MeshInstance3D and node.visible:
+		result.append(node)
+	for child in node.get_children():
+		_collect_mesh_instances(child, result)
 
 ## Get the grid cells occupied by a building, using its BuildingDef shape.
 func _get_building_visual_cells(building: Node) -> Array:

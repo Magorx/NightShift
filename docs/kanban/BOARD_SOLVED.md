@@ -2,6 +2,11 @@
 
 ## Done
 
+### **MAP.1** Noise-based 3D terrain elevation `2h` → `1.7h`
+
+  - tags: [map-gen, core]
+  - priority: high
+
 ### **SCN.1** Scenario test framework: scripted integration tests `4h` → `2h`
 
   - tags: [testing, infrastructure, scenarios]
