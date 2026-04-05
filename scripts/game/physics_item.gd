@@ -136,7 +136,8 @@ static func spawn(id: StringName, pos: Vector3, impulse: Vector3 = Vector3.ZERO)
 		GameManager.item_layer.add_child(item)
 	else:
 		push_warning("PhysicsItem.spawn: no item_layer, adding to root")
-		item.get_tree().current_scene.add_child(item) if item.get_tree() else null
+		if item.get_tree():
+			item.get_tree().current_scene.add_child(item)
 	if impulse != Vector3.ZERO:
 		item.apply_central_impulse(impulse)
 	return item

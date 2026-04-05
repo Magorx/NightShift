@@ -3,7 +3,14 @@ extends "res://tests/base_test.gd"
 ## Coordinate math tests for GridUtils (3D world space).
 ## Grid (X,Y) maps to world (X, 0, Z) with 1 unit per tile.
 
-const GU := preload("res://scripts/autoload/grid_utils.gd")
+const _GUScript := preload("res://scripts/autoload/grid_utils.gd")
+var GU: Node
+
+func before_each() -> void:
+	GU = _GUScript.new()
+
+func after_each() -> void:
+	GU.free()
 
 # -- helpers --
 
@@ -75,8 +82,8 @@ func test_roundtrip() -> void:
 		Vector2i(-3,-7), Vector2i(63,63), Vector2i(127,0),
 	]
 	for grid_pos in positions:
-		var world_pos := GU.grid_to_world(grid_pos)
-		var back := GU.world_to_grid(world_pos)
+		var world_pos = GU.grid_to_world(grid_pos)
+		var back = GU.world_to_grid(world_pos)
 		assert_vec2i_eq(back, grid_pos, "roundtrip %s" % str(grid_pos))
 
 # ---------------------------------------------------------------
@@ -84,19 +91,19 @@ func test_roundtrip() -> void:
 # ---------------------------------------------------------------
 
 func test_grid_offset_zero_fraction() -> void:
-	var result := GU.grid_offset(Vector2i(2, 3), Vector2(1, 0), 0.0)
+	var result = GU.grid_offset(Vector2i(2, 3), Vector2(1, 0), 0.0)
 	assert_vec3_eq(result, GU.grid_to_world(Vector2i(2, 3)), "frac 0 = center")
 
 func test_grid_offset_half() -> void:
-	var result := GU.grid_offset(Vector2i(0, 0), Vector2(1, 0), 0.5)
+	var result = GU.grid_offset(Vector2i(0, 0), Vector2(1, 0), 0.5)
 	assert_vec3_eq(result, Vector3(0.5, 0, 0), "half along X")
 
 func test_grid_offset_full() -> void:
-	var result := GU.grid_offset(Vector2i(0, 0), Vector2(1, 0), 1.0)
+	var result = GU.grid_offset(Vector2i(0, 0), Vector2(1, 0), 1.0)
 	assert_vec3_eq(result, Vector3(1, 0, 0), "full = next center")
 
 func test_grid_offset_z_direction() -> void:
-	var result := GU.grid_offset(Vector2i(0, 0), Vector2(0, 1), 0.5)
+	var result = GU.grid_offset(Vector2i(0, 0), Vector2(0, 1), 0.5)
 	assert_vec3_eq(result, Vector3(0, 0, 0.5), "half along Z")
 
 # ---------------------------------------------------------------
@@ -104,7 +111,7 @@ func test_grid_offset_z_direction() -> void:
 # ---------------------------------------------------------------
 
 func test_grid_dir_to_world_normalized() -> void:
-	var d := GU.grid_dir_to_world(Vector2(1, 0))
+	var d = GU.grid_dir_to_world(Vector2(1, 0))
 	assert_true(absf(d.length() - 1.0) < 0.001, "dir normalized")
 
 func test_grid_dir_to_world_axes() -> void:
@@ -112,8 +119,8 @@ func test_grid_dir_to_world_axes() -> void:
 	assert_vec3_eq(GU.grid_dir_to_world(Vector2(0, 1)), Vector3(0, 0, 1), "dir +Z")
 
 func test_grid_dir_to_world_opposite() -> void:
-	var right := GU.grid_dir_to_world(Vector2(1, 0))
-	var left := GU.grid_dir_to_world(Vector2(-1, 0))
+	var right = GU.grid_dir_to_world(Vector2(1, 0))
+	var left = GU.grid_dir_to_world(Vector2(-1, 0))
 	assert_vec3_eq(right + left, Vector3.ZERO, "opposite dirs cancel")
 
 # ---------------------------------------------------------------
@@ -121,11 +128,11 @@ func test_grid_dir_to_world_opposite() -> void:
 # ---------------------------------------------------------------
 
 func test_tile_transform_origin() -> void:
-	var t := GU.tile_transform(Vector2i(0, 0))
+	var t = GU.tile_transform(Vector2i(0, 0))
 	assert_vec3_eq(t.origin, Vector3.ZERO, "transform origin at (0,0)")
 
 func test_tile_transform_position() -> void:
-	var t := GU.tile_transform(Vector2i(5, 3))
+	var t = GU.tile_transform(Vector2i(5, 3))
 	assert_vec3_eq(t.origin, Vector3(5, 0, 3), "transform origin at (5,3)")
 
 # ---------------------------------------------------------------
@@ -133,7 +140,7 @@ func test_tile_transform_position() -> void:
 # ---------------------------------------------------------------
 
 func test_map_world_size() -> void:
-	var s := GU.map_world_size(16)
+	var s = GU.map_world_size(16)
 	assert_vec3_eq(s, Vector3(16, 0, 16), "map size 16")
 
 func test_map_origin() -> void:

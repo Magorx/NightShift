@@ -60,7 +60,7 @@ var _was_drawing: bool = false
 var _ghost_layer: Node3D  # 3D parent for ghost nodes (set via game_world)
 
 func _process(_delta: float) -> void:
-	var prev_grid_pos := cursor_grid_pos
+	var _prev_grid_pos := cursor_grid_pos
 	cursor_grid_pos = _get_grid_pos_under_mouse()
 	if _dragging:
 		_update_blueprints()

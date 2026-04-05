@@ -177,5 +177,5 @@ func get_inventory_items() -> Array:
 
 ## Remove up to count of item_id from this building's inventory.
 ## Returns the amount actually removed. Override in buildings that hold items.
-func remove_inventory_item(item_id: StringName, count: int) -> int:
+func remove_inventory_item(_item_id: StringName, _count: int) -> int:
 	return 0

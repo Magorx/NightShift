@@ -29,8 +29,8 @@ static func create(item_id: StringName, icon_size: Vector2 = Vector2(16, 16), br
 	icon.mouse_filter = Control.MOUSE_FILTER_STOP if browsable else Control.MOUSE_FILTER_IGNORE
 	return icon
 
-static func _create_color_fallback(_item_id: StringName, icon_size: Vector2) -> PanelContainer:
-	var item_def = GameManager.get_item_def(_item_id)
+static func _create_color_fallback(item_id: StringName, icon_size: Vector2) -> PanelContainer:
+	var item_def = GameManager.get_item_def(item_id)
 	var color: Color = item_def.color if item_def else Color.WHITE
 	var outline_color := Color.BLACK if color.get_luminance() > 0.4 else Color.WHITE
 	var style := StyleBoxFlat.new()

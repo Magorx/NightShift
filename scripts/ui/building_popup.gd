@@ -378,7 +378,7 @@ func _populate_recipe_row(recipe) -> void:
 	var max_arrow_w: float = _col_widths.get("max_arrow_w", 0.0)
 	var has_energy_cost: bool = _col_widths.get("has_energy_cost", false)
 	var energy_cost_w: float = _col_widths.get("energy_cost_w", 0.0)
-	var sep: float = recipe_row.get_theme_constant("separation")
+	var _sep: float = recipe_row.get_theme_constant("separation")
 
 	# Item inputs
 	var slot_idx: int = 0

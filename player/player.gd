@@ -67,8 +67,6 @@ var _mine_item_id: StringName = &""
 
 # -- Conveyor item hover ------------------------------------------------------
 const CONV_HOVER_RADIUS := 0.375  # ~12px / 32px per tile
-var _hovered_conv = null  # ConveyorBelt or null
-var _hovered_conv_item_idx: int = -1
 
 # -- References ---------------------------------------------------------------
 @onready var model: Node3D = $Model
@@ -165,7 +163,6 @@ func _handle_movement(delta: float) -> void:
 	# Apply acceleration/friction (XZ plane only, preserve Y)
 	var target_xz := input_dir * max_speed + conveyor_push
 	var current_xz := Vector3(velocity.x, 0.0, velocity.z)
-	var accel := ACCELERATION if input_dir != Vector3.ZERO else FRICTION
 	if input_dir != Vector3.ZERO:
 		current_xz = current_xz.move_toward(target_xz, ACCELERATION * delta)
 	else:
@@ -186,11 +183,6 @@ func _handle_vertical_physics(delta: float) -> void:
 
 	if not is_on_floor():
 		velocity.y -= JUMP_GRAVITY * delta
-
-# Legacy accessors for simulation tests and external systems
-var _is_grounded: bool:
-	get: return is_on_floor()
-	set(_v): pass  # read-only; ignored
 
 var z_height: float:
 	get: return position.y

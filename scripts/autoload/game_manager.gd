@@ -305,14 +305,14 @@ func refund_building_cost(id: StringName) -> void:
 
 # ── Building placement ───────────────────────────────────────────────────────
 
-func can_place_building(id: StringName, grid_pos: Vector2i, map_size: int, rotation: int = 0) -> bool:
+func can_place_building(id: StringName, grid_pos: Vector2i, grid_size: int, rotation: int = 0) -> bool:
 	var def = get_building_def(id)
 	if not def:
 		return false
 	var rotated_shape: Array = def.get_rotated_shape(rotation)
 	for cell in rotated_shape:
 		var check_pos: Vector2i = grid_pos + Vector2i(cell)
-		if check_pos.x < 0 or check_pos.y < 0 or check_pos.x >= map_size or check_pos.y >= map_size:
+		if check_pos.x < 0 or check_pos.y < 0 or check_pos.x >= grid_size or check_pos.y >= grid_size:
 			return false
 		if walls.has(check_pos):
 			return false
