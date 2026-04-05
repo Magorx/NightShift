@@ -112,19 +112,18 @@ func create_heightmap_collision() -> Array:
 	var map_data := PackedFloat32Array()
 	map_data.resize(vw * vw)
 
-	# Each vertex is at a tile corner. Set height to max of adjacent tiles
-	# so the player walks on the higher surface at transitions.
+	# Each vertex is at a tile corner. Use max of adjacent tiles so the
+	# player always has solid ground beneath them (no corner holes).
+	# The step-block logic in Player prevents walking up the ramps.
 	for vz in range(vw):
 		for vx in range(vw):
 			var max_h: float = 0.0
-			# Check the 4 tiles that share this corner
 			for dx in [-1, 0]:
 				for dz in [-1, 0]:
 					var tx: int = vx + dx
 					var tz: int = vz + dz
 					if tx >= 0 and tx < map_size and tz >= 0 and tz < map_size:
-						var h: float = _heights[tz * map_size + tx]
-						max_h = maxf(max_h, h)
+						max_h = maxf(max_h, _heights[tz * map_size + tx])
 			map_data[vz * vw + vx] = max_h
 
 	var shape := HeightMapShape3D.new()

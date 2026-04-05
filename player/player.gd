@@ -77,12 +77,15 @@ const CONV_HOVER_RADIUS := 0.375  # ~12px / 32px per tile
 @onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 
+var _shadow: MeshInstance3D
+
 func _ready() -> void:
 	# Initialize inventory with empty slots
 	inventory.resize(INVENTORY_SLOTS)
 	for i in INVENTORY_SLOTS:
 		inventory[i] = null
 	spawn_position = position
+	_create_blob_shadow()
 
 func _physics_process(delta: float) -> void:
 	if _is_dead:
@@ -207,17 +210,30 @@ func _check_terrain_step_block() -> void:
 	var xz_vel := Vector3(velocity.x, 0.0, velocity.z)
 	if xz_vel.length_squared() < 0.01:
 		return
-	# Check the tile we're moving toward
-	var look_ahead := position + xz_vel.normalized() * 0.6
-	var ahead_grid := GridUtils.world_to_grid(look_ahead)
+
 	var current_grid := _get_grid_pos()
+	var h_current: float = GameManager.get_terrain_height(current_grid)
+	var move_dir := xz_vel.normalized()
+
+	# Check ahead tile with enough look-ahead to trigger before reaching the edge
+	var look_ahead := position + move_dir * 0.7
+	var ahead_grid := GridUtils.world_to_grid(look_ahead)
+
 	if ahead_grid == current_grid:
 		return  # same tile, no step
+
 	var h_ahead: float = GameManager.get_terrain_height(ahead_grid)
-	var h_current: float = GameManager.get_terrain_height(current_grid)
 	if h_ahead > h_current + MAX_STEP_UP:
-		velocity.x = 0.0
-		velocity.z = 0.0
+		# Push back toward current tile center to prevent ramp-stranding
+		var center := GridUtils.grid_to_world(current_grid)
+		var to_center := Vector3(center.x - position.x, 0.0, center.z - position.z)
+		if to_center.length() > 0.05:
+			var push := to_center.normalized() * BASE_SPEED * 0.4
+			velocity.x = push.x
+			velocity.z = push.z
+		else:
+			velocity.x = 0.0
+			velocity.z = 0.0
 
 var z_height: float:
 	get: return position.y
@@ -518,9 +534,30 @@ func _spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
 
 # -- Visuals ------------------------------------------------------------------
 
+func _create_blob_shadow() -> void:
+	_shadow = MeshInstance3D.new()
+	var mesh := PlaneMesh.new()
+	mesh.size = Vector2(0.6, 0.6)
+	_shadow.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0, 0, 0, 0.35)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.no_depth_test = true
+	mat.render_priority = -1
+	_shadow.material_override = mat
+	_shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_shadow)
+
 func _update_visuals(_delta: float) -> void:
 	if not model:
 		return
+
+	# Blob shadow: project onto terrain height below the player
+	if _shadow:
+		var grid := _get_grid_pos()
+		var terrain_y: float = GameManager.get_terrain_height(grid)
+		_shadow.global_position = Vector3(position.x, terrain_y + 0.02, position.z)
 
 	# Direction rotation (rotate around Y axis)
 	model.rotation.y = atan2(facing_direction.x, facing_direction.z)
