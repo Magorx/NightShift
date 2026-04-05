@@ -6,45 +6,47 @@ extends BuildingLogic
 const DEFLECT_FORCE := 6.0
 
 var _output_rr_idx: int = 0
-## Items we've already deflected (don't double-deflect)
-var _deflected: Dictionary = {}  # item instance_id -> output_dir index
+## Maps item instance_id -> assigned output direction index.
+## Entries added on body_entered, removed on body_exited — bounded by
+## the number of items physically inside the zone at any moment.
+var _assigned: Dictionary = {}
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	super.configure(def, p_grid_pos, p_rotation)
+
+func _ready() -> void:
+	# Connect signals so _assigned stays bounded
+	var force_zone: Area3D = get_parent().get_node_or_null("ForceZone")
+	if force_zone:
+		force_zone.body_exited.connect(_on_body_exited)
+
+func _on_body_exited(body: Node3D) -> void:
+	_assigned.erase(body.get_instance_id())
 
 func _physics_process(_delta: float) -> void:
 	var force_zone: Area3D = get_parent().get_node_or_null("ForceZone")
 	if not force_zone:
 		return
 
-	# Get available output directions from OutputZone children
 	var output_dirs: Array[Vector3] = _get_output_directions()
 	if output_dirs.is_empty():
 		return
-
-	# Prune freed items from deflected set
-	var to_erase: Array = []
-	for iid in _deflected:
-		if not is_instance_valid(instance_from_id(iid)):
-			to_erase.append(iid)
-	for iid in to_erase:
-		_deflected.erase(iid)
 
 	for body in force_zone.get_overlapping_bodies():
 		if not (body is PhysicsItem):
 			continue
 		var item := body as PhysicsItem
 		var iid: int = item.get_instance_id()
-		if _deflected.has(iid):
-			# Already assigned — keep pushing in that direction
-			var dir: Vector3 = output_dirs[_deflected[iid] % output_dirs.size()]
+		if _assigned.has(iid):
+			# Already assigned — keep pushing
+			var dir: Vector3 = output_dirs[_assigned[iid] % output_dirs.size()]
 			item.apply_central_force(dir * DEFLECT_FORCE * 0.5)
-			continue
-		# New item — assign to next output (round-robin)
-		var dir_idx: int = _output_rr_idx % output_dirs.size()
-		_output_rr_idx += 1
-		_deflected[iid] = dir_idx
-		item.apply_central_impulse(output_dirs[dir_idx] * DEFLECT_FORCE * 0.3)
+		else:
+			# New item — assign to next output (round-robin)
+			var dir_idx: int = _output_rr_idx % output_dirs.size()
+			_output_rr_idx += 1
+			_assigned[iid] = dir_idx
+			item.apply_central_impulse(output_dirs[dir_idx] * DEFLECT_FORCE * 0.3)
 
 func _get_output_directions() -> Array[Vector3]:
 	var dirs: Array[Vector3] = []
