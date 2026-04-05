@@ -2,6 +2,26 @@
 
 ## In Progress
 
+## Done (move to BOARD_SOLVED.md next session)
+
+### **MAP.1** Noise-based 3D terrain elevation `2h`
+
+  - tags: [map-gen, core]
+  - priority: high
+  - actual: 1.7h
+  - steps:
+      - [x] Add `terrain_heights: PackedFloat32Array` to GameManager
+      - [x] Dual-simplex noise height generation in WorldGenerator, quantized to 0.5-unit steps
+      - [x] TerrainVisualManager: ArrayMesh with top faces + darkened grass side walls
+      - [x] HeightMapShape3D collision for walkable terrain
+      - [x] Buildings, deposits, decorations positioned at terrain height
+      - [x] Save/load height data serialization
+      - [x] Terrain-aware mouse raycasts (build, mine, drop) via GridUtils helpers
+      - [x] Ghost previews at correct elevation
+      - [x] Step-climbing restriction: player must jump to go up, walk down freely
+      - [x] Bot auto-jumps when walking toward higher terrain
+      - [x] Scenario test: scn_terrain_elevation (16 assertions, mechanical + visual)
+
 ## Backlog
 
 ### **3D.11** 3D grid overlay + debug visualization `1.5h`
