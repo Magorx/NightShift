@@ -369,14 +369,50 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 - **Blockers**: None
 - **Next session goal**: P3.1 RoundManager (gameplay mechanics) or 3D.11 grid overlay
 
+### Session 14 -- Cleanup & Tooling
+- **Date**: 2026-04-05
+- **Hours**: ~1.2h (morning session, 09:27-10:38 MSK, excludes 2h sleep)
+- **Work done**:
+  - Removed `.blend` file exports from all 17 Blender scene scripts — only `.glb` output now
+  - Deleted 113 `.blend`/`.blend1` files from the repo
+  - Removed `export_blend()` function from `export_helpers.py` and all scene scripts
+  - Fixed `fetch-quota.sh`: CLI (statusLine) gets both rate limit buckets; VSCode falls back to single-bucket bottleneck via CLI call
+  - Rewrote quota tracking section in CLAUDE.md: CLI checks every 5 calls, VSCode every 15
+  - Investigated statusLine hook behavior: fires in CLI terminal sessions but not in VSCode extension
+- **Decisions made**:
+  - `.blend` files are unnecessary — only `.glb` needed for Godot import
+  - VSCode quota display uses `<N% (not bottleneck)` notation for the non-constrained bucket
+- **Blockers**: None
+- **Next session goal**: P3.1 RoundManager (gameplay mechanics) or 3D.11 grid overlay
+
+### Session 15 -- 3D Model Integration (INT3D.1-7)
+- **Date**: 2026-04-05
+- **Hours**: ~0.3h (morning session, 10:23-10:39 MSK)
+- **Work done**:
+  - Integrated all 110+ .glb 3D models into the running game (7 kanban cards)
+  - INT3D.1: Ground already had 2D tile sprites + collision; added 3D rock/chasm/rubble decorations on wall/stone tiles
+  - INT3D.2: Swapped player CapsuleMesh for player.glb; wired idle/walk/run AnimationPlayer
+  - INT3D.3: Spawned 3D deposit models (pyromite, crystalline, biovine) on deposit tiles with idle anims
+  - INT3D.4: All 9 building types now use .glb models instead of placeholder boxes; building_logic.gd supports 3D AnimationPlayer for idle/active/windup/winddown state machine
+  - INT3D.5: Rewrote item_visual_manager from MultiMesh 2D atlas to per-item .glb instances; ground items also get 3D models
+  - INT3D.6: Added WorldEnvironment with ambient light, SSAO, ACES tonemap; tuned directional light
+  - INT3D.7: All 8 simulations pass, 33 unit tests pass
+  - Fixed duplicate ExtractorLogic class_name in blender-drill/
+- **Decisions made**:
+  - Buildings get 3D models via game_manager._building_model_scenes dict (no .tscn changes needed)
+  - Conveyor MultiMesh visual disabled in favor of individual .glb instances
+  - Items use individual .glb instances (user confirmed performance is fine)
+- **Blockers**: None
+- **Next session goal**: Visual tuning pass (scale, position, rotation of models); then P3.1 RoundManager
+
 ---
 
 ## Velocity Tracking
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total sessions | 14 | |
-| Total hours | 17.4 | |
+| Total sessions | 16 | |
+| Total hours | 18.9 | |
 | Factor baseline | ~42h over 2 weeks | 3h/day evenings |
 | Estimated M1 hours | 40-60h | ~2-3 weeks at 3h/day |
 | Estimated M2 hours | 40-60h | ~2-3 weeks at 3h/day |
