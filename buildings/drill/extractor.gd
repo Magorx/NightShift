@@ -22,9 +22,12 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 
 func _physics_process(delta: float) -> void:
 	_timer += delta
+	var produced := false
 	if _timer >= produce_interval:
 		_spawn_item()
 		_timer = 0.0
+		produced = true
+	_update_building_sprites(produced or _timer > 0.0, delta)
 
 func _spawn_item() -> void:
 	var output: OutputZone = _get_output_zone()

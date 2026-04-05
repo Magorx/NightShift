@@ -20,6 +20,7 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 
 func _physics_process(delta: float) -> void:
 	if enabled_items.is_empty():
+		_update_building_sprites(false, delta)
 		return
 	_timer += delta
 	if _timer >= produce_interval:
@@ -27,6 +28,7 @@ func _physics_process(delta: float) -> void:
 		var idx: int = _round_robin.next(enabled_items.size())
 		item_id = enabled_items[idx]
 		_spawn_item()
+	_update_building_sprites(true, delta)
 
 func _spawn_item() -> void:
 	var output: OutputZone = _get_output_zone()

@@ -523,11 +523,15 @@ func _try_drop(drop_stack: bool) -> void:
 		# Drop the remainder that didn't fit
 		dropped.quantity = leftover
 
-	# Drop on top of the building so it can consume from the stack later
-	var ground_pos := drop_pos
+	# Spawn as PhysicsItems (single objects, no quantity stacking)
+	var spawn_pos := drop_pos
 	if building:
-		ground_pos = GridUtils.grid_to_world(drop_grid)
-	_spawn_ground_item(dropped.item_id, dropped.quantity, ground_pos)
+		spawn_pos = GridUtils.grid_to_world(drop_grid)
+	spawn_pos.y = 0.3  # above ground so items fall naturally
+	var impulse := drop_dir * 1.0
+	for i in dropped.quantity:
+		var offset := Vector3(randf_range(-0.1, 0.1), 0, randf_range(-0.1, 0.1))
+		PhysicsItem.spawn(dropped.item_id, spawn_pos + offset, impulse)
 
 func _spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
 	# pos can be Vector3 or Vector2 (backward compat for UI callers)

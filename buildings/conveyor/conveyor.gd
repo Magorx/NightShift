@@ -14,14 +14,16 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(def, p_grid_pos, rotation)
 	direction = rotation
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	var force_zone: Area3D = get_parent().get_node_or_null("ForceZone")
 	if not force_zone:
 		return
+	var has_items := false
 	var fwd := _get_world_forward()
 	var lateral := Vector3(-fwd.z, 0.0, fwd.x)  # perpendicular on XZ plane
 	for body in force_zone.get_overlapping_bodies():
 		if body is PhysicsItem:
+			has_items = true
 			var item := body as PhysicsItem
 			# Push along conveyor direction
 			var speed_along: float = item.linear_velocity.dot(fwd)
@@ -31,6 +33,7 @@ func _physics_process(_delta: float) -> void:
 			var lat_speed: float = item.linear_velocity.dot(lateral)
 			if absf(lat_speed) > 0.1:
 				item.apply_central_force(-lateral * lat_speed * DAMPING_FORCE)
+	_update_building_sprites(has_items, delta)
 
 func _get_world_forward() -> Vector3:
 	var building := get_parent() as Node3D
@@ -95,8 +98,7 @@ func cleanup_visuals() -> void:
 	pass
 
 func on_removing() -> void:
-	if GameManager.conveyor_system:
-		GameManager.conveyor_system.unregister_conveyor(grid_pos)
+	pass
 
 # ── Serialization (no buffer state to save) ───────────────────────────────────
 
