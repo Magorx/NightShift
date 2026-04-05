@@ -56,20 +56,8 @@ func run_scenario() -> void:
 	assert_scenario(absf(y_on_flat) < 0.2, "Player on flat ground near Y=0 (y=%.3f)" % y_on_flat)
 	await monitor.screenshot("01_flat_ground")
 
-	# ── Test 2: Step-block — player can't walk up without jumping ───────
-	# Walk toward the step (height 0 -> 0.5). The step-block mechanic
-	# should prevent walking up, but the bot auto-jumps so it arrives.
-	# First verify the block: disable bot_input, set velocity toward step,
-	# and check that step_block zeroes it out.
-	player.velocity = Vector3(Player.BASE_SPEED, 0, 0)  # walk toward +X (step at x=13)
-	await bot.teleport_to(Vector2i(12, 12))  # stand right before the step
-	await bot.tick(1)
-	# The step-block should have zeroed horizontal velocity
-	var blocked_vel := absf(player.velocity.x)
-	assert_scenario(blocked_vel < 0.1, "Step-block zeroed velocity (vx=%.3f)" % blocked_vel)
-	await monitor.screenshot("02_step_blocked")
-
-	# ── Test 3: Bot auto-jumps to reach step ────────────────────────────
+	# ── Test 2: Bot auto-jumps to reach step ────────────────────────────
+	# Walls block horizontal movement; bot must jump to climb
 	var arrived := await bot.walk_to(Vector2i(13, 12))
 	assert_scenario(arrived, "Bot auto-jumped to step (13,12)")
 	await bot.wait(0.3)

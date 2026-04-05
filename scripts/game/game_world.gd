@@ -28,6 +28,7 @@ var _deposit_scenes: Dictionary = {
 	&"crystalline": preload("res://resources/deposits/models/crystalline.glb"),
 	&"biovine": preload("res://resources/deposits/models/biovine.glb"),
 }
+var _pixel_art_rect: ColorRect
 var _popup: PanelContainer
 var _ground_tooltip: PanelContainer
 var _ground_tooltip_timer: float = 0.0
@@ -147,6 +148,11 @@ func _ready() -> void:
 
 	# Place 3D deposit models on deposit tiles
 	_spawn_deposit_models()
+
+	# Wire pixel art post-process toggle
+	_pixel_art_rect = $PostProcessLayer/PixelArtRect
+	_pixel_art_rect.visible = SettingsManager.pixel_art_enabled
+	SettingsManager.pixel_art_changed.connect(func(enabled: bool): _pixel_art_rect.visible = enabled)
 
 	camera.target_node = player
 
@@ -281,6 +287,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		hud.toggle_buildings_panel()
 	elif event.is_action_pressed("toggle_inventory"):
 		hud.toggle_inventory_panel()
+	elif event.is_action_pressed("debug_action"):
+		_debug_action()
 	elif event.is_action_pressed("ui_cancel"):
 		# ESC cascade: buildings panel → info panel → building mode → destroy mode → pause menu
 		if hud.is_buildings_panel_open():
@@ -295,6 +303,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_open_pause_menu()
 
+func _debug_action() -> void:
+	var count := 0
+	for item in get_tree().get_nodes_in_group(&"physics_items"):
+		if is_instance_valid(item):
+			item.queue_free()
+			count += 1
+	for item in get_tree().get_nodes_in_group("ground_items"):
+		if is_instance_valid(item):
+			item.queue_free()
+			count += 1
+	print("Debug: deleted %d loose items" % count)
+
 func _open_pause_menu() -> void:
 	# Don't open if already paused
 	if get_tree().paused:
@@ -305,18 +325,17 @@ func _open_pause_menu() -> void:
 func _setup_terrain_collision() -> void:
 	if not GameManager.terrain_visual_manager:
 		return
-	var result: Array = GameManager.terrain_visual_manager.create_heightmap_collision()
-	if result.is_empty():
+	var shape: ConcavePolygonShape3D = GameManager.terrain_visual_manager.create_box_collision()
+	if not shape:
 		return
-	var shape: HeightMapShape3D = result[0]
-	var body_pos: Vector3 = result[1]
-	# Remove the infinite ground plane — heightmap replaces it
+	var face_count: int = shape.get_faces().size() / 3
+	print("[TERRAIN] Box collision: %d triangles" % face_count)
+	# Remove the infinite ground plane — box collision replaces it
 	var old_ground := get_node_or_null("GroundCollision")
 	if old_ground:
 		old_ground.queue_free()
 	var body := StaticBody3D.new()
 	body.name = "TerrainCollision"
-	body.position = body_pos
 	body.collision_layer = 4  # layer 3 (ground)
 	body.collision_mask = 0
 	var col_shape := CollisionShape3D.new()

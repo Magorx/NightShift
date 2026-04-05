@@ -75,7 +75,7 @@ func _auto_jump_if_step() -> void:
 		return
 	var h_ahead: float = GameManager.get_terrain_height(ahead_grid)
 	var h_current: float = GameManager.get_terrain_height(current_grid)
-	if h_ahead > h_current + Player.MAX_STEP_UP:
+	if h_ahead > h_current + 0.25:
 		_player._try_jump()
 
 func sprint_to(pos: Vector2i) -> bool:

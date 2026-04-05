@@ -99,9 +99,6 @@ func _physics_process(delta: float) -> void:
 	_handle_health_regen(delta)
 	_handle_hand_mining(delta)
 
-	# Block walking up terrain steps (must jump to reach higher ground)
-	_check_terrain_step_block()
-
 	# Apply velocity and move
 	move_and_slide()
 	_update_collision_for_height()
@@ -200,40 +197,6 @@ func _handle_vertical_physics(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= JUMP_GRAVITY * delta
 
-## Prevent the player from walking up terrain steps — must jump to climb.
-## Going down is allowed (gravity handles it naturally).
-const MAX_STEP_UP := 0.25  # max height diff the player can walk up without jumping
-
-func _check_terrain_step_block() -> void:
-	if not is_on_floor():
-		return  # airborne (jumping) — don't block
-	var xz_vel := Vector3(velocity.x, 0.0, velocity.z)
-	if xz_vel.length_squared() < 0.01:
-		return
-
-	var current_grid := _get_grid_pos()
-	var h_current: float = GameManager.get_terrain_height(current_grid)
-	var move_dir := xz_vel.normalized()
-
-	# Check ahead tile with enough look-ahead to trigger before reaching the edge
-	var look_ahead := position + move_dir * 0.7
-	var ahead_grid := GridUtils.world_to_grid(look_ahead)
-
-	if ahead_grid == current_grid:
-		return  # same tile, no step
-
-	var h_ahead: float = GameManager.get_terrain_height(ahead_grid)
-	if h_ahead > h_current + MAX_STEP_UP:
-		# Push back toward current tile center to prevent ramp-stranding
-		var center := GridUtils.grid_to_world(current_grid)
-		var to_center := Vector3(center.x - position.x, 0.0, center.z - position.z)
-		if to_center.length() > 0.05:
-			var push := to_center.normalized() * BASE_SPEED * 0.4
-			velocity.x = push.x
-			velocity.z = push.z
-		else:
-			velocity.x = 0.0
-			velocity.z = 0.0
 
 var z_height: float:
 	get: return position.y

@@ -99,48 +99,70 @@ func clear() -> void:
 	_heights = PackedFloat32Array()
 
 
-## Get a HeightMapShape3D for smooth walkable collision.
-## Visual mesh stays blocky; collision uses smooth ramps between height levels
-## so CharacterBody3D can walk up/down naturally.
-## Returns [shape: HeightMapShape3D, body_position: Vector3].
-func create_heightmap_collision() -> Array:
+## Build a ConcavePolygonShape3D with flat top faces + vertical wall faces.
+## No ramps — each tile is a flat platform, walls block at height transitions.
+## Wall normals face outward from the higher tile (toward the lower side),
+## so the player is blocked approaching from below but can walk off edges
+## going down (backface_collision = false).
+func create_box_collision() -> ConcavePolygonShape3D:
 	if _map_size == 0 or _heights.is_empty():
-		return []
+		return null
 
 	var map_size := _map_size
-	var vw: int = map_size + 1  # vertex count along each axis
-	var map_data := PackedFloat32Array()
-	map_data.resize(vw * vw)
+	var faces := PackedVector3Array()
 
-	# Each vertex is at a tile corner. Use max of adjacent tiles so the
-	# player always has solid ground beneath them (no corner holes).
-	# The step-block logic in Player prevents walking up the ramps.
-	for vz in range(vw):
-		for vx in range(vw):
-			var max_h: float = 0.0
-			for dx in [-1, 0]:
-				for dz in [-1, 0]:
-					var tx: int = vx + dx
-					var tz: int = vz + dz
-					if tx >= 0 and tx < map_size and tz >= 0 and tz < map_size:
-						max_h = maxf(max_h, _heights[tz * map_size + tx])
-			map_data[vz * vw + vx] = max_h
+	for y_pos in range(map_size):
+		for x_pos in range(map_size):
+			var idx := y_pos * map_size + x_pos
+			var h: float = _heights[idx]
+			var x0 := float(x_pos) - 0.5
+			var x1 := float(x_pos) + 0.5
+			var z0 := float(y_pos) - 0.5
+			var z1 := float(y_pos) + 0.5
 
-	var shape := HeightMapShape3D.new()
-	shape.map_width = vw
-	shape.map_depth = vw
-	shape.map_data = map_data
+			# ── Top face (CCW from above → normal UP) ──
+			faces.append(Vector3(x0, h, z0))
+			faces.append(Vector3(x0, h, z1))
+			faces.append(Vector3(x1, h, z1))
 
-	# Position the body so vertex (0,0) maps to world (-0.5, -0.5)
-	# HeightMapShape3D vertices span [-(vw-1)/2, (vw-1)/2]
-	# Vertex (0,0) is at local (-(vw-1)/2, -(vw-1)/2)
-	# We want it at world (-0.5, -0.5)
-	# So body position = (-0.5 - (-(vw-1)/2), 0, -0.5 - (-(vw-1)/2))
-	#                   = (-0.5 + map_size/2, 0, -0.5 + map_size/2)
-	var half := float(map_size) / 2.0
-	var body_pos := Vector3(half - 0.5, 0.0, half - 0.5)
+			faces.append(Vector3(x0, h, z0))
+			faces.append(Vector3(x1, h, z1))
+			faces.append(Vector3(x1, h, z0))
 
-	return [shape, body_pos]
+			# ── Wall faces at height transitions ──
+			# Only where this tile is higher than the neighbor.
+			# Normal faces outward (toward the lower neighbor).
+			var neighbors := [[1, 0], [-1, 0], [0, 1], [0, -1]]
+			for n in neighbors:
+				var nx: int = x_pos + n[0]
+				var nz: int = y_pos + n[1]
+				var nh: float = 0.0
+				if nx >= 0 and nx < map_size and nz >= 0 and nz < map_size:
+					nh = _heights[nz * map_size + nx]
+				if h <= nh:
+					continue
+				# Wall quad from nh up to h
+				var wx0: float; var wx1: float; var wz0: float; var wz1: float
+				if n[0] == 1:    # +X wall
+					wx0 = x1; wx1 = x1; wz0 = z0; wz1 = z1
+				elif n[0] == -1: # -X wall
+					wx0 = x0; wx1 = x0; wz0 = z1; wz1 = z0
+				elif n[1] == 1:  # +Z wall
+					wx0 = x1; wx1 = x0; wz0 = z1; wz1 = z1
+				else:            # -Z wall
+					wx0 = x0; wx1 = x1; wz0 = z0; wz1 = z0
+				# Two triangles (outward-facing normal)
+				faces.append(Vector3(wx0, h, wz0))
+				faces.append(Vector3(wx1, h, wz1))
+				faces.append(Vector3(wx1, nh, wz1))
+				faces.append(Vector3(wx0, h, wz0))
+				faces.append(Vector3(wx1, nh, wz1))
+				faces.append(Vector3(wx0, nh, wz0))
+
+	var shape := ConcavePolygonShape3D.new()
+	shape.backface_collision = true
+	shape.set_faces(faces)
+	return shape
 
 
 # ── Private ──────────────────────────────────────────────────────────────────

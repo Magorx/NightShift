@@ -107,17 +107,11 @@ func _rebuild_terrain() -> void:
 	if old_col:
 		old_col.queue_free()
 	if GameManager.terrain_visual_manager:
-		var result: Array = GameManager.terrain_visual_manager.create_heightmap_collision()
-		if not result.is_empty():
-			var shape: HeightMapShape3D = result[0]
-			var body_pos: Vector3 = result[1]
-			# Remove the infinite ground plane — heightmap replaces it
-			var old_ground := game_world.get_node_or_null("GroundCollision")
-			if old_ground:
-				old_ground.queue_free()
+		var shape: ConcavePolygonShape3D = GameManager.terrain_visual_manager.create_box_collision()
+		if shape:
+			# Keep ground plane at Y=0 as fallback floor
 			var body := StaticBody3D.new()
 			body.name = "TerrainCollision"
-			body.position = body_pos
 			body.collision_layer = 4
 			body.collision_mask = 0
 			var col_shape := CollisionShape3D.new()
