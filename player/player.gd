@@ -47,6 +47,10 @@ var selected_slot: int = 0
 # -- Conveyor push (set by ConveyorBelt ForceZone each physics frame) ---------
 var conveyor_push: Vector3 = Vector3.ZERO
 
+# -- Bot control (set by BotController each tick, overrides keyboard input) ----
+var bot_input: Vector3 = Vector3.ZERO
+var bot_sprint: bool = false
+
 # -- Visual -------------------------------------------------------------------
 var facing_direction: Vector3 = Vector3.RIGHT  # XZ plane direction
 var stamina: float = STAMINA_MAX
@@ -117,40 +121,46 @@ func _unhandled_input(event: InputEvent) -> void:
 # -- Movement ----------------------------------------------------------------
 
 func _handle_movement(delta: float) -> void:
-	# Screen-space WASD: project input through the isometric camera orientation.
-	# Camera is 45° Y-rotated, so screen-up = world (-X, -Z), screen-right = world (+X, -Z).
-	var input_2d := Vector2.ZERO
-	if Input.is_action_pressed(&"pan_up"):
-		input_2d.y -= 1
-	if Input.is_action_pressed(&"pan_down"):
-		input_2d.y += 1
-	if Input.is_action_pressed(&"pan_left"):
-		input_2d.x -= 1
-	if Input.is_action_pressed(&"pan_right"):
-		input_2d.x += 1
-	# Rotate screen input by camera Y angle to get world XZ direction
-	var cam := get_viewport().get_camera_3d()
 	var input_dir := Vector3.ZERO
-	if cam and input_2d != Vector2.ZERO:
-		var cam_basis := cam.global_transform.basis
-		var forward := -cam_basis.z
-		var right := cam_basis.x
-		# Project onto XZ plane and normalize
-		forward.y = 0
-		right.y = 0
-		forward = forward.normalized()
-		right = right.normalized()
-		input_dir = (right * input_2d.x + forward * -input_2d.y)
+
+	# Bot control override: use external input direction (set by BotController)
+	if bot_input != Vector3.ZERO:
+		input_dir = bot_input.normalized()
 		input_dir.y = 0
-		if input_dir.length() > 0.01:
-			input_dir = input_dir.normalized()
+	else:
+		# Screen-space WASD: project input through the isometric camera orientation.
+		# Camera is 45° Y-rotated, so screen-up = world (-X, -Z), screen-right = world (+X, -Z).
+		var input_2d := Vector2.ZERO
+		if Input.is_action_pressed(&"pan_up"):
+			input_2d.y -= 1
+		if Input.is_action_pressed(&"pan_down"):
+			input_2d.y += 1
+		if Input.is_action_pressed(&"pan_left"):
+			input_2d.x -= 1
+		if Input.is_action_pressed(&"pan_right"):
+			input_2d.x += 1
+		# Rotate screen input by camera Y angle to get world XZ direction
+		var cam := get_viewport().get_camera_3d()
+		if cam and input_2d != Vector2.ZERO:
+			var cam_basis := cam.global_transform.basis
+			var forward := -cam_basis.z
+			var right := cam_basis.x
+			# Project onto XZ plane and normalize
+			forward.y = 0
+			right.y = 0
+			forward = forward.normalized()
+			right = right.normalized()
+			input_dir = (right * input_2d.x + forward * -input_2d.y)
+			input_dir.y = 0
+			if input_dir.length() > 0.01:
+				input_dir = input_dir.normalized()
 
 	if input_dir != Vector3.ZERO:
 		input_dir = input_dir.normalized()
 		facing_direction = input_dir
 
 	# Sprint
-	var is_sprinting := Input.is_key_pressed(KEY_SHIFT) and stamina > 0 and input_dir != Vector3.ZERO
+	var is_sprinting := (Input.is_key_pressed(KEY_SHIFT) or bot_sprint) and stamina > 0 and input_dir != Vector3.ZERO
 	var max_speed := SPRINT_SPEED if is_sprinting else BASE_SPEED
 
 	if is_sprinting:
@@ -528,7 +538,8 @@ func _get_grid_pos() -> Vector2i:
 	return GridUtils.world_to_grid(global_position)
 
 func _has_movement_input() -> bool:
-	return Input.is_action_pressed(&"pan_up") or Input.is_action_pressed(&"pan_down") \
+	return bot_input != Vector3.ZERO \
+		or Input.is_action_pressed(&"pan_up") or Input.is_action_pressed(&"pan_down") \
 		or Input.is_action_pressed(&"pan_left") or Input.is_action_pressed(&"pan_right")
 
 # -- Serialization ------------------------------------------------------------

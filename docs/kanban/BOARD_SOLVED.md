@@ -2,6 +2,32 @@
 
 ## Done
 
+### **SCN.1** Scenario test framework: scripted integration tests `4h` → `2h`
+
+  - tags: [testing, infrastructure, scenarios]
+  - priority: medium
+  - steps:
+      - [x] ScenarioBase class extending SimulationBase (small maps, creative mode, visual-first)
+      - [x] BotController: physical player movement via `bot_input` on CharacterBody3D
+      - [x] BotController commands: walk_to, sprint_to, teleport_to, place, place_conveyor_line, mine_at, pickup, drop, jump
+      - [x] ScenarioMonitor: track named metrics with callables, assert_eq/gt/lt/between, screenshot capture
+      - [x] ScenarioMap: deposit/cluster/line, walls, pre-placed buildings, player_start
+      - [x] run_scenario.gd: entry point with --fast (10x) / --visual (4x) / --screenshot modes
+      - [x] Player `bot_input`/`bot_sprint` properties for real physics movement in tests
+      - [x] Example: scn_drill_to_sink (production chain verification)
+      - [x] Example: scn_player_movement (walk, jump, collision, sprint, damage, inventory)
+    ```md
+    Scripted integration test framework. Unlike existing simulations that bypass the player,
+    scenarios physically move the CharacterBody3D through the world, place buildings via
+    GameManager API near the player position, and verify both numeric metrics and screenshots.
+
+    Cherry-picked from BOT cards: metric tracking (BOT.2 concept), visual mode (BOT.5 concept).
+    BOT.1/3/4 autonomous brain system remains separate — scenarios are directed, not autonomous.
+
+    Key design: Player.bot_input overrides keyboard input in _handle_movement(), so bot commands
+    test the real physics pipeline (acceleration, friction, collision, move_and_slide).
+    ```
+
 ### **PHYS.1** Physics item: RigidBody3D resource entity `2h` → `0.1h`
 ### **PHYS.2** Conveyor belt: physics surface transport `3h` → `0.1h`
 ### **PHYS.3** Building IO zones: 3D input/output areas `2h` → `0.15h`
