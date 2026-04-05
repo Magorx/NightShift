@@ -374,10 +374,7 @@ func place_building(id: StringName, grid_pos: Vector2i, rotation: int = 0) -> No
 		if building_tick_system:
 			building_tick_system.register(logic)
 
-	# Update collision for player
-	if building_collision and not def.is_ground_level:
-		for cell in rotated_shape:
-			building_collision.add_tile(grid_pos + cell)
+	# Model collision is generated automatically by BuildingBase._ready()
 
 	building_placed.emit(id, grid_pos)
 	return building
@@ -413,10 +410,7 @@ func remove_building(grid_pos: Vector2i) -> void:
 		rotated_shape = def.get_rotated_shape(building.rotation_index)
 		for cell in rotated_shape:
 			buildings.erase(building.grid_pos + cell)
-		# Remove collision for player
-		if building_collision and not def.is_ground_level:
-			for cell in rotated_shape:
-				building_collision.remove_tile(building.grid_pos + cell)
+		# Model collision is removed with building.queue_free()
 	else:
 		buildings.erase(grid_pos)
 	unique_buildings.erase(building)
