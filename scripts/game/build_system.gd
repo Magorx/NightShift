@@ -447,10 +447,21 @@ func _create_ghost_node(building_id: StringName, rotation: int) -> Node:
 func _disable_processing_recursive(node: Node) -> void:
 	node.set_process(false)
 	node.set_physics_process(false)
+	# Disable collision on physics bodies so ghosts don't interact
+	if node is CollisionObject3D:
+		node.collision_layer = 0
+		node.collision_mask = 0
+		if node is Area3D:
+			node.monitoring = false
+			node.monitorable = false
 	for child in node.get_children():
 		_disable_processing_recursive(child)
 
-func _apply_ghost_transparency(node: Node) -> void:
+const GHOST_VALID_COLOR := Color(0.5, 1.0, 0.6, 0.45)
+const GHOST_INVALID_COLOR := Color(1.0, 0.4, 0.4, 0.4)
+
+func _apply_ghost_transparency(node: Node, valid: bool = true) -> void:
+	var tint := GHOST_VALID_COLOR if valid else GHOST_INVALID_COLOR
 	if node is MeshInstance3D:
 		var mesh_inst: MeshInstance3D = node
 		for i in mesh_inst.get_surface_override_material_count():
@@ -458,10 +469,15 @@ func _apply_ghost_transparency(node: Node) -> void:
 			if src_mat is StandardMaterial3D:
 				var mat: StandardMaterial3D = src_mat.duplicate()
 				mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-				mat.albedo_color.a = 0.5
+				mat.albedo_color = Color(
+					mat.albedo_color.r * tint.r,
+					mat.albedo_color.g * tint.g,
+					mat.albedo_color.b * tint.b,
+					tint.a
+				)
 				mesh_inst.set_surface_override_material(i, mat)
 	for child in node.get_children():
-		_apply_ghost_transparency(child)
+		_apply_ghost_transparency(child, valid)
 
 func _update_ghosts() -> void:
 	if not building_mode:
