@@ -3,7 +3,7 @@ render_mode unshaded, cull_disabled;
 
 uniform sampler2DArray terrain_diffuse : source_color, filter_nearest, repeat_enable;
 uniform sampler2DArray terrain_normal : hint_normal, filter_nearest, repeat_enable;
-uniform float texture_scale : hint_range(0.01, 4.0) = 0.08;
+uniform float texture_scale : hint_range(0.01, 4.0) = 0.15;
 
 // Fake directional light for normal-map depth
 uniform vec3 light_dir = vec3(0.35, 0.75, 0.3);

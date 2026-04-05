@@ -100,7 +100,7 @@ func build(map_size: int, tile_types: PackedByteArray, _variants: PackedByteArra
 			# Check 4 neighbors: +X, -X, +Z, -Z
 			_add_side_walls(st, x, y, h, col, map_size)
 
-	st.generate_normals()
+	st.generate_normals(true)  # flip: Godot Plane() uses CW convention, our quads are CCW
 	var mesh := st.commit()
 	_mesh_instance.mesh = mesh
 
@@ -329,8 +329,8 @@ func _load_texture_array(suffix: String) -> Texture2DArray:
 		# Downsample to match game pixel density — 1024px textures are
 		# invisible when displayed at ~10px per tile. 64px gives chunky,
 		# visible texels at isometric zoom.
-		if img.get_width() > 64:
-			img.resize(64, 64, Image.INTERPOLATE_LANCZOS)
+		# if img.get_width() > 64:
+		# 	img.resize(64, 64, Image.INTERPOLATE_LANCZOS)
 		images.append(img)
 
 	var tex := Texture2DArray.new()
