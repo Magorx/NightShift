@@ -64,9 +64,40 @@ func _extract_shape() -> void:
 		return
 
 	var instance = scene.instantiate()
-	var container = get_rotatable(instance)
 
-	# Read anchor
+	# Detect 3D or 2D scene format
+	var is_3d := not instance.find_child("Rotatable", false, false)
+
+	if is_3d:
+		_extract_shape_3d(instance)
+	else:
+		_extract_shape_2d(instance)
+	instance.free()
+
+	if shape.is_empty():
+		shape = [Vector2i(0, 0)]
+
+func _extract_shape_3d(instance: Node) -> void:
+	# 3D scenes: BuildAnchor is a Marker3D, shape cells are Marker3D children
+	var a_cell := Vector2i(0, 0)
+	var anchor_node = instance.find_child("BuildAnchor", false, false)
+	if anchor_node and anchor_node is Marker3D:
+		a_cell.x = roundi(anchor_node.position.x)
+		a_cell.y = roundi(anchor_node.position.z)
+	anchor_cell = a_cell
+
+	var cells: Array = []
+	var shape_node = instance.find_child("Shape", false, false)
+	if shape_node:
+		for child in shape_node.get_children():
+			if child is Marker3D:
+				var gx := roundi(child.position.x)
+				var gz := roundi(child.position.z)
+				cells.append(Vector2i(gx, gz) - anchor_cell)
+	shape = cells
+
+func _extract_shape_2d(instance: Node) -> void:
+	var container = get_rotatable(instance)
 	var a_cell := Vector2i(0, 0)
 	var anchor_node = container.find_child("BuildAnchor", false, false)
 	if anchor_node and anchor_node is Node2D:
@@ -76,7 +107,6 @@ func _extract_shape() -> void:
 		a_cell.y = int(round(anchor_node.position.y)) / SCENE_CELL_SIZE
 	anchor_cell = a_cell
 
-	# Read shape cells, make anchor-relative
 	var cells: Array = []
 	var shape_node = container.find_child("Shape", false, false)
 	if shape_node:
@@ -87,10 +117,6 @@ func _extract_shape() -> void:
 				@warning_ignore("integer_division")
 				var gy := int(round(child.offset_top)) / SCENE_CELL_SIZE
 				cells.append(Vector2i(gx, gy) - anchor_cell)
-	instance.free()
-
-	if cells.is_empty():
-		cells.append(Vector2i(0, 0))
 	shape = cells
 
 func _extract_io() -> void:
@@ -100,9 +126,15 @@ func _extract_io() -> void:
 		return
 
 	var instance = scene.instantiate()
-	var container = get_rotatable(instance)
-	inputs = _read_io_group(container, "Inputs")
-	outputs = _read_io_group(container, "Outputs")
+	var is_3d := not instance.find_child("Rotatable", false, false)
+
+	if is_3d:
+		inputs = _read_io_group_3d(instance, "Inputs")
+		outputs = _read_io_group_3d(instance, "Outputs")
+	else:
+		var container = get_rotatable(instance)
+		inputs = _read_io_group(container, "Inputs")
+		outputs = _read_io_group(container, "Outputs")
 	instance.free()
 
 func _extract_logic_script() -> void:
@@ -147,6 +179,23 @@ func _read_io_group(container: Node, group_name: String) -> Array:
 			else:
 				mask = [true, true, true, true]
 			result.append({cell = Vector2i(gx, gy) - anchor_cell, mask = mask})
+	return result
+
+func _read_io_group_3d(instance: Node, group_name: String) -> Array:
+	var result: Array = []
+	var group_node = instance.find_child(group_name, false, false)
+	if not group_node:
+		return result
+	for child in group_node.get_children():
+		if child is Node3D:
+			var gx := roundi(child.position.x)
+			var gz := roundi(child.position.z)
+			var mask: Array
+			if child.has_method("get_mask"):
+				mask = child.get_mask()
+			else:
+				mask = [true, true, true, true]
+			result.append({cell = Vector2i(gx, gz) - anchor_cell, mask = mask})
 	return result
 
 # ── Rotation utilities ──────────────────────────────────────────────────────

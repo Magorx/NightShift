@@ -1,257 +1,40 @@
-[gd_scene load_steps=34 format=3 uid="uid://btb5ogl8k81hb"]
+[gd_scene load_steps=7 format=3 uid="uid://btb5ogl8k81hb"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://bdx0s4hpmxhou" path="res://buildings/conveyor/conveyor.gd" id="2"]
-[ext_resource type="Script" uid="uid://b3cuip585ay6r" path="res://buildings/conveyor/conveyor_sprite.gd" id="3"]
-[ext_resource type="Texture2D" uid="uid://dh88xp7vo80st" path="res://buildings/conveyor/sprites/straight.png" id="5_vcsde"]
-[ext_resource type="Script" uid="uid://if7djmve2kw3" path="res://buildings/shared/shape_cell.gd" id="7_shape"]
-[ext_resource type="Script" uid="uid://c6i5t6ha2ld6t" path="res://buildings/shared/input_cell.gd" id="8_input"]
-[ext_resource type="Script" uid="uid://d1ccegqp5sslp" path="res://buildings/shared/output_cell.gd" id="9_output"]
-[ext_resource type="PackedScene" uid="uid://byl5l54asm7ej" path="res://buildings/conveyor/models/conveyor.glb" id="glb_model"]
+[ext_resource type="Script" uid="uid://xchn5wvkdcw7" path="res://buildings/shared/input_zone.gd" id="3"]
+[ext_resource type="Script" uid="uid://wn30a4e54j7j" path="res://buildings/shared/output_zone.gd" id="4"]
+[ext_resource type="PackedScene" uid="uid://byl5l54asm7ej" path="res://buildings/conveyor/models/conveyor.glb" id="5"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_erubv"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(0, 128, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_vcsde"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(32, 128, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_d3tmi"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(64, 128, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_jh0it"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(96, 128, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_8b4rg"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(0, 64, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_4hqkr"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(32, 64, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_1evvt"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(64, 64, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_vfdwa"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(96, 64, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_1fd4n"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(0, 96, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_x5ms4"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(32, 96, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_xwlyn"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(64, 96, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_q0wwt"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(96, 96, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_68cqb"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(0, 160, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_h271u"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(32, 160, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_pfvkk"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(64, 160, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_i7nv0"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(96, 160, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_ntdln"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(0, 0, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_cuo72"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(32, 0, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_nl7xd"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(64, 0, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_teatx"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(96, 0, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_7pf7l"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(0, 32, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_on7v2"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(32, 32, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_gxaih"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(64, 32, 32, 32)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_jh6nh"]
-atlas = ExtResource("5_vcsde")
-region = Rect2(96, 32, 32, 32)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_d3tmi"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_erubv")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_vcsde")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_d3tmi")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_jh0it")
-}],
-"loop": true,
-"name": &"crossroad",
-"speed": 10.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_8b4rg")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_4hqkr")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_1evvt")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_vfdwa")
-}],
-"loop": true,
-"name": &"dual_side_input",
-"speed": 10.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_1fd4n")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_x5ms4")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_xwlyn")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_q0wwt")
-}],
-"loop": true,
-"name": &"side_input",
-"speed": 10.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_68cqb")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_h271u")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_pfvkk")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_i7nv0")
-}],
-"loop": true,
-"name": &"start",
-"speed": 10.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_ntdln")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_cuo72")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_nl7xd")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_teatx")
-}],
-"loop": true,
-"name": &"straight",
-"speed": 10.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_7pf7l")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_on7v2")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_gxaih")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_jh6nh")
-}],
-"loop": true,
-"name": &"turn",
-"speed": 10.0
-}]
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(0.4, 0.4, 0.4)
 
 [node name="Conveyor" type="Node3D"]
 script = ExtResource("1")
 
-[node name="Rotatable" type="Node2D" parent="."]
-
-[node name="Shape" type="Node2D" parent="Rotatable"]
-
-[node name="Cell_0_0" type="ColorRect" parent="Rotatable/Shape"]
-offset_right = 32.0
-offset_bottom = 32.0
-color = Color(0.85, 0.75, 0.2, 0)
-script = ExtResource("7_shape")
-
-[node name="Inputs" type="Node2D" parent="Rotatable"]
-
-[node name="In_0" type="ColorRect" parent="Rotatable/Inputs"]
-offset_right = 32.0
-offset_bottom = 32.0
-color = Color(0.3, 0.5, 0.9, 0)
-script = ExtResource("8_input")
-allow_right = false
-
-[node name="Outputs" type="Node2D" parent="Rotatable"]
-
-[node name="Out_0" type="ColorRect" parent="Rotatable/Outputs"]
-offset_left = 32.0
-offset_right = 64.0
-offset_bottom = 32.0
-color = Color(0.3, 0.9, 0.3, 0)
-script = ExtResource("9_output")
-allow_left = false
-
-[node name="BuildAnchor" type="Node2D" parent="Rotatable"]
-
-[node name="ConveyorSprite" type="AnimatedSprite2D" parent="Rotatable"]
-position = Vector2(16, 16)
-sprite_frames = SubResource("SpriteFrames_d3tmi")
-animation = &"turn"
-script = ExtResource("3")
-
-[node name="Model" parent="." instance=ExtResource("glb_model")]
+[node name="Model" parent="." instance=ExtResource("5")]
 transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.5, 0, 0.5)
 
-[node name="ConveyorLogic" type="Node2D" parent="."]
+[node name="Shape" type="Node3D" parent="."]
+
+[node name="Cell_0_0" type="Marker3D" parent="Shape"]
+
+[node name="Inputs" type="Node3D" parent="."]
+
+[node name="Input_0" type="Area3D" parent="Inputs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+script = ExtResource("3")
+allow_right = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Inputs/Input_0"]
+shape = SubResource("BoxShape3D_1")
+
+[node name="Outputs" type="Node3D" parent="."]
+
+[node name="Output_0" type="Marker3D" parent="Outputs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.2, 0)
+script = ExtResource("4")
+allow_left = false
+
+[node name="ConveyorLogic" type="Node" parent="."]
 script = ExtResource("2")
