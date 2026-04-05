@@ -164,6 +164,41 @@ def animate_shake(obj, state_name, duration=2.0, amplitude=0.015,
     obj.location.y = base_y
 
 
+def animate_scale(obj, state_name, duration=2.0, axis='Z',
+                   scale_fn=None, base_scale=1.0):
+    """Animate scale along an axis.
+
+    Args:
+        obj: Blender object to animate.
+        state_name: NLA track name.
+        duration: Animation duration in seconds.
+        axis: 'X', 'Y', or 'Z'.
+        scale_fn: Callable(t: float) -> float. Returns the absolute scale value.
+            t goes from 0 to 1.
+        base_scale: Default scale if scale_fn is None.
+    """
+    axis_idx = {'X': 0, 'Y': 1, 'Z': 2}[axis.upper()]
+    frames = int(FPS * duration)
+
+    if scale_fn is None:
+        scale_fn = lambda t: base_scale
+
+    action_name = f"{state_name}_{obj.name}"
+    act = bpy.data.actions.new(action_name)
+    _ensure_anim_data(obj).action = act
+
+    for f in range(frames + 1):
+        t = f / frames
+        obj.scale[axis_idx] = scale_fn(t)
+        obj.keyframe_insert(data_path="scale", index=axis_idx, frame=f + 1)
+
+    _set_linear(act)
+    _push_to_nla(obj, act, state_name)
+
+    # Reset scale
+    obj.scale[axis_idx] = 1.0
+
+
 def animate_static(obj, state_name, duration=2.0):
     """Create a static (no-motion) animation for a state.
 

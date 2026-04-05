@@ -317,14 +317,66 @@ Updates appended after each work session. Tracks velocity for timeline projectio
 - **Blockers**: None
 - **Next session goal**: Create remaining building models (smelter, splitter, junction, tunnel, sink) or P3.1 (RoundManager)
 
+### Session 12 -- Drill UV Fix + Detail Pass
+- **Date**: 2026-04-05
+- **Hours**: ~0.5h (late night session, ~01:50-02:20 MSK)
+- **Work done**:
+  - **UV fix**: Added proper UV generation to all cylindrical/box prefabs — cylinder, box, cone, pipe, piston. Textures were stretching badly because prefabs had no UVs and relied on Blender's `smart_project` which produces poor islands for cylinders. Now each prefab generates world-space-proportional UVs (cylindrical for round surfaces, per-face planar for boxes).
+  - **Drill detail pass**: Expanded drill model from ~15 parts to ~60+. Added: base platform with corner feet, derrick reinforcement rings (x3), diagonal support struts (x4), control panel with gauge (copper rim) + colored knobs, valve wheel on pipe, side tank with hemisphere cap + bands + feed pipe, plumbing (vertical pipe, connecting pipe, elbow), wiring/cables (x3), exhaust rain cap + mounting bracket wedge, hazard stripe, gear axle caps, ~24 extra bolts on body sides and band.
+  - Removed BackPipe and GearGuard after user review (pipe stuck out, panel clipped into gears).
+  - Added hemisphere and wedge prefab imports to drill model.
+- **Stats**: 6 prefab files edited (UV), 1 scene file rewritten, drill rebuilt 3 times
+- **Decisions made**:
+  - Prefabs own their UVs — no more relying on smart_project fallback
+  - UV normalization: divide by max_dim so texture_library mapping node scales correctly
+  - Detail density: every viewing angle should have visual interest (pipes, knobs, brackets)
+- **Blockers**: None
+- **Next session goal**: Create remaining building models (ART3D.1 smelter, ART3D.2 splitter, etc.) or P3.1 (RoundManager)
+
+### Session 13 -- Full 3D Asset Pipeline (ART3D.1-ART3D.15)
+- **Date**: 2026-04-05
+- **Hours**: ~3.2h (overnight session, 02:18-05:34 MSK, includes 2h sleep)
+- **Work done**:
+  - **New prefabs** (3): `sphere.py`, `crystal.py` (hex prism clusters), `torus.py`
+  - **ART3D.5**: Source + Sink debug buildings -- green arrow up / red grate funnel
+  - **ART3D.1**: Smelter 3D model -- wide crucible with fire, dual hoppers, chimney, gears, 60+ parts
+  - **ART3D.2**: Splitter 3D model -- round body, rotating distributor hub, 3 output chutes at 120 degrees
+  - **ART3D.3**: Conveyor belt 3D model -- low track with rollers, side walls, directional arrows
+  - **ART3D.4**: Junction (4-way crossover with raised guide arches) + Tunnel (arch portals with dark void)
+  - **ART3D.6**: M1 deposits -- Pyromite (jagged volcanic cones), Crystalline (hex crystal clusters), Biovine (mushroom/organic blobs)
+  - **ART3D.7**: Post-M1 deposits -- Voltite (zig-zag lightning shards), Umbrite (amorphous dark mass), Resonite (crystals with torus rings)
+  - **ART3D.8**: 6 elemental item models (0.2-unit scale, color-coded with distinct silhouettes)
+  - **ART3D.9**: 15 combination item models (all pairwise combos of 6 elements)
+  - **ART3D.10**: Tendril Crawler monster -- psychedelic sphere with curving tendrils, neon green eye, torus collar
+  - **ART3D.11**: Acid Bloom (toxic flower/fungus) + Phase Shifter (geometric with orbiting torus rings)
+  - **ART3D.12**: Player character -- chunky industrial worker with yellow hardhat, walk/run/build animations
+  - **ART3D.13**: 6 elemental projectiles (fire teardrop, ice shard, nature spore, lightning bolt, shadow orb, force diamond)
+  - **ART3D.14**: Terrain features -- rock cluster, chasm pit, rubble debris pile
+  - **ART3D.15**: Night-mode variants -- conveyor wall (spikes+reinforcement), smelter turret (weapon barrel), splitter multi-turret (3 barrels), drill cache (armored retracted derrick)
+  - **Shared infrastructure**: `export_helpers.py`, `animate_scale()` in anim_helpers, elements palette extended with post-M1 colors
+  - **Critic reviews**: 2 full reviews covering all models. Fixed junction height issue (added raised guide arches). Code duplication flagged for future cleanup.
+  - **Every model ships in 2 versions**: flat (palette colors only) + textured (PBR from Poly Haven)
+- **Stats**: 15 generation scripts, 3 new prefabs, 100+ model files (.glb + .blend), 200+ inspect screenshots
+- **Asset summary**:
+  - 7 buildings (drill existed + 6 new): smelter, splitter, conveyor, junction, tunnel, source, sink
+  - 4 night-mode variants: conveyor wall, smelter turret, splitter turret, drill cache
+  - 6 deposits: pyromite, crystalline, biovine, voltite, umbrite, resonite
+  - 21 items: 6 base elements + 15 combinations
+  - 3 monsters: tendril crawler, acid bloom, phase shifter
+  - 1 player character
+  - 6 projectiles
+  - 3 terrain features: rock, chasm, rubble
+- **Blockers**: None
+- **Next session goal**: P3.1 RoundManager (gameplay mechanics) or 3D.11 grid overlay
+
 ---
 
 ## Velocity Tracking
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total sessions | 12 | |
-| Total hours | 13.7 | |
+| Total sessions | 14 | |
+| Total hours | 17.4 | |
 | Factor baseline | ~42h over 2 weeks | 3h/day evenings |
 | Estimated M1 hours | 40-60h | ~2-3 weeks at 3h/day |
 | Estimated M2 hours | 40-60h | ~2-3 weeks at 3h/day |
