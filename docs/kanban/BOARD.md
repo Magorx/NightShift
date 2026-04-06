@@ -4,90 +4,14 @@
 
 ## Done (move to BOARD_SOLVED.md next session)
 
+### **P5.1** Monster base class + Tendril Crawler `1.5h` -> `0.3h actual`
+### **P5.2** Monster spawner `1h` -> `0.15h actual`
+### **P5.3** Monster pathfinding (A*) `1h` -> `0.15h actual`
+### **P5.4** Monster-building combat `1h` -> `0.2h actual`
+### **P5.5** Fight phase end condition `0.5h` -> `0.15h actual`
+### **P5.6** Sim test: full combat loop `0.5h` -> `0.5h actual`
+
 ## Backlog
-
-### **P5.1** Monster base class + Tendril Crawler `1.5h`
-
-  - tags: [phase-5, monsters]
-  - priority: medium
-  - steps:
-      - [ ] Create `monsters/monster_base.gd` -- HP, speed, damage, pathfinding, attack
-      - [ ] Create `monsters/tendril_crawler/tendril_crawler.gd` -- line destruction pattern
-      - [ ] Create `monsters/tendril_crawler/tendril_crawler.tscn` -- sprite, collision
-      - [ ] Placeholder sprite: 16x16 pulsating geometric shape
-    ```md
-    First monster type. Follows A* path toward nearest building, attacks in melee range.
-    Original estimate 3h, recalibrated to 1.5h (most complex novel card in M1).
-    ```
-
-### **P5.2** Monster spawner `1h`
-
-  - tags: [phase-5, monsters]
-  - priority: medium
-  - steps:
-      - [ ] Create `scripts/game/monster_spawner.gd` -- connects to RoundManager
-      - [ ] Spawn at map edges during fight phase, avoid walls
-      - [ ] Wave scaling: round_1_count=5, count_per_round=3, spawn_interval=2.0s
-    ```md
-    Spawns monsters at map edges with wave scaling per round.
-    Original estimate 2h, recalibrated to 1h.
-    ```
-
-### **P5.3** Monster pathfinding (A*) `1h`
-
-  - tags: [phase-5, monsters]
-  - priority: medium
-  - steps:
-      - [ ] Create `scripts/game/monster_pathfinding.gd` -- wraps AStar2D
-      - [ ] Build grid from GameManager.buildings (wall-mode conveyors are impassable)
-      - [ ] Shared grid rebuilt once per fight start + when buildings destroyed
-      - [ ] Individual monsters query for paths
-    ```md
-    Risk: performance with 50+ monsters. Use shared grid, batch pathfinding, limit recalculation.
-    Original estimate 2.5h, recalibrated to 1h.
-    ```
-
-### **P5.4** Monster-building combat `1h`
-
-  - tags: [phase-5, combat]
-  - priority: medium
-  - steps:
-      - [ ] Monsters attack buildings when adjacent (Tendril Crawler: 1 building per attack)
-      - [ ] Turret projectiles damage monsters via collision
-      - [ ] Monster death: no drops (currency comes with shop system)
-      - [ ] Monsters deal damage to player if adjacent, player can dodge
-    ```md
-    Monster-building and monster-player combat interactions.
-    Original estimate 2h, recalibrated to 1h.
-    ```
-
-### **P5.5** Fight phase end condition `0.5h`
-
-  - tags: [phase-5, core]
-  - priority: medium
-  - workload: Normal
-  - steps:
-      - [ ] End fight when all monsters dead OR timer expires
-      - [ ] Timer expiry: remaining monsters flee/despawn
-      - [ ] All buildings destroyed: game over
-      - [ ] Simple "Game Over" screen with "Return to Menu" button
-    ```md
-    Win/lose conditions for fight phase.
-    Original estimate 1h, recalibrated to 0.5h.
-    ```
-
-### **P5.6** Sim test: full combat loop `0.5h`
-
-  - tags: [phase-5, test]
-  - priority: medium
-  - workload: Normal
-  - steps:
-      - [ ] Run 3 full rounds: build, survive waves, verify damage and kills
-      - [ ] Validate: sim passes headless
-    ```md
-    End-to-end combat simulation.
-    Original estimate 1.5h, recalibrated to 0.5h.
-    ```
 
 ### **P6.1** Simplify player inventory to 8 slots `0.25h`
 
@@ -215,6 +139,10 @@
   - tags: [botplayer, testing, verification]
   - priority: medium
 
+### Bug: conveyors restore into wrong direction after the night. Also they are offset in night mode
+
+  - defaultExpanded: false
+
 ## Estimate Summary
 
 ## Post-M1 Backlog
@@ -275,4 +203,3 @@
 ### Demo build for Next Fest
 
   - tags: [post-m1, business]
-

@@ -14,6 +14,12 @@
 ### **P4.4** Resource memory for buildings `0.5h` -> `0.05h actual`
 ### **P4.5** Night transform 3D models `2h` -> `0.2h actual`
 ### **P4.6** Sim test: transformation `0.25h` -> `0.1h actual`
+### **P5.1** Monster base class + Tendril Crawler `1.5h` -> `0.3h actual`
+### **P5.2** Monster spawner `1h` -> `0.15h actual`
+### **P5.3** Monster pathfinding (A*) `1h` -> `0.15h actual`
+### **P5.4** Monster-building combat `1h` -> `0.2h actual`
+### **P5.5** Fight phase end condition `0.5h` -> `0.15h actual`
+### **P5.6** Sim test: full combat loop `0.5h` -> `0.5h actual`
 
 ### **MAP.1** Noise-based 3D terrain elevation `2h` -> `1.7h`
 
