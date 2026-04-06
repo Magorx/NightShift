@@ -2,6 +2,19 @@
 
 ## Done
 
+### **P3.1** RoundManager autoload singleton `1h` -> `0.05h actual`
+### **P3.2** Phase HUD: timer + round counter `0.5h` -> `0.05h actual`
+### **P3.3** Build phase: enable placement, conveyors run `0.5h` -> `0.03h actual`
+### **P3.4** Fight phase: freeze factory, placeholder combat `0.5h` -> `0.03h actual`
+### **P3.5** Day/night visual shift `0.5h` -> `0.03h actual`
+### **P3.6** Sim test: round cycling `0.5h` -> `0.05h actual`
+### **P4.1** General HP component `0.5h` -> `0.1h actual`
+### **P4.2** Night transform: conveyors become walls `1h` -> `0.15h actual`
+### **P4.3** Aiming system + turret behavior `1.5h` -> `0.15h actual`
+### **P4.4** Resource memory for buildings `0.5h` -> `0.05h actual`
+### **P4.5** Night transform 3D models `2h` -> `0.2h actual`
+### **P4.6** Sim test: transformation `0.25h` -> `0.1h actual`
+
 ### **MAP.1** Noise-based 3D terrain elevation `2h` -> `1.7h`
 
   - tags: [map-gen, core]
