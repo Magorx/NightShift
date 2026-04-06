@@ -63,6 +63,9 @@ func _transform_conveyor(conv: ConveyorBelt) -> void:
 	conv._day_rotation_steps = conv._current_rotation_steps
 	# Stop item pushing
 	conv.set_physics_process(false)
+	# Swap to night model: turn variants → tower, others → wall
+	var night_variant: StringName = &"tower" if conv._current_variant in ConveyorBelt.TURN_VARIANTS else &"wall"
+	conv._swap_model(night_variant, 0)
 
 func _restore_conveyor(conv: ConveyorBelt) -> void:
 	conv.is_night_form = false

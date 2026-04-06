@@ -21,7 +21,12 @@ const VARIANT_SCENES := {
 	&"conveyor_two_straight": preload("res://buildings/conveyor/models/conveyor_two_straight.glb"),
 	&"conveyor_two_turn": preload("res://buildings/conveyor/models/conveyor_two_turn.glb"),
 	&"conveyor_cross": preload("res://buildings/conveyor/models/conveyor_cross.glb"),
+	&"wall": preload("res://buildings/conveyor/models/wall.glb"),
+	&"tower": preload("res://buildings/conveyor/models/tower.glb"),
 }
+
+## Turn variants that become towers at night (taller, elevated vantage).
+const TURN_VARIANTS: Array[StringName] = [&"conveyor_turn", &"conveyor_two_turn"]
 
 ## Base model transform from conveyor.tscn (-90° Y rotation aligning model to building).
 const BASE_MODEL_TRANSFORM := Transform3D(
