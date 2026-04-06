@@ -101,7 +101,6 @@ func build(map_size: int, tile_types: PackedByteArray, _variants: PackedByteArra
 			# Check 4 neighbors: +X, -X, +Z, -Z
 			_add_side_walls(st, x, y, h, col, map_size)
 
-	st.generate_normals()
 	var mesh := st.commit()
 	_mesh_instance.mesh = mesh
 
@@ -210,8 +209,8 @@ func _add_top_face(st: SurfaceTool, x: int, y: int, h: float, col: Color, tex_la
 
 	st.set_color(col)
 	st.set_uv(Vector2(tex_layer, 0.0))
+	st.set_normal(Vector3.UP)
 
-	# Clockwise winding from above → Godot generate_normals() points UP (+Y)
 	# Triangle 1
 	st.add_vertex(Vector3(x0, h, z0))
 	st.add_vertex(Vector3(x1, h, z1))
@@ -254,6 +253,7 @@ func _add_side_walls(st: SurfaceTool, x: int, y: int, h: float, col: Color, map_
 func _add_wall_quad(st: SurfaceTool, x: int, y: int, h_top: float, h_bottom: float, dx: int, dz: int, col: Color) -> void:
 	st.set_color(col)
 	st.set_uv(Vector2(NO_TEXTURE_LAYER, 0.0))
+	st.set_normal(Vector3(dx, 0, dz))
 
 	# Determine the edge of this tile facing the neighbor
 	var x0: float
@@ -282,7 +282,6 @@ func _add_wall_quad(st: SurfaceTool, x: int, y: int, h_top: float, h_bottom: flo
 		z0 = float(y) - 0.5
 		z1 = float(y) - 0.5
 
-	# CW winding → outward-facing normals via generate_normals()
 	# Triangle 1
 	st.add_vertex(Vector3(x0, h_top, z0))
 	st.add_vertex(Vector3(x1, h_bottom, z1))
