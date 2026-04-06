@@ -7,6 +7,10 @@ extends BuildingLogic
 var rotation: int = 0
 var converter_type: String = "smelter"
 
+## Night mode: when true, crafting is paused and turret fires instead.
+var night_mode: bool = false
+var turret: TurretBehavior = null
+
 var recipes: Array = []:
 	set(value):
 		recipes = value
@@ -61,6 +65,11 @@ func _build_input_caps() -> void:
 				_input_caps[inp.item.id] = need
 
 func _physics_process(delta: float) -> void:
+	if night_mode:
+		# Turret handles its own _physics_process; skip crafting.
+		_update_building_sprites(turret != null and turret.active, delta)
+		return
+
 	_try_consume_inputs()
 
 	if _active_recipe:
@@ -139,6 +148,25 @@ func get_progress() -> float:
 		return clampf(_craft_timer / _active_recipe.craft_time, 0.0, 1.0)
 	return 0.0
 
+## Return the item id of the last produced resource (for element detection).
+func get_last_resource() -> StringName:
+	if _last_recipe and _last_recipe.outputs.size() > 0:
+		return _last_recipe.outputs[0].item.id
+	return &""
+
+## Toggle night mode. When enabled, crafting pauses and turret fires.
+func set_night_mode(enabled: bool) -> void:
+	night_mode = enabled
+	if enabled:
+		if not turret:
+			turret = TurretBehavior.new()
+			turret.name = "TurretBehavior"
+			add_child(turret)
+		turret.activate(get_last_resource())
+	else:
+		if turret:
+			turret.deactivate()
+
 func mark_configs_dirty() -> void:
 	_configs_dirty = true
 
@@ -150,6 +178,7 @@ func serialize_state() -> Dictionary:
 	state["active_recipe_id"] = str(_active_recipe.id) if _active_recipe else ""
 	state["last_recipe_id"] = str(_last_recipe.id) if _last_recipe else ""
 	state["input_counts"] = _input_counts.duplicate()
+	state["night_mode"] = night_mode
 	var configs_data: Array = []
 	for config in recipe_configs:
 		configs_data.append(config.serialize())
@@ -176,6 +205,8 @@ func deserialize_state(state: Dictionary) -> void:
 	if state.has("recipe_configs"):
 		RecipeConfig.deserialize_into(recipe_configs, state["recipe_configs"])
 		_configs_dirty = true
+	if state.get("night_mode", false):
+		set_night_mode.call_deferred(true)
 
 # ── Info panel ─────────────────────────────────────────────────────────────────
 
