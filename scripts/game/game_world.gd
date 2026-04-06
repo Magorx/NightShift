@@ -30,8 +30,10 @@ var _deposit_scenes: Dictionary = {
 }
 var _day_night_script = preload("res://scripts/game/day_night_visual.gd")
 var _night_transform_script = preload("res://scripts/game/night_transform.gd")
+var _monster_spawner_script = preload("res://scripts/game/monster_spawner.gd")
 var _day_night: Node
 var _night_transform: Node
+var _monster_spawner: Node
 var _pixel_art_rect: ColorRect
 var _popup: PanelContainer
 var _ground_tooltip: PanelContainer
@@ -171,8 +173,17 @@ func _ready() -> void:
 	_night_transform.name = "NightTransform"
 	add_child(_night_transform)
 
-	# Wire RoundManager phase changes
+	# Monster spawner (spawns monsters during fight phase)
+	_monster_spawner = _monster_spawner_script.new()
+	_monster_spawner.name = "MonsterSpawner"
+	add_child(_monster_spawner)
+	_monster_spawner.setup($ObjectLayer/ItemLayer)
+	_monster_spawner.all_monsters_dead.connect(_on_all_monsters_dead)
+
+	# Wire RoundManager phase changes and game over
 	RoundManager.phase_changed.connect(_on_phase_changed)
+	RoundManager.game_over.connect(_on_game_over)
+	BuildingRegistry.building_removed.connect(_on_building_removed)
 	# Auto-start run when game world loads
 	RoundManager.start_run()
 
@@ -335,6 +346,51 @@ func _on_phase_changed(phase: StringName) -> void:
 			build_system.set_enabled(false)
 			GameManager.building_tick_system.set_physics_process(false)
 			print("[WORLD] Fight phase — factory frozen, placement disabled")
+
+func _on_all_monsters_dead() -> void:
+	RoundManager.end_fight_early()
+
+func _on_building_removed(_grid_pos: Vector2i) -> void:
+	# Check for game over: all buildings destroyed during fight
+	if RoundManager.current_phase == RoundManager.Phase.FIGHT:
+		if BuildingRegistry.unique_buildings.is_empty():
+			RoundManager.trigger_game_over()
+
+func _on_game_over() -> void:
+	print("[WORLD] Game Over!")
+	_show_game_over_screen()
+
+func _show_game_over_screen() -> void:
+	var overlay := ColorRect.new()
+	overlay.color = Color(0.0, 0.0, 0.0, 0.6)
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_preset(Control.PRESET_CENTER)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+
+	var title := Label.new()
+	title.text = "GAME OVER"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 48)
+	title.add_theme_color_override("font_color", Color(0.9, 0.2, 0.2))
+	vbox.add_child(title)
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 20)
+	vbox.add_child(spacer)
+
+	var btn := Button.new()
+	btn.text = "Return to Menu"
+	btn.custom_minimum_size = Vector2(200, 40)
+	btn.pressed.connect(func():
+		get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+	)
+	vbox.add_child(btn)
+
+	overlay.add_child(vbox)
+	$UI.add_child(overlay)
 
 func _debug_action() -> void:
 	var count := 0

@@ -4,6 +4,7 @@ extends Node
 ## Extracted from GameManager to separate building concerns.
 
 signal building_placed(building_id: StringName, grid_pos: Vector2i)
+signal building_removed(grid_pos: Vector2i)
 
 # Building registry: id -> BuildingDef
 var building_defs: Dictionary = {}
@@ -248,6 +249,7 @@ func remove_building(grid_pos: Vector2i) -> void:
 
 	building.queue_free()
 	_notify_adjacent_conveyors(grid_pos)
+	building_removed.emit(grid_pos)
 
 ## Tell adjacent conveyors to re-evaluate their shape after a placement or removal.
 func _notify_adjacent_conveyors(grid_pos: Vector2i) -> void:

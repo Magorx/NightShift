@@ -6,6 +6,7 @@ extends Node
 signal phase_changed(phase: StringName)
 signal round_started(round_number: int)
 signal round_ended(round_number: int)
+signal game_over()  # all buildings destroyed
 
 enum Phase { BUILD, FIGHT }
 
@@ -62,6 +63,19 @@ func stop_run() -> void:
 func skip_phase() -> void:
 	if is_running:
 		_advance_phase()
+
+## Called when all monsters are dead — end fight phase early.
+func end_fight_early() -> void:
+	if is_running and current_phase == Phase.FIGHT:
+		print("[ROUND] Fight ended early — all monsters dead")
+		_advance_phase()
+
+## Called when all buildings are destroyed — game over.
+func trigger_game_over() -> void:
+	is_running = false
+	set_physics_process(false)
+	game_over.emit()
+	print("[ROUND] GAME OVER — all buildings destroyed")
 
 # ── Internal ────────────────────────────────────────────────────────────
 
