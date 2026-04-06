@@ -29,8 +29,10 @@ func _transform_to_night() -> void:
 		logic.is_night_mode = true
 		if logic is ConveyorBelt:
 			_transform_conveyor(logic)
+		elif logic is ConverterLogic:
+			logic.set_night_mode(true)
 		else:
-			# Non-conveyor buildings: stop production, turret system handles the rest
+			# Other buildings (drills, etc.): stop production
 			logic.set_physics_process(false)
 	print("[NIGHT] Transformed %d buildings to night form" % BuildingRegistry.unique_buildings.size())
 
@@ -46,6 +48,8 @@ func _restore_to_day() -> void:
 		logic.is_night_mode = false
 		if logic is ConveyorBelt:
 			_restore_conveyor(logic)
+		elif logic is ConverterLogic:
+			logic.set_night_mode(false)
 		else:
 			logic.set_physics_process(true)
 	print("[NIGHT] Restored %d buildings to day form" % BuildingRegistry.unique_buildings.size())
