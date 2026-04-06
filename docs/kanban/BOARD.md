@@ -5,26 +5,40 @@
 ## Done (move to BOARD_SOLVED.md next session)
 
 ### **P3.1** RoundManager autoload singleton `1h` -> `0.05h actual`
+
+
 ### **P3.2** Phase HUD: timer + round counter `0.5h` -> `0.05h actual`
+
+
 ### **P3.3** Build phase: enable placement, conveyors run `0.5h` -> `0.03h actual`
+
+
 ### **P3.4** Fight phase: freeze factory, placeholder combat `0.5h` -> `0.03h actual`
+
+
 ### **P3.5** Day/night visual shift `0.5h` -> `0.03h actual`
+
+
 ### **P3.6** Sim test: round cycling `0.5h` -> `0.05h actual`
+
 
 ## Backlog
 
-### **P4.1** Building HP component `0.5h`
+### **P4.1** General HP component `0.5h`
 
   - tags: [phase-4, combat]
   - priority: medium
   - workload: Normal
+  - defaultExpanded: false
   - steps:
-      - [ ] Create `buildings/shared/building_health.gd` -- HP, max_hp, damage/heal methods
-      - [ ] Damage visual states: cracks at 75%, scarring at 50%, heavy at 25%, destroyed at 0%
-      - [ ] Add `var health = null` to `building_logic.gd` (same pattern as energy was)
-      - [ ] On destroy: remove building via GameManager, leave rubble marker
+      - [ ] Create `scripts/game/health_component.gd` -- general-purpose HP node: max_hp, current_hp, damage(amount), heal(amount), signals (damaged, healed, died)
+      - [ ] Damage visual states for buildings: cracks at 75%, scarring at 50%, heavy at 25%, destroyed at 0%
+      - [ ] Attach to buildings via `building_logic.gd` (same pattern as energy was)
+      - [ ] On building destroy: remove building via GameManager, leave rubble marker
+      - [ ] Reusable for monsters, player, and any future destructible entity
     ```md
-    BuildingHealth component, same architecture pattern as the removed BuildingEnergy.
+    General-purpose HealthComponent, not building-specific. Will be used by buildings, monsters,
+    player -- everything that has HP. Same architecture pattern as the removed BuildingEnergy.
     Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
@@ -33,40 +47,87 @@
   - tags: [phase-4, transform]
   - priority: medium
   - steps:
+      - [ ] Conveyors always have HP (via HealthComponent from P4.1) -- they are normal buildings, damage persists across phases
       - [ ] Create `scripts/game/night_transform.gd` -- iterates buildings, applies night state
       - [ ] Register with `RoundManager.phase_changed`
-      - [ ] On fight: conveyors gain HP, block monster pathing, stop moving items
-      - [ ] Swap conveyor sprite to wall variant (darker, raised look)
-      - [ ] Add wall state and HP values to `buildings/conveyor/conveyor_belt.gd`
+      - [ ] On fight: conveyors block monster pathing, stop moving items
+      - [ ] Straight conveyors → walls (1-tile height barriers)
+      - [ ] Turn conveyors → towers (2-tile height constructs, elevated vantage)
+      - [ ] Swap to night-form model (wall/tower), swap back on day
+      - [ ] Damage from previous nights persists until the player repairs the conveyor
     ```md
     Core Night Shift mechanic: your conveyor layout IS your defense layout.
+    Conveyors always have HP like any other building -- they don't magically gain it at night.
+    If a conveyor gets damaged during a night, it stays damaged until repaired.
+    Straight conveyors become walls, turn conveyors become towers (taller, more strategic).
     Original estimate 2h, recalibrated to 1h.
     ```
 
-### **P4.3** Night transform: converters become turrets `1h`
+### **P4.3** Aiming system + turret behavior `1.5h`
 
-  - tags: [phase-4, transform]
+  - tags: [phase-4, combat, aiming]
   - priority: medium
   - steps:
-      - [ ] Create `scripts/game/turret_behavior.gd` -- targeting, firing logic
+      - [ ] Create `scripts/game/aim_component.gd` -- general-purpose aiming node: given a target position, compute the rotation/transform to face it. Usable by turrets, shooting monsters, player
+      - [ ] Supports configurable turn speed (instant snap vs smooth tracking), aim constraints (e.g. max angle)
+      - [ ] Create `scripts/game/turret_behavior.gd` -- uses AimComponent, handles target selection (nearest enemy in range), firing cooldown
       - [ ] Create `scripts/game/projectile.gd` + `scenes/game/projectile.tscn`
       - [ ] Add `last_processed_element` to `converter.gd`, toggle day/night behavior
       - [ ] Turret fires projectiles based on last processed resource, nearest monster in range
     ```md
+    General aiming system first, then turret on top. AimComponent is a reusable node:
+    "I want to look at this position, give me the right transform." Used by turrets,
+    shooting monsters, and player aiming alike. Then turret behavior composes
+    AimComponent + firing logic for the converter night transform.
     Converters become elemental turrets at night. Projectile color matches element.
-    Original estimate 2h, recalibrated to 1h.
+    Original estimate 2h, bumped to 1.5h to account for the general aiming system.
     ```
 
-### **P4.4** Sim test: transformation `0.25h`
+### **P4.4** Resource memory for buildings `0.5h`
+
+  - tags: [phase-4, combat, transform]
+  - priority: medium
+  - steps:
+      - [ ] Drills remember the resource type they last mined (e.g. iron, copper) -- stored as `last_resource: ItemDef`
+      - [ ] Converters remember the last recipe they processed -- stored as `last_recipe: RecipeDef`
+      - [ ] This determines the element/damage type when buildings transform at night
+      - [ ] Persist across day/night transitions within the same run
+    ```md
+    Buildings need to remember what they produced so their night form knows what
+    damage type to deal. Drill on iron ore → fire element turret, converter
+    that last ran copper wire recipe → electric element, etc.
+    ```
+
+### **P4.5** Night transform 3D models `2h`
+
+  - tags: [phase-4, art, blender]
+  - priority: medium
+  - steps:
+      - [ ] Wall model (straight conveyor night form): 1-tile height, solid barrier look
+      - [ ] Tower model (turn-conveyor night form): 2-tile height construct, watchtower feel
+      - [ ] Basic turret model (1x1 buildings like drill night form): small gun/cannon on a base
+      - [ ] Rocket turret model (smelter night form): larger, more intimidating launcher
+      - [ ] All models follow Blender pipeline: prefabs, NLA animations, .glb export
+      - [ ] Output to respective `buildings/<name>/models/` directories
+    ```md
+    Night-form 3D models for all building transformations:
+    - Straight conveyors → walls (1-tile height barriers)
+    - Turn conveyors → towers (2-tile height constructs)
+    - 1x1 buildings (drill etc.) → basic turrets
+    - Smelter → rocket turret (special, larger)
+    ```
+
+### **P4.6** Sim test: transformation `0.25h`
 
   - tags: [phase-4, test]
   - priority: medium
   - steps:
-      - [ ] Place buildings, trigger night, verify conveyors have HP
-      - [ ] Verify converters fire projectiles
+      - [ ] Place buildings, trigger night, verify conveyors have HP and transform to walls/towers
+      - [ ] Verify converters fire projectiles with correct element from last recipe
+      - [ ] Verify drills remember last resource and pick correct damage type
       - [ ] Validate: sim passes headless
     ```md
-    Automated test of building transformation.
+    Automated test of building transformation + resource memory.
     Original estimate 0.5h, recalibrated to 0.25h.
     ```
 
@@ -258,100 +319,28 @@
 
   - tags: [botplayer, testing, metrics]
   - priority: medium
-  - depends: BOT.1
-  - steps:
-      - [ ] Create `tests/bot/bot_metrics.gd` -- standalone metric tracker, receives events from BotPlayer
-      - [ ] Track placement metrics: buildings placed (by type), placement failures (by reason: occupied, off-deposit, overlap), total conveyors, total production buildings
-      - [ ] Track production metrics: poll `GameManager.items_delivered` every 60 ticks, record items/min throughput over time. Track which item types are being produced
-      - [ ] Track factory health: count idle drills (on deposit but output blocked), count disconnected buildings (no conveyor path to/from), count conveyor deadends
-      - [ ] Track stability: record any error prints or script errors caught during run (hook `printerr`)
-      - [ ] **Run summary**: at `sim_finish()`, print a structured report
-      - [ ] Optionally dump full timeline to JSON file (`tests/bot/results/<seed>.json`) for post-hoc analysis
-    ```md
-    The metric collector answers: "did the factory work?" and "did anything break?"
-    Original estimate 2h, recalibrated to 0.5h.
-    ```
 
 ### **BOT.3** Bot strategies: greedy builder + line builder `1h`
 
   - tags: [botplayer, testing, strategies]
   - priority: medium
-  - depends: BOT.1
-  - steps:
-      - [ ] Refactor BotBrain into a base class with virtual `decide(state: Dictionary) -> Dictionary` method
-      - [ ] **RandomBrain** (already built in BOT.1) -- move to its own file `tests/bot/brains/random_brain.gd`
-      - [ ] **GreedyBrain** (`tests/bot/brains/greedy_brain.gd`): prioritizes connecting deposits to smelters
-      - [ ] **LineBrain** (`tests/bot/brains/line_brain.gd`): builds long straight conveyor lines
-      - [ ] Each brain selectable via constructor: `BotPlayer.new(brain_type: StringName)` or sim argument
-      - [ ] Add `--bot-brain <name>` argument parsing in bot runner
-    ```md
-    Different brains stress different parts of the engine.
-    Original estimate 2.5h, recalibrated to 1h.
-    ```
 
 ### **BOT.4** Bot runner: batch execution + comparison `0.5h`
 
   - tags: [botplayer, testing, runner]
   - priority: medium
-  - depends: BOT.2, BOT.3
-  - steps:
-      - [ ] Create `tests/bot/run_bot_batch.sh` -- shell script that runs N bot simulations with different seeds
-      - [ ] Usage: `./tests/bot/run_bot_batch.sh --count 10 --brain random --duration 300`
-      - [ ] Create `tests/bot/run_bot.gd` -- entry point script that parses args
-      - [ ] Collect all JSON results into `tests/bot/results/batch_<timestamp>/`
-      - [ ] Print aggregate summary after batch
-      - [ ] Exit code 1 if any run crashed
-    ```md
-    The batch runner. Simple shell script + Godot entry point.
-    Original estimate 2h, recalibrated to 0.5h.
-    ```
 
 ### **BOT.5** Visual bot mode: watch the bot build `0.5h`
 
   - tags: [botplayer, testing, visual]
   - priority: low
-  - depends: BOT.1
-  - steps:
-      - [ ] Add `--visual` flag support to `run_bot.gd` -- opens windowed game, bot runs at 2x speed
-      - [ ] Render a marker sprite at the bot's virtual grid position
-      - [ ] Add bot action log overlay -- small text panel showing last 5 actions
-      - [ ] Camera follows bot position
-      - [ ] Don't auto-quit -- let the user watch and close manually
-    ```md
-    Debugging aid. Watch the bot build in real time.
-    Original estimate 1.5h, recalibrated to 0.5h.
-    ```
 
 ### **BOT.6** Sim test: bot smoke test `0.25h`
 
   - tags: [botplayer, testing, verification]
   - priority: medium
-  - depends: BOT.1, BOT.2
-  - steps:
-      - [ ] Create `tests/simulation/sim_bot_smoke.gd` extending `SimulationBase`
-      - [ ] Run RandomBrain bot for 60 seconds (3600 ticks) with seed 42
-      - [ ] Assert: no script errors during run
-      - [ ] Assert: at least 5 buildings placed (bot isn't stuck)
-      - [ ] Assert: at least 1 conveyor placed
-      - [ ] Assert: simulation completes without timeout
-      - [ ] Add to standard test suite (runs with `run_tests.gd`)
-    ```md
-    Minimal smoke test that the bot system itself works.
-    Original estimate 1h, recalibrated to 0.25h.
-    ```
 
 ## Estimate Summary
-
-| Phase | Cards | Old Total | New Total |
-|-------|-------|-----------|-----------|
-| P3 (RoundManager) | 6 | 9h | 3.5h est / 0.24h actual |
-| P4 (Transform) | 4 | 6.5h | 2.75h |
-| P5 (Monsters) | 6 | 12h | 5.5h |
-| P6 (Polish) | 6 | 9.5h | 3.75h |
-| BOT (Testing) | 6 | 12h | 3.75h |
-| **Total remaining** | **28** | **49h** | **19.25h** |
-
-Recalibration based on 24 sessions of velocity data. See BOARD_SOLVED.md for full analysis.
 
 ## Post-M1 Backlog
 
@@ -411,3 +400,4 @@ Recalibration based on 24 sessions of velocity data. See BOARD_SOLVED.md for ful
 ### Demo build for Next Fest
 
   - tags: [post-m1, business]
+

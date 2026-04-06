@@ -162,7 +162,7 @@ func _ready() -> void:
 	_day_night = _day_night_script.new()
 	_day_night.name = "DayNightVisual"
 	add_child(_day_night)
-	_day_night.setup($WorldEnvironment.environment, $DirectionalLight3D)
+	_day_night.setup($WorldEnvironment.environment, $SunLight, $MoonLight)
 
 	# Wire RoundManager phase changes
 	RoundManager.phase_changed.connect(_on_phase_changed)

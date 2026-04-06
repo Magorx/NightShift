@@ -11,7 +11,6 @@ const SPEED_LABELS := ["x0.25", "x0.5", "x1", "x1.5", "x2", "x3"]
 @onready var round_label: Label = %RoundLabel
 @onready var phase_label: Label = %PhaseLabel
 @onready var timer_label: Label = %TimerLabel
-@onready var phase_flash: ColorRect = %PhaseFlash
 @onready var skip_button: Button = %SkipButton
 @onready var slow_button: Button = %SlowButton
 @onready var speed_label: Label = %SpeedLabel
@@ -61,7 +60,6 @@ func _process(_delta: float) -> void:
 		_fps_frame_counter = 0
 		fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
 	_update_phase_timer()
-	_update_phase_flash(_delta)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"time_pause"):
@@ -126,8 +124,6 @@ func _on_inventory_button_gui_input(event: InputEvent) -> void:
 
 # ── Phase Display ─────────────────────────────────────────────────────────
 
-var _flash_alpha: float = 0.0
-
 ## Only update the timer text (runs every frame via _process).
 func _update_phase_timer() -> void:
 	if not RoundManager.is_running:
@@ -147,7 +143,6 @@ func _on_skip_pressed() -> void:
 
 ## Update round/phase labels + color (only on phase change, not every frame).
 func _on_phase_changed(_phase: StringName) -> void:
-	_flash_alpha = 0.4
 	_last_displayed_seconds = -1
 	round_label.text = "Round %d" % RoundManager.current_round
 	phase_label.text = RoundManager.get_phase_name().to_upper()
@@ -155,18 +150,6 @@ func _on_phase_changed(_phase: StringName) -> void:
 		phase_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.4))
 	else:
 		phase_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
-
-func _update_phase_flash(delta: float) -> void:
-	if _flash_alpha > 0.0:
-		_flash_alpha -= delta * 0.8
-		phase_flash.visible = true
-		phase_flash.color.a = maxf(_flash_alpha, 0.0)
-		if RoundManager.get_phase_name() == &"fight":
-			phase_flash.color = Color(1.0, 0.2, 0.1, phase_flash.color.a)
-		else:
-			phase_flash.color = Color(1.0, 1.0, 1.0, phase_flash.color.a)
-	else:
-		phase_flash.visible = false
 
 # ── Time Speed ────────────────────────────────────────────────────────────
 
