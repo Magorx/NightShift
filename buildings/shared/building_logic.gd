@@ -12,6 +12,7 @@ const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector
 
 var grid_pos: Vector2i
 var health: HealthComponent
+var is_night_mode: bool = false
 
 ## Get the grid cell adjacent to this building in the given direction.
 func adjacent_cell(dir_idx: int) -> Vector2i:
