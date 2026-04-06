@@ -9,52 +9,29 @@
   - tags: [monsters, spawning]
   - priority: high
 
-## Backlog
-
-### **BOT.1** BotPlayer base class + random build behavior `1h`
+### **BOT.1** BotPlayer base class + random build behavior `planned 1h / actual 0.4h`
 
   - tags: [botplayer, testing, infrastructure]
-  - priority: medium
-  - steps:
-      - [ ] Create `tests/bot/bot_player.gd` extending `SimulationBase`
-      - [ ] Implement `BotBrain` inner class -- the decision-maker that runs each tick
-      - [ ] `BotBrain` holds: player grid position, known deposits (scanned from `GameManager.deposits`), placed buildings list, current goal (enum: EXPLORE, BUILD, OBSERVE)
-      - [ ] **Random walk**: each decision tick (every ~60 frames), pick a random walkable grid cell within radius 10 of current position, set as move target. Move one cell per tick toward target (cardinal directions only, skip walls)
-      - [ ] **Random build**: when adjacent to an empty cell, roll a weighted random to place a building. Weights: conveyor 50%, drill 15% (only on deposit), smelter 15%, splitter 10%, source 5%, sink 5%. Pick random valid rotation (0-3). Skip if cell occupied or invalid (drill off-deposit, multi-cell overlap)
-      - [ ] **Conveyor chaining**: 30% chance after placing a conveyor to place 1-4 more in the same direction (capped by obstacles). This creates usable conveyor lines instead of scattered singles
-      - [ ] **Decision tick rate**: configurable `ticks_per_decision` (default 60 = 1 decision/sec at 60fps). Between decisions, bot just advances simulation time
-      - [ ] **Run config**: `bot_duration_seconds` (default 300 = 5 min game time), `bot_seed` (RNG seed for reproducibility)
-      - [ ] Log all actions to stdout: `[BOT] tick=120 action=place_building type=conveyor pos=(5,3) rot=0`
-    ```md
-    The core BotPlayer that makes random-but-valid decisions in headless simulation.
-    Similar scope to SCN.1 (0.4h actual from 4h estimate).
-    Original estimate 3h, recalibrated to 1h.
-    ```
 
-### **BOT.2** Metric collector + run summary `0.5h`
+### **BOT.2** Metric collector + run summary `planned 0.5h / actual 0h (part of BOT.1)`
 
   - tags: [botplayer, testing, metrics]
-  - priority: medium
 
-### **BOT.3** Bot strategies: greedy builder + line builder `1h`
+### **BOT.3** Bot strategies: greedy builder + line builder `planned 1h / actual 0.1h`
 
   - tags: [botplayer, testing, strategies]
-  - priority: medium
 
-### **BOT.4** Bot runner: batch execution + comparison `0.5h`
+### **BOT.4** Bot runner: batch execution + comparison `planned 0.5h / actual 0.1h`
 
   - tags: [botplayer, testing, runner]
-  - priority: medium
 
-### **BOT.5** Visual bot mode: watch the bot build `0.5h`
+### **BOT.5** Visual bot mode: watch the bot build `planned 0.5h / actual 0h (free via --visual flag)`
 
   - tags: [botplayer, testing, visual]
-  - priority: low
 
-### **BOT.6** Sim test: bot smoke test `0.25h`
+### **BOT.6** Sim test: bot smoke test `planned 0.25h / actual 0.1h`
 
   - tags: [botplayer, testing, verification]
-  - priority: medium
 
 ### ~~Bug: conveyors restore into wrong direction after the night. Also they are offset in night mode~~ FIXED
 
