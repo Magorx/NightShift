@@ -74,6 +74,11 @@ func _setup_health() -> void:
 	health.max_hp = DEFAULT_BUILDING_HP
 	add_child(health)
 	health.died.connect(_on_building_died)
+	# Health bar on the building root (Node3D), not on this Node
+	var hbar := HealthBar3D.new()
+	hbar.position = Vector3(0, 1.5, 0)
+	hbar.setup(health)
+	get_parent().add_child(hbar)
 
 func _on_building_died() -> void:
 	BuildingRegistry.remove_building(grid_pos)

@@ -4,12 +4,22 @@
 
 ## Done (move to BOARD_SOLVED.md next session)
 
-### **P5.1** Monster base class + Tendril Crawler `1.5h` -> `0.3h actual`
-### **P5.2** Monster spawner `1h` -> `0.15h actual`
-### **P5.3** Monster pathfinding (A*) `1h` -> `0.15h actual`
-### **P5.4** Monster-building combat `1h` -> `0.2h actual`
-### **P5.5** Fight phase end condition `0.5h` -> `0.15h actual`
-### **P5.6** Sim test: full combat loop `0.5h` -> `0.5h actual`
+### **SPAWN.1** Monster spawn area system `0.3h`
+
+  - tags: [monsters, spawning]
+  - priority: high
+  - planned: 0.5h | actual: 0.3h
+  - steps:
+      - [x] Add budget_cost to MonsterBase (default 2 for TendrilCrawler)
+      - [x] Create SpawnArea class with square (5x5) and line (8-cell) shapes
+      - [x] Create SpawnLogic base + OneByOne and AllTogether implementations
+      - [x] Rewrite MonsterSpawner: ring placement, budget distribution, area orchestration
+      - [x] Spawn area visuals: ground highlight mesh + searing particle emitter
+      - [x] Fix scn_fight_phase_end scenario (add more buildings to survive budget)
+    ```md
+    Replaced simple ring-spawner with SpawnArea zones.
+    Budget formula: 10*round + 2*round^1.5. Areas: 2-6 scaling with round.
+    ```
 
 ## Backlog
 
@@ -30,8 +40,10 @@
   - tags: [phase-6, player]
   - priority: low
   - steps:
+      - [x] LMB shoots turret-style projectiles when not in build/destroy mode
+      - [x] Aim at cursor ground pos + half player height offset
+      - [x] Debug aim line (red, neck→aim point, debug mode only)
       - [ ] Player moves freely during fight but cannot place buildings
-      - [ ] Add basic attack action (melee punch or elemental throw from inventory)
       - [ ] Keep simple for M1
     ```md
     Light player combat. No building placement during fight phase.
@@ -146,6 +158,93 @@
 ## Estimate Summary
 
 ## Post-M1 Backlog
+
+### **3D.1** Migrate grid from Vector2i to Vector3i `3h`
+
+  - tags: [post-m1, 3d-world, architecture]
+  - priority: high (blocks vertical building, foundations, caves)
+  - steps:
+      - [ ] Add z (vertical layer) to grid coordinates: `Vector2i` → `Vector3i` throughout codebase
+      - [ ] `BuildingRegistry.buildings`: key by `Vector3i`, queries accept z
+      - [ ] `GridUtils`: `grid_to_world()` / `world_to_grid()` handle Y-axis ↔ z-layer mapping
+      - [ ] `BuildingBase.grid_pos` → `Vector3i`, `building_id` lookups use 3D key
+      - [ ] `MapManager`: per-column ground level; `get_terrain_height(x, y)` returns base elevation, z-layers stack on top
+      - [ ] `BuildingLogic.DIRECTION_VECTORS` stays 2D (horizontal); add `UP`/`DOWN` as separate vertical constants
+      - [ ] `SaveManager`: serialize z coordinate in building entries (backward-compat: default z=0 for old saves)
+      - [ ] Update all `get_building_at()`, `can_place_building()`, `remove_building()` callers to pass z
+    ```md
+    Foundation of the 3D world. Every system that touches grid positions gets updated.
+    Horizontal game logic stays 2D (conveyors, IO zones). Vertical is a new axis for stacking.
+    Most buildings will be placed at z=0 — the z parameter defaults to ground level so
+    existing gameplay is unchanged after migration.
+    ```
+
+### **3D.2** Vertical placement UX `2h`
+
+  - tags: [post-m1, 3d-world, ux]
+  - priority: high (blocks foundations)
+  - depends: 3D.1
+  - steps:
+      - [ ] Auto-detect stacking height: placing on a cell finds the topmost solid block and stacks at z+1
+      - [ ] Ghost preview renders at correct Y elevation (terrain_height + z * LAYER_HEIGHT)
+      - [ ] `can_place_building()` enforces support rule: cell at (x, y, z-1) must be solid (terrain or building)
+      - [ ] Player destroy mode targets topmost building in column by default
+      - [ ] Click/inspect targets topmost building at grid (x, y) column
+      - [ ] Monster targeting: iterate by top-of-column (don't target buried buildings)
+    ```md
+    Makes vertical building feel natural. The player never manually selects a z-layer —
+    the system auto-stacks. Destroy peels from the top down. Monsters see the top.
+    ```
+
+### **3D.3** 3D terrain: caves and overhangs `4h`
+
+  - tags: [post-m1, 3d-world, terrain]
+  - priority: medium
+  - depends: 3D.1
+  - steps:
+      - [ ] Replace flat `terrain_heights: PackedFloat32Array` with volumetric or layered data (solid/air per cell per z-layer)
+      - [ ] Cave generation: predefined cave biomes carved into terrain, not player-dug
+      - [ ] Terrain collision for 3D volumes (update HeightMapShape3D or switch to trimesh chunks)
+      - [ ] Visual rendering: multi-layer terrain meshes with cave ceilings
+      - [ ] Pathfinding: A* grid accounts for solid/air per layer, monsters navigate cave interiors
+    ```md
+    Full 3D terrain. Caves are pre-generated map features, not player-created.
+    This is the most complex 3D card — can be deferred past 3D.1/3D.2 if vertical
+    building on flat terrain is sufficient for initial playtesting.
+    ```
+
+### **3D.4** Pathfinding for vertical world `1.5h`
+
+  - tags: [post-m1, 3d-world, pathfinding]
+  - priority: medium
+  - depends: 3D.1
+  - steps:
+      - [ ] Update A* grid to handle z-layers (separate walkable grid per layer, or 3D A*)
+      - [ ] Monsters walk on top of foundations/buildings (if `is_ground_level`)
+      - [ ] Ramps/stairs between z-layers (or vertical movement at designated cells)
+      - [ ] Monster targeting respects vertical distance, not just XZ
+    ```md
+    Monsters need to navigate a world with elevation. Can be scoped down for M2:
+    just block z>0 cells as walls and pathfind on z=0 only.
+    ```
+
+### **FOUND.1** Foundation building `1h`
+
+  - tags: [post-m1, buildings, structure]
+  - priority: medium
+  - depends: 3D.1, 3D.2
+  - steps:
+      - [ ] 3D model: 1x1x1 metal cube via Blender script (`tools/blender/scenes/foundation_model.py`)
+      - [ ] `buildings/foundation/`: `.gd` (extends BuildingLogic, no processing, no IO), `.tscn`, `.tres`
+      - [ ] BuildingDef: `category="structure"`, `is_ground_level=false`, no build cost for M2
+      - [ ] Night mode: `set_night_mode()` does nothing — stays a metal cube
+      - [ ] Any building can be placed at z+1 above a foundation (standard 3D.2 stacking rules)
+      - [ ] Destruction: top building destroyed first, foundation only when exposed (standard 3D.2 top-down destroy)
+    ```md
+    Trivial once 3D grid + vertical placement exist. A 1x1x1 cube that does nothing.
+    Player builds on top of it for elevation. At night it stays inert — a wall, basically.
+    Future: HP bonus for buildings on foundations, reinforced variants.
+    ```
 
 ### Shop system: random offerings between rounds
 

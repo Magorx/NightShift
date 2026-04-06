@@ -2,6 +2,12 @@
 
 ## Done
 
+### **P5.1** Monster base class + Tendril Crawler `1.5h` -> `0.3h actual`
+### **P5.2** Monster spawner `1h` -> `0.15h actual`
+### **P5.3** Monster pathfinding (A*) `1h` -> `0.15h actual`
+### **P5.4** Monster-building combat `1h` -> `0.2h actual`
+### **P5.5** Fight phase end condition `0.5h` -> `0.15h actual`
+### **P5.6** Sim test: full combat loop `0.5h` -> `0.5h actual`
 ### **P3.1** RoundManager autoload singleton `1h` -> `0.05h actual`
 ### **P3.2** Phase HUD: timer + round counter `0.5h` -> `0.05h actual`
 ### **P3.3** Build phase: enable placement, conveyors run `0.5h` -> `0.03h actual`

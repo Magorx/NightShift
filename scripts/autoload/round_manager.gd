@@ -13,11 +13,11 @@ enum Phase { BUILD, FIGHT }
 const PHASE_NAMES: Array[StringName] = [&"build", &"fight"]
 
 # ── Tuning ──────────────────────────────────────────────────────────────
-const BASE_BUILD_DURATION := 20 # 180.0  # seconds, round 1
+const BASE_BUILD_DURATION := 60 # 180.0  # seconds, round 1
 const BUILD_DECAY_PER_ROUND := 0 # 15.0 # seconds shorter each round
 const MIN_BUILD_DURATION := 5.0
 
-const BASE_FIGHT_DURATION := 10.0   # seconds, round 1
+const BASE_FIGHT_DURATION := 60.0   # seconds, round 1
 const FIGHT_GROWTH_PER_ROUND := 0 # 10.0 # seconds longer each round
 const MAX_FIGHT_DURATION := 180.0
 

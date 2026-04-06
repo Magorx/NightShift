@@ -75,6 +75,10 @@ func _setup_health() -> void:
 	health.max_hp = max_hp
 	add_child(health)
 	health.died.connect(_on_died)
+	var hbar := HealthBar3D.new()
+	hbar.position = Vector3(0, 1.2, 0)
+	hbar.setup(health)
+	add_child(hbar)
 
 func _setup_visual() -> void:
 	# Override in subclass to load model. Default: colored capsule.

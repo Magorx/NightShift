@@ -60,6 +60,17 @@ const BUILDING_COLLISION_LAYER := 2  # bit 2
 const GROUND_COLLISION_LAYER := 3  # bit 4
 const ITEM_COLLISION_LAYER := 4  # bit 8
 
+# -- Shooting -----------------------------------------------------------------
+const SHOOT_COOLDOWN := 0.3          # seconds between shots
+const SHOOT_SPEED := 12.0            # projectile speed (same as turrets)
+const SHOOT_DAMAGE := 25.0           # damage per bullet
+const NECK_HEIGHT := 0.6             # Y offset where bullets spawn from
+const AIM_HEIGHT_OFFSET := 0.35      # half player height, added to ground cursor pos
+
+var _shoot_cooldown_timer: float = 0.0
+var _debug_aim_mesh: MeshInstance3D
+var _debug_aim_imm: ImmediateMesh
+
 # -- Hand mining --------------------------------------------------------------
 const HAND_MINE_TIME := 1.0       # seconds per ore mined by hand
 const HAND_MINE_RANGE := 1.5      # max distance from player to deposit (1.5 tiles)
@@ -83,11 +94,17 @@ func _ready() -> void:
 	health.max_hp = MAX_HP
 	add_child(health)
 	health.died.connect(_die)
+	# Health bar (always visible for player)
+	var hbar := HealthBar3D.new()
+	hbar.position = Vector3(0, 2.0, 0)
+	hbar.setup(health, true)
+	add_child(hbar)
 	# Initialize inventory with empty slots
 	inventory.resize(INVENTORY_SLOTS)
 	for i in INVENTORY_SLOTS:
 		inventory[i] = null
 	spawn_position = position
+	_setup_debug_aim()
 
 func _physics_process(delta: float) -> void:
 	if health.is_dead:
@@ -100,6 +117,7 @@ func _physics_process(delta: float) -> void:
 	conveyor_push = Vector3.ZERO  # reset after movement consumes it
 	_handle_health_regen(delta)
 	_handle_hand_mining(delta)
+	_handle_shooting(delta)
 
 	# Apply velocity and move
 	move_and_slide()
@@ -322,6 +340,97 @@ func get_mine_progress() -> float:
 # TODO 3D.11: _draw() mining laser/highlight needs 3D equivalent
 # The old 2D _draw() calls (beam line, sparkle particles, progress arc)
 # will be reimplemented as 3D visuals or overlay in a later card.
+
+# -- Shooting -----------------------------------------------------------------
+
+func _get_aim_point() -> Vector3:
+	var ground_hit := GridUtils.raycast_mouse_to_world(get_viewport())
+	ground_hit.y += AIM_HEIGHT_OFFSET
+	return ground_hit
+
+func _get_shoot_origin() -> Vector3:
+	return global_position + Vector3(0.0, NECK_HEIGHT, 0.0)
+
+func _handle_shooting(delta: float) -> void:
+	_shoot_cooldown_timer = maxf(_shoot_cooldown_timer - delta, 0.0)
+
+	var wants_shoot := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	if not wants_shoot:
+		_update_debug_aim(false)
+		return
+
+	# Don't shoot in build/destroy mode
+	var build_system = get_parent().get_node_or_null("BuildSystem")
+	if build_system and (build_system.building_mode or build_system.destroy_mode):
+		_update_debug_aim(false)
+		return
+
+	# Mining takes priority over shooting
+	if _mining:
+		_update_debug_aim(false)
+		return
+
+	var aim_point := _get_aim_point()
+	var shoot_origin := _get_shoot_origin()
+	_update_debug_aim(true, shoot_origin, aim_point)
+
+	if _shoot_cooldown_timer > 0.0:
+		return
+
+	var direction := (aim_point - shoot_origin).normalized()
+	if direction.length_squared() < 0.0001:
+		return
+
+	var projectile := Projectile.new()
+	projectile.velocity = direction * SHOOT_SPEED
+	projectile.event = DamageEvent.create(SHOOT_DAMAGE, &"", self)
+	projectile.position = shoot_origin
+
+	var parent_node: Node = null
+	if GameManager.item_layer:
+		parent_node = GameManager.item_layer
+	else:
+		parent_node = get_tree().current_scene
+	if parent_node:
+		parent_node.add_child(projectile)
+
+	_shoot_cooldown_timer = SHOOT_COOLDOWN
+
+# -- Debug aim line -----------------------------------------------------------
+
+func _setup_debug_aim() -> void:
+	_debug_aim_imm = ImmediateMesh.new()
+	_debug_aim_mesh = MeshInstance3D.new()
+	_debug_aim_mesh.mesh = _debug_aim_imm
+	_debug_aim_mesh.name = "DebugAimLine"
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.1, 0.1, 0.9)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.no_depth_test = true
+	_debug_aim_mesh.material_override = mat
+	_debug_aim_mesh.top_level = true
+	add_child(_debug_aim_mesh)
+	_debug_aim_mesh.visible = false
+	SettingsManager.debug_mode_changed.connect(func(_enabled: bool):
+		if not _debug_aim_mesh.visible:
+			_debug_aim_imm.clear_surfaces()
+	)
+
+func _update_debug_aim(active: bool, from: Vector3 = Vector3.ZERO, to: Vector3 = Vector3.ZERO) -> void:
+	if not _debug_aim_imm:
+		return
+	if not SettingsManager.debug_mode or not active:
+		if _debug_aim_mesh.visible:
+			_debug_aim_mesh.visible = false
+			_debug_aim_imm.clear_surfaces()
+		return
+	_debug_aim_mesh.visible = true
+	_debug_aim_imm.clear_surfaces()
+	_debug_aim_imm.surface_begin(Mesh.PRIMITIVE_LINES)
+	_debug_aim_imm.surface_add_vertex(from)
+	_debug_aim_imm.surface_add_vertex(to)
+	_debug_aim_imm.surface_end()
 
 # -- Inventory ----------------------------------------------------------------
 

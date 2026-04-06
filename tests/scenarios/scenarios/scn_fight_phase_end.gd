@@ -11,7 +11,13 @@ func scenario_name() -> String:
 
 func setup_map() -> void:
 	map.clear_walls()
+	# Place several buildings so monsters don't trigger game over before timer expires
 	map.building(&"smelter", Vector2i(16, 16), 0)
+	map.building(&"smelter", Vector2i(16, 18), 0)
+	map.building(&"smelter", Vector2i(18, 16), 0)
+	map.building(&"smelter", Vector2i(18, 18), 0)
+	map.building(&"smelter", Vector2i(14, 16), 0)
+	map.building(&"smelter", Vector2i(14, 18), 0)
 	map.player_start(Vector2i(10, 10))
 
 func setup_monitors() -> void:
