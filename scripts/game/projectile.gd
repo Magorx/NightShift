@@ -8,8 +8,7 @@ extends Area3D
 ## The projectile creates its own CollisionShape3D and MeshInstance3D in _ready.
 
 var velocity: Vector3 = Vector3.ZERO
-var damage: float = 25.0
-var element: StringName = &""
+var event: DamageEvent
 var lifetime: float = 3.0
 
 var _age: float = 0.0
@@ -66,9 +65,5 @@ func _on_area_entered(area: Area3D) -> void:
 	queue_free()
 
 func _try_damage(target: Node) -> void:
-	# Forward-compatible: HealthComponent doesn't exist yet.
-	# When it does, buildings/monsters will have a `health` property.
-	if target.has_method("take_damage"):
-		target.take_damage(damage, element)
-	elif "health" in target and target.health != null and target.health.has_method("damage"):
-		target.health.damage(damage)
+	if event and target.has_method("take_damage"):
+		target.take_damage(event)

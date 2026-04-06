@@ -43,7 +43,7 @@ func run_scenario() -> void:
 	var killed := 0
 	for monster in get_tree().get_nodes_in_group(&"monsters"):
 		if is_instance_valid(monster) and monster is MonsterBase:
-			monster.take_damage(9999.0)
+			monster.take_damage(DamageEvent.create(9999.0))
 			killed += 1
 	print("[TEST] Killed %d monsters" % killed)
 
@@ -58,11 +58,11 @@ func run_scenario() -> void:
 		await bot.wait(2.5)
 		for monster in get_tree().get_nodes_in_group(&"monsters"):
 			if is_instance_valid(monster) and monster is MonsterBase:
-				monster.take_damage(9999.0)
+				monster.take_damage(DamageEvent.create(9999.0))
 		await bot.wait(2.5)
 		for monster in get_tree().get_nodes_in_group(&"monsters"):
 			if is_instance_valid(monster) and monster is MonsterBase:
-				monster.take_damage(9999.0)
+				monster.take_damage(DamageEvent.create(9999.0))
 		await bot.wait(1.0)
 
 	monitor.sample()

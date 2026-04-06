@@ -32,6 +32,9 @@ func damage(amount: float) -> void:
 	if current_hp <= 0.0:
 		died.emit()
 
+func revive(hp_amount: float = -1.0) -> void:
+	current_hp = hp_amount if hp_amount > 0.0 else max_hp
+
 func heal(amount: float) -> void:
 	if is_dead or amount <= 0.0:
 		return

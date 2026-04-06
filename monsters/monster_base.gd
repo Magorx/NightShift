@@ -16,6 +16,7 @@ var attack_damage: float = 15.0
 var attack_cooldown: float = 1.5
 var attack_range: float = 1.2  # world units — close to 1 tile
 var max_hp: float = 50.0
+var budget_cost: int = 2  # spawn budget points this monster costs
 
 # ── State ───────────────────────────────────────────────────────────────────
 enum State { IDLE, MOVING, ATTACKING, CHASING, DYING }
@@ -165,7 +166,7 @@ func _physics_process(delta: float) -> void:
 # ── Chase checks ────────────────────────────────────────────────────────────
 
 func _should_start_chasing() -> bool:
-	if not GameManager.player or GameManager.player._is_dead:
+	if not GameManager.player or GameManager.player.health.is_dead:
 		return false
 	var dist := _player_distance()
 	return dist <= CHASE_ENGAGE_RADIUS
@@ -300,7 +301,7 @@ func _process_movement(delta: float) -> void:
 func _process_chasing(delta: float) -> void:
 	# Check disengage
 	var dist := _player_distance()
-	if not GameManager.player or GameManager.player._is_dead or dist > _get_disengage_radius():
+	if not GameManager.player or GameManager.player.health.is_dead or dist > _get_disengage_radius():
 		state = State.IDLE
 		velocity.x = 0.0
 		velocity.z = 0.0
@@ -335,8 +336,8 @@ func _damage_nearby_buildings(delta: float) -> void:
 		var dist := global_position.distance_to(GridUtils.grid_to_world(building.grid_pos))
 		if dist <= NEARBY_BUILDING_DAMAGE_RANGE:
 			var logic: BuildingLogic = building.logic
-			if logic and logic.health and not logic.health.is_dead:
-				logic.health.damage(attack_damage)
+			if logic:
+				logic.take_damage(DamageEvent.create(attack_damage, &"", self))
 
 # ── Attack ──────────────────────────────────────────────────────────────────
 
@@ -363,8 +364,8 @@ func _do_attack() -> void:
 	if not _target_building or not is_instance_valid(_target_building):
 		return
 	var logic: BuildingLogic = _target_building.logic
-	if logic and logic.health:
-		logic.health.damage(attack_damage)
+	if logic:
+		logic.take_damage(DamageEvent.create(attack_damage, &"", self))
 	# Check if building died — find new target
 	if not is_instance_valid(_target_building) or (logic and logic.health and logic.health.is_dead):
 		_target_building = null
@@ -387,20 +388,19 @@ func _check_player_proximity(delta: float) -> void:
 	_player_attack_timer -= delta
 	if _player_attack_timer <= 0.0:
 		_player_attack_timer = PLAYER_ATTACK_COOLDOWN
-		if GameManager.player.has_method("take_damage"):
-			GameManager.player.take_damage(PLAYER_DAMAGE)
+		GameManager.player.take_damage(DamageEvent.create(PLAYER_DAMAGE, &"", self))
 
 # ── Damage ──────────────────────────────────────────────────────────────────
 
-func take_damage(amount: float, _element: StringName = &"") -> void:
+func take_damage(event: DamageEvent) -> void:
 	if health:
-		health.damage(amount)
-	# TODOCLAUDE: Once player damage source is tracked (DamageSystem refactor),
-	# trigger aggro only for player-dealt damage. For now, any damage triggers aggro.
-	_aggro_timer = AGGRO_DURATION
-	if state != State.DYING and state != State.ATTACKING:
-		state = State.CHASING
-		_repath_timer = 0.0
+		health.damage(event.amount)
+	# Aggro when damaged by player or player-owned sources (turret projectiles)
+	if event.source is Player or event.source is Projectile:
+		_aggro_timer = AGGRO_DURATION
+		if state != State.DYING and state != State.ATTACKING:
+			state = State.CHASING
+			_repath_timer = 0.0
 
 func _on_died() -> void:
 	state = State.DYING

@@ -56,23 +56,23 @@ func run_simulation() -> void:
 	sim_assert(player.collision_mask == (ground_bit | building_bit | item_bit), "Elevated collision mask unchanged")
 
 	# -- Test 7: Health system ------------------------------------------------
-	player.hp = 100.0
-	sim_assert(player.hp == 100.0, "Player starts at full HP")
+	player.health.revive()
+	sim_assert(player.health.current_hp == 100.0, "Player starts at full HP")
 
-	player.take_damage(30.0)
-	sim_assert(player.hp == 70.0, "Player took 30 damage (HP=%.0f)" % player.hp)
+	player.take_damage(DamageEvent.create(30.0))
+	sim_assert(player.health.current_hp == 70.0, "Player took 30 damage (HP=%.0f)" % player.health.current_hp)
 	sim_assert(player._regen_timer == 0.0, "Regen timer reset on damage")
 
 	player._regen_timer = 3.0
 	player._handle_health_regen(1.0)
-	sim_assert(player.hp == 70.0, "No regen before delay expires (timer=4.0 < 5.0)")
+	sim_assert(player.health.current_hp == 70.0, "No regen before delay expires (timer=4.0 < 5.0)")
 
 	player._regen_timer = 5.0
 	player._handle_health_regen(1.0)
-	sim_assert(player.hp > 70.0, "Health regenerating after delay (HP=%.1f)" % player.hp)
+	sim_assert(player.health.current_hp > 70.0, "Health regenerating after delay (HP=%.1f)" % player.health.current_hp)
 
 	# -- Test 8: Inventory add/remove ----------------------------------------
-	player.hp = 100.0
+	player.health.revive()
 	var leftover: int = player.add_item(&"pyromite", 5)
 	sim_assert(leftover == 0, "Added 5 pyromite to inventory (leftover=%d)" % leftover)
 	sim_assert(player.inventory[0] != null, "Slot 0 has items")
@@ -115,7 +115,7 @@ func run_simulation() -> void:
 		sim_assert(total_pyromite == 3, "Picked up physics item (total=%d)" % total_pyromite)
 
 	# -- Test 10: Serialization round-trip ------------------------------------
-	player.hp = 75.0
+	player.health.current_hp = 75.0
 	player.stamina = 2.0
 	player.selected_slot = 3
 	var save_data: Dictionary = player.serialize()
@@ -123,10 +123,10 @@ func run_simulation() -> void:
 	sim_assert(save_data.has("health"), "Serialize includes health")
 	sim_assert(save_data.has("inventory"), "Serialize includes inventory")
 
-	player.hp = 50.0
+	player.health.current_hp = 50.0
 	player.selected_slot = 0
 	player.deserialize(save_data)
-	sim_assert(absf(player.hp - 75.0) < 0.1, "Deserialized HP=%.1f" % player.hp)
+	sim_assert(absf(player.health.current_hp - 75.0) < 0.1, "Deserialized HP=%.1f" % player.health.current_hp)
 	sim_assert(player.selected_slot == 3, "Deserialized selected_slot=%d" % player.selected_slot)
 
 	sim_finish()

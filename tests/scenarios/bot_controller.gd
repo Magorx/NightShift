@@ -224,8 +224,8 @@ func jump() -> bool:
 
 ## Take damage (for testing health/death scenarios).
 func take_damage(amount: float) -> void:
-	_player.take_damage(amount)
-	_log("take_damage %.0f (hp=%.0f)" % [amount, _player.hp])
+	_player.take_damage(DamageEvent.create(amount))
+	_log("take_damage %.0f (hp=%.0f)" % [amount, _player.health.current_hp])
 
 ## Face a specific direction.
 func face(direction: Vector3) -> void:
@@ -267,11 +267,11 @@ func get_world_pos() -> Vector3:
 
 ## Get the player's HP.
 func get_hp() -> float:
-	return _player.hp
+	return _player.health.current_hp
 
 ## Check if the player is alive.
 func is_alive() -> bool:
-	return not _player._is_dead
+	return not _player.health.is_dead
 
 ## Get item count in player inventory.
 func item_count(item_id: StringName) -> int:

@@ -27,9 +27,8 @@ const RESPAWN_TIME := 3.0
 const INVULN_TIME := 2.0
 const DEATH_DROP_DESPAWN := 120.0
 
-var hp: float = MAX_HP
+var health: HealthComponent
 var _regen_timer: float = 0.0    # time since last damage
-var _is_dead: bool = false
 var _respawn_timer: float = 0.0
 var _invuln_timer: float = 0.0
 var spawn_position: Vector3 = Vector3.ZERO
@@ -78,6 +77,12 @@ const CONV_HOVER_RADIUS := 0.375  # ~12px / 32px per tile
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 
 func _ready() -> void:
+	# Initialize health component
+	health = HealthComponent.new()
+	health.name = "HealthComponent"
+	health.max_hp = MAX_HP
+	add_child(health)
+	health.died.connect(_die)
 	# Initialize inventory with empty slots
 	inventory.resize(INVENTORY_SLOTS)
 	for i in INVENTORY_SLOTS:
@@ -85,7 +90,7 @@ func _ready() -> void:
 	spawn_position = position
 
 func _physics_process(delta: float) -> void:
-	if _is_dead:
+	if health.is_dead:
 		_handle_respawn(delta)
 		return
 
@@ -104,7 +109,7 @@ func _physics_process(delta: float) -> void:
 	_update_visuals(delta)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _is_dead:
+	if health.is_dead:
 		return
 	if event.is_action_pressed(&"player_jump"):
 		_try_jump()
@@ -205,28 +210,24 @@ func _update_collision_for_height() -> void:
 
 # -- Health -------------------------------------------------------------------
 
-func take_damage(amount: float) -> void:
-	if _invuln_timer > 0 or _is_dead:
+func take_damage(event: DamageEvent) -> void:
+	if _invuln_timer > 0 or health.is_dead:
 		return
-	hp -= amount
+	health.damage(event.amount)
 	_regen_timer = 0.0
-	if hp <= 0:
-		hp = 0
-		_die()
 
 func _handle_health_regen(delta: float) -> void:
-	if _is_dead:
+	if health.is_dead:
 		return
 	_regen_timer += delta
-	if _regen_timer >= REGEN_DELAY and hp < MAX_HP:
-		hp = minf(hp + REGEN_RATE * delta, MAX_HP)
+	if _regen_timer >= REGEN_DELAY and health.current_hp < health.max_hp:
+		health.heal(REGEN_RATE * delta)
 
 func _handle_invulnerability(delta: float) -> void:
 	if _invuln_timer > 0:
 		_invuln_timer -= delta
 
 func _die() -> void:
-	_is_dead = true
 	_respawn_timer = RESPAWN_TIME
 	velocity = Vector3.ZERO
 	# Drop inventory items
@@ -239,8 +240,7 @@ func _handle_respawn(delta: float) -> void:
 		_respawn()
 
 func _respawn() -> void:
-	_is_dead = false
-	hp = MAX_HP
+	health.revive()
 	_regen_timer = REGEN_DELAY
 	_invuln_timer = INVULN_TIME
 	position = spawn_position
@@ -506,7 +506,7 @@ func serialize() -> Dictionary:
 		position_x = position.x,
 		position_y = position.z,  # save grid Y as world Z (backward compat key name)
 		position_y_height = position.y,  # actual 3D height
-		health = hp,
+		health = health.current_hp,
 		stamina = stamina,
 		inventory = inv_data,
 		is_grounded = is_on_floor(),
@@ -521,7 +521,7 @@ func deserialize(data: Dictionary) -> void:
 	var py: float = data.get("position_y_height", data.get("z_height", 0.0))
 	position = Vector3(px, py, pz)
 
-	hp = data.get("health", MAX_HP)
+	health.current_hp = data.get("health", MAX_HP)
 	stamina = data.get("stamina", STAMINA_MAX)
 	selected_slot = data.get("selected_slot", 0)
 

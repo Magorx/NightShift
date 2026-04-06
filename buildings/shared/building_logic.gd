@@ -64,6 +64,10 @@ func on_removing() -> void:
 
 const DEFAULT_BUILDING_HP := 100.0
 
+func take_damage(event: DamageEvent) -> void:
+	if health and not health.is_dead:
+		health.damage(event.amount)
+
 func _setup_health() -> void:
 	health = HealthComponent.new()
 	health.name = "HealthComponent"

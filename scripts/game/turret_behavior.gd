@@ -130,8 +130,7 @@ func _fire_at(target: Node3D) -> void:
 
 	var projectile := Projectile.new()
 	projectile.velocity = direction * projectile_speed
-	projectile.damage = projectile_damage
-	projectile.element = element
+	projectile.event = DamageEvent.create(projectile_damage, element, self)
 	projectile.position = spawn_pos
 
 	# Add to item_layer if available, otherwise scene root.
