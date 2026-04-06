@@ -46,14 +46,20 @@ var _day_rotation_steps: int = 0
 func set_night_mode(enabled: bool) -> void:
 	is_night_mode = enabled
 	is_night_form = enabled
+	var building := get_parent() as BuildingBase
 	if enabled:
 		_day_variant = _current_variant
 		_day_rotation_steps = _current_rotation_steps
 		set_physics_process(false)
+		# Walls/towers need collision — conveyors normally skip it
+		if building:
+			building.force_collision = true
 		var night_variant: StringName = &"tower" if _current_variant in TURN_VARIANTS else &"wall"
 		_swap_model(night_variant, 0)
 	else:
 		set_physics_process(true)
+		if building:
+			building.force_collision = false
 		if _day_variant != &"":
 			_swap_model(_day_variant, _day_rotation_steps)
 			_day_variant = &""

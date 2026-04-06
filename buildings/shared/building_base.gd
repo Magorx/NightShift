@@ -15,6 +15,8 @@ var logic: BuildingLogic = null
 
 ## Auto-generated collision body from building grid shape.
 var _model_collision: StaticBody3D = null
+## When true, force collision generation even for normally flat buildings (e.g. conveyor→wall).
+var force_collision: bool = false
 
 func init(p_id: StringName, p_grid_pos: Vector2i, p_rotation: int = 0) -> void:
 	building_id = p_id
@@ -30,7 +32,7 @@ func _ready() -> void:
 func _generate_model_collision() -> void:
 	if building_id == &"":
 		return  # Ghost node (never init'd) — skip collision generation
-	if building_id in NO_COLLISION_BUILDINGS:
+	if building_id in NO_COLLISION_BUILDINGS and not force_collision:
 		return  # Flat buildings — items flow over them via force zones
 	_model_collision = StaticBody3D.new()
 	_model_collision.name = "ModelCollision"

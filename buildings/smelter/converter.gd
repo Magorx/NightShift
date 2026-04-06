@@ -148,6 +148,8 @@ func get_last_resource() -> StringName:
 		return _last_recipe.outputs[0].item.id
 	return &""
 
+const NIGHT_MODEL: PackedScene = preload("res://buildings/smelter/models/rocket_turret.glb")
+
 ## Toggle night mode. When enabled, crafting pauses and turret fires.
 func set_night_mode(enabled: bool) -> void:
 	is_night_mode = enabled
@@ -158,9 +160,37 @@ func set_night_mode(enabled: bool) -> void:
 			turret.name = "TurretBehavior"
 			add_child(turret)
 		turret.activate(get_last_resource())
+		_swap_to_night_model()
 	else:
 		if turret:
 			turret.deactivate()
+		_swap_to_day_model()
+
+func _swap_to_night_model() -> void:
+	var building := get_parent()
+	var old_model := building.get_node_or_null("Model")
+	if old_model:
+		building.remove_child(old_model)
+		old_model.queue_free()
+	var new_model: Node3D = NIGHT_MODEL.instantiate()
+	new_model.name = "Model"
+	building.add_child(new_model)
+
+func _swap_to_day_model() -> void:
+	var building := get_parent()
+	var old_model := building.get_node_or_null("Model")
+	if old_model:
+		building.remove_child(old_model)
+		old_model.queue_free()
+	var def = BuildingRegistry.get_building_def(building.building_id)
+	if def:
+		var day_scene: Node3D = def.scene.instantiate()
+		var model := day_scene.get_node_or_null("Model")
+		if model:
+			model.owner = null
+			day_scene.remove_child(model)
+			building.add_child(model)
+		day_scene.queue_free()
 
 func mark_configs_dirty() -> void:
 	_configs_dirty = true

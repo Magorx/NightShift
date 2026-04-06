@@ -37,6 +37,54 @@ func _spawn_item() -> void:
 func get_last_resource() -> StringName:
 	return item_id
 
+# ── Night transform ──────────────────────────────────────────────────────────
+
+const NIGHT_MODEL: PackedScene = preload("res://buildings/drill/models/turret.glb")
+var turret: TurretBehavior = null
+
+func set_night_mode(enabled: bool) -> void:
+	is_night_mode = enabled
+	if enabled:
+		set_physics_process(false)
+		if not turret:
+			turret = TurretBehavior.new()
+			turret.name = "TurretBehavior"
+			add_child(turret)
+		turret.activate(get_last_resource())
+		_swap_to_night_model()
+	else:
+		set_physics_process(true)
+		if turret:
+			turret.deactivate()
+		_swap_to_day_model()
+
+func _swap_to_night_model() -> void:
+	var building := get_parent()
+	var old_model := building.get_node_or_null("Model")
+	if old_model:
+		building.remove_child(old_model)
+		old_model.queue_free()
+	var new_model: Node3D = NIGHT_MODEL.instantiate()
+	new_model.name = "Model"
+	building.add_child(new_model)
+
+func _swap_to_day_model() -> void:
+	var building := get_parent()
+	var old_model := building.get_node_or_null("Model")
+	if old_model:
+		building.remove_child(old_model)
+		old_model.queue_free()
+	# Re-instantiate the day model from the building def
+	var def = BuildingRegistry.get_building_def(building.building_id)
+	if def:
+		var day_scene: Node3D = def.scene.instantiate()
+		var model := day_scene.get_node_or_null("Model")
+		if model:
+			model.owner = null
+			day_scene.remove_child(model)
+			building.add_child(model)
+		day_scene.queue_free()
+
 func get_progress() -> float:
 	return clampf(_timer / produce_interval, 0.0, 1.0)
 
