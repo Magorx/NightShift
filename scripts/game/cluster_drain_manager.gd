@@ -27,7 +27,7 @@ func get_next_drain_tile(extractor_pos: Vector2i, _deposit_id: StringName) -> Ve
 		_rebuild_drain_order()
 	var order: Array = _drain_order_cache.get(extractor_pos, [])
 	for tile_pos: Vector2i in order:
-		var stock: int = GameManager.deposit_stocks.get(tile_pos, 0)
+		var stock: int = MapManager.deposit_stocks.get(tile_pos, 0)
 		if stock > 0 or stock == -1:
 			return tile_pos
 	return Vector2i(-1, -1)
@@ -39,7 +39,7 @@ func _rebuild_drain_order() -> void:
 	# Collect all buildings that participate in cluster draining
 	# Group by deposit type so BFS only traverses matching tiles
 	var by_deposit: Dictionary = {}  # deposit_id -> Array[{pos, cells}]
-	for building in GameManager.unique_buildings:
+	for building in BuildingRegistry.unique_buildings:
 		if not is_instance_valid(building) or not building.logic:
 			continue
 		if not building.logic.has_method("get_covered_deposit_cells"):
@@ -80,7 +80,7 @@ func _rebuild_for_deposit(deposit_id: StringName, extractor_data: Array) -> void
 			var next: Vector2i = pos + dir
 			if distance.has(next):
 				continue
-			if GameManager.deposits.get(next, &"") != deposit_id:
+			if MapManager.deposits.get(next, &"") != deposit_id:
 				continue
 			distance[next] = d + 1
 			queue.append(next)
@@ -89,7 +89,7 @@ func _rebuild_for_deposit(deposit_id: StringName, extractor_data: Array) -> void
 	for data in extractor_data:
 		var reachable: Array = []
 		for pos: Vector2i in distance:
-			if GameManager.deposits.get(pos, &"") != deposit_id:
+			if MapManager.deposits.get(pos, &"") != deposit_id:
 				continue
 			reachable.append({pos = pos, dist = distance[pos]})
 		reachable.sort_custom(func(a, b): return a.dist > b.dist)

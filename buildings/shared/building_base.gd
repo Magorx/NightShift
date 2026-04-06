@@ -38,7 +38,7 @@ func _generate_model_collision() -> void:
 	_model_collision.collision_mask = 0
 	add_child(_model_collision)
 
-	var def = GameManager.get_building_def(building_id)
+	var def = BuildingRegistry.get_building_def(building_id)
 	if def:
 		var rotated_shape: Array = def.get_rotated_shape(rotation_index)
 		var anchor: Vector2i = def.anchor_cell

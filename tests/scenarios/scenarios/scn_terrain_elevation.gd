@@ -44,7 +44,7 @@ func setup_monitors() -> void:
 	monitor.track("player_z", func() -> float:
 		return GameManager.player.position.z)
 	monitor.track("items_delivered", func() -> int:
-		return GameManager.items_delivered.get(&"pyromite", 0))
+		return EconomyTracker.items_delivered.get(&"pyromite", 0))
 
 func run_scenario() -> void:
 	var player: Player = GameManager.player
@@ -79,7 +79,7 @@ func run_scenario() -> void:
 	var drill_placed := await bot.place(&"drill", Vector2i(18, 12), 0)
 	assert_scenario(drill_placed, "Drill placed on elevated deposit")
 
-	var drill_building = GameManager.get_building_at(Vector2i(18, 12))
+	var drill_building = BuildingRegistry.get_building_at(Vector2i(18, 12))
 	if drill_building:
 		var drill_y: float = drill_building.position.y
 		assert_scenario(drill_y > 0.8, "Drill at correct height (y=%.3f)" % drill_y)
@@ -93,7 +93,7 @@ func run_scenario() -> void:
 	# ── Test 6: Production chain works on elevated terrain ──────────────
 	await bot.wait(12.0)
 	monitor.sample()
-	var items: int = GameManager.items_delivered.get(&"pyromite", 0)
+	var items: int = EconomyTracker.items_delivered.get(&"pyromite", 0)
 	assert_gt_scenario(float(items), 0.0, "Production works on elevated terrain (items=%d)" % items)
 	await monitor.screenshot("06_production_running")
 

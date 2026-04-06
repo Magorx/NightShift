@@ -30,11 +30,11 @@ func run_simulation() -> void:
 	sim_assert(result != null, "Smelter placed at anchor (14,10)")
 
 	# Verify smelter shape cells are occupied (2x2 L-shape, 3 cells)
-	sim_assert(GameManager.get_building_at(Vector2i(14, 10)) != null, "Smelter cell (14,10) occupied")
-	sim_assert(GameManager.get_building_at(Vector2i(15, 10)) != null, "Smelter cell (15,10) occupied")
-	sim_assert(GameManager.get_building_at(Vector2i(14, 11)) != null, "Smelter cell (14,11) occupied")
+	sim_assert(BuildingRegistry.get_building_at(Vector2i(14, 10)) != null, "Smelter cell (14,10) occupied")
+	sim_assert(BuildingRegistry.get_building_at(Vector2i(15, 10)) != null, "Smelter cell (15,10) occupied")
+	sim_assert(BuildingRegistry.get_building_at(Vector2i(14, 11)) != null, "Smelter cell (14,11) occupied")
 	# Output gap should be free
-	sim_assert(GameManager.get_building_at(Vector2i(15, 11)) == null, "Output gap (15,11) is free")
+	sim_assert(BuildingRegistry.get_building_at(Vector2i(15, 11)) == null, "Output gap (15,11) is free")
 
 	# Place conveyor in the output gap and onward to sink
 	sim_place_building(&"conveyor", Vector2i(15, 11), 0)
@@ -42,7 +42,7 @@ func run_simulation() -> void:
 	sim_place_building(&"sink", Vector2i(17, 11), 0)
 
 	# Verify converter logic is configured
-	var smelter = GameManager.get_building_at(Vector2i(14, 10))
+	var smelter = BuildingRegistry.get_building_at(Vector2i(14, 10))
 	var conv_logic = smelter.find_child("ConverterLogic", true, false) if smelter else null
 	sim_assert(conv_logic != null, "Smelter has ConverterLogic")
 	sim_assert(conv_logic.recipes.size() > 0, "Smelter has recipes loaded (%d)" % (conv_logic.recipes.size() if conv_logic else 0))
@@ -52,7 +52,7 @@ func run_simulation() -> void:
 	await sim_advance_seconds(30)
 
 	# Check sink consumed items
-	var sink_building = GameManager.get_building_at(Vector2i(17, 11))
+	var sink_building = BuildingRegistry.get_building_at(Vector2i(17, 11))
 	var sink_logic = sink_building.find_child("SinkLogic", true, false) if sink_building else null
 	var consumed: int = sink_logic.items_consumed if sink_logic else 0
 	sim_assert(consumed > 0, "Sink received combo items from smelter chain (got %d)" % consumed)
@@ -73,7 +73,7 @@ func run_simulation() -> void:
 	sim_spawn_item_on_conveyor(Vector2i(29, 11), &"crystalline")
 	await sim_advance_seconds(10)
 
-	var sink2 = GameManager.get_building_at(Vector2i(33, 11))
+	var sink2 = BuildingRegistry.get_building_at(Vector2i(33, 11))
 	var sink2_logic = sink2.find_child("SinkLogic", true, false) if sink2 else null
 	var consumed2: int = sink2_logic.items_consumed if sink2_logic else 0
 	sim_assert(consumed2 > 0, "Manual spawn: sink received combo item (got %d)" % consumed2)

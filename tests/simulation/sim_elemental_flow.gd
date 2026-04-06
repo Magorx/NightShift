@@ -54,7 +54,7 @@ func run_simulation() -> void:
 	# After ~15s we should see combo items reaching the sink.
 	await sim_advance_seconds(15)
 
-	var sink_building = GameManager.get_building_at(Vector2i(23, 11))
+	var sink_building = BuildingRegistry.get_building_at(Vector2i(23, 11))
 	var sink_logic = sink_building.find_child("SinkLogic", true, false) if sink_building else null
 	var consumed: int = sink_logic.items_consumed if sink_logic else 0
 	sim_assert(consumed > 0, "Sink received steam_burst from elemental flow (got %d)" % consumed)
@@ -77,7 +77,7 @@ func run_simulation() -> void:
 
 	await sim_advance_seconds(15)
 
-	var sink2 = GameManager.get_building_at(Vector2i(53, 11))
+	var sink2 = BuildingRegistry.get_building_at(Vector2i(53, 11))
 	var sink2_logic = sink2.find_child("SinkLogic", true, false) if sink2 else null
 	var consumed2: int = sink2_logic.items_consumed if sink2_logic else 0
 	sim_assert(consumed2 > 0, "Sink received verdant_compound from biovine+crystalline (got %d)" % consumed2)

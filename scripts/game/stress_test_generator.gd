@@ -28,7 +28,7 @@ var _bids: Dictionary  # discovered building IDs by role
 
 func generate(tile_map, map_size: int) -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = GameManager.world_seed + 54321
+	rng.seed = MapManager.world_seed + 54321
 
 	_bids = _discover_buildings()
 	if _bids.extractor.is_empty() or _bids.conveyor.is_empty():
@@ -57,8 +57,8 @@ func _discover_buildings() -> Dictionary:
 		converters = {},   # converter_type (String) → building id
 	}
 	# First pass: collect only unlocked (no research_tag) buildings
-	for id: StringName in GameManager.building_defs:
-		var def: Resource = GameManager.building_defs[id]
+	for id: StringName in BuildingRegistry.building_defs:
+		var def: Resource = BuildingRegistry.building_defs[id]
 		if def.research_tag != &"":
 			continue
 		match def.category:
@@ -83,11 +83,11 @@ func _discover_buildings() -> Dictionary:
 ## Maps item_id → {converter_id, recipe} for the first matching recipe.
 func _build_processing_chains() -> Dictionary:
 	var chains := {}
-	for conv_type: String in GameManager.recipes_by_type:
+	for conv_type: String in BuildingRegistry.recipes_by_type:
 		var conv_id := StringName(conv_type)
-		if not GameManager.building_defs.has(conv_id):
+		if not BuildingRegistry.building_defs.has(conv_id):
 			continue
-		var recipes: Array = GameManager.recipes_by_type[conv_type]
+		var recipes: Array = BuildingRegistry.recipes_by_type[conv_type]
 		for recipe in recipes:
 			for inp_stack in recipe.inputs:
 				var item_id: StringName = inp_stack.item.id
@@ -128,12 +128,12 @@ func _create_deposit_clusters(tile_map, map_size: int, rng: RandomNumberGenerato
 					var pos := Vector2i(bx + dx, by + dy)
 					if pos.x < 2 or pos.y < 2 or pos.x >= map_size - 2 or pos.y >= map_size - 2:
 						continue
-					if GameManager.walls.has(pos):
+					if MapManager.walls.has(pos):
 						continue
 					if rng.randf() < 0.6:
 						if tile_map:
 							tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
-						GameManager.deposits[pos] = item_id
+						MapManager.deposits[pos] = item_id
 						positions.append(pos)
 
 			if positions.size() >= 3:
@@ -171,9 +171,9 @@ func _build_factory_line(cluster: Dictionary, chains: Dictionary, map_size: int,
 	var drill_xs: Array[int] = []
 	for x: int in columns:
 		var y: int = columns[x]
-		if not GameManager.can_place_building(_bids.extractor, Vector2i(x, y), map_size, 1):
+		if not BuildingRegistry.can_place_building(_bids.extractor, Vector2i(x, y), map_size, 1):
 			continue
-		GameManager.place_building(_bids.extractor, Vector2i(x, y), 1)  # rotation=1 → output DOWN
+		BuildingRegistry.place_building(_bids.extractor, Vector2i(x, y), 1)  # rotation=1 → output DOWN
 		drill_xs.append(x)
 
 	if drill_xs.is_empty():
@@ -237,10 +237,10 @@ func _has_tunnels() -> bool:
 func _place_tunnel_feed(x: int, start_y: int, end_y: int, map_size: int) -> void:
 	var tin := Vector2i(x, start_y)
 	var tout := Vector2i(x, end_y)
-	if (GameManager.can_place_building(_bids.tunnel_in, tin, map_size, 1) and
-		GameManager.can_place_building(_bids.tunnel_out, tout, map_size, 1)):
-		GameManager.place_building(_bids.tunnel_in, tin, 1)
-		GameManager.place_building(_bids.tunnel_out, tout, 1)
+	if (BuildingRegistry.can_place_building(_bids.tunnel_in, tin, map_size, 1) and
+		BuildingRegistry.can_place_building(_bids.tunnel_out, tout, map_size, 1)):
+		BuildingRegistry.place_building(_bids.tunnel_in, tin, 1)
+		BuildingRegistry.place_building(_bids.tunnel_out, tout, 1)
 		_link_tunnel_pair(tin, tout)
 	else:
 		# Fallback to straight conveyors
@@ -268,8 +268,8 @@ func _place_dual_converter_lines(chain: Dictionary, splitter_x: int, bus_y: int,
 		_try_place(_bids.conveyor, Vector2i(x, bus_y), map_size, 0)
 
 	var conv1_pos := Vector2i(conv_x, bus_y)
-	if GameManager.can_place_building(conv_id, conv1_pos, map_size, 0):
-		GameManager.place_building(conv_id, conv1_pos, 0)
+	if BuildingRegistry.can_place_building(conv_id, conv1_pos, map_size, 0):
+		BuildingRegistry.place_building(conv_id, conv1_pos, 0)
 		var relay := _place_output_relay(conv_id, conv1_pos, 0, map_size)
 		_place_output_chain(relay.x + 1, bus_y, map_size)
 	else:
@@ -291,8 +291,8 @@ func _place_dual_converter_lines(chain: Dictionary, splitter_x: int, bus_y: int,
 		_try_place(_bids.conveyor, Vector2i(x, branch2_y), map_size, 0)
 
 	var conv2_pos := Vector2i(conv_x, branch2_y)
-	if GameManager.can_place_building(conv_id, conv2_pos, map_size, 0):
-		GameManager.place_building(conv_id, conv2_pos, 0)
+	if BuildingRegistry.can_place_building(conv_id, conv2_pos, map_size, 0):
+		BuildingRegistry.place_building(conv_id, conv2_pos, 0)
 		var relay := _place_output_relay(conv_id, conv2_pos, 0, map_size)
 		_place_output_chain(relay.x + 1, branch2_y, map_size)
 	else:
@@ -305,8 +305,8 @@ func _place_single_line(chain: Dictionary, start_x: int, bus_y: int, map_size: i
 	for x in range(start_x, conv_x):
 		_try_place(_bids.conveyor, Vector2i(x, bus_y), map_size, 0)
 	var conv_pos := Vector2i(conv_x, bus_y)
-	if GameManager.can_place_building(conv_id, conv_pos, map_size, 0):
-		GameManager.place_building(conv_id, conv_pos, 0)
+	if BuildingRegistry.can_place_building(conv_id, conv_pos, map_size, 0):
+		BuildingRegistry.place_building(conv_id, conv_pos, 0)
 		var relay := _place_output_relay(conv_id, conv_pos, 0, map_size)
 		_place_output_chain(relay.x + 1, bus_y, map_size)
 	else:
@@ -342,10 +342,10 @@ func _place_output_relay(_conv_id: StringName, conv_pos: Vector2i, rotation: int
 func _try_place(building_id: StringName, pos: Vector2i, map_size: int, rotation: int = 0) -> bool:
 	if building_id.is_empty():
 		return false
-	if GameManager.can_place_building(building_id, pos, map_size, rotation):
-		GameManager.place_building(building_id, pos, rotation)
+	if BuildingRegistry.can_place_building(building_id, pos, map_size, rotation):
+		BuildingRegistry.place_building(building_id, pos, rotation)
 		return true
 	return false
 
 func _link_tunnel_pair(input_pos: Vector2i, output_pos: Vector2i) -> void:
-	GameManager.link_tunnel_pair(input_pos, output_pos)
+	BuildingRegistry.link_tunnel_pair(input_pos, output_pos)

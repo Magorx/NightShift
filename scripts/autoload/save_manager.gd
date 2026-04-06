@@ -94,24 +94,24 @@ func _serialize_run() -> Dictionary:
 	var data := {
 		"version": SAVE_VERSION,
 		"saved_at": Time.get_datetime_string_from_system(true),
-		"world_seed": GameManager.world_seed,
-		"map_size": GameManager.map_size,
+		"world_seed": MapManager.world_seed,
+		"map_size": MapManager.map_size,
 		"camera": _serialize_camera(),
-		"currency": GameManager.total_currency,
+		"currency": EconomyTracker.total_currency,
 		"buildings": _serialize_buildings(),
 		"items_delivered": _serialize_items_delivered(),
-		"creative_mode": GameManager.creative_mode,
+		"creative_mode": EconomyTracker.creative_mode,
 		"deposit_stocks": _serialize_deposit_stocks(),
 	}
 	var gw := _get_game_world()
 	if gw:
 		data["terrain"] = gw.serialize_terrain()
 		# Save terrain visual variants (fg + misc per cell)
-		if GameManager.terrain_variants.size() > 0:
-			data["terrain_variants"] = Marshalls.raw_to_base64(GameManager.terrain_variants)
+		if MapManager.terrain_variants.size() > 0:
+			data["terrain_variants"] = Marshalls.raw_to_base64(MapManager.terrain_variants)
 		# Save terrain heights
-		if GameManager.terrain_heights.size() > 0:
-			data["terrain_heights"] = Marshalls.raw_to_base64(GameManager.terrain_heights.to_byte_array())
+		if MapManager.terrain_heights.size() > 0:
+			data["terrain_heights"] = Marshalls.raw_to_base64(MapManager.terrain_heights.to_byte_array())
 	if GameManager.player and is_instance_valid(GameManager.player):
 		data["player"] = GameManager.player.serialize()
 	data["physics_items"] = _serialize_physics_items()
@@ -137,16 +137,16 @@ func _serialize_physics_items() -> Array:
 
 func _serialize_deposit_stocks() -> Dictionary:
 	var result := {}
-	for pos: Vector2i in GameManager.deposit_stocks:
-		var stock: int = GameManager.deposit_stocks[pos]
+	for pos: Vector2i in MapManager.deposit_stocks:
+		var stock: int = MapManager.deposit_stocks[pos]
 		if stock != -1:  # Only save finite stocks to keep save small
 			result["%d,%d" % [pos.x, pos.y]] = stock
 	return result
 
 func _serialize_items_delivered() -> Dictionary:
 	var result := {}
-	for item_id in GameManager.items_delivered:
-		result[str(item_id)] = GameManager.items_delivered[item_id]
+	for item_id in EconomyTracker.items_delivered:
+		result[str(item_id)] = EconomyTracker.items_delivered[item_id]
 	return result
 
 func _serialize_camera() -> Dictionary:
@@ -160,7 +160,7 @@ func _serialize_camera() -> Dictionary:
 
 func _serialize_buildings() -> Array:
 	var result: Array = []
-	for building in GameManager.unique_buildings:
+	for building in BuildingRegistry.unique_buildings:
 		if not is_instance_valid(building):
 			continue
 		var state: Dictionary = {}
@@ -187,9 +187,9 @@ func _deserialize_run(data: Dictionary) -> void:
 	GameManager.clear_all()
 
 	# Restore map size and currency
-	GameManager.map_size = int(data.get("map_size", 64))
-	GameManager.total_currency = data.get("currency", 0)
-	GameManager.creative_mode = data.get("creative_mode", false)
+	MapManager.map_size = int(data.get("map_size", 64))
+	EconomyTracker.total_currency = data.get("currency", 0)
+	EconomyTracker.creative_mode = data.get("creative_mode", false)
 
 	# Restore terrain (deposits, walls, grass variants) from packed data
 	var terrain_data: String = data.get("terrain", "")
@@ -200,7 +200,7 @@ func _deserialize_run(data: Dictionary) -> void:
 			# Restore terrain visual variants
 			var variant_data: String = data.get("terrain_variants", "")
 			if not variant_data.is_empty():
-				GameManager.terrain_variants = Marshalls.base64_to_raw(variant_data)
+				MapManager.terrain_variants = Marshalls.base64_to_raw(variant_data)
 			else:
 				# Legacy save without variants: generate them fresh
 				_regenerate_terrain_variants()
@@ -208,12 +208,12 @@ func _deserialize_run(data: Dictionary) -> void:
 			var height_data: String = data.get("terrain_heights", "")
 			if not height_data.is_empty():
 				var height_bytes := Marshalls.base64_to_raw(height_data)
-				GameManager.terrain_heights = height_bytes.to_float32_array()
+				MapManager.terrain_heights = height_bytes.to_float32_array()
 			else:
 				# Legacy save without heights: flat terrain
-				GameManager.terrain_heights = PackedFloat32Array()
-				GameManager.terrain_heights.resize(GameManager.map_size * GameManager.map_size)
-				GameManager.terrain_heights.fill(0.0)
+				MapManager.terrain_heights = PackedFloat32Array()
+				MapManager.terrain_heights.resize(MapManager.map_size * MapManager.map_size)
+				MapManager.terrain_heights.fill(0.0)
 
 	# Restore buildings
 	var building_list: Array = data.get("buildings", [])
@@ -222,7 +222,7 @@ func _deserialize_run(data: Dictionary) -> void:
 		var grid_pos := Vector2i(int(entry["grid_x"]), int(entry["grid_y"]))
 		var rot: int = int(entry["rotation"])
 
-		var building := GameManager.place_building(building_id, grid_pos, rot)
+		var building := BuildingRegistry.place_building(building_id, grid_pos, rot)
 		if not building:
 			printerr("[SaveManager] Failed to place %s at %s" % [building_id, str(grid_pos)])
 			continue
@@ -240,17 +240,16 @@ func _deserialize_run(data: Dictionary) -> void:
 
 	# Restore items delivered
 	var delivered: Dictionary = data.get("items_delivered", {})
-	GameManager.items_delivered.clear()
+	EconomyTracker.items_delivered.clear()
 	for item_id_str in delivered:
 		var iid := StringName(item_id_str)
-		if GameManager.is_valid_item_id(iid):
-			GameManager.items_delivered[iid] = int(delivered[item_id_str])
+		if ItemRegistry.is_valid_item_id(iid):
+			EconomyTracker.items_delivered[iid] = int(delivered[item_id_str])
 		else:
 			GameLogger.warn("Items delivered: skipped invalid item '%s'" % iid)
 
 	# Prevent physics catch-up: loading takes real time, so Godot would run
 	# multiple physics ticks on the first frame, making items jump forward.
-	# Limit to 1 tick, then restore on the next frame.
 	_saved_max_physics_steps = Engine.max_physics_steps_per_frame
 	Engine.max_physics_steps_per_frame = 1
 	call_deferred("_reset_max_physics_steps")
@@ -260,7 +259,6 @@ func _deserialize_run(data: Dictionary) -> void:
 	if not player_data.is_empty() and GameManager.player:
 		GameManager.player.deserialize(player_data)
 
-	# Restore ground items
 	# Restore physics items (items on conveyors / in transit)
 	var physics_items_data: Array = data.get("physics_items", [])
 
@@ -268,7 +266,7 @@ func _deserialize_run(data: Dictionary) -> void:
 	var ground_items_data: Array = data.get("ground_items", [])
 	for entry in ground_items_data:
 		var iid := StringName(entry.get("item_id", ""))
-		if not GameManager.is_valid_item_id(iid):
+		if not ItemRegistry.is_valid_item_id(iid):
 			continue
 		var qty: int = int(entry.get("quantity", 1))
 		var px: float = float(entry.get("x", 0))
@@ -294,7 +292,7 @@ func _link_tunnels_deferred(building_list: Array) -> void:
 		var grid_pos := Vector2i(int(entry["grid_x"]), int(entry["grid_y"]))
 		var partner_pos := Vector2i(int(state["tunnel_partner_x"]), int(state["tunnel_partner_y"]))
 		var length: int = int(state.get("tunnel_length", 1))
-		GameManager.link_tunnel_pair(grid_pos, partner_pos, length)
+		BuildingRegistry.link_tunnel_pair(grid_pos, partner_pos, length)
 
 ## Restore finite deposit stocks from saved data.
 func _deserialize_deposit_stocks(data: Dictionary) -> void:
@@ -303,14 +301,14 @@ func _deserialize_deposit_stocks(data: Dictionary) -> void:
 		if parts.size() != 2:
 			continue
 		var pos := Vector2i(int(parts[0]), int(parts[1]))
-		GameManager.deposit_stocks[pos] = int(data[key])
+		MapManager.deposit_stocks[pos] = int(data[key])
 
 func _deserialize_physics_items(items_data: Array) -> void:
 	if items_data.is_empty():
 		return
 	for entry in items_data:
 		var iid := StringName(entry.get("item_id", ""))
-		if not GameManager.is_valid_item_id(iid):
+		if not ItemRegistry.is_valid_item_id(iid):
 			GameLogger.warn("Physics item: skipped invalid item '%s'" % iid)
 			continue
 		var pos := Vector3(
@@ -374,18 +372,18 @@ func _read_json(path: String) -> Dictionary:
 
 ## Generate terrain variants for legacy saves that don't have them.
 func _regenerate_terrain_variants() -> void:
-	var map_size := GameManager.map_size
-	var count := map_size * map_size
+	var ms := MapManager.map_size
+	var count := ms * ms
 	var variants := PackedByteArray()
 	variants.resize(count)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = GameManager.world_seed + 777
+	rng.seed = MapManager.world_seed + 777
 	for i in range(count):
-		var tile_type: int = GameManager.terrain_tile_types[i] if i < GameManager.terrain_tile_types.size() else 0
+		var tile_type: int = MapManager.terrain_tile_types[i] if i < MapManager.terrain_tile_types.size() else 0
 		var fg_count := 6 if tile_type <= 6 and tile_type != 4 else 3  # grass types = 0,5,6
 		var misc_count := fg_count
 		variants[i] = (rng.randi() % fg_count) | ((rng.randi() % misc_count) << 4)
-	GameManager.terrain_variants = variants
+	MapManager.terrain_variants = variants
 
 func _get_game_world() -> Node:
 	var root := get_tree().root

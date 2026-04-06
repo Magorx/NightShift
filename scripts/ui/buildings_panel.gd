@@ -72,8 +72,8 @@ func _refresh_buildings() -> void:
 
 func _group_buildings() -> void:
 	_by_category.clear()
-	for id in GameManager.building_defs:
-		var def = GameManager.building_defs[id]
+	for id in BuildingRegistry.building_defs:
+		var def = BuildingRegistry.building_defs[id]
 		if def.category in HIDDEN_CATEGORIES:
 			continue
 		var cat_name: String = CATEGORY_DISPLAY_NAMES.get(def.category, def.category.capitalize())

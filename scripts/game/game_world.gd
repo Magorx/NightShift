@@ -41,16 +41,16 @@ func _ready() -> void:
 	GameManager.building_layer = $ObjectLayer/BuildingLayer
 	GameManager.item_layer = $ObjectLayer/ItemLayer
 	# Initialize MultiMesh item visual system
-	GameManager.item_visual_manager = _visual_mgr_script.new()
-	GameManager.item_visual_manager.attach_to($ObjectLayer/ItemLayer)
+	ItemRegistry.item_visual_manager = _visual_mgr_script.new()
+	ItemRegistry.item_visual_manager.attach_to($ObjectLayer/ItemLayer)
 	# Initialize batched building tick system
 	var tick_system = _tick_system_script.new()
 	tick_system.name = "BuildingTickSystem"
 	add_child(tick_system)
 	GameManager.building_tick_system = tick_system
 	GameManager.clear_all()
-	GameManager.deposits.clear()
-	GameManager.walls.clear()
+	MapManager.deposits.clear()
+	MapManager.walls.clear()
 
 	# Create building collision body (must exist before placing buildings)
 	building_collision = _building_collision_script.new()
@@ -74,29 +74,29 @@ func _ready() -> void:
 	var has_saved_terrain := false
 	if SaveManager.pending_load:
 		var save_data: Dictionary = SaveManager.peek_save_data()
-		GameManager.world_seed = int(save_data.get("world_seed", randi()))
-		GameManager.map_size = int(save_data.get("map_size", 128))
+		MapManager.world_seed = int(save_data.get("world_seed", randi()))
+		MapManager.map_size = int(save_data.get("map_size", 128))
 		has_saved_terrain = save_data.has("terrain")
-	elif GameManager.world_seed == 0:
-		GameManager.world_seed = randi()
+	elif MapManager.world_seed == 0:
+		MapManager.world_seed = randi()
 
 	# Initialize MultiMesh terrain visual system
-	GameManager.terrain_visual_manager = _terrain_visual_mgr_script.new()
-	GameManager.terrain_visual_manager.attach_to(self, -1)  # z_index below buildings
+	MapManager.terrain_visual_manager = _terrain_visual_mgr_script.new()
+	MapManager.terrain_visual_manager.attach_to(self, -1)  # z_index below buildings
 
 	# Skip world generation if terrain will be restored from save
 	if not has_saved_terrain:
 		var gen = _world_gen_script.new()
-		var result: Array = gen.generate(null, GameManager.map_size, GameManager.world_seed)
-		GameManager.terrain_tile_types = result[0]
-		GameManager.terrain_variants = result[1]
-		GameManager.terrain_heights = result[2]
+		var result: Array = gen.generate(null, MapManager.map_size, MapManager.world_seed)
+		MapManager.terrain_tile_types = result[0]
+		MapManager.terrain_variants = result[1]
+		MapManager.terrain_heights = result[2]
 
 	# Run stress test generator if requested
 	if GameManager.stress_test_pending:
 		GameManager.stress_test_pending = false
 		var stress_gen = _stress_gen_script.new()
-		stress_gen.generate(null, GameManager.map_size)
+		stress_gen.generate(null, MapManager.map_size)
 
 	# Wire HUD signals
 	hud.building_selected.connect(_on_building_selected)
@@ -125,12 +125,12 @@ func _ready() -> void:
 		SaveManager.load_run()
 
 	# Build terrain visuals (tile_types + variants + heights are set by gen or deserialize)
-	if GameManager.terrain_tile_types.size() > 0:
-		GameManager.terrain_visual_manager.build(
-			GameManager.map_size,
-			GameManager.terrain_tile_types,
-			GameManager.terrain_variants,
-			GameManager.terrain_heights
+	if MapManager.terrain_tile_types.size() > 0:
+		MapManager.terrain_visual_manager.build(
+			MapManager.map_size,
+			MapManager.terrain_tile_types,
+			MapManager.terrain_variants,
+			MapManager.terrain_heights
 		)
 
 	# Replace infinite ground plane with terrain collision mesh
@@ -139,7 +139,7 @@ func _ready() -> void:
 	# Scale ground plane to match map size (sits below terrain as fallback floor)
 	var ground_plane: MeshInstance3D = $GroundPlane
 	if ground_plane:
-		var map_sz := float(GameManager.map_size)
+		var map_sz := float(MapManager.map_size)
 		ground_plane.position = Vector3(map_sz / 2.0, -0.05, map_sz / 2.0)
 		var mesh: PlaneMesh = ground_plane.mesh
 		if mesh:
@@ -218,14 +218,14 @@ func _show_ground_tooltip(grid_pos: Vector2i) -> void:
 
 	# Tile name
 	var tile_name := "Ground"
-	if GameManager.walls.has(grid_pos):
-		var wall_tile: int = GameManager.walls[grid_pos]
+	if MapManager.walls.has(grid_pos):
+		var wall_tile: int = MapManager.walls[grid_pos]
 		tile_name = WALL_NAMES.get(wall_tile, "Wall")
 
 	# Deposit info
-	var deposit_id: StringName = GameManager.deposits.get(grid_pos, &"")
+	var deposit_id: StringName = MapManager.deposits.get(grid_pos, &"")
 	if deposit_id != &"":
-		var item_def = GameManager.get_item_def(deposit_id)
+		var item_def = ItemRegistry.get_item_def(deposit_id)
 		tile_name = "%s Deposit" % (item_def.display_name if item_def else str(deposit_id))
 
 		# Title with icon
@@ -345,9 +345,9 @@ func _open_pause_menu() -> void:
 	$UI.add_child(pause_menu)
 
 func _setup_terrain_collision() -> void:
-	if not GameManager.terrain_visual_manager:
+	if not MapManager.terrain_visual_manager:
 		return
-	var shape: ConcavePolygonShape3D = GameManager.terrain_visual_manager.create_box_collision()
+	var shape: ConcavePolygonShape3D = MapManager.terrain_visual_manager.create_box_collision()
 	if not shape:
 		return
 	var face_count: int = shape.get_faces().size() / 3
@@ -367,21 +367,21 @@ func _setup_terrain_collision() -> void:
 
 func _spawn_deposit_models() -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = GameManager.world_seed + 888
+	rng.seed = MapManager.world_seed + 888
 	var deposit_layer := Node3D.new()
 	deposit_layer.name = "DepositModels"
 	add_child(deposit_layer)
 
 	# Place one 3D model per ~5 deposit tiles to avoid clutter
-	for pos: Vector2i in GameManager.deposits:
+	for pos: Vector2i in MapManager.deposits:
 		if rng.randf() > 0.2:
 			continue
-		var item_id: StringName = GameManager.deposits[pos]
+		var item_id: StringName = MapManager.deposits[pos]
 		if not _deposit_scenes.has(item_id):
 			continue
 		var inst: Node3D = _deposit_scenes[item_id].instantiate()
 		var world_pos := GridUtils.grid_to_world(pos)
-		world_pos.y = GameManager.get_terrain_height(pos)
+		world_pos.y = MapManager.get_terrain_height(pos)
 		inst.position = world_pos
 		inst.rotation.y = rng.randf() * TAU
 		var s := rng.randf_range(0.5, 0.8)
@@ -394,13 +394,13 @@ func _spawn_deposit_models() -> void:
 
 func _spawn_terrain_decorations() -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = GameManager.world_seed + 999
+	rng.seed = MapManager.world_seed + 999
 	var decoration_layer := Node3D.new()
 	decoration_layer.name = "TerrainDecorations"
 	add_child(decoration_layer)
 
-	for pos: Vector2i in GameManager.walls:
-		var wall_type: int = GameManager.walls[pos]
+	for pos: Vector2i in MapManager.walls:
+		var wall_type: int = MapManager.walls[pos]
 		var scene: PackedScene = null
 		var chance: float = 0.0
 
@@ -416,7 +416,7 @@ func _spawn_terrain_decorations() -> void:
 
 		var inst: Node3D = scene.instantiate()
 		var world_pos := GridUtils.grid_to_world(pos)
-		world_pos.y = GameManager.get_terrain_height(pos)
+		world_pos.y = MapManager.get_terrain_height(pos)
 		inst.position = world_pos
 		inst.rotation.y = rng.randf() * TAU
 		var s := rng.randf_range(0.4, 0.7)
@@ -427,9 +427,9 @@ func _spawn_player() -> void:
 	player = _player_scene.instantiate()
 	# Spawn at map center (grid midpoint)
 	@warning_ignore("integer_division")
-	var center_grid := Vector2i(GameManager.map_size / 2, GameManager.map_size / 2)
+	var center_grid := Vector2i(MapManager.map_size / 2, MapManager.map_size / 2)
 	var center := GridUtils.grid_to_world(center_grid)
-	center.y = GameManager.get_terrain_height(center_grid) + 0.1
+	center.y = MapManager.get_terrain_height(center_grid) + 0.1
 	player.position = center
 	player.spawn_position = center
 	add_child(player)
@@ -458,25 +458,25 @@ const WALL_ITEMS = TileDatabase.WALL_ITEMS
 
 ## Pack all tile map cells into a base64 string (one byte per cell).
 func serialize_terrain() -> String:
-	var map_size := GameManager.map_size
+	var map_size := MapManager.map_size
 	var cell_count := map_size * map_size
 	# Use terrain_tile_types directly (already byte-per-cell)
-	if GameManager.terrain_tile_types.size() == cell_count:
-		return Marshalls.raw_to_base64(GameManager.terrain_tile_types)
+	if MapManager.terrain_tile_types.size() == cell_count:
+		return Marshalls.raw_to_base64(MapManager.terrain_tile_types)
 	# Fallback: empty terrain
 	var bytes := PackedByteArray()
 	bytes.resize(cell_count)
 	return Marshalls.raw_to_base64(bytes)
 
 ## Restore terrain data from base64 terrain data.
-## Also populates GameManager.terrain_tile_types for MultiMesh rendering.
+## Also populates MapManager.terrain_tile_types for MultiMesh rendering.
 ## Supports both legacy nibble-packed format and new byte-per-cell format.
 func deserialize_terrain(data: String) -> void:
 	var bytes := Marshalls.base64_to_raw(data)
-	var map_size := GameManager.map_size
+	var map_size := MapManager.map_size
 	var cell_count := map_size * map_size
-	GameManager.deposits.clear()
-	GameManager.walls.clear()
+	MapManager.deposits.clear()
+	MapManager.walls.clear()
 	var tile_types := PackedByteArray()
 	tile_types.resize(cell_count)
 	# Detect format: legacy nibble-packed has ~half the bytes
@@ -495,8 +495,8 @@ func deserialize_terrain(data: String) -> void:
 			var pos := Vector2i(x, y)
 			tile_types[idx] = source_id
 			if WALL_COLORS.has(source_id):
-				GameManager.walls[pos] = source_id
+				MapManager.walls[pos] = source_id
 			elif DEPOSIT_ITEMS.has(source_id):
-				GameManager.deposits[pos] = DEPOSIT_ITEMS[source_id]
+				MapManager.deposits[pos] = DEPOSIT_ITEMS[source_id]
 			# TILE_ASH: no deposit, no wall — just terrain
-	GameManager.terrain_tile_types = tile_types
+	MapManager.terrain_tile_types = tile_types

@@ -38,7 +38,7 @@ func _ready() -> void:
 
 func run_simulation() -> void:
 	# Enable creative mode so the bot can place buildings freely
-	GameManager.creative_mode = true
+	EconomyTracker.creative_mode = true
 
 	# Initialize subsystems after game_world is loaded
 	map = ScenarioMap.new()
@@ -93,22 +93,22 @@ func assert_gt_scenario(actual: float, threshold: float, msg: String) -> void:
 
 ## Rebuild terrain visuals + collision after setup_map() modifies heights.
 func _rebuild_terrain() -> void:
-	if GameManager.terrain_heights.is_empty():
+	if MapManager.terrain_heights.is_empty():
 		return
 	# Rebuild visual mesh
-	if GameManager.terrain_visual_manager:
-		GameManager.terrain_visual_manager.build(
-			GameManager.map_size,
-			GameManager.terrain_tile_types,
-			GameManager.terrain_variants,
-			GameManager.terrain_heights
+	if MapManager.terrain_visual_manager:
+		MapManager.terrain_visual_manager.build(
+			MapManager.map_size,
+			MapManager.terrain_tile_types,
+			MapManager.terrain_variants,
+			MapManager.terrain_heights
 		)
 	# Replace terrain collision (remove old one if present)
 	var old_col := game_world.get_node_or_null("TerrainCollision")
 	if old_col:
 		old_col.queue_free()
-	if GameManager.terrain_visual_manager:
-		var shape: ConcavePolygonShape3D = GameManager.terrain_visual_manager.create_box_collision()
+	if MapManager.terrain_visual_manager:
+		var shape: ConcavePolygonShape3D = MapManager.terrain_visual_manager.create_box_collision()
 		if shape:
 			# Keep ground plane at Y=0 as fallback floor
 			var body := StaticBody3D.new()

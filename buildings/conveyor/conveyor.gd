@@ -85,7 +85,7 @@ func get_next_pos() -> Vector2i:
 # ── Auto-shape detection ──────────────────────────────────────────────────────
 
 func _has_adjacent_conveyor(dir_idx: int) -> bool:
-	return GameManager.get_conveyor_at(adjacent_cell(dir_idx)) != null
+	return BuildingRegistry.get_conveyor_at(adjacent_cell(dir_idx)) != null
 
 ## Determine the best model variant and rotation for current neighbors.
 ## Returns [variant_name, rotation_steps] where rotation_steps is 0-3

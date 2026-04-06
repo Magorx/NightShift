@@ -122,7 +122,7 @@ func _camera_offset() -> Vector3:
 	return cam_basis.z * dist
 
 func _get_bounds() -> Rect2:
-	var n := GameManager.map_size
+	var n := MapManager.map_size
 	var map_size_3d := GridUtils.map_world_size(n)
 	var origin := GridUtils.map_origin(n)
 	# Half-view in world units (ortho size is vertical extent)

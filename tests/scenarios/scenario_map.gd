@@ -7,11 +7,11 @@ extends RefCounted
 
 ## Place a single deposit at a grid position.
 func deposit(pos: Vector2i, item_id: StringName, stock: int = -1) -> void:
-	GameManager.deposits[pos] = item_id
+	MapManager.deposits[pos] = item_id
 	if stock > 0:
-		GameManager.deposit_stocks[pos] = stock
+		MapManager.deposit_stocks[pos] = stock
 	else:
-		GameManager.deposit_stocks[pos] = -1  # infinite
+		MapManager.deposit_stocks[pos] = -1  # infinite
 
 ## Place a rectangular cluster of deposits.
 func deposit_cluster(center: Vector2i, item_id: StringName, radius: int = 1, stock: int = -1) -> void:
@@ -34,7 +34,7 @@ func deposit_line(from: Vector2i, to: Vector2i, item_id: StringName, stock: int 
 
 ## Place a single wall tile.
 func wall(pos: Vector2i) -> void:
-	GameManager.walls[pos] = 1
+	MapManager.walls[pos] = 1
 
 ## Place a rectangular wall border.
 func wall_border(top_left: Vector2i, bottom_right: Vector2i) -> void:
@@ -53,18 +53,18 @@ func wall_rect(top_left: Vector2i, bottom_right: Vector2i) -> void:
 
 ## Clear all walls.
 func clear_walls() -> void:
-	GameManager.walls.clear()
+	MapManager.walls.clear()
 
 # ── Terrain Heights ─────────────────────────────────────────────────────────
 
 ## Set terrain height at a single grid position.
 func set_height(pos: Vector2i, height: float) -> void:
-	if GameManager.terrain_heights.is_empty():
-		GameManager.terrain_heights.resize(GameManager.map_size * GameManager.map_size)
-		GameManager.terrain_heights.fill(0.0)
-	var idx := pos.y * GameManager.map_size + pos.x
-	if idx >= 0 and idx < GameManager.terrain_heights.size():
-		GameManager.terrain_heights[idx] = height
+	if MapManager.terrain_heights.is_empty():
+		MapManager.terrain_heights.resize(MapManager.map_size * MapManager.map_size)
+		MapManager.terrain_heights.fill(0.0)
+	var idx := pos.y * MapManager.map_size + pos.x
+	if idx >= 0 and idx < MapManager.terrain_heights.size():
+		MapManager.terrain_heights[idx] = height
 
 ## Set terrain height for a rectangular area.
 func set_height_rect(top_left: Vector2i, bottom_right: Vector2i, height: float) -> void:
@@ -74,15 +74,15 @@ func set_height_rect(top_left: Vector2i, bottom_right: Vector2i, height: float) 
 
 ## Set all terrain to a flat height.
 func set_flat_height(height: float) -> void:
-	if GameManager.terrain_heights.is_empty():
-		GameManager.terrain_heights.resize(GameManager.map_size * GameManager.map_size)
-	GameManager.terrain_heights.fill(height)
+	if MapManager.terrain_heights.is_empty():
+		MapManager.terrain_heights.resize(MapManager.map_size * MapManager.map_size)
+	MapManager.terrain_heights.fill(height)
 
 # ── Buildings (pre-placed) ───────────────────────────────────────────────────
 
 ## Pre-place a building (instant, no player involvement).
 func building(building_id: StringName, pos: Vector2i, rotation: int = 0) -> bool:
-	var result = GameManager.place_building(building_id, pos, rotation)
+	var result = BuildingRegistry.place_building(building_id, pos, rotation)
 	return result != null
 
 ## Pre-place a line of conveyors.
@@ -116,7 +116,7 @@ func conveyor_line(from: Vector2i, to: Vector2i) -> int:
 ## Spawn a physics item at a grid position.
 func spawn_item(pos: Vector2i, item_id: StringName) -> void:
 	var world_pos := GridUtils.grid_to_world(pos)
-	world_pos.y = GameManager.get_terrain_height(pos) + 0.3  # above terrain
+	world_pos.y = MapManager.get_terrain_height(pos) + 0.3  # above terrain
 	PhysicsItem.spawn(item_id, world_pos, Vector3.ZERO)
 
 # ── Player ───────────────────────────────────────────────────────────────────
@@ -126,7 +126,7 @@ func player_start(pos: Vector2i) -> void:
 	var player: Player = GameManager.player
 	if player:
 		var world_pos := GridUtils.grid_to_world(pos)
-		world_pos.y = GameManager.get_terrain_height(pos) + 0.1
+		world_pos.y = MapManager.get_terrain_height(pos) + 0.1
 		player.position = world_pos
 		player.spawn_position = player.position
 		player.velocity = Vector3.ZERO

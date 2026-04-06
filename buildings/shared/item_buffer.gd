@@ -84,7 +84,7 @@ func cleanup() -> void:
 
 ## Create an item visual from the pool using the atlas texture.
 func create_visual(item_id: StringName):
-	return GameManager.acquire_visual(item_id)
+	return ItemRegistry.acquire_visual(item_id)
 
 ## Count items by id. Returns Dictionary: StringName -> int.
 func get_item_counts() -> Dictionary:
@@ -109,4 +109,4 @@ func remove_items_by_id(item_id: StringName, count: int) -> int:
 ## Return a single item's visual node to the pool.
 func free_visual(item: Dictionary) -> void:
 	if item.has("visual") and item.visual:
-		GameManager.release_visual(item.visual)
+		ItemRegistry.release_visual(item.visual)

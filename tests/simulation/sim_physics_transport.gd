@@ -70,7 +70,7 @@ func _test_smelter_processing() -> void:
 	print("[SIM] Test: smelter processing")
 
 	# Check if any recipes exist for smelter
-	var recipes = GameManager.recipes_by_type.get("smelter", [])
+	var recipes = BuildingRegistry.recipes_by_type.get("smelter", [])
 	if recipes.is_empty():
 		print("[SIM]   SKIP: no smelter recipes defined yet")
 		return

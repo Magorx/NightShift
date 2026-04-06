@@ -17,7 +17,7 @@ var grid: GridContainer
 func populate(source_logic) -> void:
 	grid = $MarginContainer/Grid
 	_source_logic = source_logic
-	var all_items: Array = GameManager.get_all_item_defs()
+	var all_items: Array = ItemRegistry.get_all_item_defs()
 	for item_def in all_items:
 		var is_enabled: bool = source_logic.enabled_items.has(item_def.id)
 		var cell := _create_cell(item_def.id, is_enabled)

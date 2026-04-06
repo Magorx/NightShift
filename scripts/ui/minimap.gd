@@ -29,13 +29,13 @@ func _process(delta: float) -> void:
 	_redraw_timer += delta
 	if _redraw_timer >= 1.0:
 		_redraw_timer = 0.0
-		var count := GameManager.unique_buildings.size()
+		var count := BuildingRegistry.unique_buildings.size()
 		if count != _cached_building_count:
 			_cache_dirty = true
 			queue_redraw()
 
 func _draw() -> void:
-	var map_tiles := float(GameManager.map_size)
+	var map_tiles := float(MapManager.map_size)
 	var display_size := size
 
 	if _cache_dirty or not _cached_image:
@@ -76,10 +76,10 @@ func _rebuild_cache(map_tiles: float, display_size: Vector2) -> void:
 	var scale_y := display_size.y / map_tiles
 
 	# Deposits -- grid pos maps directly to minimap pixel position
-	for pos in GameManager.deposits:
-		var item_id: StringName = GameManager.deposits[pos]
+	for pos in MapManager.deposits:
+		var item_id: StringName = MapManager.deposits[pos]
 		var color := Color(0.4, 0.4, 0.4, 0.4)
-		var item_def = GameManager.get_item_def(item_id)
+		var item_def = ItemRegistry.get_item_def(item_id)
 		if item_def:
 			color = item_def.color
 			color.a = 0.35
@@ -91,15 +91,15 @@ func _rebuild_cache(map_tiles: float, display_size: Vector2) -> void:
 
 	# Buildings
 	var drawn_buildings: Dictionary = {}
-	for pos in GameManager.buildings:
-		var building = GameManager.buildings[pos]
+	for pos in BuildingRegistry.buildings:
+		var building = BuildingRegistry.buildings[pos]
 		if not is_instance_valid(building):
 			continue
 		var nid: int = building.get_instance_id()
 		if drawn_buildings.has(nid):
 			continue
 		drawn_buildings[nid] = true
-		var def = GameManager.get_building_def(building.building_id)
+		var def = BuildingRegistry.get_building_def(building.building_id)
 		var color := Color.WHITE
 		if def:
 			color = def.color
@@ -109,7 +109,7 @@ func _rebuild_cache(map_tiles: float, display_size: Vector2) -> void:
 		var by2 := int((pos.y + 1) * scale_y)
 		_fill_rect_on_image(img, bx1, by1, maxi(bx2 - bx1, 2), maxi(by2 - by1, 2), color, w, h)
 
-	_cached_building_count = GameManager.unique_buildings.size()
+	_cached_building_count = BuildingRegistry.unique_buildings.size()
 	_cached_image = ImageTexture.create_from_image(img)
 
 func _fill_rect_on_image(img: Image, x: int, y: int, w: int, h: int, color: Color, img_w: int, img_h: int) -> void:
@@ -132,7 +132,7 @@ func _gui_input(event: InputEvent) -> void:
 func _pan_camera_to(local_pos: Vector2) -> void:
 	if not _camera:
 		return
-	var map_tiles := float(GameManager.map_size)
+	var map_tiles := float(MapManager.map_size)
 	var grid_x := local_pos.x / size.x * map_tiles
 	var grid_y := local_pos.y / size.y * map_tiles
 	_camera.position = GridUtils.grid_to_center(Vector2i(int(grid_x), int(grid_y)))

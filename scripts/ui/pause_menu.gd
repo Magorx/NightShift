@@ -6,7 +6,7 @@ func _ready() -> void:
 	$Panel/VBox/QuitButton.pressed.connect(_on_quit_to_menu)
 	# Initialize creative mode toggle
 	var creative_toggle: CheckButton = $Panel/VBox/CreativeToggle
-	creative_toggle.button_pressed = GameManager.creative_mode
+	creative_toggle.button_pressed = EconomyTracker.creative_mode
 	creative_toggle.toggled.connect(_on_creative_toggled)
 	# Initialize pixel art toggle
 	var pixel_art_toggle: CheckButton = $Panel/VBox/PixelArtToggle
@@ -29,7 +29,7 @@ func _on_save() -> void:
 	)
 
 func _on_creative_toggled(enabled: bool) -> void:
-	GameManager.creative_mode = enabled
+	EconomyTracker.creative_mode = enabled
 
 func _on_quit_to_menu() -> void:
 	SaveManager.save_run()

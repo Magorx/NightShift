@@ -30,7 +30,7 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	super.configure(def, p_grid_pos, p_rotation)
 	rotation = p_rotation
 	converter_type = str(def.id)
-	recipes = GameManager.recipes_by_type.get(converter_type, [])
+	recipes = BuildingRegistry.recipes_by_type.get(converter_type, [])
 	_build_input_caps()
 	_cache_input_zones.call_deferred()
 

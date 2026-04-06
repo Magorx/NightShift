@@ -5,8 +5,8 @@ extends Node
 ## serialization, and info panel data.
 ##
 ## Every building logic script (ConveyorBelt, SplitterLogic, etc.) extends this.
-## GameManager finds the logic node by type (`child is BuildingLogic`) rather than
-## by name, so adding a new building type requires zero changes to GameManager.
+## The building system finds the logic node by type (`child is BuildingLogic`)
+## rather than by name, so adding a new building type requires zero registration.
 
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 

@@ -43,13 +43,13 @@ func _ready():
 		timer.timeout.connect(_on_timeout)
 
 	# Use smaller map for fast tests (128x128 game default is too slow for unit sims)
-	GameManager.map_size = sim_map_size
+	MapManager.map_size = sim_map_size
 
 	# Ensure deterministic terrain for reproducible screenshots.
 	# game_world._ready() replaces world_seed=0 with randi(), so set a
 	# non-zero fixed seed when no subclass has provided one.
-	if GameManager.world_seed == 0:
-		GameManager.world_seed = 42
+	if MapManager.world_seed == 0:
+		MapManager.world_seed = 42
 
 	# Load the real game world scene
 	var scene = load("res://scenes/game/game_world.tscn")
@@ -106,13 +106,13 @@ func run_simulation() -> void:
 
 ## Clear walls and optionally flatten terrain for a clean sim grid.
 func _sim_clear_walls() -> void:
-	GameManager.walls.clear()
+	MapManager.walls.clear()
 	if sim_flatten_terrain:
 		# Flatten terrain to Y=0 so physics items roll predictably
-		if not GameManager.terrain_heights.is_empty():
-			GameManager.terrain_heights.fill(0.0)
+		if not MapManager.terrain_heights.is_empty():
+			MapManager.terrain_heights.fill(0.0)
 		# Reset any pre-placed buildings to ground level
-		for b in GameManager.unique_buildings:
+		for b in BuildingRegistry.unique_buildings:
 			if is_instance_valid(b):
 				b.position.y = 0.0
 	# Remove 3D decorations (rocks, rubble) spawned from wall data —
@@ -124,21 +124,21 @@ func _sim_clear_walls() -> void:
 
 ## Rebuild terrain collision after flattening heights.
 func _sim_rebuild_terrain_collision() -> void:
-	if not GameManager.terrain_visual_manager:
+	if not MapManager.terrain_visual_manager:
 		return
 	# Rebuild visual mesh from flat heights
-	if GameManager.terrain_tile_types.size() > 0:
-		GameManager.terrain_visual_manager.build(
-			GameManager.map_size,
-			GameManager.terrain_tile_types,
-			GameManager.terrain_variants,
-			GameManager.terrain_heights
+	if MapManager.terrain_tile_types.size() > 0:
+		MapManager.terrain_visual_manager.build(
+			MapManager.map_size,
+			MapManager.terrain_tile_types,
+			MapManager.terrain_variants,
+			MapManager.terrain_heights
 		)
 	# Replace terrain collision
 	var old_col := game_world.get_node_or_null("TerrainCollision")
 	if old_col:
 		old_col.queue_free()
-	var shape: ConcavePolygonShape3D = GameManager.terrain_visual_manager.create_box_collision()
+	var shape: ConcavePolygonShape3D = MapManager.terrain_visual_manager.create_box_collision()
 	if not shape:
 		return
 	var body := StaticBody3D.new()
@@ -152,17 +152,17 @@ func _sim_rebuild_terrain_collision() -> void:
 
 ## Register a deposit at a position so drills can be placed there.
 func sim_add_deposit(pos: Vector2i, item_id: StringName) -> void:
-	GameManager.deposits[pos] = item_id
+	MapManager.deposits[pos] = item_id
 
 # ── Building helpers (use GameManager directly) ──────────────────────────
 
 func sim_place_building(building_id: StringName, grid_pos: Vector2i, rotation: int = 0):
-	var result = GameManager.place_building(building_id, grid_pos, rotation)
+	var result = BuildingRegistry.place_building(building_id, grid_pos, rotation)
 	print("[SIM] Placed %s at %s rot=%d -> %s" % [building_id, str(grid_pos), rotation, "OK" if result else "FAILED"])
 	return result
 
 func sim_remove_building(grid_pos: Vector2i) -> void:
-	GameManager.remove_building(grid_pos)
+	BuildingRegistry.remove_building(grid_pos)
 	print("[SIM] Removed building at %s" % str(grid_pos))
 
 func sim_spawn_item_on_conveyor(grid_pos: Vector2i, item_id: StringName) -> bool:
@@ -172,10 +172,10 @@ func sim_spawn_item_on_conveyor(grid_pos: Vector2i, item_id: StringName) -> bool
 	return true
 
 func sim_get_conveyor_at(grid_pos: Vector2i):
-	return GameManager.get_conveyor_at(grid_pos)
+	return BuildingRegistry.get_conveyor_at(grid_pos)
 
 func sim_get_building_at(grid_pos: Vector2i):
-	return GameManager.get_building_at(grid_pos)
+	return BuildingRegistry.get_building_at(grid_pos)
 
 # ── Time helpers ─────────────────────────────────────────────────────────
 

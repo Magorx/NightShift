@@ -170,7 +170,7 @@ func _update_cursor_ghost() -> void:
 	pos.x = clampf(pos.x, 0, vp_size.x - ghost_size.x)
 	pos.y = clampf(pos.y, 0, vp_size.y - ghost_size.y)
 	_cursor_ghost.global_position = pos
-	_ghost_icon.texture = GameManager.get_item_icon(_held_item.item_id)
+	_ghost_icon.texture = ItemRegistry.get_item_icon(_held_item.item_id)
 	_ghost_label.text = str(_held_item.quantity) if _held_item.quantity > 1 else ""
 
 # ── Slot Interactions ───────────────────────────────────────────────────────
@@ -337,7 +337,7 @@ func _drop_held_item_at_cursor() -> void:
 		world_pos = player.position + to_target.normalized() * DROP_RANGE
 	# Try to insert into building at drop position
 	var drop_grid := GridUtils.world_to_grid(world_pos)
-	var building = GameManager.get_building_at(drop_grid)
+	var building = BuildingRegistry.get_building_at(drop_grid)
 	if building and building.logic:
 		var leftover: int = building.logic.try_insert_item(_held_item.item_id, _held_item.quantity)
 		if leftover <= 0:
@@ -399,7 +399,7 @@ func _animate_pickup_to_cursor(slot_index: int, item_id: StringName, quantity: i
 	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon_rect.texture = GameManager.get_item_icon(item_id)
+	icon_rect.texture = ItemRegistry.get_item_icon(item_id)
 	icon_rect.modulate.a = 0.75
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fly_item.add_child(icon_rect)

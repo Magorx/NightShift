@@ -1,9 +1,14 @@
 extends "simulation_base.gd"
 
+## BROKEN: stress_test_generator.gd layouts were designed for slot-based item
+## transport. Physics-based items (RigidBody3D) don't reliably traverse the
+## generated chains (tunnels, junctions, splitters). This sim needs a full
+## rewrite of the generator before it can pass again.
+
 func _ready():
 	GameManager.stress_test_pending = true
-	GameManager.map_size = 160
-	GameManager.world_seed = 0
+	MapManager.map_size = 160
+	MapManager.world_seed = 0
 	# Flatten terrain after stress gen — buildings get repositioned to y=0 by the
 	# terrain rebuild, making item physics predictable on flat ground.
 	sim_flatten_terrain = true
@@ -11,12 +16,12 @@ func _ready():
 
 func run_simulation() -> void:
 	# The stress test generator ran during game_world._ready()
-	var building_count := GameManager.unique_buildings.size()
+	var building_count := BuildingRegistry.unique_buildings.size()
 	sim_assert(building_count > 50, "Stress test placed many buildings (got %d)" % building_count)
 
 	# Count building types
 	var type_counts := {}
-	for building in GameManager.unique_buildings:
+	for building in BuildingRegistry.unique_buildings:
 		if not is_instance_valid(building):
 			continue
 		var bid: StringName = building.building_id
@@ -40,8 +45,8 @@ func run_simulation() -> void:
 
 	# Check that items were delivered to sinks
 	var total_delivered := 0
-	for item_id: StringName in GameManager.items_delivered:
-		var count: int = GameManager.items_delivered[item_id]
+	for item_id: StringName in EconomyTracker.items_delivered:
+		var count: int = EconomyTracker.items_delivered[item_id]
 		total_delivered += count
 		print("[SIM] Delivered %s: %d" % [item_id, count])
 
@@ -52,7 +57,7 @@ func run_simulation() -> void:
 		var cam: GameCamera = game_world.camera
 		if cam:
 			cam.target_node = null
-			var half := GameManager.map_size / 2
+			var half := MapManager.map_size / 2
 			cam.snap_to_3d(GridUtils.grid_to_world(Vector2i(half, half)))
 			cam.size = 120.0
 			cam._target_size = 120.0
@@ -66,12 +71,12 @@ func run_simulation() -> void:
 			await sim_capture_screenshot("factory_closeup")
 			# Find a conveyor with neighbors for UV debug
 			var conv_world := Vector3.ZERO
-			for b in GameManager.unique_buildings:
+			for b in BuildingRegistry.unique_buildings:
 				if is_instance_valid(b) and b.building_id == &"conveyor":
 					var gp: Vector2i = b.logic.grid_pos
 					var has_neighbor := false
 					for offset in [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]:
-						var nb = GameManager.buildings.get(gp + offset)
+						var nb = BuildingRegistry.buildings.get(gp + offset)
 						if nb and is_instance_valid(nb) and nb.building_id == &"conveyor":
 							has_neighbor = true
 							break
@@ -97,7 +102,7 @@ func _run_benchmark() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
 
-	var half := GameManager.map_size / 2
+	var half := MapManager.map_size / 2
 	var center := GridUtils.grid_to_world(Vector2i(half, half))
 
 	print("[BENCH] Warming up factory for 2 seconds...")

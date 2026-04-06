@@ -94,7 +94,7 @@ static func create_item_model(id: StringName) -> Node3D:
 	sphere_mesh.height = 0.16
 	mesh_inst.mesh = sphere_mesh
 	var mat := StandardMaterial3D.new()
-	var item_def = GameManager.get_item_def(id)
+	var item_def = ItemRegistry.get_item_def(id)
 	mat.albedo_color = item_def.color if item_def else Color.WHITE
 	mesh_inst.material_override = mat
 	return mesh_inst

@@ -282,7 +282,7 @@ func _close_side_menu() -> void:
 func _update_position() -> void:
 	if not _building or not _camera:
 		return
-	var def = GameManager.get_building_def(_building.building_id)
+	var def = BuildingRegistry.get_building_def(_building.building_id)
 	if not def:
 		return
 	var rotated_shape: Array = def.get_rotated_shape(_building.rotation_index)

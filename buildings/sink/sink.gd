@@ -19,9 +19,9 @@ func _physics_process(_delta: float) -> void:
 		var id: StringName = zone.consume_any()
 		while id != &"":
 			items_consumed += 1
-			var item_def = GameManager.get_item_def(id)
+			var item_def = ItemRegistry.get_item_def(id)
 			var export_val: int = item_def.export_value if item_def else 1
-			GameManager.record_delivery(id, export_val)
+			EconomyTracker.record_delivery(id, export_val)
 			id = zone.consume_any()
 
 # ── Serialization ──────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ func run_simulation() -> void:
 	# Test 1: Drill can only be placed on a deposit
 	# Use a far corner that won't have a deposit from world gen
 	var empty_pos := Vector2i(99, 99)
-	GameManager.deposits.erase(empty_pos)  # ensure no deposit
+	MapManager.deposits.erase(empty_pos)  # ensure no deposit
 	var result = sim_place_building(&"drill", empty_pos, 0)
 	sim_assert(result == null, "Drill cannot be placed on empty ground")
 
@@ -23,7 +23,7 @@ func run_simulation() -> void:
 	await sim_advance_seconds(10)
 
 	# Check the sink consumed items
-	var sink_building = GameManager.get_building_at(Vector2i(14, 10))
+	var sink_building = BuildingRegistry.get_building_at(Vector2i(14, 10))
 	var sink_logic = sink_building.find_child("SinkLogic", true, false) if sink_building else null
 	var consumed: int = sink_logic.items_consumed if sink_logic else 0
 	sim_assert(consumed > 0, "Sink consumed items from drill chain (got %d)" % consumed)
@@ -37,7 +37,7 @@ func run_simulation() -> void:
 
 	await sim_advance_seconds(15)
 
-	var sink2 = GameManager.get_building_at(Vector2i(31, 10))
+	var sink2 = BuildingRegistry.get_building_at(Vector2i(31, 10))
 	var sink2_logic = sink2.find_child("SinkLogic", true, false) if sink2 else null
 	var consumed2: int = sink2_logic.items_consumed if sink2_logic else 0
 	sim_assert(consumed2 > 0, "Copper drill chain delivered items (got %d)" % consumed2)

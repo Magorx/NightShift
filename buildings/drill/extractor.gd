@@ -4,7 +4,7 @@ extends BuildingLogic
 ## If no conveyor carries items away, they pile up at the output.
 
 func get_placement_error(p_grid_pos: Vector2i, _rotation: int) -> String:
-	if not GameManager.deposits.has(p_grid_pos):
+	if not MapManager.deposits.has(p_grid_pos):
 		return "No resource deposit"
 	return ""
 
@@ -16,7 +16,7 @@ var _timer: float = 0.0
 func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(def, p_grid_pos, rotation)
 	direction = rotation
-	item_id = GameManager.deposits.get(grid_pos, &"pyromite")
+	item_id = MapManager.deposits.get(grid_pos, &"pyromite")
 	if str(def.id) == "drill_mk2":
 		produce_interval = 1.0
 

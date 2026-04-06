@@ -11,7 +11,7 @@ func run_simulation() -> void:
 		return
 
 	# -- Test 1: Player spawn position ----------------------------------------
-	var center_grid := Vector2i(GameManager.map_size / 2, GameManager.map_size / 2)
+	var center_grid := Vector2i(MapManager.map_size / 2, MapManager.map_size / 2)
 	var expected_center := GridUtils.grid_to_world(center_grid)
 	sim_assert(absf(player.position.x - expected_center.x) < 1.0, "Player spawned near map center X")
 	sim_assert(absf(player.position.z - expected_center.z) < 1.0, "Player spawned near map center Z")
@@ -25,10 +25,10 @@ func run_simulation() -> void:
 	var conv_pos := GridUtils.world_to_grid(player.position) + Vector2i(-2, 0)
 	sim_place_building(&"conveyor", conv_pos, 0)
 
-	var conv_def = GameManager.get_building_def(&"conveyor")
+	var conv_def = BuildingRegistry.get_building_def(&"conveyor")
 	sim_assert(conv_def.is_ground_level == true, "Conveyor is ground-level")
 
-	var smelter_def = GameManager.get_building_def(&"smelter")
+	var smelter_def = BuildingRegistry.get_building_def(&"smelter")
 	sim_assert(smelter_def.is_ground_level == false, "Smelter is NOT ground-level")
 
 	# -- Test 4: Player movement (direct position) ----------------------------

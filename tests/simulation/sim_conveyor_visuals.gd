@@ -27,7 +27,7 @@ func run_simulation() -> void:
 
 	# Verify conveyors were placed
 	var conv_count := 0
-	for b in GameManager.unique_buildings:
+	for b in BuildingRegistry.unique_buildings:
 		if is_instance_valid(b) and b.building_id == &"conveyor":
 			conv_count += 1
 	sim_assert(conv_count > 20, "Placed many conveyors (got %d)" % conv_count)

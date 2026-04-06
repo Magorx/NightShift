@@ -53,7 +53,7 @@ func walk_to(pos: Vector2i) -> bool:
 ## Teleport the player instantly to a grid position (no physics traversal).
 func teleport_to(pos: Vector2i) -> void:
 	var wpos := GridUtils.grid_to_world(pos)
-	var terrain_y: float = GameManager.get_terrain_height(pos)
+	var terrain_y: float = MapManager.get_terrain_height(pos)
 	_player.position = Vector3(wpos.x, terrain_y + 0.1, wpos.z)
 	_player.velocity = Vector3.ZERO
 	_log("teleport_to %s (terrain_y=%.2f)" % [str(pos), terrain_y])
@@ -73,8 +73,8 @@ func _auto_jump_if_step() -> void:
 	var current_grid := GridUtils.world_to_grid(_player.position)
 	if ahead_grid == current_grid:
 		return
-	var h_ahead: float = GameManager.get_terrain_height(ahead_grid)
-	var h_current: float = GameManager.get_terrain_height(current_grid)
+	var h_ahead: float = MapManager.get_terrain_height(ahead_grid)
+	var h_current: float = MapManager.get_terrain_height(current_grid)
 	if h_ahead > h_current + 0.25:
 		_player._try_jump()
 
@@ -107,7 +107,7 @@ func place(building_id: StringName, pos: Vector2i, rotation: int = 0) -> bool:
 	var approach_pos := pos + Vector2i(-1, 0)
 	await walk_to(approach_pos)
 
-	var result = GameManager.place_building(building_id, pos, rotation)
+	var result = BuildingRegistry.place_building(building_id, pos, rotation)
 	var ok := result != null
 	_log("place %s at %s rot=%d -> %s" % [building_id, str(pos), rotation, "OK" if ok else "FAIL"])
 	await _sim.sim_advance_ticks(5)  # settle
@@ -115,7 +115,7 @@ func place(building_id: StringName, pos: Vector2i, rotation: int = 0) -> bool:
 
 ## Place a building instantly without walking (for batch setup).
 func place_at(building_id: StringName, pos: Vector2i, rotation: int = 0) -> bool:
-	var result = GameManager.place_building(building_id, pos, rotation)
+	var result = BuildingRegistry.place_building(building_id, pos, rotation)
 	var ok := result != null
 	_log("place_at %s at %s rot=%d -> %s" % [building_id, str(pos), rotation, "OK" if ok else "FAIL"])
 	return ok
@@ -147,7 +147,7 @@ func place_conveyor_line(from: Vector2i, to: Vector2i, rotation: int = 0) -> int
 
 ## Remove a building at a grid position.
 func remove(pos: Vector2i) -> void:
-	GameManager.remove_building(pos)
+	BuildingRegistry.remove_building(pos)
 	_log("remove at %s" % str(pos))
 	await _sim.sim_advance_ticks(5)
 
@@ -158,7 +158,7 @@ func remove(pos: Vector2i) -> void:
 func mine_at(pos: Vector2i) -> bool:
 	await walk_to(pos)
 
-	var deposit_id: StringName = GameManager.get_deposit_at(pos)
+	var deposit_id: StringName = MapManager.get_deposit_at(pos)
 	if deposit_id == null or deposit_id == &"":
 		_log("mine_at %s -> no deposit" % str(pos))
 		return false

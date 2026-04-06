@@ -15,7 +15,7 @@ var _rmb_hold_time: float = 0.0
 const RMB_HOLD_THRESHOLD := 0.3
 
 static func create(item_id: StringName, icon_size: Vector2 = Vector2(16, 16), browsable: bool = false) -> Control:
-	var icon_tex := GameManager.get_item_icon(item_id)
+	var icon_tex := ItemRegistry.get_item_icon(item_id)
 	if not icon_tex:
 		return _create_color_fallback(item_id, icon_size)
 	var icon := ItemIcon.new()
@@ -32,7 +32,7 @@ static func create(item_id: StringName, icon_size: Vector2 = Vector2(16, 16), br
 	return icon
 
 static func _create_color_fallback(item_id: StringName, icon_size: Vector2) -> PanelContainer:
-	var item_def = GameManager.get_item_def(item_id)
+	var item_def = ItemRegistry.get_item_def(item_id)
 	var color: Color = item_def.color if item_def else Color.WHITE
 	var outline_color := Color.BLACK if color.get_luminance() > 0.4 else Color.WHITE
 	var style := StyleBoxFlat.new()
@@ -66,7 +66,7 @@ func set_item(item_id: StringName) -> void:
 	if item_id == _item_id:
 		return
 	_item_id = item_id
-	texture = GameManager.get_item_icon(item_id)
+	texture = ItemRegistry.get_item_icon(item_id)
 	_hide_tooltip()
 	_hover_time = 0.0
 
@@ -125,7 +125,7 @@ func _is_covered_by_window(mouse_pos: Vector2) -> bool:
 	return false
 
 func _show_tooltip() -> void:
-	var item_def = GameManager.get_item_def(_item_id)
+	var item_def = ItemRegistry.get_item_def(_item_id)
 	if not item_def:
 		return
 	_tooltip_label = Label.new()

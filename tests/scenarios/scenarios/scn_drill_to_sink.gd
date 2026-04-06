@@ -20,18 +20,18 @@ func setup_map() -> void:
 func setup_monitors() -> void:
 	# Track sink consumption
 	monitor.track("items_delivered", func() -> int:
-		return GameManager.items_delivered.get(&"pyromite", 0)
+		return EconomyTracker.items_delivered.get(&"pyromite", 0)
 	)
 	monitor.track("player_hp", func() -> float:
 		return GameManager.player.hp
 	)
 	monitor.track("buildings_placed", func() -> int:
-		return GameManager.unique_buildings.size()
+		return BuildingRegistry.unique_buildings.size()
 	)
 
 func run_scenario() -> void:
 	# ── Step 1: Walk to deposit and place drill ──────────────────────────
-	assert_scenario(GameManager.get_deposit_at(Vector2i(10, 10)) == &"pyromite",
+	assert_scenario(MapManager.get_deposit_at(Vector2i(10, 10)) == &"pyromite",
 		"Pyromite deposit exists at (10,10)")
 
 	await bot.walk_to(Vector2i(9, 10))
@@ -74,6 +74,6 @@ func run_scenario() -> void:
 	await monitor.screenshot("final_state")
 
 	# Final delivery count check
-	var total_delivered: int = GameManager.items_delivered.get(&"pyromite", 0)
+	var total_delivered: int = EconomyTracker.items_delivered.get(&"pyromite", 0)
 	assert_gt_scenario(float(total_delivered), 2.0,
 		"Multiple items delivered (got %d)" % total_delivered)

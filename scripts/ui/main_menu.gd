@@ -90,11 +90,11 @@ func _start_stress_test() -> void:
 func _launch_game(map_size: int, stress_test: bool, seed_val: int = -1) -> void:
 	confirm_overlay.visible = false
 	SaveManager.delete_run_save()
-	GameManager.total_currency = 0
-	GameManager.map_size = map_size
+	EconomyTracker.total_currency = 0
+	MapManager.map_size = map_size
 	GameManager.stress_test_pending = stress_test
 	if seed_val >= 0:
-		GameManager.world_seed = seed_val
+		MapManager.world_seed = seed_val
 	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
 
 func _show_confirm(message: String, action: Callable) -> void:

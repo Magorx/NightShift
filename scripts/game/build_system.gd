@@ -171,8 +171,8 @@ func enter_building_mode(building_id: StringName) -> void:
 	building_mode = true
 	GameManager.last_selected_building = building_id
 	# Check for multi-phase placement config
-	if GameManager.placement_phases.has(building_id):
-		_phase_config = GameManager.placement_phases[building_id]
+	if BuildingRegistry.placement_phases.has(building_id):
+		_phase_config = BuildingRegistry.placement_phases[building_id]
 		_phase_index = 0
 		_phase_placements.clear()
 		selected_building = _phase_config.phases[0].building_id
@@ -205,7 +205,7 @@ func select_building(id: StringName) -> void:
 # ── Inspect ──────────────────────────────────────────────────────────────────
 
 func _try_inspect(pos: Vector2i) -> void:
-	var building = GameManager.get_building_at(pos)
+	var building = BuildingRegistry.get_building_at(pos)
 	if building and is_instance_valid(building):
 		_set_select_highlight(building)
 		building_clicked.emit(building)
@@ -215,10 +215,10 @@ func _try_inspect(pos: Vector2i) -> void:
 		building_clicked.emit(null)
 
 func _try_pick_building(pos: Vector2i) -> void:
-	var building = GameManager.get_building_at(pos)
+	var building = BuildingRegistry.get_building_at(pos)
 	if building and is_instance_valid(building):
 		var bid: StringName = building.building_id
-		if bid != &"" and GameManager.building_defs.has(bid):
+		if bid != &"" and BuildingRegistry.building_defs.has(bid):
 			enter_building_mode(bid)
 			return
 	# No building — show ground info instead
@@ -249,10 +249,10 @@ func _commit_drag() -> void:
 	# Place only non-overlapping blueprints that pass validation, are in range, and are affordable
 	var placed_any := false
 	for pos in _placeable_blueprints:
-		if not GameManager.can_afford_building(selected_building):
+		if not BuildingRegistry.can_afford_building(selected_building):
 			break
-		if GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation):
-			GameManager.place_building(selected_building, pos, _drag_rotation)
+		if BuildingRegistry.can_place_building(selected_building, pos, MapManager.map_size, _drag_rotation):
+			BuildingRegistry.place_building(selected_building, pos, _drag_rotation)
 			placed_any = true
 	# Show failure reason on single-click (not drag) when nothing was placed
 	if not placed_any and _blueprints.size() == 1:
@@ -275,10 +275,10 @@ func _commit_phase_drag() -> void:
 	var placed: Array = []
 
 	for pos in _placeable_blueprints:
-		if not GameManager.can_afford_building(bid):
+		if not BuildingRegistry.can_afford_building(bid):
 			break
 		if _can_place_phase(pos, _drag_rotation, placed.size()):
-			GameManager.place_building(bid, pos, _drag_rotation)
+			BuildingRegistry.place_building(bid, pos, _drag_rotation)
 			placed.append({pos = pos, rotation = _drag_rotation})
 
 	_dragging = false
@@ -310,7 +310,7 @@ func _commit_phase_drag() -> void:
 func _can_place_phase(pos: Vector2i, rot: int, index: int) -> bool:
 	var phase_def: Dictionary = _phase_config.phases[_phase_index]
 	var bid: StringName = phase_def.building_id
-	if not GameManager.can_place_building(bid, pos, GameManager.map_size, rot):
+	if not BuildingRegistry.can_place_building(bid, pos, MapManager.map_size, rot):
 		return false
 	if _phase_index == 0:
 		return true
@@ -330,7 +330,7 @@ func _can_place_phase(pos: Vector2i, rot: int, index: int) -> bool:
 
 func _complete_multiphase() -> void:
 	if _phase_config.has("link_fn"):
-		GameManager.call(_phase_config.link_fn, _phase_placements)
+		BuildingRegistry.call(_phase_config.link_fn, _phase_placements)
 	# Restart at phase 0 so the player can keep building more of the same
 	_phase_index = 0
 	_phase_placements.clear()
@@ -345,7 +345,7 @@ func _cancel_multiphase() -> void:
 		return
 	for phase_placed in _phase_placements:
 		for entry in phase_placed:
-			GameManager.remove_building(entry.pos)
+			BuildingRegistry.remove_building(entry.pos)
 	_phase_index = -1
 	_phase_config = {}
 	_phase_placements.clear()
@@ -411,7 +411,7 @@ func _update_blueprints() -> void:
 ## Filter blueprints to only include those that don't overlap earlier ones.
 func _filter_placeable_blueprints() -> void:
 	_placeable_blueprints.clear()
-	var def = GameManager.get_building_def(selected_building)
+	var def = BuildingRegistry.get_building_def(selected_building)
 	if not def:
 		return
 	var rotated_shape = def.get_rotated_shape(_drag_rotation)
@@ -442,7 +442,7 @@ func _filter_placeable_blueprints() -> void:
 # ── Ghost preview ─────────────────────────────────────────────────────────────
 
 func _create_ghost_node(building_id: StringName, rot: int) -> Node:
-	var def = GameManager.get_building_def(building_id)
+	var def = BuildingRegistry.get_building_def(building_id)
 	if not def or not def.scene:
 		return null
 	var ghost: Node = def.scene.instantiate()
@@ -508,7 +508,7 @@ func _update_ghosts() -> void:
 		return
 
 	var rot := _drag_rotation if _dragging else current_rotation
-	var def = GameManager.get_building_def(selected_building)
+	var def = BuildingRegistry.get_building_def(selected_building)
 	if not def:
 		_clear_ghosts()
 		return
@@ -519,7 +519,7 @@ func _update_ghosts() -> void:
 		_ghost_building_id = selected_building
 		_ghost_rotation = rot
 
-	var can_afford := GameManager.can_afford_building(selected_building)
+	var can_afford := BuildingRegistry.can_afford_building(selected_building)
 
 	if _dragging:
 		var count := _placeable_blueprints.size()
@@ -537,10 +537,10 @@ func _update_ghosts() -> void:
 			if _phase_index >= 0:
 				can_place = _can_place_phase(pos, _drag_rotation, i)
 			else:
-				can_place = GameManager.can_place_building(selected_building, pos, GameManager.map_size, _drag_rotation)
+				can_place = BuildingRegistry.can_place_building(selected_building, pos, MapManager.map_size, _drag_rotation)
 			can_place = can_place and can_afford
 			var world_3d := GridUtils.grid_to_world(pos - def.anchor_cell)
-			world_3d.y = GameManager.get_terrain_height(pos)
+			world_3d.y = MapManager.get_terrain_height(pos)
 			_ghost_nodes[i].position = world_3d
 			_ghost_nodes[i].visible = true
 		# Hide excess
@@ -557,10 +557,10 @@ func _update_ghosts() -> void:
 			if _phase_index >= 0:
 				can_place = _can_place_phase(cursor_grid_pos, current_rotation, 0)
 			else:
-				can_place = GameManager.can_place_building(selected_building, cursor_grid_pos, GameManager.map_size, current_rotation)
+				can_place = BuildingRegistry.can_place_building(selected_building, cursor_grid_pos, MapManager.map_size, current_rotation)
 			can_place = can_place and can_afford
 			var world_3d := GridUtils.grid_to_world(cursor_grid_pos - def.anchor_cell)
-			world_3d.y = GameManager.get_terrain_height(cursor_grid_pos)
+			world_3d.y = MapManager.get_terrain_height(cursor_grid_pos)
 			_ghost_nodes[0].position = world_3d
 			_ghost_nodes[0].visible = true
 			for i in range(1, _ghost_nodes.size()):
@@ -616,14 +616,14 @@ func _commit_destroy() -> void:
 	for x in range(min_pos.x, max_pos.x + 1):
 		for y in range(min_pos.y, max_pos.y + 1):
 			var pos := Vector2i(x, y)
-			var building = GameManager.get_building_at(pos)
+			var building = BuildingRegistry.get_building_at(pos)
 			if building and is_instance_valid(building):
 				_collect_building_and_linked(building, seen, to_remove)
 
 	_clear_all_highlights()
 
 	for pos in to_remove:
-		GameManager.remove_building(pos)
+		BuildingRegistry.remove_building(pos)
 
 	_destroy_dragging = false
 
@@ -641,18 +641,18 @@ func _update_destroy_highlights() -> void:
 			maxi(_destroy_drag_start.y, cursor_grid_pos.y))
 		for x in range(min_pos.x, max_pos.x + 1):
 			for y in range(min_pos.y, max_pos.y + 1):
-				var building = GameManager.get_building_at(Vector2i(x, y))
+				var building = BuildingRegistry.get_building_at(Vector2i(x, y))
 				if building and is_instance_valid(building):
 					new_set[building.get_instance_id()] = building
 	else:
-		var building = GameManager.get_building_at(cursor_grid_pos)
+		var building = BuildingRegistry.get_building_at(cursor_grid_pos)
 		if building and is_instance_valid(building):
 			new_set[building.get_instance_id()] = building
 
 	# Expand to include linked buildings (e.g. tunnel partners)
 	var expanded: Dictionary = {}
 	for nid in new_set:
-		for bld in GameManager.get_building_group(new_set[nid]):
+		for bld in BuildingRegistry.get_building_group(new_set[nid]):
 			expanded[bld.get_instance_id()] = bld
 	for nid in expanded:
 		if not new_set.has(nid):
@@ -741,7 +741,7 @@ func _rebuild_cursor_mesh(min_pos: Vector2i, max_pos: Vector2i) -> void:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for y in range(min_pos.y, max_pos.y + 1):
 		for x in range(min_pos.x, max_pos.x + 1):
-			var h: float = GameManager.get_terrain_height(Vector2i(x, y)) + 0.01
+			var h: float = MapManager.get_terrain_height(Vector2i(x, y)) + 0.01
 			var x0 := float(x) - 0.5
 			var x1 := float(x) + 0.5
 			var z0 := float(y) - 0.5
@@ -773,7 +773,7 @@ func _set_select_highlight(building: Node) -> void:
 		Color(1.0, 1.0, 1.0, 0.1),
 		Color(0, 0, 0, 0),
 		SELECT_OUTLINE_COLOR)
-	for bld in GameManager.get_building_group(building):
+	for bld in BuildingRegistry.get_building_group(building):
 		var entries: Array = []
 		for node in _get_visual_nodes(bld):
 			var orig_overlay = node.material_overlay
@@ -807,7 +807,7 @@ func _collect_mesh_instances(node: Node, result: Array) -> void:
 ## Get the grid cells occupied by a building, using its BuildingDef shape.
 func _get_building_visual_cells(building: Node) -> Array:
 	var cells: Array = []
-	var def = GameManager.get_building_def(building.building_id)
+	var def = BuildingRegistry.get_building_def(building.building_id)
 	if def:
 		for cell in def.get_rotated_shape(building.rotation_index):
 			cells.append(building.grid_pos + cell)
@@ -821,11 +821,11 @@ func _get_grid_pos_under_mouse() -> Vector2i:
 	return GridUtils.raycast_mouse_to_grid(get_viewport())
 
 func _try_remove(pos: Vector2i) -> void:
-	GameManager.remove_building(pos)
+	BuildingRegistry.remove_building(pos)
 
 ## Collect a building and all its linked buildings into to_remove, deduplicating by instance id.
 func _collect_building_and_linked(building: Node, seen: Dictionary, to_remove: Array) -> void:
-	for bld in GameManager.get_building_group(building):
+	for bld in BuildingRegistry.get_building_group(building):
 		var nid: int = bld.get_instance_id()
 		if seen.has(nid):
 			continue
@@ -835,19 +835,19 @@ func _collect_building_and_linked(building: Node, seen: Dictionary, to_remove: A
 # ── Placement fail reason ───────────────────────────────────────────────────
 
 func _get_placement_fail_reason(id: StringName, grid_pos: Vector2i, rot: int) -> String:
-	if not GameManager.can_afford_building(id):
+	if not BuildingRegistry.can_afford_building(id):
 		return "Not enough resources"
-	var def = GameManager.get_building_def(id)
+	var def = BuildingRegistry.get_building_def(id)
 	if not def:
 		return ""
 	var rotated_shape: Array = def.get_rotated_shape(rot)
 	for cell in rotated_shape:
 		var check_pos: Vector2i = grid_pos + Vector2i(cell)
-		if check_pos.x < 0 or check_pos.y < 0 or check_pos.x >= GameManager.map_size or check_pos.y >= GameManager.map_size:
+		if check_pos.x < 0 or check_pos.y < 0 or check_pos.x >= MapManager.map_size or check_pos.y >= MapManager.map_size:
 			return "Out of bounds"
-		if GameManager.walls.has(check_pos):
+		if MapManager.walls.has(check_pos):
 			return "Blocked by terrain"
-		if GameManager.buildings.has(check_pos):
+		if BuildingRegistry.buildings.has(check_pos):
 			return "Space is occupied"
 	var building_error: String = def.get_placement_error(grid_pos, rot)
 	if building_error != "":

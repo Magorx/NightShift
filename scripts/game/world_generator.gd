@@ -523,14 +523,14 @@ func _apply(tile_map, map_size: int, walls: Dictionary, deposits: Dictionary, gr
 				var wall_tile: int = walls[pos]
 				if tile_map:
 					tile_map.set_cell(pos, wall_tile, Vector2i(0, 0))
-				GameManager.walls[pos] = wall_tile
+				MapManager.walls[pos] = wall_tile
 				tile_types[idx] = wall_tile
 			elif deposits.has(pos):
 				var tile_id: int = deposits[pos]
 				if tile_map:
 					tile_map.set_cell(pos, tile_id, Vector2i(0, 0))
-				GameManager.deposits[pos] = DEPOSIT_ITEMS[tile_id]
-				GameManager.deposit_stocks[pos] = -1  # all deposits are infinite
+				MapManager.deposits[pos] = DEPOSIT_ITEMS[tile_id]
+				MapManager.deposit_stocks[pos] = -1  # all deposits are infinite
 				tile_types[idx] = tile_id
 			elif ground_variant.has(pos):
 				var variant: int = ground_variant[pos]

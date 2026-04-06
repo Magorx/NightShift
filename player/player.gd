@@ -275,12 +275,12 @@ func _handle_hand_mining(delta: float) -> void:
 	var grid_pos: Vector2i = GridUtils.raycast_mouse_to_grid(get_viewport())
 
 	# Must be a deposit with no building on it
-	if not GameManager.deposits.has(grid_pos) or GameManager.buildings.has(grid_pos):
+	if not MapManager.deposits.has(grid_pos) or BuildingRegistry.buildings.has(grid_pos):
 		_stop_mining()
 		return
 
 	# Only hand-mineable ores
-	var deposit_item: StringName = GameManager.deposits[grid_pos]
+	var deposit_item: StringName = MapManager.deposits[grid_pos]
 	if deposit_item not in HAND_MINEABLE:
 		_stop_mining()
 		return
@@ -421,7 +421,7 @@ func _try_drop(drop_stack: bool) -> void:
 	var drop_grid := GridUtils.world_to_grid(drop_pos)
 
 	# Try to insert into building at drop position
-	var building = GameManager.get_building_at(drop_grid)
+	var building = BuildingRegistry.get_building_at(drop_grid)
 	if building and building.logic:
 		var leftover: int = building.logic.try_insert_item(dropped.item_id, dropped.quantity)
 		if leftover <= 0:
@@ -433,7 +433,7 @@ func _try_drop(drop_stack: bool) -> void:
 	var spawn_pos := drop_pos
 	if building:
 		spawn_pos = GridUtils.grid_to_world(drop_grid)
-	spawn_pos.y = GameManager.get_terrain_height(drop_grid) + 0.3
+	spawn_pos.y = MapManager.get_terrain_height(drop_grid) + 0.3
 	var impulse := drop_dir * 1.0
 	for i in dropped.quantity:
 		var offset := Vector3(randf_range(-0.1, 0.1), 0, randf_range(-0.1, 0.1))
@@ -449,7 +449,7 @@ func spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
 	else:
 		pos_3d = position
 	var drop_grid := GridUtils.world_to_grid(pos_3d)
-	pos_3d.y = GameManager.get_terrain_height(drop_grid) + 0.3
+	pos_3d.y = MapManager.get_terrain_height(drop_grid) + 0.3
 
 	# Spawn each item as an individual PhysicsItem
 	for i in quantity:
@@ -530,7 +530,7 @@ func deserialize(data: Dictionary) -> void:
 	for i in INVENTORY_SLOTS:
 		if i < inv_data.size() and inv_data[i] != null:
 			var iid := StringName(inv_data[i]["item_id"])
-			if GameManager.is_valid_item_id(iid):
+			if ItemRegistry.is_valid_item_id(iid):
 				inventory[i] = {item_id = iid, quantity = int(inv_data[i]["quantity"])}
 			else:
 				GameLogger.warn("Player inventory slot %d: skipped invalid item '%s'" % [i, iid])
