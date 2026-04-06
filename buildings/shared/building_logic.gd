@@ -11,6 +11,7 @@ extends Node
 const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 var grid_pos: Vector2i
+var health: HealthComponent
 
 ## Get the grid cell adjacent to this building in the given direction.
 func adjacent_cell(dir_idx: int) -> Vector2i:
@@ -41,6 +42,7 @@ func get_placement_error(_grid_pos: Vector2i, _rotation: int) -> String:
 ## Override in subclass and call super() first.
 func configure(_def: BuildingDef, p_grid_pos: Vector2i, _rotation: int) -> void:
 	grid_pos = p_grid_pos
+	_setup_health()
 
 # ── Player item insertion ──────────────────────────────────────────────────
 
@@ -56,6 +58,26 @@ func cleanup_visuals() -> void:
 ## Called just before removal. Override for partner unlinking, unregistration, etc.
 func on_removing() -> void:
 	pass
+
+# ── Health ───────────────────────────────────────────────────────────────────
+
+const DEFAULT_BUILDING_HP := 100.0
+
+func _setup_health() -> void:
+	health = HealthComponent.new()
+	health.name = "HealthComponent"
+	health.max_hp = DEFAULT_BUILDING_HP
+	add_child(health)
+	health.died.connect(_on_building_died)
+
+func _on_building_died() -> void:
+	BuildingRegistry.remove_building(grid_pos)
+
+# ── Resource memory ──────────────────────────────────────────────────────────
+
+## Return the resource/element this building last produced. Override in subclasses.
+func get_last_resource() -> StringName:
+	return &""
 
 # ── Sprite animation helpers ─────────────────────────────────────────────────
 

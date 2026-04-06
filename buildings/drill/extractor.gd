@@ -34,6 +34,9 @@ func _spawn_item() -> void:
 	if output:
 		output.spawn_item(item_id)
 
+func get_last_resource() -> StringName:
+	return item_id
+
 func get_progress() -> float:
 	return clampf(_timer / produce_interval, 0.0, 1.0)
 

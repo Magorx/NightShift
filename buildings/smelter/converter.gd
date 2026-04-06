@@ -120,6 +120,12 @@ func _try_finish_craft() -> void:
 	_craft_timer = 0.0
 
 
+func get_last_resource() -> StringName:
+	var recipe = _last_recipe if _last_recipe else (_active_recipe if _active_recipe else null)
+	if recipe and recipe.outputs.size() > 0:
+		return recipe.outputs[0].item.id
+	return &""
+
 func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
 	var remaining := quantity
 	var cap: int = _input_caps.get(item_id, 0)
