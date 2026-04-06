@@ -64,6 +64,15 @@ var _ghost_nodes: Array = []
 var _ghost_building_id: StringName = &""
 var _ghost_rotation: int = -1
 var _ghost_layer: Node3D  # 3D parent for ghost nodes (set via game_world)
+var _enabled: bool = true  # false during fight phase
+
+func set_enabled(enabled: bool) -> void:
+	_enabled = enabled
+	if not enabled:
+		if building_mode:
+			exit_building_mode()
+		if destroy_mode:
+			exit_destroy_mode()
 
 func _process(_delta: float) -> void:
 	var _prev_grid_pos := cursor_grid_pos
@@ -82,6 +91,8 @@ func _process(_delta: float) -> void:
 	_update_ghosts()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not _enabled:
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if building_mode:

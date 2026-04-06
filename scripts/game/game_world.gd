@@ -28,6 +28,8 @@ var _deposit_scenes: Dictionary = {
 	&"crystalline": preload("res://resources/deposits/models/crystalline.glb"),
 	&"biovine": preload("res://resources/deposits/models/biovine.glb"),
 }
+var _day_night_script = preload("res://scripts/game/day_night_visual.gd")
+var _day_night: Node
 var _pixel_art_rect: ColorRect
 var _popup: PanelContainer
 var _ground_tooltip: PanelContainer
@@ -155,6 +157,17 @@ func _ready() -> void:
 	SettingsManager.pixel_art_changed.connect(func(enabled: bool): _pixel_art_rect.visible = enabled)
 
 	camera.target_node = player
+
+	# Day/night visual transitions
+	_day_night = _day_night_script.new()
+	_day_night.name = "DayNightVisual"
+	add_child(_day_night)
+	_day_night.setup($WorldEnvironment.environment, $DirectionalLight3D)
+
+	# Wire RoundManager phase changes
+	RoundManager.phase_changed.connect(_on_phase_changed)
+	# Auto-start run when game world loads
+	RoundManager.start_run()
 
 func _on_building_selected(id: StringName) -> void:
 	build_system.select_building(id)
@@ -302,6 +315,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			build_system.exit_destroy_mode()
 		else:
 			_open_pause_menu()
+
+# ── Phase Transitions ────────────────────────────────────────────────────
+
+func _on_phase_changed(phase: StringName) -> void:
+	match phase:
+		&"build":
+			build_system.set_enabled(true)
+			GameManager.building_tick_system.set_physics_process(true)
+			print("[WORLD] Build phase — factory running, placement enabled")
+		&"fight":
+			build_system.set_enabled(false)
+			GameManager.building_tick_system.set_physics_process(false)
+			print("[WORLD] Fight phase — factory frozen, placement disabled")
 
 func _debug_action() -> void:
 	var count := 0
