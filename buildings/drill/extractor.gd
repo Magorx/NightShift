@@ -86,6 +86,9 @@ func _swap_to_day_model() -> void:
 			day_scene.remove_child(model)
 			building.add_child(model)
 		day_scene.queue_free()
+	# Rebuild collision from day building shape
+	if building.has_method("regenerate_collision"):
+		building.regenerate_collision.call_deferred()
 
 func get_progress() -> float:
 	return clampf(_timer / produce_interval, 0.0, 1.0)

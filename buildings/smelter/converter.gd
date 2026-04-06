@@ -194,6 +194,9 @@ func _swap_to_day_model() -> void:
 			day_scene.remove_child(model)
 			building.add_child(model)
 		day_scene.queue_free()
+	# Rebuild collision from day building shape
+	if building.has_method("regenerate_collision"):
+		building.regenerate_collision.call_deferred()
 
 func mark_configs_dirty() -> void:
 	_configs_dirty = true
