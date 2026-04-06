@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://jr3a616vrnp6"
-path="res://.godot/imported/turret_metal_plate_02_diff_1k.jpg-ee3eba664d67afbc561ad2187f6cdd9e.ctex"
+path.s3tc="res://.godot/imported/turret_metal_plate_02_diff_1k.jpg-ee3eba664d67afbc561ad2187f6cdd9e.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b1630735da34c23fc1394a430e056425"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://buildings/drill/models/turret_metal_plate_02_diff_1k.jpg"
-dest_files=["res://.godot/imported/turret_metal_plate_02_diff_1k.jpg-ee3eba664d67afbc561ad2187f6cdd9e.ctex"]
+dest_files=["res://.godot/imported/turret_metal_plate_02_diff_1k.jpg-ee3eba664d67afbc561ad2187f6cdd9e.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

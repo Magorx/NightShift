@@ -139,7 +139,7 @@
   - tags: [botplayer, testing, verification]
   - priority: medium
 
-### Bug: conveyors restore into wrong direction after the night. Also they are offset in night mode
+### ~~Bug: conveyors restore into wrong direction after the night. Also they are offset in night mode~~ FIXED
 
   - defaultExpanded: false
 

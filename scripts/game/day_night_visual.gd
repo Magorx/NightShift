@@ -12,7 +12,7 @@ extends Node
 
 # ── Orbital tuning ────────────────────────────────────────────────────────
 const EDGE_SPEED_MULT := 6.0
-const EDGE_FRACTION := 0.10
+const EDGE_FRACTION := 0.0
 
 # Orbital plane tilts (Y rotation) so sun and moon travel different paths
 const SUN_YAW := 0.0

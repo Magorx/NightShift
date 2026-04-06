@@ -78,9 +78,8 @@ def build_wall():
     root = bpy.data.objects.new("Wall", None)
     root.empty_display_type = 'PLAIN_AXES'
     root.empty_display_size = 0.25
-    # Offset root so model extends from cell corner (0,0) to (1,1) in Godot XZ,
-    # matching the collision system convention. Blender Y → Godot -Z.
-    root.location = (0.5, -0.5, 0)
+    # Root at origin — geometry centered on cell, matching conveyor model convention.
+    root.location = (0, 0, 0)
     bpy.context.scene.collection.objects.link(root)
 
     def add(obj):

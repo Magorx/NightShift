@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bmq8d4jitmdlp"
-path="res://.godot/imported/rocket_turret_corrugated_iron_rough_1k.png-5949d69bd2b5af24c7c361047a5049fd.ctex"
+path.s3tc="res://.godot/imported/rocket_turret_corrugated_iron_rough_1k.png-5949d69bd2b5af24c7c361047a5049fd.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "abc6a100e375d0a259f99188d1cbd706"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://buildings/smelter/models/rocket_turret_corrugated_iron_rough_1k.png"
-dest_files=["res://.godot/imported/rocket_turret_corrugated_iron_rough_1k.png-5949d69bd2b5af24c7c361047a5049fd.ctex"]
+dest_files=["res://.godot/imported/rocket_turret_corrugated_iron_rough_1k.png-5949d69bd2b5af24c7c361047a5049fd.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

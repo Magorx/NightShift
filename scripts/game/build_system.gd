@@ -179,6 +179,7 @@ func enter_building_mode(building_id: StringName) -> void:
 	else:
 		_phase_index = -1
 		_phase_config = {}
+	_update_ghosts()
 
 func exit_building_mode() -> void:
 	building_mode = false
@@ -232,6 +233,7 @@ func _start_drag(pos: Vector2i) -> void:
 	_drag_axis = -1
 	_drag_rotation = current_rotation
 	_blueprints = [pos]
+	_filter_placeable_blueprints()
 
 func _cancel_drag() -> void:
 	_dragging = false

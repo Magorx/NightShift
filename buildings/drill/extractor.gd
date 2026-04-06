@@ -70,6 +70,9 @@ func _swap_to_night_model() -> void:
 	new_model.name = "Model"
 	new_model.transform = _day_model_transform
 	building.add_child(new_model)
+	# Rebuild collision from night model meshes
+	if building.has_method("regenerate_collision"):
+		building.regenerate_collision.call_deferred()
 
 func _swap_to_day_model() -> void:
 	var building := get_parent()

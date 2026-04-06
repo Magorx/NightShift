@@ -12,6 +12,10 @@ func _ready() -> void:
 	var pixel_art_toggle: CheckButton = $Panel/VBox/PixelArtToggle
 	pixel_art_toggle.button_pressed = SettingsManager.pixel_art_enabled
 	pixel_art_toggle.toggled.connect(func(enabled: bool): SettingsManager.pixel_art_enabled = enabled)
+	# Initialize debug mode toggle
+	var debug_toggle: CheckButton = $Panel/VBox/DebugToggle
+	debug_toggle.button_pressed = SettingsManager.debug_mode
+	debug_toggle.toggled.connect(func(enabled: bool): SettingsManager.debug_mode = enabled)
 	# Pause the game tree
 	get_tree().paused = true
 	visible = true

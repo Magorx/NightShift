@@ -4,6 +4,7 @@
 
 # Claude Code audit log
 .claude/bash-audit.log
+.claude/worktrees
 
 # Blender texture cache (downloaded PBR textures from Poly Haven)
 tools/blender/.texture_cache/

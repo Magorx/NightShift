@@ -42,6 +42,7 @@ var _overlap_count: int = 0
 var is_night_form: bool = false
 var _day_variant: StringName = &""
 var _day_rotation_steps: int = 0
+var _day_model_transform: Transform3D
 
 func set_night_mode(enabled: bool) -> void:
 	is_night_mode = enabled
@@ -50,12 +51,16 @@ func set_night_mode(enabled: bool) -> void:
 	if enabled:
 		_day_variant = _current_variant
 		_day_rotation_steps = _current_rotation_steps
+		# Save the actual model transform so we can restore it exactly
+		var old_model := building.get_node_or_null("Model") if building else null
+		if old_model:
+			_day_model_transform = old_model.transform
 		set_physics_process(false)
 		# Walls/towers need collision — conveyors normally skip it
 		if building:
 			building.force_collision = true
 		var night_variant: StringName = &"tower" if _current_variant in TURN_VARIANTS else &"wall"
-		_swap_model(night_variant, 0)
+		_swap_night_model(night_variant)
 	else:
 		set_physics_process(true)
 		if building:
@@ -63,9 +68,32 @@ func set_night_mode(enabled: bool) -> void:
 		if _day_variant != &"":
 			_current_variant = _day_variant
 			_current_rotation_steps = _day_rotation_steps
-			_swap_model(_day_variant, _day_rotation_steps)
+			_swap_night_model(_day_variant)
 			_day_variant = &""
 			_day_rotation_steps = 0
+		# Re-evaluate shape — neighbors may have been destroyed during fight
+		update_shape.call_deferred()
+
+## Swap model for night/day transitions, preserving the day model's exact transform.
+func _swap_night_model(variant: StringName) -> void:
+	var building := get_parent()
+	var old_model := building.get_node_or_null("Model")
+	if old_model:
+		building.remove_child(old_model)
+		old_model.queue_free()
+
+	var new_model: Node3D = VARIANT_SCENES[variant].instantiate()
+	new_model.name = "Model"
+	new_model.transform = _day_model_transform
+	building.add_child(new_model)
+
+	_cached_anim_player = null
+	_visuals_cached = false
+	_use_3d_model = false
+	_anim_initialized = false
+
+	if building.has_method("regenerate_collision"):
+		building.regenerate_collision.call_deferred()
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(def, p_grid_pos, rotation)
@@ -119,7 +147,11 @@ func get_next_pos() -> Vector2i:
 # ── Auto-shape detection ──────────────────────────────────────────────────────
 
 func _has_adjacent_conveyor(dir_idx: int) -> bool:
-	return BuildingRegistry.get_conveyor_at(adjacent_cell(dir_idx)) != null
+	var neighbor: ConveyorBelt = BuildingRegistry.get_conveyor_at(adjacent_cell(dir_idx))
+	if neighbor == null:
+		return false
+	# Connected if we output toward them (forward) or they output toward us
+	return dir_idx == direction or neighbor.direction == (dir_idx + 2) % 4
 
 ## Determine the best model variant and rotation for current neighbors.
 ## Returns [variant_name, rotation_steps] where rotation_steps is 0-3
@@ -167,6 +199,8 @@ func _determine_shape() -> Array:
 
 ## Check neighbors and swap model if the shape changed.
 func update_shape() -> void:
+	if is_night_form:
+		return  # Don't auto-shape while in wall/tower form
 	var result := _determine_shape()
 	var variant: StringName = result[0]
 	var rot_steps: int = result[1]

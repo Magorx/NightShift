@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://2ilxx3dd22wo"
-path="res://.godot/imported/wall_metal_plate_rough_1k.png-31734509fd3650c9a2995cda54a9ceb5.ctex"
+path.s3tc="res://.godot/imported/wall_metal_plate_rough_1k.png-31734509fd3650c9a2995cda54a9ceb5.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "b8d30fd06191bcfbf5490e24a7cef5fa"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://buildings/conveyor/models/wall_metal_plate_rough_1k.png"
-dest_files=["res://.godot/imported/wall_metal_plate_rough_1k.png-31734509fd3650c9a2995cda54a9ceb5.ctex"]
+dest_files=["res://.godot/imported/wall_metal_plate_rough_1k.png-31734509fd3650c9a2995cda54a9ceb5.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

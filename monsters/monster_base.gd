@@ -31,6 +31,9 @@ var _attack_timer: float = 0.0
 var _repath_timer: float = 0.0
 var _gravity: float = 20.0
 
+var _debug_path_mesh: MeshInstance3D
+var _debug_immediate_mesh: ImmediateMesh
+
 const REPATH_INTERVAL := 2.0
 const MONSTER_COLLISION_LAYER := 16  # bit 5
 const MONSTER_COLLISION_MASK := 6    # ground (4) + buildings (2)
@@ -43,6 +46,7 @@ func _ready() -> void:
 	_setup_collision()
 	_setup_health()
 	_setup_visual()
+	_setup_debug_path()
 
 func _setup_collision() -> void:
 	var col := CollisionShape3D.new()
@@ -74,6 +78,42 @@ func _setup_visual() -> void:
 	mesh_inst.name = "PlaceholderMesh"
 	add_child(mesh_inst)
 
+func _setup_debug_path() -> void:
+	_debug_immediate_mesh = ImmediateMesh.new()
+	_debug_path_mesh = MeshInstance3D.new()
+	_debug_path_mesh.mesh = _debug_immediate_mesh
+	_debug_path_mesh.name = "DebugPath"
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.2, 0.2, 0.8)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.no_depth_test = true
+	_debug_path_mesh.material_override = mat
+	# Add to scene root so lines are in world space, not local to monster
+	_debug_path_mesh.top_level = true
+	add_child(_debug_path_mesh)
+	_debug_path_mesh.visible = SettingsManager.debug_mode
+	SettingsManager.debug_mode_changed.connect(func(enabled: bool):
+		if is_instance_valid(_debug_path_mesh):
+			_debug_path_mesh.visible = enabled
+	)
+
+func _update_debug_path() -> void:
+	if not _debug_immediate_mesh or not SettingsManager.debug_mode:
+		return
+	_debug_immediate_mesh.clear_surfaces()
+	if _current_path.size() < 2 or _path_index >= _current_path.size():
+		return
+	var line_y := global_position.y + 0.3
+	_debug_immediate_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+	# Start from monster position
+	_debug_immediate_mesh.surface_add_vertex(Vector3(global_position.x, line_y, global_position.z))
+	# Draw remaining path waypoints
+	for i in range(_path_index, _current_path.size()):
+		var pt := _current_path[i]
+		_debug_immediate_mesh.surface_add_vertex(Vector3(pt.x, line_y, pt.y))
+	_debug_immediate_mesh.surface_end()
+
 func _physics_process(delta: float) -> void:
 	if state == State.DYING:
 		return
@@ -95,6 +135,7 @@ func _physics_process(delta: float) -> void:
 			_process_attack(delta)
 
 	move_and_slide()
+	_update_debug_path()
 
 # ── Target finding ──────────────────────────────────────────────────────────
 

@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bff3uvxvin6lg"
-path="res://.godot/imported/tower_metal_plate_02_rough_1k.png-8af42605ffd28ba7b820fb051c6f655c.ctex"
+path.s3tc="res://.godot/imported/tower_metal_plate_02_rough_1k.png-8af42605ffd28ba7b820fb051c6f655c.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "4339c3d3f2e3645d9332239d1ac6d0c6"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://buildings/conveyor/models/tower_metal_plate_02_rough_1k.png"
-dest_files=["res://.godot/imported/tower_metal_plate_02_rough_1k.png-8af42605ffd28ba7b820fb051c6f655c.ctex"]
+dest_files=["res://.godot/imported/tower_metal_plate_02_rough_1k.png-8af42605ffd28ba7b820fb051c6f655c.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

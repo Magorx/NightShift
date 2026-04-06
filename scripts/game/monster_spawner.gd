@@ -11,6 +11,8 @@ signal monsters_spawning_done()
 const BASE_MONSTER_COUNT := 5
 const MONSTERS_PER_ROUND := 3
 const SPAWN_INTERVAL := 2.0  # seconds between spawns
+const SPAWN_RING_MIN := 12   # min tiles from factory center
+const SPAWN_RING_MAX := 18   # max tiles from factory center
 
 # ── State ───────────────────────────────────────────────────────────────────
 var pathfinding: MonsterPathfinding
@@ -92,7 +94,6 @@ func _spawn_one() -> void:
 
 	var monster := TendrilCrawler.new()
 	monster.pathfinding = pathfinding
-	monster.global_position = GridUtils.grid_to_world(spawn_pos) + Vector3(0.0, 0.1, 0.0)
 	monster.died.connect(_on_monster_died.bind(monster))
 
 	if _monster_layer:
@@ -100,37 +101,56 @@ func _spawn_one() -> void:
 	else:
 		add_child(monster)
 
+	var world_pos := GridUtils.grid_to_world(spawn_pos)
+	world_pos.y = MapManager.get_terrain_height(spawn_pos) + 0.5
+	monster.global_position = world_pos
 	alive_monsters.append(monster)
 
 func _on_monster_died(_monster: MonsterBase) -> void:
 	_cleanup_dead()
 
 func _pick_edge_position() -> Vector2i:
-	var map_size := MapManager.map_size
-	if map_size <= 4:
-		return Vector2i(-1, -1)
-
-	# Try random edge positions, avoiding walls
+	# Spawn in a ring around the factory cluster, not at distant map edges
+	var center := _get_factory_center()
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 
-	for _attempt in 20:
-		var pos := Vector2i.ZERO
-		var edge := rng.randi() % 4
-		match edge:
-			0:  # top edge
-				pos = Vector2i(rng.randi_range(1, map_size - 2), 1)
-			1:  # bottom edge
-				pos = Vector2i(rng.randi_range(1, map_size - 2), map_size - 2)
-			2:  # left edge
-				pos = Vector2i(1, rng.randi_range(1, map_size - 2))
-			3:  # right edge
-				pos = Vector2i(map_size - 2, rng.randi_range(1, map_size - 2))
+	for _attempt in 30:
+		# Pick a random angle and place on the ring
+		var angle := rng.randf() * TAU
+		var dist := rng.randf_range(SPAWN_RING_MIN, SPAWN_RING_MAX)
+		var offset := Vector2(cos(angle), sin(angle)) * dist
+		var pos := Vector2i(center.x + roundi(offset.x), center.y + roundi(offset.y))
+
+		# Clamp to map bounds
+		pos = pos.clamp(Vector2i(1, 1), Vector2i(MapManager.map_size - 2, MapManager.map_size - 2))
 
 		if not MapManager.walls.has(pos) and BuildingRegistry.get_building_at(pos) == null:
 			return pos
 
-	return Vector2i(1, 1)  # fallback
+	# Fallback: just offset from center
+	return Vector2i(center.x + SPAWN_RING_MIN, center.y)
+
+func _get_factory_center() -> Vector2i:
+	if BuildingRegistry.unique_buildings.is_empty():
+		# No buildings — use player position or map center
+		if GameManager.player:
+			return GridUtils.world_to_grid(GameManager.player.global_position)
+		@warning_ignore("integer_division")
+		return Vector2i(MapManager.map_size / 2, MapManager.map_size / 2)
+
+	# Average position of all buildings
+	var sum := Vector2i.ZERO
+	var count := 0
+	for building in BuildingRegistry.unique_buildings:
+		if is_instance_valid(building):
+			sum += building.grid_pos
+			count += 1
+	if count == 0:
+		@warning_ignore("integer_division")
+		return Vector2i(MapManager.map_size / 2, MapManager.map_size / 2)
+	@warning_ignore("integer_division")
+	return sum / count
 
 func get_alive_count() -> int:
 	_cleanup_dead()

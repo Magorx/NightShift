@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://chd1wu1iab3ng"
-path="res://.godot/imported/rocket_turret_rusty_metal_02_rough_1k.png-d2fc9bbd3c162e163fe30ff11b1bfa2e.ctex"
+path.s3tc="res://.godot/imported/rocket_turret_rusty_metal_02_rough_1k.png-d2fc9bbd3c162e163fe30ff11b1bfa2e.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "414a34457904e26c6327a1b6df7e7109"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://buildings/smelter/models/rocket_turret_rusty_metal_02_rough_1k.png"
-dest_files=["res://.godot/imported/rocket_turret_rusty_metal_02_rough_1k.png-d2fc9bbd3c162e163fe30ff11b1bfa2e.ctex"]
+dest_files=["res://.godot/imported/rocket_turret_rusty_metal_02_rough_1k.png-d2fc9bbd3c162e163fe30ff11b1bfa2e.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

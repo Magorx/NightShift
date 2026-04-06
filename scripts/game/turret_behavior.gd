@@ -132,7 +132,7 @@ func _fire_at(target: Node3D) -> void:
 	projectile.velocity = direction * projectile_speed
 	projectile.damage = projectile_damage
 	projectile.element = element
-	projectile.global_position = spawn_pos
+	projectile.position = spawn_pos
 
 	# Add to item_layer if available, otherwise scene root.
 	var parent_node: Node = null
