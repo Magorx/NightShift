@@ -38,6 +38,39 @@ static func transparent_panel() -> StyleBoxFlat:
 	s.bg_color = Color(0, 0, 0, 0)
 	return s
 
+## Update an inventory slot's visual state (border color, icon, label).
+static func update_inventory_slot(
+	panel: PanelContainer,
+	slot_data,  # {item_id, quantity} or null
+	is_source_empty: bool,
+	is_selected: bool,
+	is_hovered: bool,
+	is_active_slot: bool,
+	colors: Dictionary,  # {selected, hover, active, default}
+) -> void:
+	var style: StyleBoxFlat = panel.get_theme_stylebox("panel")
+	var icon_rect: ItemIcon = panel.get_node("ItemIcon")
+	var label: Label = panel.get_node("QuantityLabel")
+
+	if is_selected:
+		style.border_color = colors.selected
+	elif is_hovered:
+		style.border_color = colors.hover
+	elif is_active_slot:
+		style.border_color = colors.active
+	else:
+		style.border_color = colors.default
+
+	if slot_data != null and not is_source_empty:
+		icon_rect.set_item(slot_data.item_id)
+		icon_rect.visible = true
+		label.text = str(slot_data.quantity) if slot_data.quantity > 1 else ""
+	else:
+		icon_rect.visible = false
+		label.text = ""
+
+	panel.modulate = Color(0.5, 0.5, 0.5, 0.5) if is_source_empty else Color.WHITE
+
 ## Create a bordered box (e.g., building boxes in recipe browser).
 static func bordered_panel(bg_color: Color, border_color: Color, border_width: int = 2, corner_radius: int = 4, margin: int = 6) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()

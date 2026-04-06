@@ -31,6 +31,15 @@ var _fly_item: Control = null
 var _fly_start: Vector2 = Vector2.ZERO
 var _fly_progress: float = 0.0
 
+func is_slot_source_empty(index: int) -> bool:
+	return index == _held_source_slot and not _held_item.is_empty() and GameManager.player and GameManager.player.inventory[index] == null
+
+func is_slot_selected(index: int) -> bool:
+	return _selected_slots.has(index)
+
+func has_held_item() -> bool:
+	return not _held_item.is_empty()
+
 func _ready() -> void:
 	super()
 	_create_slots()
@@ -137,34 +146,13 @@ func _update_slots() -> void:
 		_update_slot(i, player)
 
 func _update_slot(index: int, player) -> void:
-	var panel: PanelContainer = _slots[index]
-	var style: StyleBoxFlat = panel.get_theme_stylebox("panel")
-	var icon_rect: ItemIcon = panel.get_node("ItemIcon")
-	var label: Label = panel.get_node("QuantityLabel")
 	var slot_data = player.inventory[index]
-	# Source slot is dimmed only when it was fully emptied by the pick-up
 	var is_source_empty := (index == _held_source_slot and not _held_item.is_empty() and slot_data == null)
-
-	# Border — selection takes priority
-	if _selected_slots.has(index):
-		style.border_color = SELECTED_BORDER_COLOR
-	elif _hovered_slot == index:
-		style.border_color = HOVER_BORDER_COLOR
-	elif index == player.selected_slot:
-		style.border_color = HOTBAR_BORDER_COLOR
-	else:
-		style.border_color = SLOT_BORDER_COLOR
-
-	# Content
-	if slot_data != null and not is_source_empty:
-		icon_rect.set_item(slot_data.item_id)
-		icon_rect.visible = true
-		label.text = str(slot_data.quantity) if slot_data.quantity > 1 else ""
-	else:
-		icon_rect.visible = false
-		label.text = ""
-
-	panel.modulate = Color(0.5, 0.5, 0.5, 0.5) if is_source_empty else Color.WHITE
+	UIStyles.update_inventory_slot(
+		_slots[index], slot_data, is_source_empty, _selected_slots.has(index),
+		_hovered_slot == index, index == player.selected_slot,
+		{selected = SELECTED_BORDER_COLOR, hover = HOVER_BORDER_COLOR, active = HOTBAR_BORDER_COLOR, default = SLOT_BORDER_COLOR}
+	)
 
 func _update_cursor_ghost() -> void:
 	if _held_item.is_empty():

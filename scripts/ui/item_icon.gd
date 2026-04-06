@@ -26,7 +26,7 @@ static func create(item_id: StringName, icon_size: Vector2 = Vector2(16, 16), br
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.mouse_filter = Control.MOUSE_FILTER_STOP if browsable else Control.MOUSE_FILTER_IGNORE
+	icon.mouse_filter = Control.MOUSE_FILTER_STOP if browsable else Control.MOUSE_FILTER_PASS
 	return icon
 
 static func _create_color_fallback(item_id: StringName, icon_size: Vector2) -> PanelContainer:
@@ -46,6 +46,20 @@ static func _create_color_fallback(item_id: StringName, icon_size: Vector2) -> P
 	panel.add_theme_stylebox_override("panel", style)
 	return panel
 
+func _ready() -> void:
+	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
+	set_process(false)
+
+func _on_mouse_entered() -> void:
+	set_process(true)
+
+func _on_mouse_exited() -> void:
+	set_process(false)
+	_hover_time = 0.0
+	_rmb_hold_time = 0.0
+	_hide_tooltip()
+
 func set_item(item_id: StringName) -> void:
 	if item_id == _item_id:
 		return
@@ -55,13 +69,14 @@ func set_item(item_id: StringName) -> void:
 	_hover_time = 0.0
 
 func _process(delta: float) -> void:
-	var hovered := _is_hovered()
-	if not hovered:
+	# Guard: a GameWindow may cover us even while mouse is technically in our rect
+	if _is_covered_by_window(get_viewport().get_mouse_position()):
 		if _tooltip_label:
 			_hide_tooltip()
 		_hover_time = 0.0
 		_rmb_hold_time = 0.0
 		return
+
 	_hover_time += delta
 	if _hover_time >= HOVER_DELAY and not _tooltip_label:
 		_show_tooltip()
@@ -69,7 +84,7 @@ func _process(delta: float) -> void:
 		_update_tooltip_position()
 
 	# RMB hold to open recipe browser
-	if rmb_browsable and hovered and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+	if rmb_browsable and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		_rmb_hold_time += delta
 		if _rmb_hold_time >= RMB_HOLD_THRESHOLD:
 			_rmb_hold_time = 0.0
@@ -85,17 +100,6 @@ func _open_recipe_browser() -> void:
 			node.open_recipe_browser_for_item(_item_id)
 			return
 		node = node.get_parent()
-
-func _is_hovered() -> bool:
-	if not is_visible_in_tree():
-		return false
-	var mouse_pos := get_viewport().get_mouse_position()
-	if not get_global_rect().has_point(mouse_pos):
-		return false
-	# Don't show tooltip if a GameWindow is visible on top of us
-	if _is_covered_by_window(mouse_pos):
-		return false
-	return true
 
 ## Cached list of GameWindows in the scene. Rebuilt lazily.
 static var _cached_windows: Array = []

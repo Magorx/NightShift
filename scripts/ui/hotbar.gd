@@ -88,34 +88,11 @@ func _on_slot_input(event: InputEvent, index: int) -> void:
 		inventory_panel._on_slot_input(event, index)
 
 func _update_slot(index: int, player) -> void:
-	var panel: PanelContainer = _slots[index]
-	var style: StyleBoxFlat = panel.get_theme_stylebox("panel")
-	var icon_rect: ItemIcon = panel.get_node("ItemIcon")
-	var label: Label = panel.get_node("QuantityLabel")
 	var slot_data = player.inventory[index]
-
-	var is_source_empty := false
-	var is_selected := false
-	if inventory_panel:
-		is_source_empty = (index == inventory_panel._held_source_slot and not inventory_panel._held_item.is_empty() and slot_data == null)
-		is_selected = inventory_panel._selected_slots.has(index)
-
-	# Border: selection > hover > active hotbar slot > default
-	if is_selected:
-		style.border_color = SELECTION_COLOR
-	elif _hovered_slot == index:
-		style.border_color = HOVER_COLOR
-	elif index == player.selected_slot:
-		style.border_color = SELECTED_COLOR
-	else:
-		style.border_color = EMPTY_COLOR
-
-	if slot_data != null and not is_source_empty:
-		icon_rect.set_item(slot_data.item_id)
-		icon_rect.visible = true
-		label.text = str(slot_data.quantity) if slot_data.quantity > 1 else ""
-	else:
-		icon_rect.visible = false
-		label.text = ""
-
-	panel.modulate = Color(0.5, 0.5, 0.5, 0.5) if is_source_empty else Color.WHITE
+	var is_source_empty: bool = inventory_panel.is_slot_source_empty(index) if inventory_panel else false
+	var is_selected: bool = inventory_panel.is_slot_selected(index) if inventory_panel else false
+	UIStyles.update_inventory_slot(
+		_slots[index], slot_data, is_source_empty, is_selected,
+		_hovered_slot == index, index == player.selected_slot,
+		{selected = SELECTION_COLOR, hover = HOVER_COLOR, active = SELECTED_COLOR, default = EMPTY_COLOR}
+	)

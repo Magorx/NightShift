@@ -384,19 +384,19 @@ func _populate_recipe_row(recipe) -> void:
 	var slot_idx: int = 0
 	for stack in recipe.inputs:
 		var w: float = in_widths[slot_idx] if slot_idx < in_widths.size() else NUM_WIDTH
-		_add_item_slot(recipe_row, stack, w)
+		RecipeBillet.add_item_slot(recipe_row, stack, w, ICON_SIZE, FONT_SIZE)
 		slot_idx += 1
 	# Pad empty item input columns
 	while slot_idx < max_in:
 		var w: float = in_widths[slot_idx] if slot_idx < in_widths.size() else NUM_WIDTH
-		recipe_row.add_child(_create_empty_billet(w))
+		recipe_row.add_child(RecipeBillet.create_empty_billet(w, ICON_SIZE, FONT_SIZE))
 		slot_idx += 1
 	# Energy cost (dedicated last input columns)
 	if has_energy_cost:
 		if recipe is RecipeDef and recipe.energy_cost > 0.0:
-			_add_energy_slot(recipe_row, str(int(recipe.energy_cost)), energy_cost_w)
+			RecipeBillet.add_energy_slot(recipe_row, str(int(recipe.energy_cost)), energy_cost_w, ICON_SIZE, FONT_SIZE)
 		else:
-			recipe_row.add_child(_create_empty_billet(energy_cost_w))
+			recipe_row.add_child(RecipeBillet.create_empty_billet(energy_cost_w, ICON_SIZE, FONT_SIZE))
 
 	# Arrow with craft time (fixed width for alignment)
 	var arrow := Label.new()
@@ -414,12 +414,12 @@ func _populate_recipe_row(recipe) -> void:
 	var out_slot_idx: int = 0
 	for i in range(recipe.outputs.size()):
 		var w: float = out_widths[i] if i < out_widths.size() else NUM_WIDTH
-		_add_item_slot(recipe_row, recipe.outputs[i], w)
+		RecipeBillet.add_item_slot(recipe_row, recipe.outputs[i], w, ICON_SIZE, FONT_SIZE)
 		out_slot_idx = i + 1
 	# Energy output
 	if recipe is RecipeDef and recipe.energy_output > 0.0:
 		var w: float = out_widths[out_slot_idx] if out_slot_idx < out_widths.size() else NUM_WIDTH
-		_add_energy_slot(recipe_row, str(int(recipe.energy_output)), w)
+		RecipeBillet.add_energy_slot(recipe_row, str(int(recipe.energy_output)), w, ICON_SIZE, FONT_SIZE)
 
 func _update_progress_segments() -> void:
 	if not _building or not is_instance_valid(_building):
@@ -432,49 +432,6 @@ func _update_progress_segments() -> void:
 		return
 	for i in _segments.size():
 		_segments[i].color = SEGMENT_COLOR_ON if progress >= SEGMENT_THRESHOLDS[i] else SEGMENT_COLOR_OFF
-
-func _add_item_slot(row: HBoxContainer, stack, num_w: float = NUM_WIDTH) -> void:
-	var qty: int = stack.quantity
-	var item_id: StringName = &""
-	if stack is ItemStack and stack.item:
-		item_id = stack.item.id
-	row.add_child(_create_slot_billet(str(qty), num_w, ItemIcon.create(item_id, ICON_SIZE)))
-
-func _add_energy_slot(row: HBoxContainer, num_text: String, num_w: float = NUM_WIDTH) -> void:
-	row.add_child(_create_slot_billet(num_text, num_w, ItemIcon.create(&"energy", ICON_SIZE)))
-
-func _create_slot_billet(num_text: String, num_w: float, icon: Control) -> PanelContainer:
-	return _build_billet(UIStyles.slot_panel(Color(0.08, 0.08, 0.08, 0.6), 3, 1), num_text, num_w, icon)
-
-func _create_empty_billet(num_w: float) -> PanelContainer:
-	return _build_billet(UIStyles.slot_panel(Color.TRANSPARENT, 0, 1), "", num_w, null)
-
-func _build_billet(style: StyleBoxFlat, num_text: String, num_w: float, icon: Control) -> PanelContainer:
-	style.content_margin_top = 1
-	style.content_margin_bottom = 1
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", style)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 1)
-	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var num_label := Label.new()
-	num_label.text = num_text
-	num_label.add_theme_font_size_override("font_size", FONT_SIZE)
-	num_label.custom_minimum_size = Vector2(num_w, 0)
-	if num_text != "":
-		num_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(num_label)
-	if icon:
-		hbox.add_child(icon)
-	else:
-		var icon_pad := Control.new()
-		icon_pad.custom_minimum_size = ICON_SIZE
-		icon_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		hbox.add_child(icon_pad)
-	panel.add_child(hbox)
-	return panel
 
 func _update_energy_row(e) -> void:
 	if not e:
@@ -521,7 +478,7 @@ func _update_inventory_row(items: Array) -> void:
 		child.queue_free()
 
 func _create_inventory_slot(num_text: String, num_w: float, item_id: StringName) -> PanelContainer:
-	var panel := _create_slot_billet(num_text, num_w, ItemIcon.create(item_id, ICON_SIZE))
+	var panel := RecipeBillet.create_slot_billet(num_text, num_w, ItemIcon.create(item_id, ICON_SIZE), ICON_SIZE, FONT_SIZE)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.set_meta(&"item_id", item_id)
 	panel.gui_input.connect(_on_inventory_slot_input.bind(panel))
