@@ -76,6 +76,14 @@ func _on_building_died() -> void:
 
 # ── Resource memory ──────────────────────────────────────────────────────────
 
+## Toggle night/day mode. Override in subclasses for custom behavior.
+func set_night_mode(enabled: bool) -> void:
+	is_night_mode = enabled
+	if not enabled:
+		set_physics_process(true)
+	else:
+		set_physics_process(false)
+
 ## Return the resource/element this building last produced. Override in subclasses.
 func get_last_resource() -> StringName:
 	return &""

@@ -31,6 +31,7 @@ var active: bool = false
 
 var _cooldown_timer: float = 0.0
 var _current_target: Node3D = null
+var _cached_position_node: Node3D = null
 
 ## Enable the turret and set its element type.
 func activate(p_element: StringName) -> void:
@@ -38,6 +39,7 @@ func activate(p_element: StringName) -> void:
 	active = true
 	_cooldown_timer = 0.0
 	_current_target = null
+	_cache_position_node()
 	set_physics_process(true)
 
 ## Disable the turret. Stops firing and clears target.
@@ -74,27 +76,39 @@ func _physics_process(delta: float) -> void:
 		_fire_at(_current_target)
 		_cooldown_timer = fire_cooldown
 
-## Get the world position of this turret (the building it belongs to).
-func _get_turret_position() -> Vector3:
-	# Walk up to find a Node3D parent for world position.
+## Cache the Node3D parent for position lookups.
+func _cache_position_node() -> void:
 	var node: Node = get_parent()
 	while node:
 		if node is Node3D:
-			return node.global_position
+			_cached_position_node = node
+			return
 		node = node.get_parent()
+
+## Get the world position of this turret (the building it belongs to).
+func _get_turret_position() -> Vector3:
+	if _cached_position_node and is_instance_valid(_cached_position_node):
+		return _cached_position_node.global_position
 	return Vector3.ZERO
+
+## Shared monster list cache — refreshed once per frame by the first turret that queries.
+static var _cached_monsters: Array = []
+static var _cache_frame: int = -1
 
 ## Find the nearest monster within range.
 func _find_nearest_target() -> Node3D:
-	var monsters := get_tree().get_nodes_in_group(&"monsters")
-	if monsters.is_empty():
+	var frame := Engine.get_physics_frames()
+	if frame != _cache_frame:
+		_cache_frame = frame
+		_cached_monsters = get_tree().get_nodes_in_group(&"monsters")
+	if _cached_monsters.is_empty():
 		return null
 
 	var turret_pos := _get_turret_position()
 	var best_target: Node3D = null
 	var best_dist_sq: float = range_radius * range_radius
 
-	for monster in monsters:
+	for monster in _cached_monsters:
 		if not is_instance_valid(monster) or not monster is Node3D:
 			continue
 		var dist_sq := turret_pos.distance_squared_to(monster.global_position)

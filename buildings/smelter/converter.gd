@@ -150,6 +150,7 @@ func get_last_resource() -> StringName:
 
 ## Toggle night mode. When enabled, crafting pauses and turret fires.
 func set_night_mode(enabled: bool) -> void:
+	is_night_mode = enabled
 	night_mode = enabled
 	if enabled:
 		if not turret:

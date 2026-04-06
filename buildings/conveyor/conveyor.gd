@@ -43,6 +43,22 @@ var is_night_form: bool = false
 var _day_variant: StringName = &""
 var _day_rotation_steps: int = 0
 
+func set_night_mode(enabled: bool) -> void:
+	is_night_mode = enabled
+	is_night_form = enabled
+	if enabled:
+		_day_variant = _current_variant
+		_day_rotation_steps = _current_rotation_steps
+		set_physics_process(false)
+		var night_variant: StringName = &"tower" if _current_variant in TURN_VARIANTS else &"wall"
+		_swap_model(night_variant, 0)
+	else:
+		set_physics_process(true)
+		if _day_variant != &"":
+			_swap_model(_day_variant, _day_rotation_steps)
+			_day_variant = &""
+			_day_rotation_steps = 0
+
 func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(def, p_grid_pos, rotation)
 	direction = rotation

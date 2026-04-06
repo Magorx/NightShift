@@ -166,13 +166,16 @@ func _serialize_buildings() -> Array:
 		var state: Dictionary = {}
 		if building.logic:
 			state = building.logic.serialize_state()
-		result.append({
+		var entry := {
 			"type": str(building.building_id),
 			"grid_x": building.grid_pos.x,
 			"grid_y": building.grid_pos.y,
 			"rotation": building.rotation_index,
 			"state": state,
-		})
+		}
+		if building.logic and building.logic.health and building.logic.health.current_hp < building.logic.health.max_hp:
+			entry["hp"] = building.logic.health.current_hp
+		result.append(entry)
 	return result
 
 # ── Deserialization ──────────────────────────────────────────────────────────
@@ -230,6 +233,8 @@ func _deserialize_run(data: Dictionary) -> void:
 		var state: Dictionary = entry.get("state", {})
 		if building.logic and not state.is_empty():
 			building.logic.deserialize_state(state)
+		if building.logic and building.logic.health and entry.has("hp"):
+			building.logic.health.current_hp = entry["hp"]
 
 	# Deferred pass: link tunnel pairs using saved partner positions
 	_link_tunnels_deferred(building_list)
