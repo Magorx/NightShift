@@ -13,9 +13,19 @@ func _init():
 		var file_name = dir.get_next()
 		while file_name != "":
 			if file_name.begins_with("test_") and file_name.ends_with(".gd"):
-				var script = load(dir_path + file_name)
-				var instance = script.new()
 				print("Running: %s" % file_name)
+				var script = load(dir_path + file_name)
+				if not script:
+					printerr("  FAIL: %s failed to load (compile error)" % file_name)
+					total_failed += 1
+					file_name = dir.get_next()
+					continue
+				var instance = script.new()
+				if not instance:
+					printerr("  FAIL: %s failed to instantiate" % file_name)
+					total_failed += 1
+					file_name = dir.get_next()
+					continue
 				var results = instance.run_all()
 				total_passed += results.passed
 				total_failed += results.failed

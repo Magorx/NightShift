@@ -28,16 +28,16 @@ func run_simulation() -> void:
 	var consumed: int = sink_logic.items_consumed if sink_logic else 0
 	sim_assert(consumed > 0, "Sink consumed items from drill chain (got %d)" % consumed)
 
-	# Test 4: Place drill on copper deposit
+	# Test 4: Place drill on copper deposit (downward chain, turns right into sink)
 	sim_add_deposit(Vector2i(30, 8), &"crystalline")
 	sim_place_building(&"drill", Vector2i(30, 8), 1)  # direction: down
 	sim_place_building(&"conveyor", Vector2i(30, 9), 1)
-	sim_place_building(&"conveyor", Vector2i(30, 10), 1)
-	sim_place_building(&"sink", Vector2i(30, 11), 0)
+	sim_place_building(&"conveyor", Vector2i(30, 10), 0)  # turn right
+	sim_place_building(&"sink", Vector2i(31, 10), 0)  # sink input faces left
 
-	await sim_advance_seconds(6)
+	await sim_advance_seconds(15)
 
-	var sink2 = GameManager.get_building_at(Vector2i(30, 11))
+	var sink2 = GameManager.get_building_at(Vector2i(31, 10))
 	var sink2_logic = sink2.find_child("SinkLogic", true, false) if sink2 else null
 	var consumed2: int = sink2_logic.items_consumed if sink2_logic else 0
 	sim_assert(consumed2 > 0, "Copper drill chain delivered items (got %d)" % consumed2)

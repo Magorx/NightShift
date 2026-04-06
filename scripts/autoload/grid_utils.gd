@@ -11,10 +11,9 @@ const TILE_SIZE := 1.0
 func grid_to_world(grid_pos: Vector2i) -> Vector3:
 	return Vector3(grid_pos.x * TILE_SIZE, 0.0, grid_pos.y * TILE_SIZE)
 
-## Convert grid coordinates to 3D world position at terrain elevation.
-func grid_to_world_elevated(grid_pos: Vector2i) -> Vector3:
-	var h: float = GameManager.get_terrain_height(grid_pos)
-	return Vector3(grid_pos.x * TILE_SIZE, h, grid_pos.y * TILE_SIZE)
+## Convert grid coordinates to 3D world position at a given elevation.
+func grid_to_world_elevated(grid_pos: Vector2i, height: float) -> Vector3:
+	return Vector3(grid_pos.x * TILE_SIZE, height, grid_pos.y * TILE_SIZE)
 
 ## Alias -- center of a tile in 3D (same as grid_to_world).
 func grid_to_center(grid_pos: Vector2i) -> Vector3:

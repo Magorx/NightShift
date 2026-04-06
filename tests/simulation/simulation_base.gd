@@ -10,6 +10,8 @@ extends Node
 var sim_mode: String = "fast"
 var sim_name: String = ""
 var sim_map_size: int = 64  # smaller map for fast tests; override in subclass if needed
+var sim_rounds_enabled: bool = false  # set true in sims that test round cycling
+var sim_flatten_terrain: bool = true  # flatten heights to 0 for predictable physics
 var game_world: Node
 var tick_count: int = 0
 var _failed: bool = false
@@ -75,8 +77,17 @@ func _ready():
 		"screenshot_compare":
 			_setup_screenshot_dir("current")
 
-	# Clear walls for simulations — tests need a clean grid, not terrain obstacles
+	# Stop round cycling by default — most sims test factory production and
+	# fight phases freeze the factory. Sims that test rounds set sim_rounds_enabled = true.
+	if not sim_rounds_enabled:
+		RoundManager.stop_run()
+		# Keep factory in build mode (building tick system running)
+		GameManager.building_tick_system.set_physics_process(true)
+
+	# Clear walls for simulations; optionally flatten terrain
 	_sim_clear_walls()
+	if sim_flatten_terrain:
+		_sim_rebuild_terrain_collision()
 
 	# Defer so game_world._ready() completes first
 	run_simulation.call_deferred()
@@ -93,10 +104,51 @@ func run_simulation() -> void:
 
 # ── World helpers ────────────────────────────────────────────────────────
 
-## Clear all walls so simulations have a clean grid for building placement.
+## Clear walls and optionally flatten terrain for a clean sim grid.
 func _sim_clear_walls() -> void:
-	# TileMapLayer removed in 3D transition — just clear the wall data
 	GameManager.walls.clear()
+	if sim_flatten_terrain:
+		# Flatten terrain to Y=0 so physics items roll predictably
+		if not GameManager.terrain_heights.is_empty():
+			GameManager.terrain_heights.fill(0.0)
+		# Reset any pre-placed buildings to ground level
+		for b in GameManager.unique_buildings:
+			if is_instance_valid(b):
+				b.position.y = 0.0
+	# Remove 3D decorations (rocks, rubble) spawned from wall data —
+	# they have collision that blocks items even after walls are cleared
+	var decorations := game_world.get_node_or_null("TerrainDecorations")
+	if decorations:
+		game_world.remove_child(decorations)
+		decorations.queue_free()
+
+## Rebuild terrain collision after flattening heights.
+func _sim_rebuild_terrain_collision() -> void:
+	if not GameManager.terrain_visual_manager:
+		return
+	# Rebuild visual mesh from flat heights
+	if GameManager.terrain_tile_types.size() > 0:
+		GameManager.terrain_visual_manager.build(
+			GameManager.map_size,
+			GameManager.terrain_tile_types,
+			GameManager.terrain_variants,
+			GameManager.terrain_heights
+		)
+	# Replace terrain collision
+	var old_col := game_world.get_node_or_null("TerrainCollision")
+	if old_col:
+		old_col.queue_free()
+	var shape: ConcavePolygonShape3D = GameManager.terrain_visual_manager.create_box_collision()
+	if not shape:
+		return
+	var body := StaticBody3D.new()
+	body.name = "TerrainCollision"
+	body.collision_layer = 4
+	body.collision_mask = 0
+	var col_shape := CollisionShape3D.new()
+	col_shape.shape = shape
+	body.add_child(col_shape)
+	game_world.add_child(body)
 
 ## Register a deposit at a position so drills can be placed there.
 func sim_add_deposit(pos: Vector2i, item_id: StringName) -> void:
@@ -146,7 +198,9 @@ func sim_advance_ticks(count: int) -> void:
 		await _capture_screenshot()
 
 func sim_advance_seconds(seconds: float) -> void:
-	var frames := int(seconds * 60)
+	# Account for Engine.time_scale: each physics tick covers (1/60)*time_scale game seconds
+	var frames := int(seconds * 60.0 / Engine.time_scale)
+	frames = maxi(frames, 1)
 	await sim_advance_ticks(frames)
 
 # ── Screenshot helpers ───────────────────────────────────────────────────

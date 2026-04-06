@@ -46,10 +46,11 @@ func _on_root_ready():
 	# Engine configuration per mode
 	match mode:
 		"fast":
-			# Batch 100 physics steps per main-loop iteration for max throughput.
-			# Combined with --fixed-fps 60, each iteration processes 100 ticks.
-			Engine.time_scale = 100.0
-			Engine.max_physics_steps_per_frame = 100
+			# Physics-based item transport (RigidBody3D) needs stable delta for
+			# items to roll on conveyors and enter building input zones reliably.
+			# 4x keeps delta=0.067s (safe for rigid body simulation).
+			Engine.time_scale = 4.0
+			Engine.max_physics_steps_per_frame = 4
 		"benchmark":
 			# Real-time rendering with vsync off for accurate FPS measurement
 			Engine.time_scale = 1.0

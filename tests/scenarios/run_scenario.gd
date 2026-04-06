@@ -55,11 +55,10 @@ func _on_root_ready():
 	# Engine configuration per mode
 	match mode:
 		"fast":
-			# Lower than simulation fast mode (100x) because scenarios use
-			# CharacterBody3D physics which becomes unstable at high time_scale
-			# (delta=1.67s at 100x breaks move_and_slide).
-			Engine.time_scale = 10.0
-			Engine.max_physics_steps_per_frame = 10
+			# Physics-based items (RigidBody3D) need stable delta to avoid
+			# falling through terrain. 4x matches visual mode stability.
+			Engine.time_scale = 4.0
+			Engine.max_physics_steps_per_frame = 4
 		"visual":
 			Engine.time_scale = 4.0
 			Engine.max_physics_steps_per_frame = 4

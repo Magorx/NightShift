@@ -3,6 +3,10 @@ extends "res://tests/simulation/simulation_base.gd"
 ## Sim test for P3: Verifies build/fight phase cycling across 3 full rounds.
 ## Checks: phase transitions, timer countdown, round counter, build system toggle.
 
+func _ready() -> void:
+	sim_rounds_enabled = true
+	super._ready()
+
 func run_simulation() -> void:
 	print("[SIM] === Round Cycle Test ===")
 

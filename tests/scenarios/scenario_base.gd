@@ -24,6 +24,9 @@ func _ready() -> void:
 	# Use a small map by default for focused scenarios
 	sim_map_size = 32
 
+	# Scenarios need round cycling for build/fight phase behavior
+	sim_rounds_enabled = true
+
 	# Override sim_name so screenshots land in the right folder
 	sim_name = scenario_name()
 

@@ -3,6 +3,10 @@ extends "res://tests/simulation/simulation_base.gd"
 ## Visual test: captures day and night screenshots to verify lighting.
 ## Run with: --screenshot-baseline to save, or --visual to watch.
 
+func _ready() -> void:
+	sim_rounds_enabled = true
+	super._ready()
+
 func run_simulation() -> void:
 	print("[SIM] === Day/Night Visual Test ===")
 

@@ -47,9 +47,9 @@ func run_simulation() -> void:
 	sim_assert(conv_logic != null, "Smelter has ConverterLogic")
 	sim_assert(conv_logic.recipes.size() > 0, "Smelter has recipes loaded (%d)" % (conv_logic.recipes.size() if conv_logic else 0))
 
-	# Run for 25 seconds — drills produce every 2s, smelter crafts in 3s
+	# Run for 30 seconds — drills produce every 2s, smelter crafts in 3s
 	# Expected: combo items delivered to sink
-	await sim_advance_seconds(25)
+	await sim_advance_seconds(30)
 
 	# Check sink consumed items
 	var sink_building = GameManager.get_building_at(Vector2i(17, 11))

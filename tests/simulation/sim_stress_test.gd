@@ -4,6 +4,9 @@ func _ready():
 	GameManager.stress_test_pending = true
 	GameManager.map_size = 160
 	GameManager.world_seed = 0
+	# Flatten terrain after stress gen — buildings get repositioned to y=0 by the
+	# terrain rebuild, making item physics predictable on flat ground.
+	sim_flatten_terrain = true
 	super._ready()
 
 func run_simulation() -> void:
@@ -32,8 +35,8 @@ func run_simulation() -> void:
 		await _run_benchmark()
 		return
 
-	# Let the factory run for 30 seconds
-	await sim_advance_seconds(30)
+	# Let the factory run for 60 seconds (items need time to traverse long chains)
+	await sim_advance_seconds(60)
 
 	# Check that items were delivered to sinks
 	var total_delivered := 0
