@@ -50,7 +50,7 @@ E = load_palette("elements")
 
 OUTPUT_DIR = os.path.join(REPO_ROOT, "resources", "items", "models")
 
-BAKE_SIZE = 128  # Texture resolution for baked procedural materials
+BAKE_SIZE = 256  # Texture resolution for baked procedural materials
 
 
 def export_item(name):
@@ -116,30 +116,24 @@ def build_pyromite():
         obj.parent = root
         return obj
 
-    # Create procedural material
-    mat_base = pyromite_item("PyroItemBase", E["pyro_dark"], glow_color=E["pyro_glow"])
-    mat_main = pyromite_item("PyroItemMain", E["pyro_base"], glow_color=E["pyro_glow"])
-    mat_hi = pyromite_item("PyroItemHi", E["pyro_hi"], glow_color=E["pyro_glow"])
-    mat_glow = pyromite_item("PyroItemGlow", E["pyro_glow"])
-
-    # Base disc
-    base = add(generate_cylinder(radius=0.09, height=0.03, segments=8,
-                                 hex_color=E["pyro_dark"]))
-    base.name = "PyroBase"
-    _apply_material_to_mesh(base, mat_base)
+    # Create procedural material — use red glow default, not yellow palette glow
+    mat_base = pyromite_item("PyroItemBase", E["pyro_dark"])
+    mat_main = pyromite_item("PyroItemMain", E["pyro_base"])
+    mat_hi = pyromite_item("PyroItemHi", E["pyro_hi"])
+    mat_glow = pyromite_item("PyroItemGlow", E["pyro_base"])
 
     # Central large flame cone
     c1 = add(generate_cone(radius_bottom=0.06, radius_top=0.0, height=0.2,
                            segments=6, hex_color=E["pyro_base"]))
     c1.name = "FlameMain"
-    c1.location = (0, 0, 0.03)
+    c1.location = (0, 0, 0)
     _apply_material_to_mesh(c1, mat_main)
 
     # Secondary flame - tilted left
     c2 = add(generate_cone(radius_bottom=0.04, radius_top=0.0, height=0.15,
                            segments=6, hex_color=E["pyro_hi"]))
     c2.name = "FlameLeft"
-    c2.location = (-0.04, 0.01, 0.03)
+    c2.location = (-0.04, 0.01, 0)
     c2.rotation_euler = (0.2, -0.25, 0)
     _apply_material_to_mesh(c2, mat_hi)
 
@@ -147,7 +141,7 @@ def build_pyromite():
     c3 = add(generate_cone(radius_bottom=0.035, radius_top=0.0, height=0.12,
                            segments=6, hex_color=E["pyro_hi"]))
     c3.name = "FlameRight"
-    c3.location = (0.035, -0.02, 0.03)
+    c3.location = (0.035, -0.02, 0)
     c3.rotation_euler = (-0.15, 0.3, 0)
     _apply_material_to_mesh(c3, mat_hi)
 
@@ -155,7 +149,7 @@ def build_pyromite():
     c4 = add(generate_cone(radius_bottom=0.03, radius_top=0.0, height=0.1,
                            segments=5, hex_color=E["pyro_glow"]))
     c4.name = "FlameBack"
-    c4.location = (0.01, 0.04, 0.03)
+    c4.location = (0.01, 0.04, 0)
     c4.rotation_euler = (0.3, 0.1, 0)
     _apply_material_to_mesh(c4, mat_glow)
 
@@ -184,7 +178,7 @@ def build_crystalline():
     mat_hi = crystalline_item("CrystItemHi", E["cryst_hi"], frost_color=E["cryst_glow"])
     mat_dark = crystalline_item("CrystItemDark", E["cryst_dark"])
 
-    # Main crystal - single tall hex prism with tip
+    # Main crystal - diamond-shaped hex prism with tips on both ends
     crystal = add(generate_crystal(
         num_crystals=1,
         base_radius=0.06,
@@ -193,6 +187,7 @@ def build_crystalline():
         spread=0.0,
         seed=42,
         hex_color=E["cryst_base"],
+        bottom_tip_ratio=1.0,
     ))
     crystal.name = "CrystalMain"
     _apply_material_to_mesh(crystal, mat_main)
@@ -206,6 +201,7 @@ def build_crystalline():
         spread=0.0,
         seed=7,
         hex_color=E["cryst_hi"],
+        bottom_tip_ratio=0.8,
     ))
     crystal2.name = "CrystalSmall"
     crystal2.location = (0.05, -0.02, 0)
@@ -221,6 +217,7 @@ def build_crystalline():
         spread=0.0,
         seed=13,
         hex_color=E["cryst_dark"],
+        bottom_tip_ratio=0.7,
     ))
     crystal3.name = "CrystalTiny"
     crystal3.location = (-0.04, 0.03, 0)
@@ -247,10 +244,10 @@ def build_biovine():
         obj.parent = root
         return obj
 
-    # Create procedural materials
-    mat_dark = biovine_item("BioItemDark", E["bio_dark"], spore_color=E["bio_glow"])
-    mat_main = biovine_item("BioItemMain", E["bio_base"], spore_color=E["bio_glow"])
-    mat_hi = biovine_item("BioItemHi", E["bio_hi"], spore_color=E["bio_glow"])
+    # Create procedural materials — very high growth_scale needed because object is only ~0.18 units wide
+    mat_dark = biovine_item("BioItemDark", E["bio_dark"], spore_color=E["bio_glow"], growth_scale=50.0)
+    mat_main = biovine_item("BioItemMain", E["bio_base"], spore_color=E["bio_glow"], growth_scale=50.0)
+    mat_hi = biovine_item("BioItemHi", E["bio_hi"], spore_color=E["bio_glow"], growth_scale=50.0)
 
     # Fat base hemisphere
     base = add(generate_hemisphere(radius=0.1, rings=4, segments=10,

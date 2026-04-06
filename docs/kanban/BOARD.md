@@ -6,20 +6,7 @@
 
 ## Backlog
 
-### **3D.11** 3D grid overlay + debug visualization `1.5h`
-
-  - tags: [3d-transition, polish]
-  - priority: low
-  - depends: 3D.9
-  - steps:
-      - [ ] Rewrite grid_overlay using ImmediateMesh or ArrayMesh on ground plane
-      - [ ] Add debug visualization for building footprints, IO directions
-      - [ ] 3D destroy highlight (shader on MeshInstance3D or decal)
-    ```md
-    Polish card. Not required for gameplay but useful for development.
-    ```
-
-### **P3.1** RoundManager autoload singleton `2h`
+### **P3.1** RoundManager autoload singleton `1h`
 
   - tags: [phase-3, core]
   - priority: medium
@@ -33,9 +20,10 @@
       - [ ] Register in Project Settings > Autoload
     ```md
     Core game loop manager. Phases: &"build", &"fight", &"transition".
+    Original estimate 2h, recalibrated to 1h based on velocity data.
     ```
 
-### **P3.2** Phase HUD: timer + round counter `1.5h`
+### **P3.2** Phase HUD: timer + round counter `0.5h`
 
   - tags: [phase-3, ui]
   - priority: medium
@@ -47,9 +35,10 @@
       - [ ] Add screen flash/pulse for phase transitions
     ```md
     Minimal HUD replacing Factor's complex UI.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **P3.3** Build phase: enable placement, conveyors run `1h`
+### **P3.3** Build phase: enable placement, conveyors run `0.5h`
 
   - tags: [phase-3, gameplay]
   - priority: medium
@@ -60,9 +49,10 @@
       - [ ] Verify conveyor/building tick runs normally during build phase
     ```md
     Build phase is basically current Factor behavior, just wired to RoundManager.
+    Original estimate 1h, recalibrated to 0.5h.
     ```
 
-### **P3.4** Fight phase: freeze factory, placeholder combat `1.5h`
+### **P3.4** Fight phase: freeze factory, placeholder combat `0.5h`
 
   - tags: [phase-3, gameplay]
   - priority: medium
@@ -74,9 +64,10 @@
       - [ ] Validate: game cycles build->fight->build, can place during build only
     ```md
     Placeholder fight phase -- just a timer. Monsters come in Phase 5.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **P3.5** Day/night visual shift `1.5h`
+### **P3.5** Day/night visual shift `0.5h`
 
   - tags: [phase-3, visual]
   - priority: medium
@@ -87,9 +78,10 @@
       - [ ] Fight: darken terrain, slight color distortion. Build: normal bright look
     ```md
     CanvasModulate-based day/night. Full psychedelic shader is post-M1.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **P3.6** Sim test: round cycling `1.5h`
+### **P3.6** Sim test: round cycling `0.5h`
 
   - tags: [phase-3, test]
   - priority: medium
@@ -100,9 +92,10 @@
       - [ ] Validate: sim passes headless
     ```md
     Automated test of build/fight cycle.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **P4.1** Building HP component `1.5h`
+### **P4.1** Building HP component `0.5h`
 
   - tags: [phase-4, combat]
   - priority: medium
@@ -114,9 +107,10 @@
       - [ ] On destroy: remove building via GameManager, leave rubble marker
     ```md
     BuildingHealth component, same architecture pattern as the removed BuildingEnergy.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **P4.2** Night transform: conveyors become walls `2h`
+### **P4.2** Night transform: conveyors become walls `1h`
 
   - tags: [phase-4, transform]
   - priority: medium
@@ -128,9 +122,10 @@
       - [ ] Add wall state and HP values to `buildings/conveyor/conveyor_belt.gd`
     ```md
     Core Night Shift mechanic: your conveyor layout IS your defense layout.
+    Original estimate 2h, recalibrated to 1h.
     ```
 
-### **P4.3** Night transform: converters become turrets `2h`
+### **P4.3** Night transform: converters become turrets `1h`
 
   - tags: [phase-4, transform]
   - priority: medium
@@ -141,9 +136,10 @@
       - [ ] Turret fires projectiles based on last processed resource, nearest monster in range
     ```md
     Converters become elemental turrets at night. Projectile color matches element.
+    Original estimate 2h, recalibrated to 1h.
     ```
 
-### **P4.4** Sim test: transformation `0.5h`
+### **P4.4** Sim test: transformation `0.25h`
 
   - tags: [phase-4, test]
   - priority: medium
@@ -153,9 +149,10 @@
       - [ ] Validate: sim passes headless
     ```md
     Automated test of building transformation.
+    Original estimate 0.5h, recalibrated to 0.25h.
     ```
 
-### **P5.1** Monster base class + Tendril Crawler `3h`
+### **P5.1** Monster base class + Tendril Crawler `1.5h`
 
   - tags: [phase-5, monsters]
   - priority: medium
@@ -166,9 +163,10 @@
       - [ ] Placeholder sprite: 16x16 pulsating geometric shape
     ```md
     First monster type. Follows A* path toward nearest building, attacks in melee range.
+    Original estimate 3h, recalibrated to 1.5h (most complex novel card in M1).
     ```
 
-### **P5.2** Monster spawner `2h`
+### **P5.2** Monster spawner `1h`
 
   - tags: [phase-5, monsters]
   - priority: medium
@@ -178,9 +176,10 @@
       - [ ] Wave scaling: round_1_count=5, count_per_round=3, spawn_interval=2.0s
     ```md
     Spawns monsters at map edges with wave scaling per round.
+    Original estimate 2h, recalibrated to 1h.
     ```
 
-### **P5.3** Monster pathfinding (A*) `2.5h`
+### **P5.3** Monster pathfinding (A*) `1h`
 
   - tags: [phase-5, monsters]
   - priority: medium
@@ -191,9 +190,10 @@
       - [ ] Individual monsters query for paths
     ```md
     Risk: performance with 50+ monsters. Use shared grid, batch pathfinding, limit recalculation.
+    Original estimate 2.5h, recalibrated to 1h.
     ```
 
-### **P5.4** Monster-building combat `2h`
+### **P5.4** Monster-building combat `1h`
 
   - tags: [phase-5, combat]
   - priority: medium
@@ -204,9 +204,10 @@
       - [ ] Monsters deal damage to player if adjacent, player can dodge
     ```md
     Monster-building and monster-player combat interactions.
+    Original estimate 2h, recalibrated to 1h.
     ```
 
-### **P5.5** Fight phase end condition `1h`
+### **P5.5** Fight phase end condition `0.5h`
 
   - tags: [phase-5, core]
   - priority: medium
@@ -218,9 +219,10 @@
       - [ ] Simple "Game Over" screen with "Return to Menu" button
     ```md
     Win/lose conditions for fight phase.
+    Original estimate 1h, recalibrated to 0.5h.
     ```
 
-### **P5.6** Sim test: full combat loop `1.5h`
+### **P5.6** Sim test: full combat loop `0.5h`
 
   - tags: [phase-5, test]
   - priority: medium
@@ -230,9 +232,10 @@
       - [ ] Validate: sim passes headless
     ```md
     End-to-end combat simulation.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **P6.1** Simplify player inventory to 8 slots `1h`
+### **P6.1** Simplify player inventory to 8 slots `0.25h`
 
   - tags: [phase-6, player]
   - priority: low
@@ -241,9 +244,10 @@
       - [ ] Update `scripts/ui/inventory_panel.gd` to 8-slot layout (1 row of 8)
     ```md
     Simpler inventory for roguelite pacing.
+    Original estimate 1h, recalibrated to 0.25h (trivial constant change).
     ```
 
-### **P6.2** Player combat actions during fight `2h`
+### **P6.2** Player combat actions during fight `1h`
 
   - tags: [phase-6, player]
   - priority: low
@@ -253,9 +257,10 @@
       - [ ] Keep simple for M1
     ```md
     Light player combat. No building placement during fight phase.
+    Original estimate 2h, recalibrated to 1h.
     ```
 
-### **P6.3** Run-based save/load `1.5h`
+### **P6.3** Run-based save/load `0.5h`
 
   - tags: [phase-6, save]
   - priority: low
@@ -267,9 +272,10 @@
       - [ ] No meta-progression save for M1
     ```md
     No persistent progression for M1. Just mid-run save/load.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **P6.4** New main menu `1.5h`
+### **P6.4** New main menu `0.5h`
 
   - tags: [phase-6, ui]
   - priority: low
@@ -279,9 +285,10 @@
       - [ ] Modify `scripts/ui/main_menu.gd` and `scenes/ui/main_menu.tscn`
     ```md
     Replace Factor's account-slot menu with simple run-based menu.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **P6.5** Building placement UX for M1 `1.5h`
+### **P6.5** Building placement UX for M1 `0.5h`
 
   - tags: [phase-6, ui]
   - priority: low
@@ -292,9 +299,10 @@
       - [ ] All M1 buildings available: conveyor, drill, smelter, splitter
     ```md
     No shop yet, so player starts with unlimited buildings.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **P6.6** End-to-end playtest + bug fixing `1.5h`
+### **P6.6** End-to-end playtest + bug fixing `1h`
 
   - tags: [phase-6, test]
   - priority: low
@@ -304,16 +312,17 @@
       - [ ] Fix crashes, balance timing, adjust monster difficulty
       - [ ] Document issues for M2
     ```md
-    Final M1 polish and bug bash.
+    Final M1 polish and bug bash. Playtesting is inherently time-consuming.
+    Original estimate 1.5h, recalibrated to 1h.
     ```
 
-### **BOT.1** BotPlayer base class + random build behavior `3h`
+### **BOT.1** BotPlayer base class + random build behavior `1h`
 
   - tags: [botplayer, testing, infrastructure]
   - priority: medium
   - steps:
       - [ ] Create `tests/bot/bot_player.gd` extending `SimulationBase`
-      - [ ] Implement `BotBrain` inner class — the decision-maker that runs each tick
+      - [ ] Implement `BotBrain` inner class -- the decision-maker that runs each tick
       - [ ] `BotBrain` holds: player grid position, known deposits (scanned from `GameManager.deposits`), placed buildings list, current goal (enum: EXPLORE, BUILD, OBSERVE)
       - [ ] **Random walk**: each decision tick (every ~60 frames), pick a random walkable grid cell within radius 10 of current position, set as move target. Move one cell per tick toward target (cardinal directions only, skip walls)
       - [ ] **Random build**: when adjacent to an empty cell, roll a weighted random to place a building. Weights: conveyor 50%, drill 15% (only on deposit), smelter 15%, splitter 10%, source 5%, sink 5%. Pick random valid rotation (0-3). Skip if cell occupied or invalid (drill off-deposit, multi-cell overlap)
@@ -323,135 +332,79 @@
       - [ ] Log all actions to stdout: `[BOT] tick=120 action=place_building type=conveyor pos=(5,3) rot=0`
     ```md
     The core BotPlayer that makes random-but-valid decisions in headless simulation.
-    Doesn't need rendering, player node, or input — it directly calls GameManager
-    placement APIs (same as existing sim helpers). Think of it as a monkey-testing
-    bot that places buildings and lets the factory run.
-
-    Architecture: BotPlayer (extends SimulationBase) owns a BotBrain instance.
-    run_simulation() loops: advance ticks → ask BotBrain for action → execute action → repeat.
-    BotBrain is stateless-ish: it reads GameManager state each tick, doesn't cache stale data.
-
-    The "player position" is virtual — just a Vector2i tracking where the bot
-    is "standing" on the grid. No actual CharacterBody2D movement. This is
-    purely for decision-making (build near me, explore outward).
-
-    All randomness goes through a seeded RandomNumberGenerator so runs are
-    reproducible: same seed = same build order = same factory layout.
+    Similar scope to SCN.1 (0.4h actual from 4h estimate).
+    Original estimate 3h, recalibrated to 1h.
     ```
 
-### **BOT.2** Metric collector + run summary `2h`
+### **BOT.2** Metric collector + run summary `0.5h`
 
   - tags: [botplayer, testing, metrics]
   - priority: medium
   - depends: BOT.1
   - steps:
-      - [ ] Create `tests/bot/bot_metrics.gd` — standalone metric tracker, receives events from BotPlayer
+      - [ ] Create `tests/bot/bot_metrics.gd` -- standalone metric tracker, receives events from BotPlayer
       - [ ] Track placement metrics: buildings placed (by type), placement failures (by reason: occupied, off-deposit, overlap), total conveyors, total production buildings
       - [ ] Track production metrics: poll `GameManager.items_delivered` every 60 ticks, record items/min throughput over time. Track which item types are being produced
       - [ ] Track factory health: count idle drills (on deposit but output blocked), count disconnected buildings (no conveyor path to/from), count conveyor deadends
       - [ ] Track stability: record any error prints or script errors caught during run (hook `printerr`)
-      - [ ] **Run summary**: at `sim_finish()`, print a structured report:
-        ```
-        [BOT REPORT] seed=42 duration=300s ticks=18000
-        Buildings placed: conveyor=47 drill=8 smelter=3 splitter=2 sink=1 source=0
-        Placement failures: 12 (occupied=8 off_deposit=3 overlap=1)
-        Production: pyromite=24 crystalline=18 steam_burst=6
-        Throughput: 3.2 items/min (avg over last 120s)
-        Idle drills: 2/8  Disconnected buildings: 4/61
-        Errors: 0
-        ```
+      - [ ] **Run summary**: at `sim_finish()`, print a structured report
       - [ ] Optionally dump full timeline to JSON file (`tests/bot/results/<seed>.json`) for post-hoc analysis
     ```md
     The metric collector answers: "did the factory work?" and "did anything break?"
-    without needing a human to watch.
-
-    Key insight: we don't just want crash detection. We want to know if the bot
-    built something *functional*. Throughput > 0 means items are flowing. Idle drills
-    mean the bot failed to connect things. Disconnected buildings mean wasted placements.
-
-    The JSON dump enables comparing runs across code changes: "did this refactor
-    accidentally break smelter throughput?" by diffing metric summaries.
+    Original estimate 2h, recalibrated to 0.5h.
     ```
 
-### **BOT.3** Bot strategies: greedy builder + line builder `2.5h`
+### **BOT.3** Bot strategies: greedy builder + line builder `1h`
 
   - tags: [botplayer, testing, strategies]
   - priority: medium
   - depends: BOT.1
   - steps:
       - [ ] Refactor BotBrain into a base class with virtual `decide(state: Dictionary) -> Dictionary` method
-      - [ ] **RandomBrain** (already built in BOT.1) — move to its own file `tests/bot/brains/random_brain.gd`
-      - [ ] **GreedyBrain** (`tests/bot/brains/greedy_brain.gd`):
-        - Prioritizes connecting deposits to smelters. Scans for nearest unconnected deposit, walks there, places drill, then lays conveyors toward nearest smelter (or places a new smelter if none nearby)
-        - Places sink at end of production chain
-        - Falls back to random placement when no clear goal
-      - [ ] **LineBrain** (`tests/bot/brains/line_brain.gd`):
-        - Builds long straight conveyor lines across the map, placing drills at deposits encountered along the way, smelters at intersections
-        - Tests the "highway" factory layout style
+      - [ ] **RandomBrain** (already built in BOT.1) -- move to its own file `tests/bot/brains/random_brain.gd`
+      - [ ] **GreedyBrain** (`tests/bot/brains/greedy_brain.gd`): prioritizes connecting deposits to smelters
+      - [ ] **LineBrain** (`tests/bot/brains/line_brain.gd`): builds long straight conveyor lines
       - [ ] Each brain selectable via constructor: `BotPlayer.new(brain_type: StringName)` or sim argument
       - [ ] Add `--bot-brain <name>` argument parsing in bot runner
     ```md
-    Different brains stress different parts of the engine:
-    - RandomBrain: maximum chaos, best for crash detection and edge cases
-    - GreedyBrain: builds functional factories, best for production/balance testing
-    - LineBrain: creates long conveyor highways, best for stress-testing conveyor
-      system performance and item rendering at scale
-
-    The brain interface is simple: receive a state snapshot (deposits, buildings,
-    bot position, available building types), return an action dict. No async,
-    no signals — pure function each decision tick.
+    Different brains stress different parts of the engine.
+    Original estimate 2.5h, recalibrated to 1h.
     ```
 
-### **BOT.4** Bot runner: batch execution + comparison `2h`
+### **BOT.4** Bot runner: batch execution + comparison `0.5h`
 
   - tags: [botplayer, testing, runner]
   - priority: medium
   - depends: BOT.2, BOT.3
   - steps:
-      - [ ] Create `tests/bot/run_bot_batch.sh` — shell script that runs N bot simulations with different seeds
+      - [ ] Create `tests/bot/run_bot_batch.sh` -- shell script that runs N bot simulations with different seeds
       - [ ] Usage: `./tests/bot/run_bot_batch.sh --count 10 --brain random --duration 300`
-      - [ ] Each run gets seed 1..N, runs headless via: `$GODOT --headless --fixed-fps 60 --path . --script res://tests/bot/run_bot.gd -- <brain> <seed> <duration>`
-      - [ ] Create `tests/bot/run_bot.gd` — entry point script that parses args, instantiates BotPlayer with chosen brain, runs it
+      - [ ] Create `tests/bot/run_bot.gd` -- entry point script that parses args
       - [ ] Collect all JSON results into `tests/bot/results/batch_<timestamp>/`
-      - [ ] Print aggregate summary after batch: average throughput, crash count, min/max buildings placed, % of runs with production > 0
-      - [ ] Exit code 1 if any run crashed (non-zero Godot exit), enabling CI integration
+      - [ ] Print aggregate summary after batch
+      - [ ] Exit code 1 if any run crashed
     ```md
-    The batch runner is how you use BotPlayer in practice. Run 10-50 bots overnight,
-    check the summary in the morning.
-
-    Typical workflow:
-    1. Make a code change
-    2. Run `./tests/bot/run_bot_batch.sh --count 20 --brain greedy`
-    3. Check: any crashes? Throughput regressed? More idle drills than before?
-
-    The shell script is intentionally simple — no Python dependency, just a loop
-    calling Godot headless. Results are JSON files you can diff or feed into
-    a spreadsheet.
-
-    CI integration: add to GitHub Actions as a nightly job. If any run exits
-    non-zero, the workflow fails and you get notified.
+    The batch runner. Simple shell script + Godot entry point.
+    Original estimate 2h, recalibrated to 0.5h.
     ```
 
-### **BOT.5** Visual bot mode: watch the bot build `1.5h`
+### **BOT.5** Visual bot mode: watch the bot build `0.5h`
 
   - tags: [botplayer, testing, visual]
   - priority: low
   - depends: BOT.1
   - steps:
-      - [ ] Add `--visual` flag support to `run_bot.gd` — opens windowed game, bot runs at 2x speed
-      - [ ] Render a marker sprite at the bot's virtual grid position (simple colored diamond on the grid) so you can see where it's "standing"
-      - [ ] Add bot action log overlay — small text panel in corner showing last 5 bot actions
-      - [ ] Camera follows bot position (reuse existing camera follow logic from player)
-      - [ ] Don't auto-quit — let the user watch and close manually (same as sim visual mode)
+      - [ ] Add `--visual` flag support to `run_bot.gd` -- opens windowed game, bot runs at 2x speed
+      - [ ] Render a marker sprite at the bot's virtual grid position
+      - [ ] Add bot action log overlay -- small text panel showing last 5 actions
+      - [ ] Camera follows bot position
+      - [ ] Don't auto-quit -- let the user watch and close manually
     ```md
-    Debugging aid. When a bot run produces weird metrics, launch it in visual mode
-    with the same seed to see exactly what it did. Also useful for screenshots/GIFs
-    showing emergent factory layouts.
-
-    Usage: $GODOT --path . --script res://tests/bot/run_bot.gd -- random 42 300 --visual
+    Debugging aid. Watch the bot build in real time.
+    Original estimate 1.5h, recalibrated to 0.5h.
     ```
 
-### **BOT.6** Sim test: bot smoke test `1h`
+### **BOT.6** Sim test: bot smoke test `0.25h`
 
   - tags: [botplayer, testing, verification]
   - priority: medium
@@ -465,11 +418,22 @@
       - [ ] Assert: simulation completes without timeout
       - [ ] Add to standard test suite (runs with `run_tests.gd`)
     ```md
-    Minimal smoke test that the bot system itself works. Not testing game balance —
-    just verifying the bot can run without crashing and actually does stuff.
-    Runs as part of the normal test suite so bot infrastructure regressions
-    are caught immediately.
+    Minimal smoke test that the bot system itself works.
+    Original estimate 1h, recalibrated to 0.25h.
     ```
+
+## Estimate Summary
+
+| Phase | Cards | Old Total | New Total |
+|-------|-------|-----------|-----------|
+| P3 (RoundManager) | 6 | 9h | 3.5h |
+| P4 (Transform) | 4 | 6.5h | 2.75h |
+| P5 (Monsters) | 6 | 12h | 5.5h |
+| P6 (Polish) | 6 | 9.5h | 3.75h |
+| BOT (Testing) | 6 | 12h | 3.75h |
+| **Total remaining** | **28** | **49h** | **19.25h** |
+
+Recalibration based on 24 sessions of velocity data. See BOARD_SOLVED.md for full analysis.
 
 ## Post-M1 Backlog
 

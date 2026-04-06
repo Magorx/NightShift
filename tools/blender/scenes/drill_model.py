@@ -181,17 +181,11 @@ def build_drill():
         ring.location = (0, 0, 0.55 + rz)
         apply_texture(ring, "metal_plate", resolution="1k")
 
-    # Derrick cap
-    cap = add(generate_box(w=0.4, d=0.4, h=0.175, hex_color=BODY_LIGHT, seam_count=1))
-    cap.name = "DerrickCap"
-    cap.location = (0, 0, 1.75)
-    apply_texture(cap, "painted_metal_shutter", resolution="1k")
-
     # Cone tip
     cone = add(generate_cone(radius_bottom=0.15, radius_top=0, height=0.2,
                              segments=8, hex_color=STEEL_LT))
     cone.name = "ConeTip"
-    cone.location = (0, 0, 1.925)
+    cone.location = (0, 0, 1.75)
     apply_texture(cone, "metal_plate", resolution="1k")
 
     # ── DERRICK SUPPORT BRACES ────────────────────────────────────────

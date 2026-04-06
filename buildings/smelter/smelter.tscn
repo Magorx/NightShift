@@ -1,11 +1,35 @@
-[gd_scene load_steps=9 format=3 uid="uid://dmmfpftg5syl2"]
+[gd_scene load_steps=15 format=3 uid="uid://dmmfpftg5syl2"]
 
 [ext_resource type="Script" uid="uid://bin0jseievhun" path="res://buildings/shared/building_base.gd" id="1"]
 [ext_resource type="Script" uid="uid://dbaj4knyfgpst" path="res://buildings/smelter/converter.gd" id="2"]
 [ext_resource type="Script" uid="uid://xchn5wvkdcw7" path="res://buildings/shared/input_zone.gd" id="3"]
 [ext_resource type="Script" uid="uid://wn30a4e54j7j" path="res://buildings/shared/output_zone.gd" id="4"]
 [ext_resource type="PackedScene" uid="uid://d1jxy1qtx0wus" path="res://buildings/smelter/models/smelter.glb" id="5"]
-[ext_resource type="Script" uid="uid://bxmh4nofh3dx3" path="res://buildings/shared/shape_cell_3d.gd" id="6"]
+[ext_resource type="Script" path="res://buildings/shared/shape_cell_3d.gd" id="6"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g62ad"]
+transparency = 1
+no_depth_test = true
+shading_mode = 0
+albedo_color = Color(0.3, 0.5, 0.8, 0.15)
+
+[sub_resource type="BoxMesh" id="BoxMesh_68gcs"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xsb7e"]
+transparency = 1
+no_depth_test = true
+shading_mode = 0
+albedo_color = Color(0.3, 0.5, 0.8, 0.15)
+
+[sub_resource type="BoxMesh" id="BoxMesh_7uftf"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3c85n"]
+transparency = 1
+no_depth_test = true
+shading_mode = 0
+albedo_color = Color(0.3, 0.5, 0.8, 0.15)
+
+[sub_resource type="BoxMesh" id="BoxMesh_dqnvb"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_1"]
 size = Vector3(0.8, 0.4, 0.8)
@@ -23,14 +47,20 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 0.5)
 
 [node name="Cell_0_0" type="MeshInstance3D" parent="Shape"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+material_override = SubResource("StandardMaterial3D_g62ad")
+mesh = SubResource("BoxMesh_68gcs")
 script = ExtResource("6")
 
 [node name="Cell_1_0" type="MeshInstance3D" parent="Shape"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.5, 0)
+material_override = SubResource("StandardMaterial3D_xsb7e")
+mesh = SubResource("BoxMesh_7uftf")
 script = ExtResource("6")
 
 [node name="Cell_0_1" type="MeshInstance3D" parent="Shape"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 1)
+material_override = SubResource("StandardMaterial3D_3c85n")
+mesh = SubResource("BoxMesh_dqnvb")
 script = ExtResource("6")
 
 [node name="Inputs" type="Node3D" parent="."]

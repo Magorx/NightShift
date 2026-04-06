@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bn4noelbo2mf1"
-path="res://.godot/imported/umbrite_item_flat_bake_UmbItemMain.png-04e47dd4f59523f74b72e4812f879745.ctex"
+path.s3tc="res://.godot/imported/umbrite_item_flat_bake_UmbItemMain.png-04e47dd4f59523f74b72e4812f879745.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "b04148dc13830f6fc3638f374208c7f4"
+"md5": "fdc5f4885b2a5e4d6c4e2eb4b283df15"
 }
 
 [deps]
 
 source_file="res://resources/items/models/umbrite_item_flat_bake_UmbItemMain.png"
-dest_files=["res://.godot/imported/umbrite_item_flat_bake_UmbItemMain.png-04e47dd4f59523f74b72e4812f879745.ctex"]
+dest_files=["res://.godot/imported/umbrite_item_flat_bake_UmbItemMain.png-04e47dd4f59523f74b72e4812f879745.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

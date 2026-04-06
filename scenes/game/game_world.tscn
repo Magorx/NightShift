@@ -1,9 +1,16 @@
-[gd_scene load_steps=9 format=3 uid="uid://game_world"]
+[gd_scene load_steps=11 format=3 uid="uid://game_world"]
 
 [ext_resource type="Script" path="res://scripts/game/game_world.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/game/build_system.gd" id="3"]
 [ext_resource type="PackedScene" uid="uid://hud" path="res://scenes/ui/hud.tscn" id="4"]
 [ext_resource type="Script" path="res://scripts/game/game_camera.gd" id="8"]
+[ext_resource type="Shader" path="res://shaders/pixel_art_post_process.gdshader" id="shader_pixel_art"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pixel_art"]
+shader = ExtResource("shader_pixel_art")
+shader_parameter/pixel_scale = 5.0
+shader_parameter/bit_depth = 12.0
+shader_parameter/dither_strength = 0.4
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 size = Vector2(128, 128)
@@ -62,6 +69,20 @@ z_index = 100
 script = ExtResource("3")
 
 
+[node name="PostProcessLayer" type="CanvasLayer" parent="."]
+layer = 50
+
+[node name="PixelArtRect" type="ColorRect" parent="PostProcessLayer"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+material = SubResource("ShaderMaterial_pixel_art")
+
 [node name="UI" type="CanvasLayer" parent="."]
+layer = 100
 
 [node name="HUD" parent="UI" instance=ExtResource("4")]

@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bvixbuy4l0um8"
-path="res://.godot/imported/pyromite_item_flat_bake_PyroItemBase.png-6a5eb543590199d3c4a49f8cbd617eb4.ctex"
+path.s3tc="res://.godot/imported/pyromite_item_flat_bake_PyroItemBase.png-6a5eb543590199d3c4a49f8cbd617eb4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "2a1e9a7ddd4ca5b8b5e274622fb92a70"
+"md5": "ffab4b2d73f4ac67df2e57277a89e090"
 }
 
 [deps]
 
 source_file="res://resources/items/models/pyromite_item_flat_bake_PyroItemBase.png"
-dest_files=["res://.godot/imported/pyromite_item_flat_bake_PyroItemBase.png-6a5eb543590199d3c4a49f8cbd617eb4.ctex"]
+dest_files=["res://.godot/imported/pyromite_item_flat_bake_PyroItemBase.png-6a5eb543590199d3c4a49f8cbd617eb4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

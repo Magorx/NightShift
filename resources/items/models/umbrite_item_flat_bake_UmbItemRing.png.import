@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bsaxdp1qe7a32"
-path="res://.godot/imported/umbrite_item_flat_bake_UmbItemRing.png-75e071072a4f7084b384db37d74d2fad.ctex"
+path.s3tc="res://.godot/imported/umbrite_item_flat_bake_UmbItemRing.png-75e071072a4f7084b384db37d74d2fad.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "20187cf5e4e68db9ce12e0714166a506"
+"md5": "ee301e9920d7383015f5a5cc104d201a"
 }
 
 [deps]
 
 source_file="res://resources/items/models/umbrite_item_flat_bake_UmbItemRing.png"
-dest_files=["res://.godot/imported/umbrite_item_flat_bake_UmbItemRing.png-75e071072a4f7084b384db37d74d2fad.ctex"]
+dest_files=["res://.godot/imported/umbrite_item_flat_bake_UmbItemRing.png-75e071072a4f7084b384db37d74d2fad.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

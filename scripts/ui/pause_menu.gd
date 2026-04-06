@@ -8,6 +8,10 @@ func _ready() -> void:
 	var creative_toggle: CheckButton = $Panel/VBox/CreativeToggle
 	creative_toggle.button_pressed = GameManager.creative_mode
 	creative_toggle.toggled.connect(_on_creative_toggled)
+	# Initialize pixel art toggle
+	var pixel_art_toggle: CheckButton = $Panel/VBox/PixelArtToggle
+	pixel_art_toggle.button_pressed = SettingsManager.pixel_art_enabled
+	pixel_art_toggle.toggled.connect(func(enabled: bool): SettingsManager.pixel_art_enabled = enabled)
 	# Pause the game tree
 	get_tree().paused = true
 	visible = true

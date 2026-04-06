@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bgw280uhqqo34"
-path="res://.godot/imported/umbrite_item_bake_UmbItemWisp.png-3b0e6ccf1690fba39988e7b62d7a62a4.ctex"
+path.s3tc="res://.godot/imported/umbrite_item_bake_UmbItemWisp.png-3b0e6ccf1690fba39988e7b62d7a62a4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "afeb4b17d5fff99860e7f362eee2175a"
+"md5": "19a3aae7ffcf40cad91897b595f2f5c8"
 }
 
 [deps]
 
 source_file="res://resources/items/models/umbrite_item_bake_UmbItemWisp.png"
-dest_files=["res://.godot/imported/umbrite_item_bake_UmbItemWisp.png-3b0e6ccf1690fba39988e7b62d7a62a4.ctex"]
+dest_files=["res://.godot/imported/umbrite_item_bake_UmbItemWisp.png-3b0e6ccf1690fba39988e7b62d7a62a4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

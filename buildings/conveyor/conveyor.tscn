@@ -6,7 +6,7 @@
 [ext_resource type="Script" path="res://buildings/shared/shape_cell_3d.gd" id="6"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_force"]
-size = Vector3(0.9, 0.3, 0.7)
+size = Vector3(0.9, 0.3, 0.5246094)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ocpqq"]
 transparency = 1
@@ -28,7 +28,7 @@ collision_layer = 0
 collision_mask = 9
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="ForceZone"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.06981909, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.06981909, 0.00039064884)
 shape = SubResource("BoxShape3D_force")
 
 [node name="Shape" type="Node3D" parent="."]

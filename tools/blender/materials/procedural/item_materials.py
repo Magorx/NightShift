@@ -36,9 +36,10 @@ def pyromite_item(name, hex_color, glow_color=None, vein_scale=6.0):
     if glow_color:
         glow_rgba = hex_to_rgba(glow_color)
     else:
-        glow_rgba = (1.0, 0.75, 0.15, 1.0)
+        glow_rgba = (1.0, 0.3, 0.05, 1.0)  # red-orange glow, not yellow
 
-    dark_rgba = (base_rgba[0] * 0.3, base_rgba[1] * 0.2, base_rgba[2] * 0.15, 1.0)
+    # Dark rock with strong red tint (not brown)
+    dark_rgba = (base_rgba[0] * 0.45, base_rgba[1] * 0.1, base_rgba[2] * 0.05, 1.0)
 
     tex_coord = nodes.new(type='ShaderNodeTexCoord')
 
@@ -74,10 +75,10 @@ def pyromite_item(name, hex_color, glow_color=None, vein_scale=6.0):
     vein_ramp.color_ramp.interpolation = 'EASE'
     vein_ramp.color_ramp.elements[0].position = 0.0
     vein_ramp.color_ramp.elements[0].color = dark_rgba
-    e1 = vein_ramp.color_ramp.elements.new(0.35)
-    e1.color = (base_rgba[0] * 0.6, base_rgba[1] * 0.4, base_rgba[2] * 0.3, 1.0)
-    e2 = vein_ramp.color_ramp.elements.new(0.6)
-    e2.color = base_rgba
+    e1 = vein_ramp.color_ramp.elements.new(0.3)
+    e1.color = (base_rgba[0] * 0.7, base_rgba[1] * 0.15, base_rgba[2] * 0.05, 1.0)  # deep red
+    e2 = vein_ramp.color_ramp.elements.new(0.55)
+    e2.color = (min(base_rgba[0] * 1.1, 1.0), base_rgba[1] * 0.5, base_rgba[2] * 0.2, 1.0)  # hot red
     vein_ramp.color_ramp.elements[1].position = 0.85
     vein_ramp.color_ramp.elements[1].color = glow_rgba
     links.new(wave.outputs['Fac'], vein_ramp.inputs['Fac'])
@@ -270,58 +271,67 @@ def biovine_item(name, hex_color, spore_color=None, growth_scale=5.0):
     else:
         spore_rgba = (0.7, 1.0, 0.3, 1.0)
 
-    shadow_rgba = (base_rgba[0] * 0.35, base_rgba[1] * 0.4, base_rgba[2] * 0.25, 1.0)
-    tip_rgba = (
-        min(base_rgba[0] * 1.3, 1.0),
-        min(base_rgba[1] * 1.4, 1.0),
-        min(base_rgba[2] * 0.8, 1.0),
+    # High-contrast colors: very dark green vs bright lime
+    dark_green = (0.02, 0.15, 0.01, 1.0)
+    bright_lime = (
+        min(base_rgba[0] * 1.2, 1.0),
+        min(base_rgba[1] * 1.6, 1.0),
+        min(base_rgba[2] * 0.3, 1.0),
         1.0,
     )
 
     tex_coord = nodes.new(type='ShaderNodeTexCoord')
 
-    # Primary: High-detail noise with heavy distortion (fractal organic)
+    # Primary: High distortion noise for fluffy blob shapes
     noise_main = nodes.new(type='ShaderNodeTexNoise')
     noise_main.inputs['Scale'].default_value = growth_scale
     noise_main.inputs['Detail'].default_value = 15.0
-    noise_main.inputs['Roughness'].default_value = 0.8
-    noise_main.inputs['Distortion'].default_value = 2.5
+    noise_main.inputs['Roughness'].default_value = 0.9
+    noise_main.inputs['Distortion'].default_value = 4.0
     links.new(tex_coord.outputs['Object'], noise_main.inputs['Vector'])
 
-    # ColorRamp: rich organic gradient
+    # CONSTANT interpolation ColorRamp for hard-edged fluffy patches (not gradual)
     moss_ramp = nodes.new(type='ShaderNodeValToRGB')
-    moss_ramp.color_ramp.interpolation = 'B_SPLINE'
+    moss_ramp.color_ramp.interpolation = 'EASE'
     moss_ramp.color_ramp.elements[0].position = 0.0
-    moss_ramp.color_ramp.elements[0].color = (
-        shadow_rgba[0] * 0.6, shadow_rgba[1] * 0.6, shadow_rgba[2] * 0.5, 1.0)
-    s1 = moss_ramp.color_ramp.elements.new(0.25)
-    s1.color = shadow_rgba
+    moss_ramp.color_ramp.elements[0].color = dark_green
+    s1 = moss_ramp.color_ramp.elements.new(0.3)
+    s1.color = (0.05, 0.28, 0.03, 1.0)  # dark moss
     s2 = moss_ramp.color_ramp.elements.new(0.5)
-    s2.color = base_rgba
+    s2.color = base_rgba  # base green
     s3 = moss_ramp.color_ramp.elements.new(0.7)
     s3.color = (
-        min(base_rgba[0] * 1.15, 1.0),
-        min(base_rgba[1] * 1.25, 1.0),
-        base_rgba[2] * 0.85, 1.0)
-    moss_ramp.color_ramp.elements[1].position = 0.9
-    moss_ramp.color_ramp.elements[1].color = tip_rgba
+        min(base_rgba[0] * 0.9, 1.0),
+        min(base_rgba[1] * 1.35, 1.0),
+        base_rgba[2] * 0.5, 1.0)  # bright green
+    moss_ramp.color_ramp.elements[1].position = 0.88
+    moss_ramp.color_ramp.elements[1].color = bright_lime
     links.new(noise_main.outputs['Fac'], moss_ramp.inputs['Fac'])
 
-    # Fine fungal detail layer
-    noise_fungal = nodes.new(type='ShaderNodeTexNoise')
-    noise_fungal.inputs['Scale'].default_value = growth_scale * 3.0
-    noise_fungal.inputs['Detail'].default_value = 10.0
-    noise_fungal.inputs['Roughness'].default_value = 0.65
-    noise_fungal.inputs['Distortion'].default_value = 1.8
-    links.new(tex_coord.outputs['Object'], noise_fungal.inputs['Vector'])
+    # Second noise layer at different scale — direct MIX for strong patchy contrast
+    noise_patch = nodes.new(type='ShaderNodeTexNoise')
+    noise_patch.inputs['Scale'].default_value = growth_scale * 1.7
+    noise_patch.inputs['Detail'].default_value = 8.0
+    noise_patch.inputs['Roughness'].default_value = 0.85
+    noise_patch.inputs['Distortion'].default_value = 3.5
+    links.new(tex_coord.outputs['Object'], noise_patch.inputs['Vector'])
 
-    # Overlay fungal detail on moss
+    # Hard threshold on second noise to create distinct dark/bright patches
+    patch_thresh = nodes.new(type='ShaderNodeValToRGB')
+    patch_thresh.color_ramp.interpolation = 'EASE'
+    patch_thresh.color_ramp.elements[0].position = 0.35
+    patch_thresh.color_ramp.elements[0].color = (0, 0, 0, 1)
+    patch_thresh.color_ramp.elements[1].position = 0.65
+    patch_thresh.color_ramp.elements[1].color = (1, 1, 1, 1)
+
+    links.new(noise_patch.outputs['Fac'], patch_thresh.inputs['Fac'])
+
+    # Mix: where patches are dark, darken the moss significantly
     mossy = nodes.new(type='ShaderNodeMixRGB')
-    mossy.blend_type = 'OVERLAY'
-    mossy.inputs['Fac'].default_value = 0.5
+    mossy.blend_type = 'MIX'
+    mossy.inputs['Color2'].default_value = dark_green
     links.new(moss_ramp.outputs['Color'], mossy.inputs['Color1'])
-    links.new(noise_fungal.outputs['Fac'], mossy.inputs['Fac'])
-    mossy.inputs['Color2'].default_value = tip_rgba
+    links.new(patch_thresh.outputs['Color'], mossy.inputs['Fac'])
 
     # Spore glow spots (threshold on fine noise)
     noise_spore = nodes.new(type='ShaderNodeTexNoise')
@@ -363,12 +373,19 @@ def biovine_item(name, hex_color, spore_color=None, growth_scale=5.0):
     bsdf.inputs['Roughness'].default_value = 0.55
     bsdf.inputs['Metallic'].default_value = 0.0
 
-    # Bump from organic surface
-    bump = nodes.new(type='ShaderNodeBump')
-    bump.inputs['Strength'].default_value = 0.7
-    bump.inputs['Distance'].default_value = 0.08
-    links.new(noise_main.outputs['Fac'], bump.inputs['Height'])
-    links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    # Bump from organic surface layers
+    bump_main = nodes.new(type='ShaderNodeBump')
+    bump_main.inputs['Strength'].default_value = 0.9
+    bump_main.inputs['Distance'].default_value = 0.12
+    links.new(noise_main.outputs['Fac'], bump_main.inputs['Height'])
+
+    bump_patch = nodes.new(type='ShaderNodeBump')
+    bump_patch.inputs['Strength'].default_value = 0.5
+    bump_patch.inputs['Distance'].default_value = 0.06
+    links.new(noise_patch.outputs['Fac'], bump_patch.inputs['Height'])
+    links.new(bump_main.outputs['Normal'], bump_patch.inputs['Normal'])
+
+    links.new(bump_patch.outputs['Normal'], bsdf.inputs['Normal'])
 
     mat.diffuse_color = base_rgba
     return mat

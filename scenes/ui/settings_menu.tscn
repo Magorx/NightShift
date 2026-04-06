@@ -48,6 +48,18 @@ layout_mode = 2
 size_flags_vertical = 3
 size_flags_stretch_ratio = 0.5
 
+[node name="GraphicsLabel" type="Label" parent="CenterMargin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Graphics"
+horizontal_alignment = 1
+
+[node name="PixelArtToggle" type="CheckButton" parent="CenterMargin/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(300, 44)
+theme_override_font_sizes/font_size = 20
+text = "Pixel Art Shader"
+
 [node name="BottomSpacer" type="Control" parent="CenterMargin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3

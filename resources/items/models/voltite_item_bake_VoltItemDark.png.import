@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b675d8u8t8ygb"
-path="res://.godot/imported/voltite_item_bake_VoltItemDark.png-fb6b8997c91d06e5a47119f0d39221d4.ctex"
+path.s3tc="res://.godot/imported/voltite_item_bake_VoltItemDark.png-fb6b8997c91d06e5a47119f0d39221d4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "3c110fabc97a6ef7b93dd57896b0a26d"
+"md5": "56f08d8740d185021bc47e6e4582ad8c"
 }
 
 [deps]
 
 source_file="res://resources/items/models/voltite_item_bake_VoltItemDark.png"
-dest_files=["res://.godot/imported/voltite_item_bake_VoltItemDark.png-fb6b8997c91d06e5a47119f0d39221d4.ctex"]
+dest_files=["res://.godot/imported/voltite_item_bake_VoltItemDark.png-fb6b8997c91d06e5a47119f0d39221d4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

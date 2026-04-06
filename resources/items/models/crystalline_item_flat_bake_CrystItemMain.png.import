@@ -3,22 +3,23 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://diumsrm3ldlhc"
-path="res://.godot/imported/crystalline_item_flat_bake_CrystItemMain.png-e0e92713b2d6c035039c5437faa5b6f0.ctex"
+path.s3tc="res://.godot/imported/crystalline_item_flat_bake_CrystItemMain.png-e0e92713b2d6c035039c5437faa5b6f0.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
-"md5": "e20633e469b088dfa64d1cb9734ac7bc"
+"md5": "f586564ca9e06659c6b618cf7c443db4"
 }
 
 [deps]
 
 source_file="res://resources/items/models/crystalline_item_flat_bake_CrystItemMain.png"
-dest_files=["res://.godot/imported/crystalline_item_flat_bake_CrystItemMain.png-e0e92713b2d6c035039c5437faa5b6f0.ctex"]
+dest_files=["res://.godot/imported/crystalline_item_flat_bake_CrystItemMain.png-e0e92713b2d6c035039c5437faa5b6f0.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

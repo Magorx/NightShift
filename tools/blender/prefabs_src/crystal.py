@@ -21,45 +21,60 @@ from materials.pixel_art import create_flat_material
 OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "prefabs_out"))
 
 
-def _make_hex_prism(bm, radius, height, tip_height, base_z=0):
+def _make_hex_prism(bm, radius, height, tip_height, base_z=0, bottom_tip_ratio=0.0):
     """Create a single hexagonal crystal with a pointed tip.
+
+    Args:
+        bottom_tip_ratio: Bottom tip height as fraction of top tip_height.
+            0 = flat bottom (original), 1 = symmetric diamond.
 
     Returns list of created verts for reference.
     """
     sides = 6
+    bottom_tip_height = tip_height * bottom_tip_ratio
     bot_verts = []
     top_verts = []
     for i in range(sides):
         angle = (i / sides) * 2 * math.pi
         x = radius * math.cos(angle)
         y = radius * math.sin(angle)
-        bot_verts.append(bm.verts.new((x, y, base_z)))
-        top_verts.append(bm.verts.new((x, y, base_z + height)))
+        bot_verts.append(bm.verts.new((x, y, base_z + bottom_tip_height)))
+        top_verts.append(bm.verts.new((x, y, base_z + bottom_tip_height + height)))
 
-    # Tip vertex
-    tip = bm.verts.new((0, 0, base_z + height + tip_height))
+    # Top tip vertex
+    tip = bm.verts.new((0, 0, base_z + bottom_tip_height + height + tip_height))
 
     bm.verts.ensure_lookup_table()
 
-    # Bottom cap
-    bm.faces.new(list(reversed(bot_verts)))
+    all_verts = bot_verts + top_verts + [tip]
+
+    # Bottom tip (diamond shape) or flat cap
+    if bottom_tip_height > 0:
+        bot_tip = bm.verts.new((0, 0, base_z))
+        bm.verts.ensure_lookup_table()
+        all_verts.append(bot_tip)
+        for i in range(sides):
+            j = (i + 1) % sides
+            bm.faces.new([bot_verts[j], bot_verts[i], bot_tip])
+    else:
+        bm.faces.new(list(reversed(bot_verts)))
 
     # Side faces
     for i in range(sides):
         j = (i + 1) % sides
         bm.faces.new([bot_verts[i], bot_verts[j], top_verts[j], top_verts[i]])
 
-    # Tip faces (triangles from top ring to tip)
+    # Top tip faces (triangles from top ring to tip)
     for i in range(sides):
         j = (i + 1) % sides
         bm.faces.new([top_verts[i], top_verts[j], tip])
 
-    return bot_verts + top_verts + [tip]
+    return all_verts
 
 
 def generate_crystal(num_crystals=5, base_radius=0.3, base_height=0.8,
                      tip_ratio=0.4, spread=0.6, seed=42,
-                     hex_color="#96A4B4", output=None):
+                     hex_color="#96A4B4", output=None, bottom_tip_ratio=0.0):
     """Generate a cluster of hexagonal crystals.
 
     Creates a natural-looking mineral formation by placing multiple
@@ -74,6 +89,7 @@ def generate_crystal(num_crystals=5, base_radius=0.3, base_height=0.8,
         seed: Random seed for reproducible formations.
         hex_color: Crystal material color.
         output: Output .blend path.
+        bottom_tip_ratio: Bottom tip as fraction of top tip (0=flat, 1=symmetric diamond).
 
     Returns:
         The crystal cluster object.
@@ -99,7 +115,7 @@ def generate_crystal(num_crystals=5, base_radius=0.3, base_height=0.8,
 
         # Build crystal in a temporary bmesh, then merge
         temp_bm = bmesh.new()
-        _make_hex_prism(temp_bm, r, h, tip_h, base_z=0)
+        _make_hex_prism(temp_bm, r, h, tip_h, base_z=0, bottom_tip_ratio=bottom_tip_ratio)
 
         # Apply slight random tilt
         tilt_x = rng.uniform(-0.15, 0.15)

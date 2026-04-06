@@ -3,7 +3,7 @@ extends Camera3D
 
 # ── Zoom ────────────────────────────────────────────────────────────────────
 const ZOOM_SPEED := 1.0
-const MIN_SIZE := 10.0
+const MIN_SIZE := 5.0
 const MAX_SIZE := 80.0
 const ZOOM_SMOOTH_SPEED := 8.0
 
