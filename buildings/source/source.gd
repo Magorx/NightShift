@@ -31,15 +31,9 @@ func _physics_process(delta: float) -> void:
 	_update_building_sprites(true, delta)
 
 func _spawn_item() -> void:
-	var output: OutputZone = _get_output_zone()
+	var output: OutputZone = get_first_output_zone()
 	if output:
 		output.spawn_item(item_id)
-
-func _get_output_zone() -> OutputZone:
-	var outputs := get_parent().get_node_or_null("Outputs")
-	if outputs and outputs.get_child_count() > 0:
-		return outputs.get_child(0) as OutputZone
-	return null
 
 # ── Popup interface ────────────────────────────────────────────────────────────
 

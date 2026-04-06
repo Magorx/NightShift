@@ -545,5 +545,5 @@ func _on_inventory_slot_input(event: InputEvent, panel: PanelContainer) -> void:
 		var leftover: int = player.add_item(item_id, removed)
 		if leftover > 0:
 			# Player inventory full — drop as ground item
-			player._spawn_ground_item(item_id, leftover, player.position)
+			player.spawn_ground_item(item_id, leftover, player.position)
 		_update_content()

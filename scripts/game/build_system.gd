@@ -1,5 +1,5 @@
 class_name BuildSystem
-extends Node2D
+extends Node
 
 signal building_clicked(building: Node)
 signal ground_inspected(grid_pos: Vector2i)
@@ -213,12 +213,6 @@ func _try_pick_building(pos: Vector2i) -> void:
 			enter_building_mode(bid)
 			return
 	# No building — show ground info instead
-	ground_inspected.emit(pos)
-
-func _try_ground_info(pos: Vector2i) -> void:
-	var building = GameManager.get_building_at(pos)
-	if building and is_instance_valid(building):
-		return  # Building here — RMB doesn't show ground info
 	ground_inspected.emit(pos)
 
 # ── Build drag ───────────────────────────────────────────────────────────────

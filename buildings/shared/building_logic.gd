@@ -179,3 +179,10 @@ func get_inventory_items() -> Array:
 ## Returns the amount actually removed. Override in buildings that hold items.
 func remove_inventory_item(_item_id: StringName, _count: int) -> int:
 	return 0
+
+## Get the first OutputZone child of this building's parent scene.
+func get_first_output_zone() -> OutputZone:
+	var outputs: Node = get_parent().get_node_or_null("Outputs")
+	if outputs and outputs.get_child_count() > 0:
+		return outputs.get_child(0) as OutputZone
+	return null

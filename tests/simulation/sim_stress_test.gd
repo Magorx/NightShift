@@ -46,24 +46,23 @@ func run_simulation() -> void:
 
 	# Capture overview screenshot showing the full map
 	if _is_screenshot_mode():
-		var cam = game_world.find_child("Camera2D", false, false)
+		var cam: GameCamera = game_world.camera
 		if cam:
-			cam.min_zoom = 0.05
 			cam.target_node = null
 			var half := GameManager.map_size / 2
-			cam.position = GridUtils.grid_to_center(Vector2i(half, half))
-			cam.zoom = Vector2(0.12, 0.12)
-			cam.set_target_zoom(0.12)
+			cam.snap_to_3d(GridUtils.grid_to_world(Vector2i(half, half)))
+			cam.size = 120.0
+			cam._target_size = 120.0
 			await sim_advance_ticks(2)
 			await sim_capture_screenshot("full_map")
 			# Zoom into a factory block in the top-left area
-			cam.position = GridUtils.grid_to_center(Vector2i(10, 18))
-			cam.zoom = Vector2(0.6, 0.6)
-			cam.set_target_zoom(0.6)
+			cam.snap_to_3d(GridUtils.grid_to_world(Vector2i(10, 18)))
+			cam.size = 25.0
+			cam._target_size = 25.0
 			await sim_advance_ticks(2)
 			await sim_capture_screenshot("factory_closeup")
 			# Find a conveyor with neighbors for UV debug
-			var conv_pos := Vector2.ZERO
+			var conv_world := Vector3.ZERO
 			for b in GameManager.unique_buildings:
 				if is_instance_valid(b) and b.building_id == &"conveyor":
 					var gp: Vector2i = b.logic.grid_pos
@@ -74,31 +73,29 @@ func run_simulation() -> void:
 							has_neighbor = true
 							break
 					if has_neighbor:
-						conv_pos = GridUtils.grid_to_center(gp)
+						conv_world = GridUtils.grid_to_world(gp)
 						break
-			cam.position = conv_pos
-			cam.zoom = Vector2(6.0, 6.0)
-			cam.set_target_zoom(6.0)
+			cam.snap_to_3d(conv_world)
+			cam.size = 5.0
+			cam._target_size = 5.0
 			await sim_advance_ticks(2)
 			await sim_capture_screenshot("uv_debug")
 
 	sim_finish()
 
 func _run_benchmark() -> void:
-	var cam = game_world.find_child("Camera2D", false, false)
+	var cam: GameCamera = game_world.camera
 	if not cam:
 		printerr("[BENCH] No camera found")
 		get_tree().quit(1)
 		return
 
-	# Override camera min zoom so benchmark can zoom out freely
-	cam.min_zoom = 0.05
 	# Force vsync off for accurate measurement (macOS ignores --disable-vsync)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
 
 	var half := GameManager.map_size / 2
-	var center := GridUtils.grid_to_center(Vector2i(half, half))
+	var center := GridUtils.grid_to_world(Vector2i(half, half))
 
 	print("[BENCH] Warming up factory for 2 seconds...")
 	# Let factory produce items so conveyors are loaded
@@ -106,27 +103,27 @@ func _run_benchmark() -> void:
 
 	# ── Test 1: Zoomed out (worst case — everything visible) ──
 	cam.target_node = null  # stop following player during benchmark
-	cam.position = center
-	cam.zoom = Vector2(0.12, 0.12)
-	cam.set_target_zoom(0.12)
+	cam.snap_to_3d(center)
+	cam.size = 120.0
+	cam._target_size = 120.0
 	await get_tree().process_frame
 	await get_tree().process_frame
 	print("[BENCH] === ZOOMED OUT (full map) ===")
 	var zoomed_out := await sim_benchmark_fps(3.0, "zoomed_out")
 
 	# ── Test 2: Medium zoom ──
-	cam.position = GridUtils.grid_to_center(Vector2i(40, 40))
-	cam.zoom = Vector2(0.5, 0.5)
-	cam.set_target_zoom(0.5)
+	cam.snap_to_3d(GridUtils.grid_to_world(Vector2i(40, 40)))
+	cam.size = 30.0
+	cam._target_size = 30.0
 	await get_tree().process_frame
 	await get_tree().process_frame
 	print("[BENCH] === MEDIUM ZOOM ===")
 	var medium := await sim_benchmark_fps(3.0, "medium_zoom")
 
 	# ── Test 3: Close up ──
-	cam.position = GridUtils.grid_to_center(Vector2i(10, 18))
-	cam.zoom = Vector2(1.0, 1.0)
-	cam.set_target_zoom(1.0)
+	cam.snap_to_3d(GridUtils.grid_to_world(Vector2i(10, 18)))
+	cam.size = 15.0
+	cam._target_size = 15.0
 	await get_tree().process_frame
 	await get_tree().process_frame
 	print("[BENCH] === CLOSE UP ===")

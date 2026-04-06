@@ -14,7 +14,7 @@ func run_simulation() -> void:
 		print("[SIM] SOME TESTS FAILED")
 	else:
 		print("[SIM] ALL PHYSICS TESTS PASSED")
-	_quit_sim()
+	sim_finish()
 
 # ── Test 1: Drill → Conveyor → Sink ─────────────────────────────────────────
 
@@ -106,13 +106,3 @@ func _test_smelter_processing() -> void:
 func _count_physics_items() -> int:
 	return get_tree().get_nodes_in_group(&"physics_items").size()
 
-func _quit_sim() -> void:
-	if sim_mode != "visual":
-		get_tree().quit(1 if _failed else 0)
-
-func sim_assert(condition: bool, message: String) -> void:
-	if not condition:
-		print("[SIM] FAIL: %s" % message)
-		_failed = true
-	else:
-		print("[SIM]   PASS")

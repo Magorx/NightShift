@@ -99,7 +99,7 @@ Five specialized agents available. Use them selectively -- not every session nee
 ## Architecture (Factor Engine)
 
 ### Key Systems to Reuse
-- **Unified pull system**: All item transfers via `GameManager.pull_item()`. Buildings never push.
+- **Physics-based item transport**: Items are `PhysicsItem` RigidBody3Ds. Buildings use `InputZone`/`OutputZone` Area3Ds for detection and spawning.
 - **BuildingLogic base class**: `buildings/shared/building_logic.gd` -- all buildings extend this
 - **BuildingDef**: `buildings/shared/building_def.gd` -- auto-extracts shape/IO from `.tscn` scenes
 - **Data-driven design**: Items (`.tres` ItemDef), recipes (`.tres` RecipeDef), buildings (`.tres` BuildingDef)

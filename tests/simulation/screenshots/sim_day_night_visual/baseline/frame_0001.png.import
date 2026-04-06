@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://82k4o241k2kp"
-path="res://.godot/imported/07_high_plateau.png-f4722a1c2b17f0686977426f5d183c3d.ctex"
+uid="uid://dq3nep63v35o1"
+path="res://.godot/imported/frame_0001.png-d76e0ce505300c08ee6c00d84fbd8f06.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://tests/simulation/screenshots/scn_terrain_elevation/baseline/07_high_plateau.png"
-dest_files=["res://.godot/imported/07_high_plateau.png-f4722a1c2b17f0686977426f5d183c3d.ctex"]
+source_file="res://tests/simulation/screenshots/sim_day_night_visual/baseline/frame_0001.png"
+dest_files=["res://.godot/imported/frame_0001.png-d76e0ce505300c08ee6c00d84fbd8f06.ctex"]
 
 [params]
 

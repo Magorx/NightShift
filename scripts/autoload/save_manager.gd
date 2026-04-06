@@ -114,19 +114,8 @@ func _serialize_run() -> Dictionary:
 			data["terrain_heights"] = Marshalls.raw_to_base64(GameManager.terrain_heights.to_byte_array())
 	if GameManager.player and is_instance_valid(GameManager.player):
 		data["player"] = GameManager.player.serialize()
-	data["ground_items"] = _serialize_ground_items()
 	data["physics_items"] = _serialize_physics_items()
 	return data
-
-func _serialize_ground_items() -> Array:
-	var result: Array = []
-	var gw := _get_game_world()
-	if not gw:
-		return result
-	for item in gw.get_tree().get_nodes_in_group("ground_items"):
-		if is_instance_valid(item) and item.has_method("serialize"):
-			result.append(item.serialize())
-	return result
 
 func _serialize_physics_items() -> Array:
 	var result: Array = []
@@ -272,11 +261,21 @@ func _deserialize_run(data: Dictionary) -> void:
 		GameManager.player.deserialize(player_data)
 
 	# Restore ground items
-	var ground_items_data: Array = data.get("ground_items", [])
-	_deserialize_ground_items(ground_items_data)
-
 	# Restore physics items (items on conveyors / in transit)
 	var physics_items_data: Array = data.get("physics_items", [])
+
+	# Migrate legacy ground_items to physics_items format
+	var ground_items_data: Array = data.get("ground_items", [])
+	for entry in ground_items_data:
+		var iid := StringName(entry.get("item_id", ""))
+		if not GameManager.is_valid_item_id(iid):
+			continue
+		var qty: int = int(entry.get("quantity", 1))
+		var px: float = float(entry.get("x", 0))
+		var pz: float = float(entry.get("y", 0))
+		for i in qty:
+			physics_items_data.append({"item_id": str(iid), "x": px + randf_range(-0.1, 0.1), "y": 0.3, "z": pz + randf_range(-0.1, 0.1), "vx": 0, "vy": 0, "vz": 0})
+
 	_deserialize_physics_items(physics_items_data)
 
 	# Restore camera (deferred so game world is ready)
@@ -294,15 +293,8 @@ func _link_tunnels_deferred(building_list: Array) -> void:
 			continue
 		var grid_pos := Vector2i(int(entry["grid_x"]), int(entry["grid_y"]))
 		var partner_pos := Vector2i(int(state["tunnel_partner_x"]), int(state["tunnel_partner_y"]))
-		var in_building = GameManager.buildings.get(grid_pos)
-		var out_building = GameManager.buildings.get(partner_pos)
-		if not in_building or not out_building:
-			continue
-		if not in_building.logic is UndergroundTransportLogic or not out_building.logic is UndergroundTransportLogic:
-			continue
 		var length: int = int(state.get("tunnel_length", 1))
-		in_building.logic.setup_pair(out_building.logic, length)
-		out_building.logic.setup_pair(in_building.logic, length)
+		GameManager.link_tunnel_pair(grid_pos, partner_pos, length)
 
 ## Restore finite deposit stocks from saved data.
 func _deserialize_deposit_stocks(data: Dictionary) -> void:
@@ -312,24 +304,6 @@ func _deserialize_deposit_stocks(data: Dictionary) -> void:
 			continue
 		var pos := Vector2i(int(parts[0]), int(parts[1]))
 		GameManager.deposit_stocks[pos] = int(data[key])
-
-func _deserialize_ground_items(items_data: Array) -> void:
-	var gw := _get_game_world()
-	if not gw:
-		return
-	var ground_item_scene := preload("res://player/ground_item.tscn")
-	for entry in items_data:
-		var iid := StringName(entry.get("item_id", ""))
-		if not GameManager.is_valid_item_id(iid):
-			GameLogger.warn("Ground item: skipped invalid item '%s'" % iid)
-			continue
-		var item = ground_item_scene.instantiate()
-		item.item_id = iid
-		item.quantity = int(entry.get("quantity", 1))
-		# x = world X, y = world Z (grid Y axis), items sit slightly above ground
-		item.position = Vector3(float(entry.get("x", 0)), 0.1, float(entry.get("y", 0)))
-		item.despawn_timer = float(entry.get("despawn", 120))
-		gw.add_child(item)
 
 func _deserialize_physics_items(items_data: Array) -> void:
 	if items_data.is_empty():

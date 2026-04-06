@@ -36,22 +36,19 @@ func _on_phase_changed(phase: StringName) -> void:
 			_transition_to_night()
 
 func _transition_to_night() -> void:
-	_kill_tween()
-	_tween = create_tween().set_parallel(true).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-	_tween.tween_property(environment, "ambient_light_color", NIGHT_AMBIENT_COLOR, TRANSITION_DURATION)
-	_tween.tween_property(environment, "ambient_light_energy", NIGHT_AMBIENT_ENERGY, TRANSITION_DURATION)
-	_tween.tween_property(environment, "background_color", NIGHT_BG_COLOR, TRANSITION_DURATION)
-	_tween.tween_property(directional_light, "light_energy", NIGHT_LIGHT_ENERGY, TRANSITION_DURATION)
-	_tween.tween_property(directional_light, "light_color", NIGHT_LIGHT_COLOR, TRANSITION_DURATION)
+	_transition(NIGHT_AMBIENT_COLOR, NIGHT_AMBIENT_ENERGY, NIGHT_BG_COLOR, NIGHT_LIGHT_ENERGY, NIGHT_LIGHT_COLOR)
 
 func _transition_to_day() -> void:
+	_transition(DAY_AMBIENT_COLOR, DAY_AMBIENT_ENERGY, DAY_BG_COLOR, DAY_LIGHT_ENERGY, DAY_LIGHT_COLOR)
+
+func _transition(ambient_color: Color, ambient_energy: float, bg_color: Color, light_energy: float, light_color: Color) -> void:
 	_kill_tween()
 	_tween = create_tween().set_parallel(true).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
-	_tween.tween_property(environment, "ambient_light_color", DAY_AMBIENT_COLOR, TRANSITION_DURATION)
-	_tween.tween_property(environment, "ambient_light_energy", DAY_AMBIENT_ENERGY, TRANSITION_DURATION)
-	_tween.tween_property(environment, "background_color", DAY_BG_COLOR, TRANSITION_DURATION)
-	_tween.tween_property(directional_light, "light_energy", DAY_LIGHT_ENERGY, TRANSITION_DURATION)
-	_tween.tween_property(directional_light, "light_color", DAY_LIGHT_COLOR, TRANSITION_DURATION)
+	_tween.tween_property(environment, "ambient_light_color", ambient_color, TRANSITION_DURATION)
+	_tween.tween_property(environment, "ambient_light_energy", ambient_energy, TRANSITION_DURATION)
+	_tween.tween_property(environment, "background_color", bg_color, TRANSITION_DURATION)
+	_tween.tween_property(directional_light, "light_energy", light_energy, TRANSITION_DURATION)
+	_tween.tween_property(directional_light, "light_color", light_color, TRANSITION_DURATION)
 
 func _kill_tween() -> void:
 	if _tween and _tween.is_valid():

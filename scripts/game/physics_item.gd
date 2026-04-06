@@ -18,6 +18,8 @@ var item_id: StringName = &""
 var _despawn_timer: float = DESPAWN_TIME
 
 static var _model_cache: Dictionary = {}
+static var _shared_physics_material: PhysicsMaterial
+static var _shared_fallback_sphere: SphereShape3D
 
 func _ready() -> void:
 	add_to_group(&"physics_items")
@@ -68,7 +70,7 @@ func _add_model() -> void:
 	model.position.y = MODEL_Y
 	add_child(model)
 
-## Create a 3D model node for any item. Shared by PhysicsItem, GroundItem, ItemVisualManager.
+## Create a 3D model node for any item. Shared by PhysicsItem and ItemVisualManager.
 static func create_item_model(id: StringName) -> Node3D:
 	var scene := _get_cached_model(id)
 	if scene:
@@ -115,15 +117,17 @@ static func _gather_vertices(node: Node, xform: Transform3D) -> PackedVector3Arr
 	return points
 
 static func _fallback_sphere() -> SphereShape3D:
-	var s := SphereShape3D.new()
-	s.radius = COLLISION_RADIUS
-	return s
+	if not _shared_fallback_sphere:
+		_shared_fallback_sphere = SphereShape3D.new()
+		_shared_fallback_sphere.radius = COLLISION_RADIUS
+	return _shared_fallback_sphere
 
 static func _make_physics_material() -> PhysicsMaterial:
-	var mat := PhysicsMaterial.new()
-	mat.friction = 0.6
-	mat.bounce = 0.15
-	return mat
+	if not _shared_physics_material:
+		_shared_physics_material = PhysicsMaterial.new()
+		_shared_physics_material.friction = 0.6
+		_shared_physics_material.bounce = 0.15
+	return _shared_physics_material
 
 ## Spawn a physics item at the given position with optional impulse.
 ## Must be called after item_layer is available in GameManager.

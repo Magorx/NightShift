@@ -78,9 +78,3 @@ func get_info_stats() -> Array:
 	return [
 		{type = "stat", text = "Items deflected: %d" % _output_rr_idx},
 	]
-
-func get_inventory_items() -> Array:
-	return []
-
-func remove_inventory_item(_item_id: StringName, _count: int) -> int:
-	return 0

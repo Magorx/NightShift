@@ -233,6 +233,3 @@ func deserialize_ui_panels(data: Dictionary) -> void:
 		buildings_panel.deserialize_ui_state(data["buildings_panel"])
 	if inventory_panel and data.has("inventory_panel"):
 		inventory_panel.deserialize_ui_state(data["inventory_panel"])
-
-func _get_item_def(item_id: StringName):
-	return GameManager.get_item_def(item_id)

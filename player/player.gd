@@ -195,23 +195,6 @@ func _handle_vertical_physics(delta: float) -> void:
 		velocity.y -= JUMP_GRAVITY * delta
 
 
-var z_height: float:
-	get: return position.y
-	set(v): position.y = v
-
-var z_velocity: float:
-	get: return velocity.y
-	set(v): velocity.y = v
-
-func _get_ground_height() -> float:
-	var grid_pos := _get_grid_pos()
-	var building = GameManager.get_building_at(grid_pos)
-	if not building:
-		return 0.0
-	var def = GameManager.get_building_def(building.building_id)
-	if def and def.is_ground_level:
-		return 0.0
-	return BUILDING_Z_HEIGHT
 
 func _update_collision_for_height() -> void:
 	# Collide with ground, buildings, and items.
@@ -269,7 +252,7 @@ func _drop_all_inventory() -> void:
 	# Drop all items as ground items at death location
 	for i in INVENTORY_SLOTS:
 		if inventory[i] != null:
-			_spawn_ground_item(inventory[i].item_id, inventory[i].quantity, position)
+			spawn_ground_item(inventory[i].item_id, inventory[i].quantity, position)
 			inventory[i] = null
 
 # -- Hand Mining --------------------------------------------------------------
@@ -405,26 +388,6 @@ func remove_item(item_id: StringName, quantity: int = 1) -> int:
 	return quantity - remaining
 
 func _try_pickup() -> void:
-	# Try to pick up the nearest ground item within range
-	var ground_items := get_tree().get_nodes_in_group("ground_items")
-	var nearest_item: Node3D = null
-	for item in ground_items:
-		if not is_instance_valid(item) or not item._hovered:
-			continue
-		var dist_xz := Vector2(position.x - item.position.x, position.z - item.position.z).length()
-		if dist_xz <= PICKUP_RANGE:
-			nearest_item = item
-			break
-	if nearest_item:
-		var remaining := add_item(nearest_item.item_id, nearest_item.quantity)
-		if remaining < nearest_item.quantity:
-			if remaining <= 0:
-				nearest_item.queue_free()
-			else:
-				nearest_item.quantity = remaining
-			return
-
-	# Try to pick up the nearest physics item within range
 	var nearest_phys: PhysicsItem = _find_nearest_physics_item()
 	if nearest_phys:
 		var remaining := add_item(nearest_phys.item_id, 1)
@@ -476,7 +439,7 @@ func _try_drop(drop_stack: bool) -> void:
 		var offset := Vector3(randf_range(-0.1, 0.1), 0, randf_range(-0.1, 0.1))
 		PhysicsItem.spawn(dropped.item_id, spawn_pos + offset, impulse)
 
-func _spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
+func spawn_ground_item(item_id: StringName, quantity: int, pos) -> void:
 	# pos can be Vector3 or Vector2 (backward compat for UI callers)
 	var pos_3d: Vector3
 	if pos is Vector3:
@@ -546,8 +509,6 @@ func serialize() -> Dictionary:
 		health = hp,
 		stamina = stamina,
 		inventory = inv_data,
-		z_height = position.y,
-		z_velocity = velocity.y,
 		is_grounded = is_on_floor(),
 		selected_slot = selected_slot,
 	}

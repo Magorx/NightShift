@@ -27,13 +27,11 @@ func _ready() -> void:
 	# Override sim_name so screenshots land in the right folder
 	sim_name = scenario_name()
 
+	# Use longer timeout for scenarios (set before super._ready() which creates the timer)
+	timeout_seconds = SCENARIO_TIMEOUT
+
 	# Call parent _ready which loads game_world, clears walls, etc.
 	super._ready()
-
-	# Replace the 60s timeout with a longer one for scenarios
-	if sim_mode != "visual":
-		var timer := get_tree().create_timer(SCENARIO_TIMEOUT, true, false, true)
-		timer.timeout.connect(_on_timeout)
 
 func run_simulation() -> void:
 	# Enable creative mode so the bot can place buildings freely

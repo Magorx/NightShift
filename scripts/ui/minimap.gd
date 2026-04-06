@@ -79,7 +79,7 @@ func _rebuild_cache(map_tiles: float, display_size: Vector2) -> void:
 	for pos in GameManager.deposits:
 		var item_id: StringName = GameManager.deposits[pos]
 		var color := Color(0.4, 0.4, 0.4, 0.4)
-		var item_def = _get_item_def(item_id)
+		var item_def = GameManager.get_item_def(item_id)
 		if item_def:
 			color = item_def.color
 			color.a = 0.35
@@ -137,5 +137,3 @@ func _pan_camera_to(local_pos: Vector2) -> void:
 	var grid_y := local_pos.y / size.y * map_tiles
 	_camera.position = GridUtils.grid_to_center(Vector2i(int(grid_x), int(grid_y)))
 
-func _get_item_def(item_id: StringName):
-	return GameManager.get_item_def(item_id)

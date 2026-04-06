@@ -104,7 +104,7 @@ func _start_craft(recipe) -> void:
 	_craft_timer = 0.0
 
 func _try_finish_craft() -> void:
-	var output_zone: OutputZone = _get_output_zone()
+	var output_zone: OutputZone = get_first_output_zone()
 	if not output_zone:
 		return
 	for out in _active_recipe.outputs:
@@ -114,11 +114,6 @@ func _try_finish_craft() -> void:
 	_active_recipe = null
 	_craft_timer = 0.0
 
-func _get_output_zone() -> OutputZone:
-	var outputs: Node = get_parent().get_node_or_null("Outputs")
-	if outputs and outputs.get_child_count() > 0:
-		return outputs.get_child(0) as OutputZone
-	return null
 
 func try_insert_item(item_id: StringName, quantity: int = 1) -> int:
 	var remaining := quantity

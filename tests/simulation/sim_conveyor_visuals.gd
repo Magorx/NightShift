@@ -6,10 +6,12 @@ extends "res://tests/simulation/simulation_base.gd"
 ## the shader samples the atlas correctly.
 
 func run_simulation() -> void:
-	var cam = game_world.find_child("Camera2D", false, false)
+	var cam: GameCamera = game_world.camera
 	if cam:
-		cam.position = GridUtils.grid_to_center(Vector2i(20, 18))
-		cam.zoom = Vector2(0.45, 0.45)
+		cam.target_node = null
+		cam.snap_to_3d(GridUtils.grid_to_world(Vector2i(20, 18)))
+		cam.size = 35.0
+		cam._target_size = 35.0
 
 	# ── Row 1 (y=5): rotation=0 (right-pointing) ──
 	_place_all_variants(Vector2i(3, 5), 0)
@@ -38,8 +40,9 @@ func run_simulation() -> void:
 
 		# Also capture a zoomed-in view of one variant group
 		if cam:
-			cam.position = GridUtils.grid_to_center(Vector2i(8, 5))
-			cam.zoom = Vector2(2.0, 2.0)
+			cam.snap_to_3d(GridUtils.grid_to_world(Vector2i(8, 5)))
+			cam.size = 8.0
+			cam._target_size = 8.0
 			await sim_advance_ticks(2)
 			await sim_capture_screenshot("closeup")
 

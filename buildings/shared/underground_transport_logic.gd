@@ -52,9 +52,3 @@ func get_info_stats() -> Array:
 	stats.append({type = "stat", text = "Length: %d" % tunnel_length})
 	stats.append({type = "stat", text = "Partner: %s" % (str(partner.grid_pos) if partner else "none")})
 	return stats
-
-func get_inventory_items() -> Array:
-	return []
-
-func remove_inventory_item(_item_id: StringName, _count: int) -> int:
-	return 0

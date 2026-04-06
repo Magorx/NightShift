@@ -332,7 +332,7 @@ func _place_output_chain(start_x: int, y: int, map_size: int) -> void:
 ## Place a conveyor at the converter's output cell to relay items out.
 ## Output is always one cell ahead in the building's facing direction.
 func _place_output_relay(_conv_id: StringName, conv_pos: Vector2i, rotation: int, map_size: int) -> Vector2i:
-	var dir_vec: Vector2i = GameManager.DIRECTION_VECTORS[rotation]
+	var dir_vec: Vector2i = BuildingLogic.DIRECTION_VECTORS[rotation]
 	var output_pos: Vector2i = conv_pos + dir_vec
 	_try_place(_bids.conveyor, output_pos, map_size, rotation)
 	return output_pos
@@ -348,12 +348,4 @@ func _try_place(building_id: StringName, pos: Vector2i, map_size: int, rotation:
 	return false
 
 func _link_tunnel_pair(input_pos: Vector2i, output_pos: Vector2i) -> void:
-	var in_building = GameManager.buildings.get(input_pos)
-	var out_building = GameManager.buildings.get(output_pos)
-	if not in_building or not out_building:
-		return
-	if not in_building.logic or not out_building.logic:
-		return
-	var dist := absi(output_pos.x - input_pos.x) + absi(output_pos.y - input_pos.y)
-	in_building.logic.setup_pair(out_building.logic, dist)
-	out_building.logic.setup_pair(in_building.logic, dist)
+	GameManager.link_tunnel_pair(input_pos, output_pos)

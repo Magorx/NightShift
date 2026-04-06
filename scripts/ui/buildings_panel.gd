@@ -190,7 +190,6 @@ func _create_building_row(def, idx: int) -> PanelContainer:
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.gui_input.connect(_on_row_gui_input.bind(def.id))
 	panel.mouse_entered.connect(_on_row_hovered.bind(def))
-	panel.mouse_exited.connect(_on_row_unhovered.bind(panel))
 
 	return panel
 
@@ -209,10 +208,6 @@ func _on_row_gui_input(event: InputEvent, id: StringName) -> void:
 
 func _on_row_hovered(def) -> void:
 	_show_info(def)
-
-func _on_row_unhovered(panel: PanelContainer) -> void:
-	# Only clear if mouse isn't over any row
-	pass
 
 func _show_info(def) -> void:
 	info_name.text = def.display_name

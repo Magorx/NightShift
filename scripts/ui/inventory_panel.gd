@@ -360,7 +360,7 @@ func _drop_held_item_at_cursor() -> void:
 	var ground_pos: Vector3 = world_pos
 	if building:
 		ground_pos = GridUtils.grid_to_center(drop_grid)
-	player._spawn_ground_item(_held_item.item_id, _held_item.quantity, ground_pos)
+	player.spawn_ground_item(_held_item.item_id, _held_item.quantity, ground_pos)
 	_clear_held()
 
 func _return_held_item() -> void:
@@ -372,7 +372,7 @@ func _return_held_item() -> void:
 		else:
 			var leftover = player.add_item(_held_item.item_id, _held_item.quantity)
 			if leftover > 0:
-				player._spawn_ground_item(_held_item.item_id, leftover, player.position)
+				player.spawn_ground_item(_held_item.item_id, leftover, player.position)
 	_clear_held()
 
 # ── Fly Animation (pickup & place) ─────────────────────────────────────────

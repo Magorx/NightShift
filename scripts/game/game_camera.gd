@@ -77,13 +77,9 @@ func handle_rotate_input(event: InputEvent) -> void:
 func _follow(real_delta: float) -> void:
 	if not target_node or not is_instance_valid(target_node):
 		return
-	var target_pos: Vector3
-	if target_node is Node3D:
-		target_pos = target_node.global_position
-	elif target_node is Node2D:
-		target_pos = Vector3(target_node.position.x, 0.0, target_node.position.y)
-	else:
+	if not target_node is Node3D:
 		return
+	var target_pos: Vector3 = target_node.global_position
 
 	# Clamp to world bounds
 	var bounds := _get_bounds()

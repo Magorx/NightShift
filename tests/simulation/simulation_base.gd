@@ -29,15 +29,15 @@ var _screenshot_index: int = 0
 var _screenshot_dir: String = ""
 var _last_capture_tick: int = -SCREENSHOT_INTERVAL  # ensure first eligible capture fires
 
-const TIMEOUT_SECONDS := 60.0
+var timeout_seconds := 60.0
 
 func _ready():
 	# Prevent simulations from overwriting real save files
 	SaveManager.autosave_enabled = false
 
-	# Auto-kill non-playable simulations after TIMEOUT_SECONDS to prevent hangs
+	# Auto-kill non-playable simulations after timeout_seconds to prevent hangs
 	if sim_mode != "visual":
-		var timer := get_tree().create_timer(TIMEOUT_SECONDS, true, false, true)
+		var timer := get_tree().create_timer(timeout_seconds, true, false, true)
 		timer.timeout.connect(_on_timeout)
 
 	# Use smaller map for fast tests (128x128 game default is too slow for unit sims)
@@ -277,7 +277,7 @@ func sim_assert(condition: bool, msg: String) -> void:
 		print("[SIM OK] " + msg)
 
 func _on_timeout() -> void:
-	printerr("[SIM FAIL] Simulation timed out after %d seconds" % int(TIMEOUT_SECONDS))
+	printerr("[SIM FAIL] Simulation timed out after %d seconds" % int(timeout_seconds))
 	Engine.time_scale = 1.0
 	Engine.max_physics_steps_per_frame = 1
 	get_tree().quit(1)

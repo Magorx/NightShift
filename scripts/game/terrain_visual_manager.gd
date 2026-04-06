@@ -60,6 +60,7 @@ var _map_size: int = 0
 # Cached data for update_cell
 var _tile_types: PackedByteArray
 var _heights: PackedFloat32Array
+var _rebuild_pending: bool = false
 
 
 func attach_to(parent: Node, _z_unused: int = -1) -> void:
@@ -100,13 +101,13 @@ func build(map_size: int, tile_types: PackedByteArray, _variants: PackedByteArra
 			# Check 4 neighbors: +X, -X, +Z, -Z
 			_add_side_walls(st, x, y, h, col, map_size)
 
-	st.generate_normals()  # CCW winding → outward normals (UP for top faces)
+	st.generate_normals()
 	var mesh := st.commit()
 	_mesh_instance.mesh = mesh
 
 
 ## Update a single cell's terrain visuals.
-## Rebuilds the entire mesh (needed for correctness with side walls).
+## Marks the mesh for deferred rebuild (batches multiple updates per frame).
 func update_cell(map_size: int, x: int, y: int, tile_type: int, _fg_var: int, _misc_var: int) -> void:
 	if _map_size == 0 or _tile_types.is_empty():
 		return
@@ -114,8 +115,15 @@ func update_cell(map_size: int, x: int, y: int, tile_type: int, _fg_var: int, _m
 	if idx < 0 or idx >= _tile_types.size():
 		return
 	_tile_types[idx] = tile_type
-	# Rebuild mesh (side walls depend on neighbors)
-	build(map_size, _tile_types, PackedByteArray(), _heights)
+	if not _rebuild_pending:
+		_rebuild_pending = true
+		_deferred_rebuild.call_deferred()
+
+func _deferred_rebuild() -> void:
+	if not _rebuild_pending:
+		return
+	_rebuild_pending = false
+	build(_map_size, _tile_types, PackedByteArray(), _heights)
 
 
 func clear() -> void:
@@ -203,16 +211,16 @@ func _add_top_face(st: SurfaceTool, x: int, y: int, h: float, col: Color, tex_la
 	st.set_color(col)
 	st.set_uv(Vector2(tex_layer, 0.0))
 
-	# Counter-clockwise winding from above → normals point UP (+Y)
+	# Clockwise winding from above → Godot generate_normals() points UP (+Y)
 	# Triangle 1
 	st.add_vertex(Vector3(x0, h, z0))
-	st.add_vertex(Vector3(x0, h, z1))
 	st.add_vertex(Vector3(x1, h, z1))
+	st.add_vertex(Vector3(x0, h, z1))
 
 	# Triangle 2
 	st.add_vertex(Vector3(x0, h, z0))
-	st.add_vertex(Vector3(x1, h, z1))
 	st.add_vertex(Vector3(x1, h, z0))
+	st.add_vertex(Vector3(x1, h, z1))
 
 
 func _add_side_walls(st: SurfaceTool, x: int, y: int, h: float, col: Color, map_size: int) -> void:
@@ -274,16 +282,16 @@ func _add_wall_quad(st: SurfaceTool, x: int, y: int, h_top: float, h_bottom: flo
 		z0 = float(y) - 0.5
 		z1 = float(y) - 0.5
 
-	# Two triangles for the wall quad (top-left, top-right, bottom-right, bottom-left)
-	# Triangle 1: top-left, top-right, bottom-right
+	# CW winding → outward-facing normals via generate_normals()
+	# Triangle 1
 	st.add_vertex(Vector3(x0, h_top, z0))
+	st.add_vertex(Vector3(x1, h_bottom, z1))
 	st.add_vertex(Vector3(x1, h_top, z1))
-	st.add_vertex(Vector3(x1, h_bottom, z1))
 
-	# Triangle 2: top-left, bottom-right, bottom-left
+	# Triangle 2
 	st.add_vertex(Vector3(x0, h_top, z0))
-	st.add_vertex(Vector3(x1, h_bottom, z1))
 	st.add_vertex(Vector3(x0, h_bottom, z0))
+	st.add_vertex(Vector3(x1, h_bottom, z1))
 
 
 func _create_material() -> ShaderMaterial:

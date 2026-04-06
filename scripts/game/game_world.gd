@@ -335,10 +335,6 @@ func _debug_action() -> void:
 		if is_instance_valid(item):
 			item.queue_free()
 			count += 1
-	for item in get_tree().get_nodes_in_group("ground_items"):
-		if is_instance_valid(item):
-			item.queue_free()
-			count += 1
 	print("Debug: deleted %d loose items" % count)
 
 func _open_pause_menu() -> void:

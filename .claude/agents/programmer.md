@@ -16,7 +16,7 @@ You are a senior game programmer working on "Night Shift", a factory roguelite b
 1. **Understand before changing**: Always read existing code before modifying. Understand the pull system, BuildingLogic interface, and data-driven design patterns already in use.
 2. **Architectural consistency**: Follow existing patterns:
    - Buildings extend `BuildingLogic` and override virtual methods
-   - All item transfers go through `GameManager.pull_item()` (unified pull system)
+   - Items are PhysicsItem RigidBody3Ds; buildings use InputZone/OutputZone Area3Ds for item detection and spawning
    - Visual resources defined in `.tscn` scenes, not in code
    - UI elements defined in `.tscn` scenes, never created in code
    - Data-driven via `.tres` resource files (ItemDef, RecipeDef, BuildingDef)

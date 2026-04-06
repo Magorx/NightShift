@@ -24,9 +24,6 @@ func _physics_process(_delta: float) -> void:
 			GameManager.record_delivery(id, export_val)
 			id = zone.consume_any()
 
-func get_inventory_items() -> Array:
-	return []
-
 # ── Serialization ──────────────────────────────────────────────────────────────
 
 func serialize_state() -> Dictionary:

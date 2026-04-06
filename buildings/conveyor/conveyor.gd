@@ -30,21 +30,22 @@ const BASE_MODEL_TRANSFORM := Transform3D(
 
 var _current_variant: StringName = &"conveyor"
 var _current_rotation_steps: int = 0
+var _force_zone: Area3D
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(def, p_grid_pos, rotation)
 	direction = rotation
+	_force_zone = get_parent().get_node_or_null("ForceZone")
 	# Defer so adjacent buildings are fully registered in the grid first
 	update_shape.call_deferred()
 
 func _physics_process(delta: float) -> void:
-	var force_zone: Area3D = get_parent().get_node_or_null("ForceZone")
-	if not force_zone:
+	if not _force_zone:
 		return
 	var has_items := false
 	var fwd := _get_world_forward()
 	var lateral := Vector3(-fwd.z, 0.0, fwd.x)  # perpendicular on XZ plane
-	for body in force_zone.get_overlapping_bodies():
+	for body in _force_zone.get_overlapping_bodies():
 		if body is PhysicsItem:
 			has_items = true
 			var item := body as PhysicsItem
@@ -175,9 +176,3 @@ func get_info_stats() -> Array:
 	return [
 		{type = "stat", text = "Direction: %s" % dirs[direction]},
 	]
-
-func get_inventory_items() -> Array:
-	return []
-
-func remove_inventory_item(_item_id: StringName, _count: int) -> int:
-	return 0

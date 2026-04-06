@@ -3,8 +3,6 @@ extends Node
 signal building_placed(building_id: StringName, grid_pos: Vector2i)
 signal item_delivered(item_id: StringName)
 
-const DIRECTION_VECTORS := [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
-
 ## Z-index layers for isometric depth ordering (legacy 2D, used by MultiMesh2D renderers).
 ## Will be removed once visual managers are converted to 3D.
 const Z_CONVEYOR := 0
@@ -106,6 +104,19 @@ func _register_placement_phases() -> void:
 		link_fn = &"_link_underground_transport",
 	}
 
+## Link a tunnel input/output pair at two grid positions.
+## Validates buildings exist and are UndergroundTransportLogic, computes distance.
+func link_tunnel_pair(pos_a: Vector2i, pos_b: Vector2i, length: int = -1) -> void:
+	var a = buildings.get(pos_a)
+	var b = buildings.get(pos_b)
+	if not a or not b:
+		return
+	if not a.logic is UndergroundTransportLogic or not b.logic is UndergroundTransportLogic:
+		return
+	var dist: int = length if length >= 0 else (absi(pos_b.x - pos_a.x) + absi(pos_b.y - pos_a.y))
+	a.logic.setup_pair(b.logic, dist)
+	b.logic.setup_pair(a.logic, dist)
+
 ## Link underground transport (tunnel/pipeline) inputs and outputs after multi-phase placement.
 ## phase_placements[0] = inputs [{pos, rotation}], phase_placements[1] = outputs [{pos, rotation}]
 func _link_underground_transport(phase_placements: Array) -> void:
@@ -113,17 +124,7 @@ func _link_underground_transport(phase_placements: Array) -> void:
 	var outputs: Array = phase_placements[1]
 	var count := mini(inputs.size(), outputs.size())
 	for i in range(count):
-		var in_building = buildings.get(inputs[i].pos)
-		var out_building = buildings.get(outputs[i].pos)
-		if not in_building or not out_building:
-			continue
-		if not in_building.logic is UndergroundTransportLogic or not out_building.logic is UndergroundTransportLogic:
-			continue
-		var in_pos: Vector2i = inputs[i].pos
-		var out_pos: Vector2i = outputs[i].pos
-		var dist := absi(out_pos.x - in_pos.x) + absi(out_pos.y - in_pos.y)
-		in_building.logic.setup_pair(out_building.logic, dist)
-		out_building.logic.setup_pair(in_building.logic, dist)
+		link_tunnel_pair(inputs[i].pos, outputs[i].pos)
 
 
 func _load_building_defs() -> void:
@@ -539,14 +540,3 @@ func clear_all() -> void:
 	if building_collision:
 		building_collision.clear_all()
 
-## Hide guide ColorRect nodes (Shape/Input/Output cells) to reduce draw calls.
-## These nodes have alpha=0 but are still processed by the renderer.
-## No-op for Node3D buildings (they don't have 2D guide nodes).
-func _hide_guide_nodes(building: Node) -> void:
-	var rotatable = building.find_child("Rotatable", false, false)
-	if not rotatable:
-		return
-	for group_name in ["Shape", "Inputs", "Outputs"]:
-		var group = rotatable.find_child(group_name, false, false)
-		if group:
-			group.visible = false

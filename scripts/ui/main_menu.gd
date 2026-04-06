@@ -72,13 +72,8 @@ func _on_new_run_pressed() -> void:
 		_start_new_run()
 
 func _start_new_run() -> void:
-	confirm_overlay.visible = false
 	GameLogger.info("New game started (slot %d)" % AccountManager.active_slot)
-	SaveManager.delete_run_save()
-	GameManager.total_currency = 0
-	GameManager.map_size = 64
-	GameManager.stress_test_pending = false
-	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
+	_launch_game(64, false)
 
 func _on_settings_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/settings_menu.tscn")
@@ -90,12 +85,16 @@ func _on_stress_test_pressed() -> void:
 		_start_stress_test()
 
 func _start_stress_test() -> void:
+	_launch_game(160, true, 0)
+
+func _launch_game(map_size: int, stress_test: bool, seed_val: int = -1) -> void:
 	confirm_overlay.visible = false
 	SaveManager.delete_run_save()
 	GameManager.total_currency = 0
-	GameManager.map_size = 160
-	GameManager.stress_test_pending = true
-	GameManager.world_seed = 0
+	GameManager.map_size = map_size
+	GameManager.stress_test_pending = stress_test
+	if seed_val >= 0:
+		GameManager.world_seed = seed_val
 	get_tree().change_scene_to_file("res://scenes/game/game_world.tscn")
 
 func _show_confirm(message: String, action: Callable) -> void:
