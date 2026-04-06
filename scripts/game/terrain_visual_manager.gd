@@ -100,7 +100,7 @@ func build(map_size: int, tile_types: PackedByteArray, _variants: PackedByteArra
 			# Check 4 neighbors: +X, -X, +Z, -Z
 			_add_side_walls(st, x, y, h, col, map_size)
 
-	st.generate_normals(true)  # flip: Godot Plane() uses CW convention, our quads are CCW
+	st.generate_normals()  # CCW winding → outward normals (UP for top faces)
 	var mesh := st.commit()
 	_mesh_instance.mesh = mesh
 

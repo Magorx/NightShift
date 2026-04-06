@@ -4,17 +4,17 @@ extends Node
 ## Listens to RoundManager.phase_changed.
 
 # Day settings (build phase) — matches game_world.tscn defaults
-const DAY_AMBIENT_COLOR := Color(0.6, 0.62, 0.65, 1.0)
-const DAY_AMBIENT_ENERGY := 0.4
+const DAY_AMBIENT_COLOR := Color(0.85, 0.87, 0.9, 1.0)
+const DAY_AMBIENT_ENERGY := 1.8
 const DAY_BG_COLOR := Color(0.18, 0.22, 0.16, 1.0)
-const DAY_LIGHT_ENERGY := 0.9
+const DAY_LIGHT_ENERGY := 1.5
 const DAY_LIGHT_COLOR := Color(1.0, 1.0, 1.0, 1.0)
 
 # Night settings (fight phase) — darker, blueish tint
-const NIGHT_AMBIENT_COLOR := Color(0.2, 0.15, 0.35, 1.0)
-const NIGHT_AMBIENT_ENERGY := 0.2
+const NIGHT_AMBIENT_COLOR := Color(0.3, 0.25, 0.45, 1.0)
+const NIGHT_AMBIENT_ENERGY := 0.5
 const NIGHT_BG_COLOR := Color(0.06, 0.04, 0.1, 1.0)
-const NIGHT_LIGHT_ENERGY := 0.3
+const NIGHT_LIGHT_ENERGY := 0.4
 const NIGHT_LIGHT_COLOR := Color(0.5, 0.4, 0.7, 1.0)
 
 const TRANSITION_DURATION := 1.5  # seconds

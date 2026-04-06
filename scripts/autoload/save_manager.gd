@@ -303,7 +303,6 @@ func _link_tunnels_deferred(building_list: Array) -> void:
 		var length: int = int(state.get("tunnel_length", 1))
 		in_building.logic.setup_pair(out_building.logic, length)
 		out_building.logic.setup_pair(in_building.logic, length)
-		in_building.logic.restore_visuals()
 
 ## Restore finite deposit stocks from saved data.
 func _deserialize_deposit_stocks(data: Dictionary) -> void:

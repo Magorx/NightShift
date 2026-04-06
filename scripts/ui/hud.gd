@@ -7,11 +7,12 @@ signal inventory_opened
 const SPEED_STEPS: Array[float] = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0]
 const SPEED_LABELS := ["x0.25", "x0.5", "x1", "x1.5", "x2", "x3"]
 
-@onready var phase_display: VBoxContainer = %PhaseDisplay
+@onready var phase_display: PanelContainer = %PhaseDisplay
 @onready var round_label: Label = %RoundLabel
 @onready var phase_label: Label = %PhaseLabel
 @onready var timer_label: Label = %TimerLabel
 @onready var phase_flash: ColorRect = %PhaseFlash
+@onready var skip_button: Button = %SkipButton
 @onready var slow_button: Button = %SlowButton
 @onready var speed_label: Label = %SpeedLabel
 @onready var fast_button: Button = %FastButton
@@ -42,6 +43,7 @@ func _ready() -> void:
 	debug_button.pressed.connect(_on_debug_pressed)
 	$Hotbar.inventory_panel = inventory_panel
 	RoundManager.phase_changed.connect(_on_phase_changed)
+	skip_button.pressed.connect(_on_skip_pressed)
 
 func _on_node_added(node: Node) -> void:
 	if node is BaseButton:
@@ -131,17 +133,21 @@ func _update_phase_display() -> void:
 		phase_display.visible = false
 		return
 	phase_display.visible = true
-	round_label.text = "ROUND %d" % RoundManager.current_round
+	round_label.text = "Round %d" % RoundManager.current_round
 	phase_label.text = RoundManager.get_phase_name().to_upper()
 	var secs := RoundManager.get_time_remaining()
 	var mins := int(secs) / 60
 	var sec_part := int(secs) % 60
-	timer_label.text = "%d:%02d" % [mins, sec_part]
+	timer_label.text = "%02d:%02d" % [mins, sec_part]
 	# Color phase label
 	if RoundManager.get_phase_name() == &"build":
 		phase_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.4))
 	else:
 		phase_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+
+func _on_skip_pressed() -> void:
+	if RoundManager.is_running and RoundManager.phase_timer > 1.0:
+		RoundManager.phase_timer = 1.0
 
 func _on_phase_changed(_phase: StringName) -> void:
 	_flash_alpha = 0.4
