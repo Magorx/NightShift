@@ -82,6 +82,7 @@ def build_turret():
     root = bpy.data.objects.new("Turret", None)
     root.empty_display_type = 'PLAIN_AXES'
     root.empty_display_size = 0.25
+    root.location = (0.5, -0.5, 0)
     bpy.context.scene.collection.objects.link(root)
 
     def add(obj):

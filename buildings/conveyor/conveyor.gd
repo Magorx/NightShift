@@ -55,7 +55,7 @@ func set_night_mode(enabled: bool) -> void:
 		if building:
 			building.force_collision = true
 		var night_variant: StringName = &"tower" if _current_variant in TURN_VARIANTS else &"wall"
-		_swap_to_night_variant(night_variant, building)
+		_swap_model(night_variant, 0)
 	else:
 		set_physics_process(true)
 		if building:
@@ -204,24 +204,6 @@ func _swap_model(variant: StringName, rot_steps: int) -> void:
 	_anim_initialized = false
 
 	# Rebuild collision from new model meshes
-	if building.has_method("regenerate_collision"):
-		building.regenerate_collision.call_deferred()
-
-## Swap to a night-form model (wall/tower). Night .glb models are centered at
-## origin, but the building node sits at the cell corner — offset by (0.5, 0, 0.5).
-func _swap_to_night_variant(variant: StringName, building: BuildingBase) -> void:
-	var old_model := building.get_node_or_null("Model")
-	if old_model:
-		building.remove_child(old_model)
-		old_model.queue_free()
-	var new_model: Node3D = VARIANT_SCENES[variant].instantiate()
-	new_model.name = "Model"
-	new_model.transform = Transform3D(Basis.IDENTITY, Vector3(0.5, 0, 0.5))
-	building.add_child(new_model)
-	_cached_anim_player = null
-	_visuals_cached = false
-	_use_3d_model = false
-	_anim_initialized = false
 	if building.has_method("regenerate_collision"):
 		building.regenerate_collision.call_deferred()
 
