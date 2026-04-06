@@ -22,7 +22,7 @@ const MOON_YAW := deg_to_rad(40.0)
 const SUN_COLOR := Color(1.0, 0.95, 0.85)
 const SUN_ENERGY := 1.0
 
-const MOON_COLOR := Color(0.5, 0.45, 0.7)
+const MOON_COLOR := Color(0.75, 0.45, 0.5)
 const MOON_ENERGY := 0.4
 
 # ── Sky color palettes ────────────────────────────────────────────────────
@@ -47,8 +47,9 @@ var sun_light: DirectionalLight3D
 var moon_light: DirectionalLight3D
 var sky_mat: ProceduralSkyMaterial
 
-# Counts completed half-revolutions (incremented each phase change)
-var _half_rev_count: int = 0
+# Counts completed half-revolutions (incremented each phase change).
+# Starts at -1 because RoundManager emits phase_changed on the initial start_run().
+var _half_rev_count: int = -1
 var _last_phase: StringName = &"build"
 
 
