@@ -4,96 +4,14 @@
 
 ## Done (move to BOARD_SOLVED.md next session)
 
+### **P3.1** RoundManager autoload singleton `1h` -> `0.05h actual`
+### **P3.2** Phase HUD: timer + round counter `0.5h` -> `0.05h actual`
+### **P3.3** Build phase: enable placement, conveyors run `0.5h` -> `0.03h actual`
+### **P3.4** Fight phase: freeze factory, placeholder combat `0.5h` -> `0.03h actual`
+### **P3.5** Day/night visual shift `0.5h` -> `0.03h actual`
+### **P3.6** Sim test: round cycling `0.5h` -> `0.05h actual`
+
 ## Backlog
-
-### **P3.1** RoundManager autoload singleton `1h`
-
-  - tags: [phase-3, core]
-  - priority: medium
-  - steps:
-      - [ ] Create `scripts/autoload/round_manager.gd`
-      - [ ] State machine: BUILD -> FIGHT -> (SHOP later)
-      - [ ] Signals: `phase_changed(phase: StringName)`, `round_started(round_number)`, `round_ended`
-      - [ ] State: `current_round`, `current_phase`, `phase_timer`, `is_running`
-      - [ ] API: `start_run()`, `skip_phase()` (debug), `get_time_remaining()`
-      - [ ] Build phase: 180s (round 1, decreasing). Fight phase: 60s (round 1, increasing)
-      - [ ] Register in Project Settings > Autoload
-    ```md
-    Core game loop manager. Phases: &"build", &"fight", &"transition".
-    Original estimate 2h, recalibrated to 1h based on velocity data.
-    ```
-
-### **P3.2** Phase HUD: timer + round counter `0.5h`
-
-  - tags: [phase-3, ui]
-  - priority: medium
-  - workload: Normal
-  - steps:
-      - [ ] Gut existing HUD content (speed controls, currency, delivery counter)
-      - [ ] Add round counter, phase label, countdown timer
-      - [ ] Modify `scenes/ui/hud.tscn` with new layout
-      - [ ] Add screen flash/pulse for phase transitions
-    ```md
-    Minimal HUD replacing Factor's complex UI.
-    Original estimate 1.5h, recalibrated to 0.5h.
-    ```
-
-### **P3.3** Build phase: enable placement, conveyors run `0.5h`
-
-  - tags: [phase-3, gameplay]
-  - priority: medium
-  - workload: Normal
-  - steps:
-      - [ ] Wire `RoundManager.phase_changed` in `game_world.gd` to toggle systems
-      - [ ] Add `set_enabled(bool)` to `build_system.gd` to block placement during fight
-      - [ ] Verify conveyor/building tick runs normally during build phase
-    ```md
-    Build phase is basically current Factor behavior, just wired to RoundManager.
-    Original estimate 1h, recalibrated to 0.5h.
-    ```
-
-### **P3.4** Fight phase: freeze factory, placeholder combat `0.5h`
-
-  - tags: [phase-3, gameplay]
-  - priority: medium
-  - workload: Normal
-  - steps:
-      - [ ] Pause conveyor/building systems during fight in `game_world.gd`
-      - [ ] Create `scripts/game/phase_transition.gd` -- visual transition effect (screen darken, text)
-      - [ ] Fight phase is just a timer countdown (no monsters yet)
-      - [ ] Validate: game cycles build->fight->build, can place during build only
-    ```md
-    Placeholder fight phase -- just a timer. Monsters come in Phase 5.
-    Original estimate 1.5h, recalibrated to 0.5h.
-    ```
-
-### **P3.5** Day/night visual shift `0.5h`
-
-  - tags: [phase-3, visual]
-  - priority: medium
-  - workload: Normal
-  - steps:
-      - [ ] Create `scripts/game/day_night_visual.gd` -- manages CanvasModulate transitions
-      - [ ] Add CanvasModulate node to `scenes/game/game_world.tscn`
-      - [ ] Fight: darken terrain, slight color distortion. Build: normal bright look
-    ```md
-    CanvasModulate-based day/night. Full psychedelic shader is post-M1.
-    Original estimate 1.5h, recalibrated to 0.5h.
-    ```
-
-### **P3.6** Sim test: round cycling `0.5h`
-
-  - tags: [phase-3, test]
-  - priority: medium
-  - workload: Normal
-  - steps:
-      - [ ] Write `tests/simulation/sim_round_cycle.gd`
-      - [ ] Verify phase transitions, timer countdown, 3 full rounds complete
-      - [ ] Validate: sim passes headless
-    ```md
-    Automated test of build/fight cycle.
-    Original estimate 1.5h, recalibrated to 0.5h.
-    ```
 
 ### **P4.1** Building HP component `0.5h`
 
@@ -426,7 +344,7 @@
 
 | Phase | Cards | Old Total | New Total |
 |-------|-------|-----------|-----------|
-| P3 (RoundManager) | 6 | 9h | 3.5h |
+| P3 (RoundManager) | 6 | 9h | 3.5h est / 0.24h actual |
 | P4 (Transform) | 4 | 6.5h | 2.75h |
 | P5 (Monsters) | 6 | 12h | 5.5h |
 | P6 (Polish) | 6 | 9.5h | 3.75h |
