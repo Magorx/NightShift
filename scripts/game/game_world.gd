@@ -29,7 +29,9 @@ var _deposit_scenes: Dictionary = {
 	&"biovine": preload("res://resources/deposits/models/biovine.glb"),
 }
 var _day_night_script = preload("res://scripts/game/day_night_visual.gd")
+var _night_transform_script = preload("res://scripts/game/night_transform.gd")
 var _day_night: Node
+var _night_transform: Node
 var _pixel_art_rect: ColorRect
 var _popup: PanelContainer
 var _ground_tooltip: PanelContainer
@@ -163,6 +165,11 @@ func _ready() -> void:
 	_day_night.name = "DayNightVisual"
 	add_child(_day_night)
 	_day_night.setup($WorldEnvironment.environment, $SunLight, $MoonLight)
+
+	# Night transform system (converts buildings between day/night forms)
+	_night_transform = _night_transform_script.new()
+	_night_transform.name = "NightTransform"
+	add_child(_night_transform)
 
 	# Wire RoundManager phase changes
 	RoundManager.phase_changed.connect(_on_phase_changed)

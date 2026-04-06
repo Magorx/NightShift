@@ -33,6 +33,11 @@ var _current_rotation_steps: int = 0
 var _force_zone: Area3D
 var _overlap_count: int = 0
 
+# ── Night transform state ────────────────────────────────────────────────────
+var is_night_form: bool = false
+var _day_variant: StringName = &""
+var _day_rotation_steps: int = 0
+
 func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(def, p_grid_pos, rotation)
 	direction = rotation
