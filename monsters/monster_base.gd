@@ -18,7 +18,7 @@ var attack_range: float = 1.2  # world units — close to 1 tile
 var max_hp: float = 50.0
 
 # ── State ───────────────────────────────────────────────────────────────────
-enum State { IDLE, MOVING, ATTACKING, DYING }
+enum State { IDLE, MOVING, ATTACKING, CHASING, DYING }
 var state: State = State.IDLE
 
 var health: HealthComponent
@@ -30,6 +30,17 @@ var _path_index: int = 0
 var _attack_timer: float = 0.0
 var _repath_timer: float = 0.0
 var _gravity: float = 20.0
+
+# ── Chase / aggro ───────────────────────────────────────────────────────────
+const CHASE_ENGAGE_RADIUS := 5.0    # start chasing player within this (world units ≈ tiles)
+const CHASE_DISENGAGE_RADIUS := 8.0 # stop chasing when player exceeds this
+const AGGRO_DISENGAGE_RADIUS := 12.0 # disengage radius when hit by player
+const AGGRO_DURATION := 3.0          # seconds of aggro after taking player damage
+const NEARBY_BUILDING_DAMAGE_RANGE := 1.5  # damage buildings while passing by
+const CHASE_REPATH_INTERVAL := 0.2
+
+var _aggro_timer: float = 0.0       # >0 = in aggro mode (larger chase radius)
+var _chase_attack_timer: float = 0.0 # cooldown for damaging buildings while moving
 
 var _debug_path_mesh: MeshInstance3D
 var _debug_immediate_mesh: ImmediateMesh
@@ -124,6 +135,16 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y = 0.0
 
+	# Tick aggro timer
+	if _aggro_timer > 0.0:
+		_aggro_timer -= delta
+
+	# Check for player chase trigger (from IDLE or MOVING)
+	if state == State.IDLE or state == State.MOVING:
+		if _should_start_chasing():
+			state = State.CHASING
+			_repath_timer = 0.0
+
 	match state:
 		State.IDLE:
 			_find_target()
@@ -131,11 +152,35 @@ func _physics_process(delta: float) -> void:
 				state = State.MOVING
 		State.MOVING:
 			_process_movement(delta)
+			_damage_nearby_buildings(delta)
 		State.ATTACKING:
 			_process_attack(delta)
+		State.CHASING:
+			_process_chasing(delta)
+			_damage_nearby_buildings(delta)
 
 	move_and_slide()
 	_update_debug_path()
+
+# ── Chase checks ────────────────────────────────────────────────────────────
+
+func _should_start_chasing() -> bool:
+	if not GameManager.player or GameManager.player._is_dead:
+		return false
+	var dist := _player_distance()
+	return dist <= CHASE_ENGAGE_RADIUS
+
+func _get_disengage_radius() -> float:
+	if _aggro_timer > 0.0:
+		return AGGRO_DISENGAGE_RADIUS
+	return CHASE_DISENGAGE_RADIUS
+
+func _player_distance() -> float:
+	if not GameManager.player:
+		return INF
+	var diff: Vector3 = global_position - GameManager.player.global_position
+	diff.y = 0.0
+	return diff.length()
 
 # ── Target finding ──────────────────────────────────────────────────────────
 
@@ -177,7 +222,48 @@ func _repath() -> void:
 	_current_path = PackedVector2Array()
 	_path_index = 0
 
+func _repath_toward_player() -> void:
+	if not GameManager.player or not pathfinding:
+		_current_path = PackedVector2Array()
+		_path_index = 0
+		return
+	_current_path = pathfinding.get_path_world(global_position, GameManager.player.global_position)
+	_path_index = 1
+
 # ── Movement ────────────────────────────────────────────────────────────────
+
+func _follow_path(_delta: float) -> void:
+	if _current_path.size() > 0 and _path_index < _current_path.size():
+		var next_point := _current_path[_path_index]
+		var target_world := Vector3(next_point.x, global_position.y, next_point.y)
+		var diff := target_world - global_position
+		diff.y = 0.0
+		var dist := diff.length()
+
+		if dist < 0.3:
+			_path_index += 1
+		else:
+			var dir := diff.normalized()
+			velocity.x = dir.x * move_speed
+			velocity.z = dir.z * move_speed
+			if dir.length_squared() > 0.01:
+				look_at(global_position + dir, Vector3.UP)
+	else:
+		velocity.x = 0.0
+		velocity.z = 0.0
+
+func _move_directly_toward(target_pos: Vector3) -> void:
+	var diff := target_pos - global_position
+	diff.y = 0.0
+	if diff.length() > 0.1:
+		var dir := diff.normalized()
+		velocity.x = dir.x * move_speed
+		velocity.z = dir.z * move_speed
+		if dir.length_squared() > 0.01:
+			look_at(global_position + dir, Vector3.UP)
+	else:
+		velocity.x = 0.0
+		velocity.z = 0.0
 
 func _process_movement(delta: float) -> void:
 	if not _target_building or not is_instance_valid(_target_building):
@@ -203,37 +289,54 @@ func _process_movement(delta: float) -> void:
 		if not _target_building:
 			return
 
-	# Follow A* path
+	# Follow A* path, fallback to direct movement
 	if _current_path.size() > 0 and _path_index < _current_path.size():
-		var next_point := _current_path[_path_index]
-		var target_world := Vector3(next_point.x, global_position.y, next_point.y)
-		var diff := target_world - global_position
-		diff.y = 0.0
-		var dist := diff.length()
-
-		if dist < 0.3:
-			_path_index += 1
-		else:
-			var dir := diff.normalized()
-			velocity.x = dir.x * move_speed
-			velocity.z = dir.z * move_speed
-			# Face movement direction
-			if dir.length_squared() > 0.01:
-				look_at(global_position + dir, Vector3.UP)
+		_follow_path(delta)
 	else:
-		# No path or end of path — move directly toward target
-		var target_pos := GridUtils.grid_to_world(_target_building.grid_pos)
-		var diff := target_pos - global_position
-		diff.y = 0.0
-		if diff.length() > 0.1:
-			var dir := diff.normalized()
-			velocity.x = dir.x * move_speed
-			velocity.z = dir.z * move_speed
-			if dir.length_squared() > 0.01:
-				look_at(global_position + dir, Vector3.UP)
-		else:
-			velocity.x = 0.0
-			velocity.z = 0.0
+		_move_directly_toward(GridUtils.grid_to_world(_target_building.grid_pos))
+
+# ── Chasing ─────────────────────────────────────────────────────────────────
+
+func _process_chasing(delta: float) -> void:
+	# Check disengage
+	var dist := _player_distance()
+	if not GameManager.player or GameManager.player._is_dead or dist > _get_disengage_radius():
+		state = State.IDLE
+		velocity.x = 0.0
+		velocity.z = 0.0
+		return
+
+	# Attack player if close enough
+	_check_player_proximity(delta)
+
+	# Periodic repath toward player
+	_repath_timer -= delta
+	if _repath_timer <= 0.0:
+		_repath_timer = CHASE_REPATH_INTERVAL
+		_repath_toward_player()
+
+	# Follow path toward player, fallback to direct
+	if _current_path.size() > 0 and _path_index < _current_path.size():
+		_follow_path(delta)
+	else:
+		_move_directly_toward(GameManager.player.global_position)
+
+# ── Nearby building damage (while moving/chasing) ──────────────────────────
+
+func _damage_nearby_buildings(delta: float) -> void:
+	_chase_attack_timer -= delta
+	if _chase_attack_timer > 0.0:
+		return
+	_chase_attack_timer = attack_cooldown
+
+	for building in BuildingRegistry.unique_buildings:
+		if not is_instance_valid(building):
+			continue
+		var dist := global_position.distance_to(GridUtils.grid_to_world(building.grid_pos))
+		if dist <= NEARBY_BUILDING_DAMAGE_RANGE:
+			var logic: BuildingLogic = building.logic
+			if logic and logic.health and not logic.health.is_dead:
+				logic.health.damage(attack_damage)
 
 # ── Attack ──────────────────────────────────────────────────────────────────
 
@@ -262,8 +365,6 @@ func _do_attack() -> void:
 	var logic: BuildingLogic = _target_building.logic
 	if logic and logic.health:
 		logic.health.damage(attack_damage)
-		print("[MONSTER] Attacked building at %s for %.0f damage" % [
-			str(_target_building.grid_pos), attack_damage])
 	# Check if building died — find new target
 	if not is_instance_valid(_target_building) or (logic and logic.health and logic.health.is_dead):
 		_target_building = null
@@ -294,6 +395,12 @@ func _check_player_proximity(delta: float) -> void:
 func take_damage(amount: float, _element: StringName = &"") -> void:
 	if health:
 		health.damage(amount)
+	# TODOCLAUDE: Once player damage source is tracked (DamageSystem refactor),
+	# trigger aggro only for player-dealt damage. For now, any damage triggers aggro.
+	_aggro_timer = AGGRO_DURATION
+	if state != State.DYING and state != State.ATTACKING:
+		state = State.CHASING
+		_repath_timer = 0.0
 
 func _on_died() -> void:
 	state = State.DYING
