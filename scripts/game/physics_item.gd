@@ -18,6 +18,7 @@ var item_id: StringName = &""
 var _despawn_timer: float = DESPAWN_TIME
 
 static var _model_cache: Dictionary = {}
+static var _shape_cache: Dictionary = {}  # item_id -> Shape3D (shared per type)
 static var _shared_physics_material: PhysicsMaterial
 static var _shared_fallback_sphere: SphereShape3D
 
@@ -29,29 +30,38 @@ func _ready() -> void:
 	collision_mask = ITEM_COLLISION_MASK
 	mass = 0.3
 	gravity_scale = 1.0
-	continuous_cd = true
+	continuous_cd = false
 	angular_damp = 5.0
 	physics_material_override = _make_physics_material()
 
 	# Visual model first — collision is derived from its geometry
 	_add_model()
 
-	# Collision shape from model convex hull (at original scale, not ITEM_MODEL_SCALE)
+	# Collision shape — cached per item type to avoid re-computing convex hulls
 	var col := CollisionShape3D.new()
-	var model := get_node_or_null("Model")
-	if model:
-		var scale_xform := Transform3D(Basis.from_scale(Vector3.ONE * ITEM_MODEL_SCALE), Vector3.ZERO)
-		var points := _gather_vertices(model, scale_xform)
-		if points.size() >= 4:
-			var convex := ConvexPolygonShape3D.new()
-			convex.points = points
-			col.shape = convex
+	var cached_shape: Shape3D = _shape_cache.get(item_id)
+	if cached_shape:
+		col.shape = cached_shape
+		if cached_shape is SphereShape3D:
+			col.position.y = COLLISION_RADIUS
+	else:
+		var model := get_node_or_null("Model")
+		if model:
+			var scale_xform := Transform3D(Basis.from_scale(Vector3.ONE * ITEM_MODEL_SCALE), Vector3.ZERO)
+			var points := _gather_vertices(model, scale_xform)
+			if points.size() >= 4:
+				var convex := ConvexPolygonShape3D.new()
+				convex.points = points
+				col.shape = convex
+				_shape_cache[item_id] = convex
+			else:
+				col.shape = _fallback_sphere()
+				col.position.y = COLLISION_RADIUS
+				_shape_cache[item_id] = _fallback_sphere()
 		else:
 			col.shape = _fallback_sphere()
 			col.position.y = COLLISION_RADIUS
-	else:
-		col.shape = _fallback_sphere()
-		col.position.y = COLLISION_RADIUS
+			_shape_cache[item_id] = _fallback_sphere()
 	add_child(col)
 
 func _physics_process(delta: float) -> void:

@@ -29,10 +29,11 @@ const SPEED_LABELS := ["x0.25", "x0.5", "x1", "x1.5", "x2", "x3"]
 var speed_index: int = 2 # default x1
 var paused: bool = false
 var _menu_expanded: bool = false
+var _fps_frame_counter: int = 0
+var _last_displayed_seconds: int = -1
 
 func _ready() -> void:
 	add_to_group("hud")
-	get_tree().node_added.connect(_on_node_added)
 	_disable_focus_recursive(get_tree().root)
 	slow_button.pressed.connect(_on_slow_pressed)
 	fast_button.pressed.connect(_on_fast_pressed)
@@ -45,10 +46,6 @@ func _ready() -> void:
 	RoundManager.phase_changed.connect(_on_phase_changed)
 	skip_button.pressed.connect(_on_skip_pressed)
 
-func _on_node_added(node: Node) -> void:
-	if node is BaseButton:
-		node.focus_mode = Control.FOCUS_NONE
-
 func _disable_focus_recursive(node: Node) -> void:
 	if node is BaseButton:
 		node.focus_mode = Control.FOCUS_NONE
@@ -59,8 +56,11 @@ func set_camera(cam) -> void:
 	minimap_display.set_camera(cam)
 
 func _process(_delta: float) -> void:
-	fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
-	_update_phase_display()
+	_fps_frame_counter += 1
+	if _fps_frame_counter >= 30:
+		_fps_frame_counter = 0
+		fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
+	_update_phase_timer()
 	_update_phase_flash(_delta)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -128,29 +128,33 @@ func _on_inventory_button_gui_input(event: InputEvent) -> void:
 
 var _flash_alpha: float = 0.0
 
-func _update_phase_display() -> void:
+## Only update the timer text (runs every frame via _process).
+func _update_phase_timer() -> void:
 	if not RoundManager.is_running:
 		phase_display.visible = false
 		return
 	phase_display.visible = true
-	round_label.text = "Round %d" % RoundManager.current_round
-	phase_label.text = RoundManager.get_phase_name().to_upper()
-	var secs := RoundManager.get_time_remaining()
-	var mins := int(secs) / 60
-	var sec_part := int(secs) % 60
-	timer_label.text = "%02d:%02d" % [mins, sec_part]
-	# Color phase label
-	if RoundManager.get_phase_name() == &"build":
-		phase_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.4))
-	else:
-		phase_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	var secs := int(RoundManager.get_time_remaining())
+	if secs != _last_displayed_seconds:
+		_last_displayed_seconds = secs
+		var mins := secs / 60
+		var sec_part := secs % 60
+		timer_label.text = "%02d:%02d" % [mins, sec_part]
 
 func _on_skip_pressed() -> void:
 	if RoundManager.is_running and RoundManager.phase_timer > 1.0:
 		RoundManager.phase_timer = 1.0
 
+## Update round/phase labels + color (only on phase change, not every frame).
 func _on_phase_changed(_phase: StringName) -> void:
 	_flash_alpha = 0.4
+	_last_displayed_seconds = -1
+	round_label.text = "Round %d" % RoundManager.current_round
+	phase_label.text = RoundManager.get_phase_name().to_upper()
+	if RoundManager.get_phase_name() == &"build":
+		phase_label.add_theme_color_override("font_color", Color(0.4, 0.9, 0.4))
+	else:
+		phase_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
 
 func _update_phase_flash(delta: float) -> void:
 	if _flash_alpha > 0.0:

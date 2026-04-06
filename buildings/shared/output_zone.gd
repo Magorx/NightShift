@@ -16,12 +16,19 @@ const SPAWN_IMPULSE := 1.5
 @export var allow_left: bool = true
 @export var allow_up: bool = true
 
+var _cached_shape_node: CollisionShape3D = null
+
 func _ready() -> void:
 	# Output zones don't detect anything — they're spawn volumes only
 	collision_layer = 0
 	collision_mask = 0
 	monitoring = false
 	monitorable = false
+	# Cache the CollisionShape3D child for spawn point calculation
+	for child in get_children():
+		if child is CollisionShape3D:
+			_cached_shape_node = child
+			break
 
 ## Spawn a PhysicsItem at a random point within this zone's box volume.
 func spawn_item(item_id: StringName, impulse_scale: float = 1.0) -> PhysicsItem:
@@ -32,21 +39,16 @@ func spawn_item(item_id: StringName, impulse_scale: float = 1.0) -> PhysicsItem:
 
 ## Pick a random point inside the CollisionShape3D box (in global space).
 func _random_point_in_box() -> Vector3:
-	var shape_node: CollisionShape3D = null
-	for child in get_children():
-		if child is CollisionShape3D:
-			shape_node = child
-			break
-	if not shape_node or not (shape_node.shape is BoxShape3D):
+	if not _cached_shape_node or not (_cached_shape_node.shape is BoxShape3D):
 		return global_position
-	var box: BoxShape3D = shape_node.shape
+	var box: BoxShape3D = _cached_shape_node.shape
 	var half := box.size * 0.5
 	var local_pt := Vector3(
 		randf_range(-half.x, half.x),
 		randf_range(-half.y, half.y),
 		randf_range(-half.z, half.z)
 	)
-	return shape_node.global_transform * local_pt
+	return _cached_shape_node.global_transform * local_pt
 
 func _get_impulse_direction() -> Vector3:
 	var local_dir := Vector3.ZERO

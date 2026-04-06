@@ -24,6 +24,7 @@ var _input_caps: Dictionary = {}
 var _active_recipe = null
 var _last_recipe = null
 var _craft_timer: float = 0.0
+var _cached_input_zones: Array[InputZone] = []
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	super.configure(def, p_grid_pos, p_rotation)
@@ -31,6 +32,16 @@ func configure(def: BuildingDef, p_grid_pos: Vector2i, p_rotation: int) -> void:
 	converter_type = str(def.id)
 	recipes = GameManager.recipes_by_type.get(converter_type, [])
 	_build_input_caps()
+	_cache_input_zones.call_deferred()
+
+func _cache_input_zones() -> void:
+	_cached_input_zones.clear()
+	var inputs_node: Node = get_parent().get_node_or_null("Inputs")
+	if not inputs_node:
+		return
+	for child in inputs_node.get_children():
+		if child is InputZone:
+			_cached_input_zones.append(child)
 
 func _build_recipe_configs(default_enabled: bool = true) -> void:
 	recipe_configs.clear()
@@ -62,13 +73,7 @@ func _physics_process(delta: float) -> void:
 	_update_building_sprites(_active_recipe != null, delta)
 
 func _try_consume_inputs() -> void:
-	var inputs_node: Node = get_parent().get_node_or_null("Inputs")
-	if not inputs_node:
-		return
-	for child in inputs_node.get_children():
-		if not (child is InputZone):
-			continue
-		var zone: InputZone = child
+	for zone in _cached_input_zones:
 		for item in zone.get_items():
 			if not is_instance_valid(item):
 				continue

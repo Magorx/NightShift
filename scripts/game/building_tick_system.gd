@@ -22,4 +22,5 @@ func _physics_process(delta: float) -> void:
 		if is_instance_valid(logic):
 			logic._physics_process(delta)
 		else:
-			buildings.remove_at(i)
+			buildings[i] = buildings.back()
+			buildings.pop_back()

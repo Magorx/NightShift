@@ -15,14 +15,8 @@ func _ready() -> void:
 	body_exited.connect(_on_body_exited)
 
 ## Get all PhysicsItems currently inside the zone.
+## Stale entries are cleaned by body_exited (Godot fires it on queue_free).
 func get_items() -> Array[PhysicsItem]:
-	# Prune freed items
-	var i := 0
-	while i < _overlapping_items.size():
-		if not is_instance_valid(_overlapping_items[i]):
-			_overlapping_items.remove_at(i)
-		else:
-			i += 1
 	return _overlapping_items
 
 ## Check if any item with the given id is inside the zone.

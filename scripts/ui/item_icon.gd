@@ -27,6 +27,8 @@ static func create(item_id: StringName, icon_size: Vector2 = Vector2(16, 16), br
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.mouse_filter = Control.MOUSE_FILTER_STOP if browsable else Control.MOUSE_FILTER_PASS
+	if not browsable:
+		icon.set_process(false)
 	return icon
 
 static func _create_color_fallback(item_id: StringName, icon_size: Vector2) -> PanelContainer:
@@ -101,22 +103,9 @@ func _open_recipe_browser() -> void:
 			return
 		node = node.get_parent()
 
-## Cached list of GameWindows in the scene. Rebuilt lazily.
-static var _cached_windows: Array = []
-static var _cache_valid: bool = false
-
 func _is_covered_by_window(mouse_pos: Vector2) -> bool:
 	## Returns true if a visible GameWindow covers this mouse position,
 	## and this icon is NOT inside that window.
-	if not _cache_valid:
-		_cached_windows.clear()
-		var root := get_tree().root
-		if root:
-			_collect_game_windows(root, _cached_windows)
-		_cache_valid = true
-		# Invalidate cache next frame so new windows are picked up
-		get_tree().process_frame.connect(func(): _cache_valid = false, CONNECT_ONE_SHOT)
-
 	# Walk ancestors to see if we're inside a GameWindow
 	var our_window: Control = null
 	var node := get_parent()
@@ -126,9 +115,7 @@ func _is_covered_by_window(mouse_pos: Vector2) -> bool:
 			break
 		node = node.get_parent()
 
-	for win in _cached_windows:
-		if not is_instance_valid(win):
-			continue
+	for win in get_tree().get_nodes_in_group(&"game_windows"):
 		if win == our_window:
 			continue
 		if not win.visible:
@@ -136,12 +123,6 @@ func _is_covered_by_window(mouse_pos: Vector2) -> bool:
 		if win.get_global_rect().has_point(mouse_pos):
 			return true
 	return false
-
-static func _collect_game_windows(node: Node, result: Array) -> void:
-	if node is GameWindow:
-		result.append(node)
-	for child in node.get_children():
-		_collect_game_windows(child, result)
 
 func _show_tooltip() -> void:
 	var item_def = GameManager.get_item_def(_item_id)

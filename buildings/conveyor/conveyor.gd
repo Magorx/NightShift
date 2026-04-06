@@ -31,16 +31,27 @@ const BASE_MODEL_TRANSFORM := Transform3D(
 var _current_variant: StringName = &"conveyor"
 var _current_rotation_steps: int = 0
 var _force_zone: Area3D
+var _overlap_count: int = 0
 
 func configure(def: BuildingDef, p_grid_pos: Vector2i, rotation: int) -> void:
 	super.configure(def, p_grid_pos, rotation)
 	direction = rotation
 	_force_zone = get_parent().get_node_or_null("ForceZone")
+	if _force_zone:
+		_force_zone.body_entered.connect(_on_zone_body_entered)
+		_force_zone.body_exited.connect(_on_zone_body_exited)
 	# Defer so adjacent buildings are fully registered in the grid first
 	update_shape.call_deferred()
 
+func _on_zone_body_entered(_body: Node3D) -> void:
+	_overlap_count += 1
+
+func _on_zone_body_exited(_body: Node3D) -> void:
+	_overlap_count -= 1
+
 func _physics_process(delta: float) -> void:
-	if not _force_zone:
+	if not _force_zone or _overlap_count <= 0:
+		_update_building_sprites(false, delta)
 		return
 	var has_items := false
 	var fwd := _get_world_forward()

@@ -74,21 +74,30 @@ func set_enabled(enabled: bool) -> void:
 		if destroy_mode:
 			exit_destroy_mode()
 
+var _last_mouse_pos := Vector2(-1, -1)
+
 func _process(_delta: float) -> void:
-	var _prev_grid_pos := cursor_grid_pos
-	cursor_grid_pos = _get_grid_pos_under_mouse()
-	if _dragging:
+	# Skip raycast if mouse hasn't moved
+	var mouse_pos := get_viewport().get_mouse_position()
+	var prev_grid_pos := cursor_grid_pos
+	if mouse_pos != _last_mouse_pos:
+		_last_mouse_pos = mouse_pos
+		cursor_grid_pos = _get_grid_pos_under_mouse()
+	var grid_changed := cursor_grid_pos != prev_grid_pos
+	if _dragging and grid_changed:
 		_update_blueprints()
 	if _selected_building and not is_instance_valid(_selected_building):
 		clear_select_highlight()
 	if destroy_mode:
-		_update_destroy_highlights()
-		_update_destroy_cursor()
+		if grid_changed:
+			_update_destroy_highlights()
+			_update_destroy_cursor()
 	elif not _highlighted_buildings.is_empty():
 		_clear_all_highlights()
 	if not destroy_mode:
 		_hide_destroy_cursor()
-	_update_ghosts()
+	if grid_changed:
+		_update_ghosts()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _enabled:

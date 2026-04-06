@@ -24,6 +24,7 @@ const SNAP_SPEED := 12.0
 func _ready() -> void:
 	# Windows consume all mouse input — nothing passes through to the game world
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	add_to_group(&"game_windows")
 	var close_btn = get_node_or_null("%CloseButton")
 	if close_btn:
 		close_btn.pressed.connect(func(): visible = false)
