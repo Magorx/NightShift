@@ -132,48 +132,6 @@ def build_wall():
     band_hi.location = (0, 0, BASE_H + WALL_H - 0.10)
     apply_texture(band_hi, "metal_plate", resolution="1k")
 
-    # -- HORIZONTAL REINFORCEMENT BARS (4 bars across each visible face) --
-    BAR_RADIUS = 0.02
-    BAR_LEN = CELL * 0.80
-    bar_heights = [0.18, 0.30]
-    bar_objects = []
-    for bh in bar_heights:
-        # Front face (Y = -0.45)
-        bar_f = add(generate_cylinder(radius=BAR_RADIUS, height=BAR_LEN,
-                                       segments=8, hex_color=NIGHT_METAL))
-        bar_f.name = f"BarF_{bh:.2f}"
-        bar_f.rotation_euler = (0, math.radians(90), 0)
-        bar_f.location = (0, -HALF * 0.9 - 0.005, BASE_H + bh)
-        apply_texture(bar_f, "rusty_metal_02", resolution="1k")
-        bar_objects.append(bar_f)
-
-        # Back face (Y = +0.45)
-        bar_b = add(generate_cylinder(radius=BAR_RADIUS, height=BAR_LEN,
-                                       segments=8, hex_color=NIGHT_METAL))
-        bar_b.name = f"BarB_{bh:.2f}"
-        bar_b.rotation_euler = (0, math.radians(90), 0)
-        bar_b.location = (0, HALF * 0.9 + 0.005, BASE_H + bh)
-        apply_texture(bar_b, "rusty_metal_02", resolution="1k")
-        bar_objects.append(bar_b)
-
-        # Left face (X = -0.45)
-        bar_l = add(generate_cylinder(radius=BAR_RADIUS, height=BAR_LEN,
-                                       segments=8, hex_color=NIGHT_METAL))
-        bar_l.name = f"BarL_{bh:.2f}"
-        bar_l.rotation_euler = (math.radians(90), 0, 0)
-        bar_l.location = (-HALF * 0.9 - 0.005, 0, BASE_H + bh)
-        apply_texture(bar_l, "rusty_metal_02", resolution="1k")
-        bar_objects.append(bar_l)
-
-        # Right face (X = +0.45)
-        bar_r = add(generate_cylinder(radius=BAR_RADIUS, height=BAR_LEN,
-                                       segments=8, hex_color=NIGHT_METAL))
-        bar_r.name = f"BarR_{bh:.2f}"
-        bar_r.rotation_euler = (math.radians(90), 0, 0)
-        bar_r.location = (HALF * 0.9 + 0.005, 0, BASE_H + bh)
-        apply_texture(bar_r, "rusty_metal_02", resolution="1k")
-        bar_objects.append(bar_r)
-
     # -- CORNER POSTS (vertical pillars at corners) --
     POST_R = 0.035
     for i, (px, py) in enumerate([(-0.40, -0.40), (0.40, -0.40),

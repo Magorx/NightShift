@@ -149,6 +149,7 @@ func get_last_resource() -> StringName:
 	return &""
 
 const NIGHT_MODEL: PackedScene = preload("res://buildings/smelter/models/rocket_turret.glb")
+var _day_model_transform: Transform3D
 
 ## Toggle night mode. When enabled, crafting pauses and turret fires.
 func set_night_mode(enabled: bool) -> void:
@@ -170,10 +171,12 @@ func _swap_to_night_model() -> void:
 	var building := get_parent()
 	var old_model := building.get_node_or_null("Model")
 	if old_model:
+		_day_model_transform = old_model.transform
 		building.remove_child(old_model)
 		old_model.queue_free()
 	var new_model: Node3D = NIGHT_MODEL.instantiate()
 	new_model.name = "Model"
+	new_model.transform = _day_model_transform
 	building.add_child(new_model)
 
 func _swap_to_day_model() -> void:

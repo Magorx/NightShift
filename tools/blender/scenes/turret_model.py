@@ -90,8 +90,8 @@ def build_turret():
 
     CELL = 1.0
     BASE_H = 0.05
-    HOUSING_H = 0.30
-    TURRET_BASE_H = 0.06
+    HOUSING_H = 0.45
+    TURRET_BASE_H = 0.08
     GUN_OFFSET_Z = BASE_H + HOUSING_H + TURRET_BASE_H
 
     # -- BASE PLATFORM --
@@ -127,47 +127,47 @@ def build_turret():
     apply_texture(roof, "metal_plate_02", resolution="1k")
 
     # -- ROTATING TURRET BASE (cylinder) --
-    turret_base = add(generate_cylinder(radius=0.30, height=TURRET_BASE_H,
+    turret_base = add(generate_cylinder(radius=0.34, height=TURRET_BASE_H,
                                          segments=12, hex_color=NIGHT_STEEL))
     turret_base.name = "TurretBase"
     turret_base.location = (0, 0, BASE_H + HOUSING_H + 0.04)
     apply_texture(turret_base, "metal_plate", resolution="1k")
 
     # Turret rotation ring (decorative)
-    turret_ring = add(generate_cylinder(radius=0.33, height=0.02,
+    turret_ring = add(generate_cylinder(radius=0.37, height=0.025,
                                          segments=12, hex_color=NIGHT_METAL))
     turret_ring.name = "TurretRing"
     turret_ring.location = (0, 0, BASE_H + HOUSING_H + 0.04)
     apply_texture(turret_ring, "metal_plate", resolution="1k")
 
     # -- GUN ASSEMBLY --
-    # Gun cradle (small box that the pipe sits on)
-    cradle = add(generate_box(w=0.14, d=0.20, h=0.10, hex_color=NIGHT_METAL))
+    # Gun cradle (box that the barrel sits on)
+    cradle = add(generate_box(w=0.20, d=0.28, h=0.14, hex_color=NIGHT_METAL))
     cradle.name = "GunCradle"
     cradle.location = (0, -0.05, GUN_OFFSET_Z)
     apply_texture(cradle, "metal_plate", resolution="1k")
 
-    # Gun barrel (pipe pointing outward, slightly elevated)
-    barrel = add(generate_pipe(length=0.50, radius=0.045, wall_thickness=0.012,
+    # Gun barrel (pipe pointing outward — larger and more prominent)
+    barrel = add(generate_pipe(length=0.55, radius=0.065, wall_thickness=0.015,
                                hex_color=NIGHT_METAL))
     barrel.name = "GunBarrel"
-    barrel.rotation_euler = (math.radians(80), 0, 0)  # slightly upward
-    barrel.location = (0, -0.20, GUN_OFFSET_Z + 0.05)
+    barrel.rotation_euler = (math.radians(82), 0, 0)
+    barrel.location = (0, -0.20, GUN_OFFSET_Z + 0.07)
     apply_texture(barrel, "metal_plate", resolution="1k")
 
-    # Muzzle ring (dark red accent)
-    muzzle = add(generate_cylinder(radius=0.055, height=0.02, segments=10,
+    # Muzzle ring (dark red accent — bigger)
+    muzzle = add(generate_cylinder(radius=0.08, height=0.025, segments=10,
                                     hex_color=NIGHT_ACCENT))
     muzzle.name = "Muzzle"
-    muzzle.rotation_euler = (math.radians(80), 0, 0)
-    muzzle.location = (0, -0.69, GUN_OFFSET_Z + 0.135)
+    muzzle.rotation_euler = (math.radians(82), 0, 0)
+    muzzle.location = (0, -0.73, GUN_OFFSET_Z + 0.165)
 
     # Muzzle glow
-    muzzle_glow = add(generate_cylinder(radius=0.035, height=0.01, segments=8,
+    muzzle_glow = add(generate_cylinder(radius=0.05, height=0.015, segments=8,
                                          hex_color=NIGHT_GLOW))
     muzzle_glow.name = "MuzzleGlow"
-    muzzle_glow.rotation_euler = (math.radians(80), 0, 0)
-    muzzle_glow.location = (0, -0.70, GUN_OFFSET_Z + 0.138)
+    muzzle_glow.rotation_euler = (math.radians(82), 0, 0)
+    muzzle_glow.location = (0, -0.745, GUN_OFFSET_Z + 0.17)
 
     # -- AMMO BOX (on the side of turret base) --
     ammo_box = add(generate_box(w=0.15, d=0.12, h=0.10, hex_color=NIGHT_BODY))
