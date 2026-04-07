@@ -85,9 +85,8 @@ func run_scenario() -> void:
 	# and process_frame delta only make sense at 1x.
 	Engine.time_scale = 1.0
 	Engine.max_physics_steps_per_frame = 1
-	var prev_sep := SettingsManager.monster_separation_enabled
-	SettingsManager.monster_separation_enabled = false
-	print("[FPS] Disabling boid separation for this test — physics collision alone handles spacing")
+	print("[FPS] separation_enabled = %s  (measuring the current user setting, not overridden)" %
+		str(SettingsManager.monster_separation_enabled))
 
 	# Pin the camera to the factory centre and zoom out so screenshots show
 	# monsters + buildings in one frame. Without this the camera follows the

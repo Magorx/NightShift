@@ -24,6 +24,8 @@ var logic: SpawnLogic = null
 # ── References ──────────────────────────────────────────────────────────────
 var pathfinding: MonsterPathfinding
 var monster_layer: Node3D
+var pool: MonsterPool  ## set by MonsterSpawner; shared across all spawn areas
+var spawner: Node      ## MonsterSpawner — used to enqueue staggered spawns
 
 # ── Visuals ─────────────────────────────────────────────────────────────────
 var _particles: GPUParticles3D
@@ -51,34 +53,50 @@ func spawn_monster() -> MonsterBase:
 	if _budget_remaining <= 0 or monster_pool.is_empty():
 		return null
 
-	# Pick a random affordable monster from the pool
-	var affordable: Array[GDScript] = []
-	for script in monster_pool:
-		var temp: MonsterBase = script.new()
-		if temp.budget_cost <= _budget_remaining:
-			affordable.append(script)
-		temp.free()
-	if affordable.is_empty():
-		_budget_remaining = 0
-		budget_exhausted.emit()
-		return null
+	# Pick a random monster type from the pool. Filtering by budget is done via
+	# the cached cost on each script (no temporary monster instantiation —
+	# allocating + freeing a monster just to read its cost was a real cost
+	# in the lag-spike profile).
+	var chosen: GDScript = monster_pool.pick_random()
+	var cost: int = MonsterScriptInfo.get_budget_cost(chosen)
+	if cost > _budget_remaining:
+		# Look for ANY affordable type before giving up — the pool might mix
+		# heavy and light monsters and we just rolled a heavy one.
+		var any_affordable := false
+		for script in monster_pool:
+			if MonsterScriptInfo.get_budget_cost(script) <= _budget_remaining:
+				chosen = script
+				cost = MonsterScriptInfo.get_budget_cost(script)
+				any_affordable = true
+				break
+		if not any_affordable:
+			_budget_remaining = 0
+			budget_exhausted.emit()
+			return null
 
-	var chosen: GDScript = affordable.pick_random()
-	var monster: MonsterBase = chosen.new()
-	_budget_remaining -= monster.budget_cost
+	# Acquire from the spawner's monster pool (lazy growth, hard cap 64/type).
+	if pool == null:
+		push_error("[SpawnArea] no MonsterPool wired in — spawner forgot to set area.pool")
+		return null
+	var monster: MonsterBase = pool.acquire(chosen)
+	if monster == null:
+		# Hard cap reached: don't bill the budget, the spawner will retry later.
+		return null
+	_budget_remaining -= cost
 
 	# Pick a random cell within the area to spawn at
 	var cell: Vector2i = cells.pick_random()
 	monster.pathfinding = pathfinding
 
-	if monster_layer:
-		monster_layer.add_child(monster)
-	else:
-		add_child(monster)
+	var parent: Node = monster_layer if monster_layer else self
+	if monster.get_parent() != parent:
+		parent.add_child(monster)
 
 	var world_pos := GridUtils.grid_to_world(cell)
 	world_pos.y = MapManager.get_terrain_height(cell) + 0.5
 	monster.global_position = world_pos
+	# Reset state for the new spawn (clears HP, target, slot, timers, scale)
+	monster.reset_for_spawn()
 	monster_spawned.emit(monster)
 
 	if _budget_remaining <= 0:
@@ -87,11 +105,36 @@ func spawn_monster() -> MonsterBase:
 	return monster
 
 func finish() -> void:
-	# Dump all remaining budget immediately
-	while _budget_remaining > 0:
-		var m := spawn_monster()
-		if m == null:
-			break
+	# Enqueue ALL remaining budget to be spawned over the next several frames
+	# instead of dumping in a single tick. The spawner drains MAX_SPAWNS_PER_FRAME
+	# from the queue per physics frame, smoothing out the lag spike that this
+	# function used to cause.
+	#
+	# We pessimistically estimate budget / smallest cost so we never enqueue
+	# fewer callbacks than we'll need; the inner spawn_monster() handles the
+	# actual budget bookkeeping and bails out cleanly when exhausted.
+	if spawner == null or not spawner.has_method("enqueue_spawn"):
+		# Fallback for legacy callers / tests without a spawner: dump immediately.
+		while _budget_remaining > 0:
+			var m := spawn_monster()
+			if m == null:
+				break
+		return
+	var min_cost := _smallest_cost_in_pool()
+	if min_cost <= 0:
+		return
+	@warning_ignore("integer_division")
+	var pessimistic_count: int = (_budget_remaining + min_cost - 1) / min_cost
+	for i in pessimistic_count:
+		spawner.call("enqueue_spawn", Callable(self, "spawn_monster"))
+
+func _smallest_cost_in_pool() -> int:
+	var best := INF
+	for script in monster_pool:
+		var c: int = MonsterScriptInfo.get_budget_cost(script)
+		if c < best:
+			best = c
+	return int(best) if best != INF else 0
 
 func cleanup() -> void:
 	if logic:

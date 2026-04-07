@@ -32,6 +32,13 @@ func update(delta: float) -> void:
 		return
 
 	if _timer <= 0.0:
-		area.spawn_monster()
+		# Even the OneByOne spawner goes through the staggered queue: it
+		# normally only enqueues 1/spawn so the cost is identical to direct
+		# spawning, but it inherits the spawner's hard cap on per-frame work
+		# in case multiple areas all hit the same tick.
+		if area.spawner != null and area.spawner.has_method("enqueue_spawn"):
+			area.spawner.call("enqueue_spawn", Callable(area, "spawn_monster"))
+		else:
+			area.spawn_monster()
 		# Randomize next interval: 50%-150% of base
 		_timer = _base_interval * _rng.randf_range(0.5, 1.5)

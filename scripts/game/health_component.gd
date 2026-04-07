@@ -33,7 +33,11 @@ func damage(amount: float) -> void:
 		died.emit()
 
 func revive(hp_amount: float = -1.0) -> void:
+	var prev := current_hp
 	current_hp = hp_amount if hp_amount > 0.0 else max_hp
+	# Emit healed so HealthBar3D and other listeners refresh — without this,
+	# pooled monsters returning from death would still show an empty bar.
+	healed.emit(current_hp - prev, current_hp)
 
 func heal(amount: float) -> void:
 	if is_dead or amount <= 0.0:

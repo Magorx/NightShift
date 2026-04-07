@@ -163,16 +163,18 @@ func _setup_collision() -> void:
 	col.shape = capsule
 	col.position = Vector3(0.0, 0.4, 0.0)
 	add_child(col)
-	# Cap the number of slide iterations at 2. Default is 4, which is what
+	# Cap the number of slide iterations at 1. Default is 4, which is what
 	# causes a single move_and_slide to spend ~200us per character resolving
-	# cascading contacts in a dense cluster. For monsters 2 is plenty — we
-	# only need to slide off walls + other monsters, not bounce through
-	# corners, and the resulting "slide-through-corner" artifacts are
-	# invisible at this scale.
-	max_slides = 2
-	# Enlarge the safe margin slightly so the capsule never jitters between
+	# cascading contacts in a dense cluster. For monsters 1 slide is enough
+	# — they only need to slide off walls + other monsters, not bounce
+	# through corners, and the resulting "slide-through-corner" artifacts
+	# are invisible at this scale.
+	max_slides = 1
+	# Slightly larger safe margin so the capsule never jitters between
 	# touching and not-touching a neighbour each tick.
 	safe_margin = 0.05
+	# Wall-min-slide angle stays at the default so we still slide along
+	# floors + ramps at shallow angles.
 
 func _setup_health() -> void:
 	health = HealthComponent.new()

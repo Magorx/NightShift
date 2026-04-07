@@ -5,7 +5,10 @@ extends MonsterBase
 ## Follows A* path toward nearest building, attacks in melee range.
 ## Line destruction pattern: attacks 1 building per strike.
 
-const MODEL_PATH := "res://monsters/tendril_crawler/models/tendril_crawler.glb"
+# preload, not load() — `load()` was firing per-spawn and showing up in the
+# fight-phase lag spikes. Preload caches the parsed PackedScene at script
+# compile time so instantiate() is the only per-spawn cost.
+const MODEL_SCENE: PackedScene = preload("res://monsters/tendril_crawler/models/tendril_crawler.glb")
 
 func _ready() -> void:
 	# Stats
@@ -22,9 +25,8 @@ func _physics_process(delta: float) -> void:
 	_check_player_proximity(delta)
 
 func _setup_visual() -> void:
-	var model_scene := load(MODEL_PATH) as PackedScene
-	if model_scene:
-		var model := model_scene.instantiate()
+	if MODEL_SCENE:
+		var model := MODEL_SCENE.instantiate()
 		model.name = "Model"
 		model.scale = Vector3(0.5, 0.5, 0.5)
 		add_child(model)

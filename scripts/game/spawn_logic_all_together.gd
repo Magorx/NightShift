@@ -41,7 +41,16 @@ func update(delta: float) -> void:
 			area.finish()
 
 func _spawn_batch() -> void:
+	# Enqueue the batch into the spawner's staggered queue rather than spawning
+	# inline. The spawner drains the queue at MAX_SPAWNS_PER_FRAME per tick so a
+	# 16-monster batch is spread over ~8 frames instead of being a single tick
+	# allocation spike.
+	if area.spawner == null or not area.spawner.has_method("enqueue_spawn"):
+		# Fallback for legacy callers / tests
+		for i in _monsters_per_batch:
+			if area.get_budget_remaining() <= 0:
+				break
+			area.spawn_monster()
+		return
 	for i in _monsters_per_batch:
-		if area.get_budget_remaining() <= 0:
-			break
-		area.spawn_monster()
+		area.spawner.call("enqueue_spawn", Callable(area, "spawn_monster"))
