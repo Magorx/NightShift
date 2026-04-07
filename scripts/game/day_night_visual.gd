@@ -18,6 +18,10 @@ const EDGE_FRACTION := 0.0
 const SUN_YAW := 0.0
 const MOON_YAW := deg_to_rad(40.0)
 
+# Desynchronises shadow texels from world geometry axes, reducing worst-case
+# shadow snapping during light rotation (godotengine/godot#90175 workaround).
+const SUN_ROLL := deg_to_rad(22.5)
+
 # ── Light settings ────────────────────────────────────────────────────────
 const SUN_COLOR := Color(1.0, 0.95, 0.85)
 const SUN_ENERGY := 1.0
@@ -94,7 +98,7 @@ func _update(progress: float) -> void:
 	# moon_angle = roundf(moon_angle / snap) * snap
 
 	# Apply rotation and energy
-	sun_light.rotation = Vector3(-sun_angle, SUN_YAW, 0.0)
+	sun_light.rotation = Vector3(-sun_angle, SUN_YAW, SUN_ROLL)
 	moon_light.rotation = Vector3(-moon_angle, MOON_YAW, 0.0)
 
 	var sun_elev := sin(sun_angle)
