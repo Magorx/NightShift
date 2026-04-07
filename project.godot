@@ -8,6 +8,11 @@
 
 config_version=5
 
+[rendering]
+
+anti_aliasing/quality/use_taa=true
+shadows/use_jitter=1
+
 [application]
 
 config/name="Factor"
