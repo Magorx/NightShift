@@ -2,8 +2,8 @@
 
 **Date:** 2026-04-08
 **Start:** 23:57 (2026-04-07)
-**End:** 00:54 (2026-04-08)
-**Elapsed:** ~1.0h
+**End:** 02:11 (2026-04-08)
+**Elapsed:** ~2.25h (~1h on perf + nav fixes, ~1.25h on real-save regressions)
 
 ## Goal
 
@@ -168,12 +168,72 @@ all the accompanying callsites in `spawn_area`, `spawn_logic_*`,
 - `c45c6e3` — Monster perf: portal bias, elevation, flow staggering, hard
   timeout
 
+## Follow-up in the same session (testing against the real save caught bugs)
+
+The user ran the fixes against their actual slot_0 save and reported
+monsters stuck near the spawn areas. I re-ran with the real save and
+confirmed three bugs I missed in the first pass:
+
+1. **Elevation descent was blocked.** `_can_traverse_edge` used
+   `absf(h_to - h_from) <= STEP_HEIGHT` — that rejected descent as well
+   as ascent, so monsters spawning on the raised ring of slot_0's map
+   couldn't walk DOWN to the flat factory at the centre. Changed to
+   `(h_to - h_from) <= STEP_HEIGHT`.
+2. **STEP_HEIGHT was too aggressive.** 0.3 blocked the standard 0.5-unit
+   terrain increment. Raised to 0.6 so monsters can step up one mesa
+   level but still refuse a double-height cliff wall.
+3. **Spawn queue ate callbacks on full pool.** When `pool.acquire`
+   returned null (64/type cap hit), the spawner kept popping the
+   callback queue and eating callbacks against a full pool. After the
+   initial AllTogether batch dumped ~6000 callbacks per area all the
+   retries from the *later* spawn areas got chewed up, and every alive
+   monster ended up coming from whichever area was first in the queue.
+   Fixed: on null return, leave the callback at the HEAD of the queue
+   and stop draining this frame — it retries next tick once a pool
+   slot frees. FIFO fairness preserved.
+4. **Accidental budget carry-over.** The working tree had
+   `_calculate_budget = 5000.0 * round_num` from a previous stress run
+   that was never committed; the PERF.3 commit carried it in by
+   accident, turning round 1 into 2500 monsters and breaking scenario
+   tests that depend on the normal `10 * round_num` budget. Reverted.
+5. **max_slides = 1 regression.** Dropping CharacterBody3D max_slides
+   from 4 → 1 was a small perf win but let monsters slip through dense
+   contact edges, destroying small defences way too fast (all 17
+   buildings dead by round 2 in scn_full_combat_loop). Reverted to
+   engine default.
+
+New test `scn_real_save_fight`: loads slot_0, forces fight at round 15,
+tracks min-distance-to-any-building and attacking count for 20 s. Real
+save now plays as expected — swarm ramps to 64, attack count climbs
+to 10, buildings progressively die 17 → 0 in ~18 s. The "stuck doing
+nothing" behaviour from the user's screenshot is gone.
+
+`scn_full_combat_loop` was gated on the old broken spawning / routing
+and would have been a silent regression indicator. Updated it to buff
+every building to 100 000 max HP (the test is about round cycling, not
+combat balance) and fixed a pre-existing lambda that crashed on
+`GameManager.player.hp` (the property is actually `health.current_hp`).
+
+Final test sweep:
+- scn_monster_pathfind ✓
+- scn_monster_attack_building ✓
+- scn_monster_spawn ✓
+- scn_fight_phase_end ✓
+- scn_full_combat_loop ✓
+- scn_terrain_elevation ✓
+- scn_real_save_fight ✓
+- scn_turret_kills_monster — flaky, pre-existing at HEAD (confirmed
+  by stashing my changes — still fails without them)
+
 ## Next steps
 
-- Remaining spikes are GPU / move_and_slide cost when the wave hits the
-  factory. True flawless 60 fps at 64 monsters needs either **MultiMesh
-  monsters** (single draw call) or **lower physics tick rate** — both are
-  larger reworks. Current state lands most frames well under the budget
-  and is playable.
-- Watch the `> 20 ms` spike count under real play; if it grows with more
-  enemy types, escalate to one of the two follow-ups above.
+- Remaining FPS spikes are GPU / move_and_slide cost when the wave hits
+  the factory. True flawless 60 fps at 64 monsters needs either
+  **MultiMesh monsters** (single draw call) or **lower physics tick
+  rate** — both are larger reworks. Current state lands most frames
+  well under the budget and is playable.
+- Investigate the flaky `scn_turret_kills_monster` — the root cause is
+  `TendrilCrawler._ready()` setting `max_hp = 50` after the test sets
+  it to 30, plus what looks like a turret/monster range timing race.
+- Watch the `> 20 ms` spike count under real play; if it grows with
+  more enemy types, escalate to one of the two follow-ups above.

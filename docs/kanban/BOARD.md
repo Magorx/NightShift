@@ -4,7 +4,7 @@
 
 ## Done (move to BOARD_SOLVED.md next session)
 
-### **PERF.3** Monster perf polish + nav bias + elevation fix `planned 1h / actual 1h`
+### **PERF.3** Monster perf polish + nav bias + elevation fix `planned 1h / actual 2.25h`
 
   - tags: [perf, monsters, pathfinding, nav, testing]
   - priority: high
@@ -24,8 +24,15 @@
   - visual (`scn_monster_fps_stress --benchmark`, 64 monsters):
       - avg ~7 ms frame delta, p95 ~17 ms, max ~25 ms, 3 frames > 20 ms
       - remaining spikes cluster at 1-1.3 s into the sample (wave hitting the factory) and are dominated by `move_and_slide` resolving batched contacts
-  - verified: `scn_monster_pathfind`, `scn_terrain_elevation`, `scn_monster_fps_stress` all pass. Monsters visibly converge on the factory (no sideways wandering).
-  - future work not in this card: true "flawless 60 fps" at 64 monsters under visual-mode peak load needs either MultiMesh monsters (single draw call) or 30 Hz physics — both are bigger reworks. Current state is playable.
+  - **Bugs caught in the session by testing against the user's real slot_0 save** (monsters were stuck near spawn points):
+      - Elevation edge check rejected descent (used `absf`) — fixed to only block ascent `(h_to - h_from) <= STEP_HEIGHT`.
+      - STEP_HEIGHT was 0.3 — too strict for the standard 0.5-unit terrain increment. Raised to 0.6.
+      - **Spawn queue ate callbacks on full pool** — when `pool.acquire` returned null (64/type hard cap), the spawner popped the callback anyway and silently lost it. After the initial AllTogether batch filled the pool, later spawn areas' callbacks were chewed up against a full pool and all alive monsters came from a single area. Fixed: on null return, leave callback at the head of the queue and stop draining this frame.
+      - Accidental `_calculate_budget = 5000.0 * round_num` carried over from an uncommitted stress run — reverted to `10.0 * round_num`.
+      - `max_slides = 1` regression — let monsters slip through dense contact and destroy defences too fast. Reverted to engine default.
+  - verified: `scn_monster_pathfind`, `scn_monster_attack_building`, `scn_monster_spawn`, `scn_fight_phase_end`, `scn_full_combat_loop`, `scn_terrain_elevation`, `scn_real_save_fight`, `scn_monster_fps_stress` all pass. The **real-save combat test** (`scn_real_save_fight`) shows swarm ramping to 64 monsters, 10 simultaneously attacking, buildings dying 17 → 0 over ~18 s. `scn_turret_kills_monster` is flaky but pre-existing at HEAD.
+  - new test: **scn_real_save_fight** — loads the user's slot_0 save, forces FIGHT at round 15, tracks min-distance-to-any-building + attacking count every second for 20 s. Asserts that some monster reaches attack range (`< 2 tiles`). Runs in `--benchmark` mode. Will catch the "stuck doing nothing" regression class if it comes back.
+  - future work not in this card: true "flawless 60 fps" at 64 monsters under visual-mode peak load needs either MultiMesh monsters (single draw call) or 30 Hz physics — both are bigger reworks. Current state is playable. Also: investigate flaky `scn_turret_kills_monster` (TendrilCrawler._ready overwrites test's max_hp override).
 
 ### **PERF.2** Eliminate fight-phase lag spikes `planned 1.5h / actual ~0.25h`
 
