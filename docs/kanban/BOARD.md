@@ -37,6 +37,11 @@
 
   - defaultExpanded: false
 
+### **VIS.1** Fix terrain shadow jitter at day/night light angle transitions `planned 0.5h / actual 0.75h`
+
+  - tags: [visual, terrain, shadows, bug]
+  - defaultExpanded: false
+
 ## Estimate Summary
 
 ## Post-M1 Backlog
