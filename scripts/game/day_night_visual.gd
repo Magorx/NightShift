@@ -15,7 +15,7 @@ const EDGE_SPEED_MULT := 6.0
 const EDGE_FRACTION := 0.0
 
 # Orbital plane tilts (Y rotation) so sun and moon travel different paths
-const SUN_YAW := 0.0
+const SUN_YAW := deg_to_rad(20.0)
 const MOON_YAW := deg_to_rad(40.0)
 
 # Desynchronises shadow texels from world geometry axes, reducing worst-case
