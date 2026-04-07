@@ -4,6 +4,52 @@
 
 ## Done (move to BOARD_SOLVED.md next session)
 
+### **PERF.3** Monster perf polish + nav bias + elevation fix `planned 1h / actual 1h`
+
+  - tags: [perf, monsters, pathfinding, nav, testing]
+  - priority: high
+  - Follow-up to PERF.2 targeting the remaining user complaints at 64 monsters: occasional FPS drops, monsters wandering sideways past the factory, monsters head-butting elevated walls. New headless benchmark max is **9.59 ms** (separation OFF, -47%), visual benchmark avg is ~7 ms / max ~25 ms with only ~3 frames out of 1440 over 20 ms in a 12 s sample window at 64 monsters with physics collision enabled.
+  - changes:
+      - **NavGoal.sector_lower_neighbors** + **NavLayer._ensure_sector_next_hop** — BFS now records every neighbour with strictly-lower goal distance, not just a single next hop. Intermediate-sector flow fields seed from portal cells of ALL lower-distance neighbours so the local BFS gradient picks whichever exit portal is geometrically closest — monsters flow "vaguely toward the factory" instead of being funnelled through one arbitrary portal that might be on the far side.
+      - **GroundNavLayer.STEP_HEIGHT = 0.3** + override of `_can_traverse_edge` — rejects cell transitions whose terrain height delta exceeds the step limit. `_detect_portals_between` also honours it so cliffs no longer produce phantom sector adjacency. Monsters path around elevated terrain.
+      - **MonsterBase flow cache** — `_cached_flow_dir` refreshed every `FLOW_SAMPLE_PERIOD = 2` physics ticks with a per-monster randomised offset seeded at `reset_for_spawn`. Cuts `sample_factory_flow` traffic in half.
+      - **MonsterSpawner coalesced invalidation** — building placed/removed sets a flag; `_physics_process` calls `invalidate_factory_flow()` at most once per tick. Eliminated 20-30 ms spikes at AoE-kill moments that used to flush the entire per-sector cache N times.
+      - **MonsterBase max_slides = 1** + `safe_margin = 0.05` — default 4 slide iterations dominated the physics tick when monsters bunched up at the factory. `> 20 ms` frame count dropped from ~88 to 3 over a 12 s sample.
+      - **SimulationBase hard wall-clock timeout** — background `Thread` watchdog force-kills the process via `OS.kill` after `hard_timeout_seconds` (default 120). Fires even when the main thread is wedged, belt-and-braces over the existing SceneTree timer. Cleaned up via `_stop_hard_timeout()` in `sim_finish`.
+      - **scn_monster_fps_stress** (new scenario) — 64-monster windowed FPS benchmark. Runs in `--benchmark` mode (window open, vsync off, time_scale 1). Pins camera to factory centre, captures per-frame delta + rolling FPS + per-frame physics cost, prints top spike diagnostics with monster-perf counters. 4 s warmup + 12 s sample window. Screenshots at fight start / midway / after.
+      - **sim_capture_screenshot** now lazy-creates a `current/` dir in visual + benchmark modes, so scenarios can take captures without opting into `--screenshot-*`.
+  - benchmarks (headless `sim_monster_attack_perf`, round 15, 64 monsters):
+      - separation OFF: avg **6.43 → 5.58 ms** / max **17.95 → 9.59 ms** — flawless 60 fps in steady state
+      - separation ON: avg **6.94 → 7.79 ms** / max **40 → 18 ms** (steady state — warmup frame 0 is still ~50 ms)
+  - visual (`scn_monster_fps_stress --benchmark`, 64 monsters):
+      - avg ~7 ms frame delta, p95 ~17 ms, max ~25 ms, 3 frames > 20 ms
+      - remaining spikes cluster at 1-1.3 s into the sample (wave hitting the factory) and are dominated by `move_and_slide` resolving batched contacts
+  - verified: `scn_monster_pathfind`, `scn_terrain_elevation`, `scn_monster_fps_stress` all pass. Monsters visibly converge on the factory (no sideways wandering).
+  - future work not in this card: true "flawless 60 fps" at 64 monsters under visual-mode peak load needs either MultiMesh monsters (single draw call) or 30 Hz physics — both are bigger reworks. Current state is playable.
+
+### **PERF.2** Eliminate fight-phase lag spikes `planned 1.5h / actual ~0.25h`
+
+  - tags: [perf, monsters, spawning, pooling]
+  - priority: high
+  - Implemented all 6 fixes from the PERF.2 diagnosis. At round 15 / ~41 monsters: avg frame time **6.12 → 3.43 ms (-44%)**, max **36.94 → 17.46 ms (-53%)**, separation total cost **507 → 128 ms (-75%)**. With separation OFF, max drops to **10.84 ms** (well under 60 fps frame budget). Spikes that used to fire at deterministic batch-spawn moments are gone.
+  - changes:
+      - **MonsterPool** (new) — per-type object pool, lazy growth, capacity doubles 8 → 16 → 32 → 64 (hard cap 64/type). Pooled monsters stay parented to monster_layer (hidden + physics-disabled) so reuse skips physics-server re-registration. `_on_died` releases instead of queue_free.
+      - **MonsterBase** — `reset_for_spawn()` / `prepare_for_pool()` split, `_pool` back-ref, removes from monsters group while pooled. `_finish_death` handles pool vs free fallback.
+      - **MonsterSeparationGrid** (new) — spatial hash on `MonsterSpawner`, rebuilt once per physics tick (`process_physics_priority = -10` ensures it runs first). 3×3 cell window query at 1.5 world-unit cell size. `_apply_separation` walks ~constant neighbors instead of O(N).
+      - **SpawnArea.spawn_monster** — drops the affordability probe (no more `script.new() + free()` per spawn), uses cached cost via new `MonsterScriptInfo`. Goes through `pool.acquire(...)`. Add_child only when monster isn't already parented.
+      - **SpawnArea.finish** + **SpawnLogicAllTogether._spawn_batch** + **SpawnLogicOneByOne** — enqueue spawns into `MonsterSpawner._spawn_queue` instead of inline. Spawner drains `MAX_SPAWNS_PER_FRAME = 2` per physics tick.
+      - **MonsterBase._physics_process** — skips `move_and_slide()` while `State.ATTACKING and is_on_floor()` (the monster is stationary by definition, the call was wasted).
+      - **TendrilCrawler** — `MODEL_SCENE = preload(...)` instead of `load()` per spawn.
+      - **HealthComponent.revive** — emits `healed` so HealthBar3D refreshes when a pooled monster comes back to life.
+  - benchmark: re-run via `$GODOT --headless --fixed-fps 60 --path . --script res://tests/run_simulation.gd -- sim_monster_attack_perf` (now uses round 15 for realistic load).
+  - verified: all unit tests (33 passed), all monster scenarios (`scn_turret_kills_monster`, `scn_monster_attack_building`, `scn_monster_pathfind`, `scn_monster_spawn`, `scn_fight_phase_end`, `scn_full_combat_loop`). The pre-existing `scn_monster_attack_player` failure is unrelated (player HP=0 at start, fails on origin/main too).
+
+### **PERF.1** Hierarchical flow field pathfinding (sector + portal + dirty rebuild) `planned 1h / actual 0.67h`
+
+  - tags: [perf, monsters, pathfinding, architecture]
+  - priority: high
+  - Replaced the whole-map BFS pathfinder with a SupCom2-style sector + portal + per-sector flow field pipeline. Per-sector lazy compute, multi-source goal next-hop BFS, dirty sector invalidation, multi-layer ready (`GroundNavLayer` now, `JumpingNavLayer` / `FlyingNavLayer` plug in by overriding `_compute_sub_walkable_raw` / `_can_traverse_edge`). Includes `NavDebugRenderer` overlay (sector borders flash YELLOW on walkable rebuild and CYAN on flow compute, flow arrows GREEN/RED/WHITE per goal type) gated by `SettingsManager.debug_mode`. `scn_turret_kills_monster` (64 peak monsters) drops from 90+ s hang to 1.89 s wall time.
+
 ### **SPAWN.1** Monster spawn area system `0.3h`
 
   - tags: [monsters, spawning]
