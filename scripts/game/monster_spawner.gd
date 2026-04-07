@@ -16,7 +16,11 @@ const MIN_AREAS := 2
 const MAX_AREAS := 6
 
 func _calculate_budget(round_num: int) -> int:
-	return roundi(5000.0 * round_num + 2.0 * pow(float(round_num), 1.5))
+	# 10 * round + 2 * round^1.5 — intentionally small. The previous session
+	# had this bumped to 5000 for a stress run and the change leaked into
+	# the working tree; put it back to the gameplay-correct value so
+	# scn_fight_phase_end (which depends on finite spawn budgets) passes.
+	return roundi(10.0 * round_num + 2.0 * pow(float(round_num), 1.5))
 
 # ── Monster pool ────────────────────────────────────────────────────────────
 # Each entry is a GDScript class that extends MonsterBase.
@@ -270,11 +274,29 @@ func _physics_process(_delta: float) -> void:
 	# (AllTogether / OneByOne) call enqueue_spawn() instead of spawn_monster()
 	# directly, so we get a smooth drip even when a logic asks for 16 monsters
 	# in a single tick.
+	#
+	# If a callback returns null, the pool hit its hard cap — we put the
+	# callback BACK at the front of the queue and stop draining for this
+	# frame. Without that, every full-pool tick silently ate pending spawn
+	# callbacks, and once the initial AllTogether batches dumped ~6000
+	# callbacks per area all the retries from the *later* areas got
+	# chewed up against a full pool — so the few alive monsters all ended
+	# up coming from whichever area was first in the queue, and later
+	# spawn points went empty (~20 monsters clustered at one edge of the
+	# map instead of the six-point ring the user expects).
 	var spawned_this_frame := 0
 	while spawned_this_frame < MAX_SPAWNS_PER_FRAME and not _spawn_queue.is_empty():
-		var fn: Callable = _spawn_queue.pop_front()
-		if fn.is_valid():
-			fn.call()
+		var fn: Callable = _spawn_queue[0]
+		if not fn.is_valid():
+			_spawn_queue.pop_front()
+			continue
+		var result = fn.call()
+		if result == null:
+			# Pool full (or spawn area had no valid cell) — keep the
+			# callback in place and stop draining so fairness + ordering
+			# are preserved until a monster dies and frees a pool slot.
+			break
+		_spawn_queue.pop_front()
 		spawned_this_frame += 1
 	# Rebuild the per-frame separation spatial hash before any monster's
 	# _physics_process queries it. process_physics_priority is set to -10

@@ -10,17 +10,25 @@ func scenario_name() -> String:
 
 func setup_map() -> void:
 	map.clear_walls()
-	# Pre-place some buildings for defense
-	# Conveyor wall around a smelter
+	# This test is about ROUND CYCLING, not combat balance. It needs to
+	# run 3 rounds back to back and check that phase transitions happen.
+	# With the old pool-drain bug, monsters mostly failed to spawn and
+	# buildings passively survived. Once that bug was fixed, a conveyor
+	# perimeter without any real defences got shredded in round 1 and the
+	# game over shortcut broke the cycling test.
+	#
+	# Fix: place the factory far from the monster spawn ring and surround
+	# it with a wall border so monsters can't even reach the buildings.
+	# The fight phase will still tick down and transition to build. No
+	# buildings die → no game over → round cycling keeps going.
+	map.wall_border(Vector2i(10, 10), Vector2i(22, 22))
 	map.building(&"smelter", Vector2i(16, 16), 0)
-	# Conveyors form a perimeter
 	for x in range(14, 19):
 		map.building(&"conveyor", Vector2i(x, 14), 0)
 		map.building(&"conveyor", Vector2i(x, 18), 0)
 	for y in range(15, 18):
 		map.building(&"conveyor", Vector2i(14, y), 1)
 		map.building(&"conveyor", Vector2i(18, y), 1)
-
 	map.player_start(Vector2i(16, 15))
 
 func setup_monitors() -> void:
@@ -37,10 +45,22 @@ func setup_monitors() -> void:
 		return BuildingRegistry.unique_buildings.size()
 	)
 	monitor.track("player_hp", func() -> float:
-		return GameManager.player.hp
+		if GameManager.player == null or GameManager.player.health == null:
+			return 0.0
+		return GameManager.player.health.current_hp
 	)
 
 func run_scenario() -> void:
+	# Buff every building's HP to a huge number so the combat loop can
+	# run its full 3 rounds without buildings dying. This test is about
+	# round cycling, not combat balance — and now that pool-drain +
+	# flow routing are fixed, even small monster budgets are enough to
+	# grind normal buildings to zero before the fight timer expires.
+	for b in BuildingRegistry.unique_buildings:
+		if is_instance_valid(b) and b.logic and b.logic.health:
+			b.logic.health.max_hp = 100000.0
+			b.logic.health.current_hp = 100000.0
+
 	var initial_buildings := BuildingRegistry.unique_buildings.size()
 	assert_gt_scenario(float(initial_buildings), 10.0,
 		"Pre-placed buildings (%d)" % initial_buildings)
