@@ -33,6 +33,17 @@ var _last_capture_tick: int = -SCREENSHOT_INTERVAL  # ensure first eligible capt
 
 var timeout_seconds := 60.0
 
+## Hard wall-clock timeout. Unlike `timeout_seconds` (which uses a SceneTree
+## timer and therefore requires the game loop to be ticking), this runs on a
+## background thread and force-kills the process with OS.kill, so it fires
+## even if the main thread is deadlocked, stuck in an infinite GDScript loop,
+## or waiting on a physics step. Scaled generously: should be large enough to
+## never fire in a healthy run, just small enough to prevent CI hangs. Set
+## `hard_timeout_seconds = 0.0` in a subclass to disable.
+var hard_timeout_seconds := 120.0
+var _hard_timeout_thread: Thread = null
+var _hard_timeout_cancelled: bool = false
+
 func _ready():
 	# Prevent simulations from overwriting real save files
 	SaveManager.autosave_enabled = false
@@ -41,6 +52,12 @@ func _ready():
 	if sim_mode != "visual":
 		var timer := get_tree().create_timer(timeout_seconds, true, false, true)
 		timer.timeout.connect(_on_timeout)
+		# Belt and braces: a background-thread watchdog that force-kills the
+		# process after hard_timeout_seconds wall clock, even if the main
+		# thread is wedged.
+		if hard_timeout_seconds > 0.0:
+			_hard_timeout_thread = Thread.new()
+			_hard_timeout_thread.start(_hard_timeout_watchdog.bind(hard_timeout_seconds))
 
 	# Use smaller map for fast tests (128x128 game default is too slow for unit sims)
 	MapManager.map_size = sim_map_size
@@ -224,18 +241,23 @@ func _capture_screenshot() -> void:
 	_last_capture_tick = tick_count
 
 ## Manually capture a named screenshot at the current simulation state.
-## Use this in simulation scripts for important visual checkpoints.
+## Use this in simulation scripts for important visual checkpoints. Works in
+## any mode where rendering is active (visual, benchmark, screenshot_*). In
+## benchmark/visual mode the screenshot dir is created on demand under the
+## sim's `current/` folder so the caller doesn't need to opt into a
+## screenshot subcommand to get captures.
 func sim_capture_screenshot(label: String) -> void:
-	if not _is_screenshot_mode():
-		return
 	if DisplayServer.get_name() == "headless":
 		return
+	if _screenshot_dir == "":
+		# Lazy setup for modes that don't pre-create the dir (visual, benchmark).
+		_setup_screenshot_dir("current")
 	await RenderingServer.frame_post_draw
 	var image := get_viewport().get_texture().get_image()
 	image.resize(SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT, Image.INTERPOLATE_BILINEAR)
 	var path := _screenshot_dir.path_join("%s.png" % label)
 	image.save_png(path)
-	print("[SIM] Manual capture: %s.png (tick %d)" % [label, tick_count])
+	print("[SIM] Manual capture: %s (tick %d)" % [path, tick_count])
 
 func _compare_screenshots() -> void:
 	var baseline_dir := ProjectSettings.globalize_path(
@@ -336,6 +358,30 @@ func _on_timeout() -> void:
 	Engine.max_physics_steps_per_frame = 1
 	get_tree().quit(1)
 
+## Runs on a background thread. Sleeps wall-clock `timeout_sec` in small
+## increments so sim_finish() can cancel it cleanly, then sends SIGKILL to
+## our own pid. Last-resort watchdog — if the main thread hangs or the scene
+## tree stops processing, the engine timer in _on_timeout() never fires, but
+## this thread still does.
+func _hard_timeout_watchdog(timeout_sec: float) -> void:
+	var end_msec := Time.get_ticks_msec() + int(timeout_sec * 1000.0)
+	while Time.get_ticks_msec() < end_msec:
+		if _hard_timeout_cancelled:
+			return
+		OS.delay_msec(100)
+	if _hard_timeout_cancelled:
+		return
+	printerr("[SIM KILL] Hard wall-clock timeout after %.1fs — force killing process" % timeout_sec)
+	OS.kill(OS.get_process_id())
+
+## Called from sim_finish() (and any other clean exit paths) to stop the
+## watchdog so the Thread destructor doesn't warn about an unjoined thread.
+func _stop_hard_timeout() -> void:
+	_hard_timeout_cancelled = true
+	if _hard_timeout_thread != null and _hard_timeout_thread.is_started():
+		_hard_timeout_thread.wait_to_finish()
+	_hard_timeout_thread = null
+
 func sim_finish() -> void:
 	# Run screenshot comparison if in compare mode
 	if sim_mode == "screenshot_compare":
@@ -344,7 +390,9 @@ func sim_finish() -> void:
 	print("[SIM] Simulation complete. Ticks: %d" % tick_count)
 
 	if sim_mode == "visual":
-		# Don't quit — let user keep playing and inspecting
+		# Don't quit — let user keep playing and inspecting. Stop the
+		# watchdog so it doesn't nuke the still-alive session.
+		_stop_hard_timeout()
 		print("[SIM] Visual mode — game remains playable. Close window to exit.")
 		return
 
@@ -352,4 +400,5 @@ func sim_finish() -> void:
 	# steps, the engine can take very long to finish the current frame batch)
 	Engine.time_scale = 1.0
 	Engine.max_physics_steps_per_frame = 1
+	_stop_hard_timeout()
 	get_tree().quit(1 if _failed else 0)

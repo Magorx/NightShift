@@ -15,6 +15,9 @@ const LINE_LENGTH := 8       # cell count for line spawn areas
 const MIN_AREAS := 2
 const MAX_AREAS := 6
 
+func _calculate_budget(round_num: int) -> int:
+	return roundi(5000.0 * round_num + 2.0 * pow(float(round_num), 1.5))
+
 # ── Monster pool ────────────────────────────────────────────────────────────
 # Each entry is a GDScript class that extends MonsterBase.
 # SpawnArea instantiates them with .new().
@@ -24,15 +27,56 @@ var _monster_types: Array[GDScript] = [
 
 # ── State ───────────────────────────────────────────────────────────────────
 var pathfinding: MonsterPathfinding
+var monster_pool: MonsterPool                       ## per-type object pool, persists across rounds
+var separation_grid: MonsterSeparationGrid          ## spatial hash queried by _apply_separation
 var alive_monsters: Array[MonsterBase] = []
 var _monster_layer: Node3D
 var _spawn_areas: Array[SpawnArea] = []
 var _fight_active: bool = false
+var _nav_debug: NavDebugRenderer
+
+# ── Spawn staggering ────────────────────────────────────────────────────────
+# Eat at most this many monster spawns per physics frame; everything else
+# queued by SpawnLogic.batch / SpawnArea.finish() drips out across the next
+# frames. Without this cap, _spawn_batch and finish() drop ~16-30 monsters in
+# a single physics tick, causing the ~30 ms lag spikes.
+const MAX_SPAWNS_PER_FRAME := 2
+var _spawn_queue: Array[Callable] = []
 
 func _ready() -> void:
 	pathfinding = MonsterPathfinding.new()
+	monster_pool = MonsterPool.new()
+	separation_grid = MonsterSeparationGrid.new()
+	# Run early so the spatial hash is populated before any monster's
+	# _physics_process queries it.
+	process_physics_priority = -10
 	set_physics_process(false)
 	RoundManager.phase_changed.connect(_on_phase_changed)
+	# Buildings dying mid-fight invalidate the factory flow field so it gets
+	# recomputed (with the surviving buildings) on the next sample.
+	BuildingRegistry.building_removed.connect(_on_building_removed)
+	BuildingRegistry.building_placed.connect(_on_building_placed)
+	# Debug renderer for flow fields and sector flashes (visible only when
+	# SettingsManager.debug_mode is on). Lives on the spawner so it can grab
+	# the shared pathfinding instance directly.
+	_nav_debug = NavDebugRenderer.new()
+	_nav_debug.name = "NavDebugRenderer"
+	_nav_debug.pathfinding = pathfinding
+	add_child(_nav_debug)
+
+## Set by _on_building_removed / _on_building_placed when the factory layout
+## changes. The actual re-register is deferred to the next _physics_process
+## tick so multiple building events in the same frame coalesce into ONE
+## flow field invalidation — otherwise every AoE hit that kills 3 buildings
+## caused 3 full flow-field cache flushes, each forcing ~8 sectors to BFS
+## again on the next frame (measured as 20-30 ms spikes in the FPS stress).
+var _factory_flow_invalidated: bool = false
+
+func _on_building_removed(_grid_pos: Vector2i) -> void:
+	_factory_flow_invalidated = true
+
+func _on_building_placed(_building_id: StringName, _grid_pos: Vector2i) -> void:
+	_factory_flow_invalidated = true
 
 func setup(monster_layer: Node3D) -> void:
 	_monster_layer = monster_layer
@@ -81,16 +125,13 @@ func _start_fight() -> void:
 func _end_fight() -> void:
 	_fight_active = false
 	set_physics_process(false)
+	_spawn_queue.clear()
 	# Clean up spawn areas
 	for area in _spawn_areas:
 		if is_instance_valid(area):
 			area.cleanup()
 	_spawn_areas.clear()
 	_despawn_remaining()
-
-func _calculate_budget(round_num: int) -> int:
-	# 10 * round + 2 * round^1.5
-	return roundi(10.0 * round_num + 2.0 * pow(float(round_num), 1.5))
 
 # ── Area creation ───────────────────────────────────────────────────────────
 
@@ -135,6 +176,8 @@ func _create_spawn_area(index: int, total: int, center: Vector2i, budget_pts: in
 	area.monster_pool = _monster_types.duplicate()
 	area.pathfinding = pathfinding
 	area.monster_layer = _monster_layer
+	area.pool = monster_pool
+	area.spawner = self
 
 	# Assign logic: alternate between OneByOne and AllTogether
 	var logic: SpawnLogic
@@ -193,7 +236,10 @@ func _make_line_cells(center: Vector2i, factory_center: Vector2i) -> Array[Vecto
 # ── Callbacks ───────────────────────────────────────────────────────────────
 
 func _on_area_monster_spawned(monster: MonsterBase) -> void:
-	monster.died.connect(_on_monster_died.bind(monster))
+	# Pooled monsters re-emit `monster_spawned` every life — guard the connect
+	# so we don't get duplicate-listener errors on the second/third reuse.
+	if not monster.died.is_connected(_on_monster_died):
+		monster.died.connect(_on_monster_died.bind(monster))
 	alive_monsters.append(monster)
 
 func _on_area_budget_exhausted(_area: SpawnArea) -> void:
@@ -213,6 +259,28 @@ func _on_monster_died(_monster: MonsterBase) -> void:
 
 func _physics_process(_delta: float) -> void:
 	_cleanup_dead()
+	# Coalesced factory-flow invalidation. Multiple buildings dying in the
+	# same frame (AoE kill, explosion) would otherwise each flush the whole
+	# per-sector flow field cache, forcing all sectors to recompute on the
+	# next tick. Here we batch them into ONE re-register per frame.
+	if _factory_flow_invalidated and pathfinding:
+		pathfinding.invalidate_factory_flow()
+		_factory_flow_invalidated = false
+	# Drain at most MAX_SPAWNS_PER_FRAME from the staggered queue. SpawnLogics
+	# (AllTogether / OneByOne) call enqueue_spawn() instead of spawn_monster()
+	# directly, so we get a smooth drip even when a logic asks for 16 monsters
+	# in a single tick.
+	var spawned_this_frame := 0
+	while spawned_this_frame < MAX_SPAWNS_PER_FRAME and not _spawn_queue.is_empty():
+		var fn: Callable = _spawn_queue.pop_front()
+		if fn.is_valid():
+			fn.call()
+		spawned_this_frame += 1
+	# Rebuild the per-frame separation spatial hash before any monster's
+	# _physics_process queries it. process_physics_priority is set to -10
+	# so this runs first in the frame.
+	if separation_grid:
+		separation_grid.rebuild(alive_monsters)
 	# Check if fight is over (all spawned, all dead)
 	if not _fight_active:
 		return
@@ -221,10 +289,17 @@ func _physics_process(_delta: float) -> void:
 		if is_instance_valid(a) and a.get_budget_remaining() > 0:
 			all_exhausted = false
 			break
-	if all_exhausted and alive_monsters.is_empty():
+	if all_exhausted and alive_monsters.is_empty() and _spawn_queue.is_empty():
 		set_physics_process(false)
 		if RoundManager.current_phase == RoundManager.Phase.FIGHT:
 			all_monsters_dead.emit()
+
+## Enqueue a deferred spawn callback. SpawnArea logics use this instead of
+## calling spawn_monster() directly so the work is staggered across physics
+## frames at MAX_SPAWNS_PER_FRAME, preventing the ~30 ms lag spike that
+## happened when 16 monsters allocated in one tick.
+func enqueue_spawn(fn: Callable) -> void:
+	_spawn_queue.append(fn)
 
 func _cleanup_dead() -> void:
 	var i := alive_monsters.size() - 1
@@ -236,7 +311,15 @@ func _cleanup_dead() -> void:
 func _despawn_remaining() -> void:
 	var count := alive_monsters.size()
 	for monster in alive_monsters.duplicate():
-		if is_instance_valid(monster):
+		if not is_instance_valid(monster):
+			continue
+		# Pooled monsters get returned to the pool so the pool's `total`
+		# counter tracks reality (otherwise next round can't acquire any —
+		# the pool would think it's already at capacity).
+		if monster._pool != null:
+			monster.prepare_for_pool()
+			monster._pool.release(monster)
+		else:
 			monster.queue_free()
 	alive_monsters.clear()
 	if count > 0:
