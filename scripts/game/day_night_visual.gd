@@ -101,6 +101,12 @@ func _update(progress: float) -> void:
 	sun_light.light_energy = SUN_ENERGY * clampf(sun_elev * 2.0, 0.0, 1.0)
 	sun_light.visible = sun_elev > 0.0
 
+	# At low sun elevation (grazing angle) self-shadowing increases — ramp up
+	# shadow bias so terrain doesn't shadow itself into dark bands.
+	# At elev >= 0.3 (17°) no adjustment needed; at elev == 0 (horizon) bias peaks.
+	var low_angle_t := clampf(1.0 - sun_elev / 0.3, 0.0, 1.0)
+	sun_light.shadow_bias = lerpf(0.1, 0.3, low_angle_t)
+
 	var moon_elev := sin(moon_angle)
 	moon_light.light_energy = MOON_ENERGY * clampf(moon_elev * 2.0, 0.0, 1.0)
 	moon_light.visible = moon_elev > 0.0
