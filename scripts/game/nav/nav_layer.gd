@@ -173,18 +173,30 @@ func _detect_portals_between(a_idx: int, b_idx: int, dir: Vector2i) -> void:
 		var b_idx_local: int = b_local.y * size + b_local.x
 		var both_walk: bool = (a.walkable[a_idx_local] == 1 and b.walkable[b_idx_local] == 1)
 
-		# Also respect layer-specific edge constraints (e.g. ground monsters
+		# Respect layer-specific edge constraints (e.g. ground monsters
 		# refusing to traverse a cliff between sectors). Without this check,
 		# the sector adjacency graph treats cliff-separated sectors as
 		# neighbours and monsters try to path THROUGH the cliff before the
 		# physics collider bounces them off.
+		#
+		# The edge check is SYMMETRIC (OR of both directions): a portal
+		# exists if monsters can cross in AT LEAST one direction. That keeps
+		# sector adjacency permissive so the high-level BFS can still route
+		# through the portal; per-direction correctness is enforced inside
+		# _compute_sector_flow_field which checks the agent direction
+		# (neighbour → parent) when seeding flow arrows. Without this, the
+		# sector graph became asymmetric at cliffs — portals between
+		# sector(high) and sector(low) vanished because the forward check
+		# (low → high = ascent > STEP_HEIGHT) failed even though monsters
+		# heading downhill had a perfectly good path.
 		var edge_ok: bool = both_walk
 		if edge_ok:
 			var from_gx: int = a.sub_origin.x + a_local.x
 			var from_gy: int = a.sub_origin.y + a_local.y
 			var to_gx: int = b.sub_origin.x + b_local.x
 			var to_gy: int = b.sub_origin.y + b_local.y
-			edge_ok = _can_traverse_edge(from_gx, from_gy, to_gx, to_gy)
+			edge_ok = _can_traverse_edge(from_gx, from_gy, to_gx, to_gy) \
+				or _can_traverse_edge(to_gx, to_gy, from_gx, from_gy)
 
 		if edge_ok:
 			run_a.append(a_idx_local)
@@ -378,6 +390,8 @@ func _get_or_compute_flow_field(goal: NavGoal, from_sector: int) -> FlowField:
 			lower_neighbors = goal.sector_lower_neighbors[from_sector]
 		if lower_neighbors.is_empty():
 			return null  # unreachable from this sector
+		var from_origin: Vector2i = sectors[from_sector].sub_origin
+		var from_sz: int = sectors[from_sector].sub_size
 		for pid in portals_by_sector[from_sector]:
 			var portal: NavPortal = portals[pid]
 			var other: int = portal.other_sector(from_sector)
@@ -388,8 +402,33 @@ func _get_or_compute_flow_field(goal: NavGoal, from_sector: int) -> FlowField:
 					break
 			if not is_lower:
 				continue
-			for c in portal.cells_for(from_sector):
-				local_goal_cells.append(c)
+			# Only seed from portal cells the agent can actually cross in the
+			# from_sector → other direction. Since portal detection is now
+			# symmetric (permissive), a portal may contain cell pairs that are
+			# only traversable one way (e.g. descent from a cliff). Seeding
+			# from the "wrong side" would create a flow that leads monsters
+			# to a cell they can't actually walk out of.
+			var other_cells: PackedInt32Array = portal.cells_for(other)
+			var from_cells: PackedInt32Array = portal.cells_for(from_sector)
+			var other_origin: Vector2i = sectors[other].sub_origin
+			var other_sz: int = sectors[other].sub_size
+			var pair_count: int = mini(from_cells.size(), other_cells.size())
+			for i in pair_count:
+				var fc: int = from_cells[i]
+				var oc: int = other_cells[i]
+				@warning_ignore("integer_division")
+				var fc_ly: int = fc / from_sz
+				var fc_lx: int = fc - fc_ly * from_sz
+				@warning_ignore("integer_division")
+				var oc_ly: int = oc / other_sz
+				var oc_lx: int = oc - oc_ly * other_sz
+				var fgx: int = from_origin.x + fc_lx
+				var fgy: int = from_origin.y + fc_ly
+				var ogx: int = other_origin.x + oc_lx
+				var ogy: int = other_origin.y + oc_ly
+				if not _can_traverse_edge(fgx, fgy, ogx, ogy):
+					continue
+				local_goal_cells.append(fc)
 
 	if local_goal_cells.is_empty():
 		return null
@@ -449,12 +488,19 @@ func _compute_sector_flow_field(sector_idx: int, local_goal_cells: PackedInt32Ar
 				continue
 			if ff.costs[nidx] != FlowField.UNREACHABLE:
 				continue
-			# Optional edge constraint (elevation, etc.) for subclasses
-			var from_gx: int = sector.sub_origin.x + sx
-			var from_gy: int = sector.sub_origin.y + sy
-			var to_gx: int = sector.sub_origin.x + nx
-			var to_gy: int = sector.sub_origin.y + ny
-			if not _can_traverse_edge(from_gx, from_gy, to_gx, to_gy):
+			# Edge constraint (elevation, etc.). The BFS is flood-filling
+			# OUTWARD from the goal (parent → neighbour), but the monster
+			# eventually moves in the OPPOSITE direction (neighbour back to
+			# parent). So check the AGENT direction: from the neighbour to
+			# the parent. Otherwise BFS happily descends a cliff (descent is
+			# always allowed) and records a flow arrow at the low cell
+			# pointing UP into the cliff — the monster tries to climb and
+			# gets stuck head-butting the wall.
+			var parent_gx: int = sector.sub_origin.x + sx
+			var parent_gy: int = sector.sub_origin.y + sy
+			var neighbor_gx: int = sector.sub_origin.x + nx
+			var neighbor_gy: int = sector.sub_origin.y + ny
+			if not _can_traverse_edge(neighbor_gx, neighbor_gy, parent_gx, parent_gy):
 				continue
 			ff.costs[nidx] = next_cost
 			# Direction at (nx, ny) points back toward parent (sx, sy),

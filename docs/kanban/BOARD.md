@@ -4,6 +4,25 @@
 
 ## Done (move to BOARD_SOLVED.md next session)
 
+### **NAV.FIX** Flow field edge check uses agent direction (elevation stuck fix) `planned 1h / actual 1.75h`
+
+  - tags: [nav, monsters, pathfinding, bug, elevation]
+  - priority: high
+  - User report on slot_0 run_backup.json: "monsters stuck around walls staying in one place" and "arrows lead to the side of the base instead of at it". Root cause was `NavLayer._compute_sector_flow_field` checking `_can_traverse_edge` in the BFS-propagation direction (parent → neighbour) instead of the AGENT direction (neighbour → parent). BFS flood-filling from a goal on low ground happily descended cliff edges (descent is always allowed), recording flow arrows at low cells pointing UP into the wall. Monsters sampling the flow at those cells would walk into the cliff forever.
+  - changes (`scripts/game/nav/nav_layer.gd`):
+      - `_compute_sector_flow_field` — swap edge check args so the check is `_can_traverse_edge(neighbour, parent)`, matching the direction the monster will actually travel. The BFS now refuses to propagate to low cells when the agent can't ascend back to the parent, so flow arrows never point up a cliff the monster can't climb.
+      - `_detect_portals_between` — portal detection is now SYMMETRIC (OR of both directions). A portal exists if monsters can cross in EITHER direction, keeping sector adjacency permissive so the high-level BFS can still route through cliff portals. Without this, one-way-descent edges broke sector adjacency and the sector BFS routed swarms around the affected area, matching the "arrows to the side of the base" symptom.
+      - `_get_or_compute_flow_field` intermediate-sector seeding — portal cells are now filtered by whether the agent can actually cross `from_sector → other` at each (a_cell, b_cell) pair. Symmetric portal detection would otherwise seed BFS from cells the agent can't exit through.
+  - new scenarios:
+      - **scn_monster_cliff_pathfind** — 40-tile map with a 1.5-unit plateau, factory ON TOP, monster spawned on low ground west. Asserts the monster moves > 5 world-units (proving it's not head-butting the cliff). Before fix: monster stuck at x≈15.5 forever. After fix: monster travels 13.14 world-units physics-sliding around the south edge of the plateau.
+      - **scn_real_save_stress** — loads `user://saves/slot_0/run_backup.json` (the user's "right save, not autosave"), forces fight at round 6 (17-building factory survives the sample window, unlike round 15 which wipes it in <3 s), tracks fps + frame delta + per-frame physics cost + per-monster stuck detection via 3-sec position history window, captures screenshots with NavDebugRenderer enabled. Runs in `--benchmark` mode (window, 1x, vsync off).
+  - results:
+      - `scn_monster_cliff_pathfind`: PASS, 13.14 units travelled around plateau
+      - `scn_real_save_stress` round 6: fps avg 138.8 (1x), frame ms avg 7.03, p95 15.03, only 1.2% of frames over 16.7 ms budget. Stuck count ~0 on most ticks.
+      - `scn_real_save_fight`, `scn_monster_pathfind`, `scn_terrain_elevation`, `sim_monster_attack_perf`: all pass. 33/33 unit tests pass.
+  - perf aside: baseline stress at 64 monsters showed `move_and_slide` consumes 10-14 ms/frame — 80% of the physics budget at peak load. Flow field compute is essentially free (<0.01 ms/frame). The user's "16 fps" symptom is dominated by `move_and_slide` collision resolution at high monster counts, NOT by pathfinding. Future perf work should target CharacterBody3D cost or MultiMesh-based monsters, not nav.
+  - future work: remaining stuck-count false positives in `scn_real_save_stress` show monsters on elevated terrain (y=0.5) occasionally flagged as stuck even though the 0.5 step is under STEP_HEIGHT=0.6 — likely a physics collider mismatch (CharacterBody3D doesn't auto-step-up through vertical terrain meshes), not a nav bug. Needs a focused repro before fixing.
+
 ### **PERF.3** Monster perf polish + nav bias + elevation fix `planned 1h / actual 2.25h`
 
   - tags: [perf, monsters, pathfinding, nav, testing]
