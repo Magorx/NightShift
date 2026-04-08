@@ -163,12 +163,6 @@ func _setup_collision() -> void:
 	col.shape = capsule
 	col.position = Vector3(0.0, 0.4, 0.0)
 	add_child(col)
-	# max_slides stays at the engine default (4). An earlier run of this
-	# session dropped it to 1 for a perf gain, but it made monsters slip
-	# past each other and past building edges in dense contact, which in
-	# turn let small swarms (13 monsters in round 2 of scn_full_combat_loop)
-	# destroy all 17 perimeter buildings when they were supposed to
-	# survive. The perf saving was small; correct gameplay is worth more.
 
 func _setup_health() -> void:
 	health = HealthComponent.new()
@@ -642,6 +636,12 @@ func _on_died() -> void:
 	state = State.DYING
 	_release_attack_slot()
 	velocity = Vector3.ZERO
+	# Leave the monsters group immediately so turrets / target searches stop
+	# picking us up during the 0.3s shrink tween and after we've been returned
+	# to the pool (pooled instances stay is_instance_valid at their last world
+	# position, which was causing turrets to keep firing into empty space).
+	if is_in_group(&"monsters"):
+		remove_from_group(&"monsters")
 	died.emit()
 	# Death anim: shrink, then either return to the pool (preferred — keeps
 	# the .glb model and collision shapes loaded) or queue_free as a fallback

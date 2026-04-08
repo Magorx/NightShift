@@ -85,6 +85,53 @@ func _on_building_died() -> void:
 
 # ── Resource memory ──────────────────────────────────────────────────────────
 
+# ── Attack slot reservation (monster crowd spreading) ──────────────────────
+# Monsters claim one of up to 4 cardinal slots around the building to avoid
+# piling up on a single tile. Slot N corresponds to grid_pos + DIRECTION_VECTORS[N].
+# Indices match DIRECTION_VECTORS order: 0=right, 1=down, 2=left, 3=up.
+
+var _attack_slots: Array = [null, null, null, null]  # slot index -> claimant node or null
+
+## Claim the closest free attack slot for a monster. Returns the slot index
+## (0..3 -> cardinal direction) or -1 if no slot is available.
+func claim_attack_slot(claimant: Node, claimant_world_pos: Vector3) -> int:
+	# Release any slot this claimant already holds (covers stale claims)
+	for i in _attack_slots.size():
+		if _attack_slots[i] == claimant:
+			_attack_slots[i] = null
+
+	# Rank free slots by world distance to the claimant
+	var building_world := GridUtils.grid_to_world(grid_pos)
+	var best_slot := -1
+	var best_dist := INF
+	for i in _attack_slots.size():
+		if _attack_slots[i] != null and is_instance_valid(_attack_slots[i]):
+			continue
+		var offset: Vector2i = DIRECTION_VECTORS[i]
+		var slot_world := building_world + Vector3(offset.x, 0.0, offset.y)
+		var dist: float = claimant_world_pos.distance_squared_to(slot_world)
+		if dist < best_dist:
+			best_dist = dist
+			best_slot = i
+
+	if best_slot >= 0:
+		_attack_slots[best_slot] = claimant
+	return best_slot
+
+## Release a slot held by this claimant (if any).
+func release_attack_slot(claimant: Node) -> void:
+	for i in _attack_slots.size():
+		if _attack_slots[i] == claimant:
+			_attack_slots[i] = null
+			return
+
+## Compute the world-space attack slot position for a slot index.
+func get_attack_slot_world(slot_index: int) -> Vector3:
+	if slot_index < 0 or slot_index >= DIRECTION_VECTORS.size():
+		return GridUtils.grid_to_world(grid_pos)
+	var offset: Vector2i = DIRECTION_VECTORS[slot_index]
+	return GridUtils.grid_to_world(grid_pos + offset)
+
 ## Toggle night/day mode. Override in subclasses for custom behavior.
 func set_night_mode(enabled: bool) -> void:
 	is_night_mode = enabled

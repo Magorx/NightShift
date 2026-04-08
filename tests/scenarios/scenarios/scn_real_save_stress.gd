@@ -277,11 +277,19 @@ func _list_stuck_monsters(limit: int) -> Array:
 		var hist: Array = _monster_history.get(id, [])
 		if hist.size() < 2:
 			continue
+		# Same window check as _count_stuck_monsters — only flag monsters
+		# with at least STUCK_WINDOW_SECONDS * 0.8 of history. Without this
+		# we count freshly-spawned monsters as "stuck" because they have
+		# only one position sample.
 		var oldest_in_window: Vector3 = hist[0][1]
+		var oldest_t: float = hist[0][0]
 		for entry in hist:
 			if (t - entry[0]) <= STUCK_WINDOW_SECONDS:
 				oldest_in_window = entry[1]
+				oldest_t = entry[0]
 				break
+		if (t - oldest_t) < STUCK_WINDOW_SECONDS * 0.8:
+			continue
 		var travelled := (mb.global_position - oldest_in_window).length()
 		if travelled < STUCK_DIST_THRESHOLD:
 			list.append({

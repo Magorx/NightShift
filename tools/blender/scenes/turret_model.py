@@ -157,18 +157,21 @@ def build_turret():
     apply_texture(barrel, "metal_plate", resolution="1k")
 
     # Muzzle ring (dark red accent — bigger)
+    # Positioned at the front tip of the barrel (barrel center + half-length
+    # along the rotated barrel axis) plus muzzle half-thickness so its back
+    # face touches the barrel's front cap.
     muzzle = add(generate_cylinder(radius=0.08, height=0.025, segments=10,
                                     hex_color=NIGHT_ACCENT))
     muzzle.name = "Muzzle"
     muzzle.rotation_euler = (math.radians(82), 0, 0)
-    muzzle.location = (0, -0.73, GUN_OFFSET_Z + 0.165)
+    muzzle.location = (0, -0.485, GUN_OFFSET_Z + 0.110)
 
-    # Muzzle glow
+    # Muzzle glow — sits just in front of the muzzle ring
     muzzle_glow = add(generate_cylinder(radius=0.05, height=0.015, segments=8,
                                          hex_color=NIGHT_GLOW))
     muzzle_glow.name = "MuzzleGlow"
     muzzle_glow.rotation_euler = (math.radians(82), 0, 0)
-    muzzle_glow.location = (0, -0.745, GUN_OFFSET_Z + 0.17)
+    muzzle_glow.location = (0, -0.505, GUN_OFFSET_Z + 0.113)
 
     # -- AMMO BOX (on the side of turret base) --
     ammo_box = add(generate_box(w=0.15, d=0.12, h=0.10, hex_color=NIGHT_BODY))

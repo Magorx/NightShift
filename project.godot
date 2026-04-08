@@ -143,3 +143,6 @@ debug_action={
 ]
 }
 
+[rendering]
+
+lights_and_shadows/directional_shadow/size=8192

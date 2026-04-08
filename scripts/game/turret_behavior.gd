@@ -60,7 +60,12 @@ func _physics_process(delta: float) -> void:
 		_cooldown_timer -= delta
 
 	# Validate current target is still alive and in range.
-	if _current_target and is_instance_valid(_current_target):
+	# The group check is what catches dying / pooled monsters: MonsterBase
+	# removes itself from "monsters" the instant _on_died fires, so without
+	# this check a turret would keep firing at the last position of a corpse
+	# (the node stays is_instance_valid while the pool holds onto it).
+	if _current_target and is_instance_valid(_current_target) \
+			and _current_target.is_in_group(&"monsters"):
 		var dist := _get_turret_position().distance_to(_current_target.global_position)
 		if dist > range_radius:
 			_current_target = null
